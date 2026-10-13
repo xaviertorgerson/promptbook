@@ -3,7 +3,7 @@
   "$id": "https://harness.dev/schemas/task.schema.json",
   "title": "Task",
   "description": "One unit of work: specs/<epic>/tasks/<ID>.md. The frontmatter is the coordination substrate (board, loop, claiming); the body is what the coder builds against. A backward-compatible superset of agentic-template's task frontmatter: every field the template writes keeps its meaning, every harness field is optional.",
-  "x-version": "1.0.0",
+  "x-version": "1.1.0",
   "x-artifacts": [
     {
       "format": "frontmatter-markdown",
@@ -137,8 +137,8 @@
       "items": { "$ref": "common.schema.json#/$defs/sessionRef" }
     },
     "mode": {
-      "description": "Harness: the methodology that selects skills for this task (playbook/methodology/modes.md). Not the runtime's engagement mode.",
-      "enum": ["spec-driven", "research-plan-implement", "ralph-loop", "icm-pipeline"]
+      "description": "Harness: the methodology that selects skills for this task (playbook/methodology/modes.md); overrides the epic's mode. Absent: the epic's mode, else spec-driven. Not the runtime's engagement mode.",
+      "$ref": "common.schema.json#/$defs/mode"
     }
   },
   "patternProperties": { "^x-": {} },

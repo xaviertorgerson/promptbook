@@ -23,6 +23,10 @@ import { inferContracts, validateAs } from './validate.mjs';
 // project from before the product docs). blocks_readiness marks gaps that keep an epic from ready.
 
 export const TRACE_VERSION = '1.0.0';
+export const DEFAULT_MODE = 'spec-driven';
+
+// A task's methodology: its own mode, else its epic's, else spec-driven (common.schema.json mode).
+export const effectiveMode = (task, epic) => task?.mode ?? epic?.mode ?? DEFAULT_MODE;
 const CLAIMED_EPIC = new Set(['approved', 'in-progress', 'done']);
 const CLAIMED_TASK = new Set(['ready', 'in-progress', 'review', 'human-review', 'merging', 'merged']);
 const EVIDENCED_TASK = new Set(['review', 'human-review', 'merging', 'merged']);
@@ -339,11 +343,19 @@ export function trace(root, opts = {}) {
     }
     for (const u of e.ux.values()) if (!(u.cujs ?? []).length) egap({ rule: 'ux-flow-serves-journey', severity: 'warning', subject: u.id, message: `${u.id} designs no journey`, file: e.files.ux, line: u.line });
 
+    // Modes: the epic's mode is the default; a task's own mode overrides it (playbook: modes).
+    const mode = e.spec?.mode ?? DEFAULT_MODE;
+    const taskModes = {};
+    for (const t of e.tasks.values()) {
+      taskModes[t.id] = effectiveMode(t, e.spec);
+      if (t.mode && e.spec?.mode && t.mode !== e.spec.mode) egap({ rule: 'task-mode-overrides-epic', severity: 'info', subject: t.id, message: `${t.id} runs ${t.mode}; the epic's default is ${e.spec.mode}`, file: t.file, line: null });
+    }
+
     const mine = gaps.slice(before);
     const counts = { error: 0, warning: 0, info: 0 };
     for (const g of mine) counts[g.severity] += 1;
     const verdict = counts.error === 0 && !mine.some((g) => g.blocks_readiness) ? 'ready' : 'not-ready';
-    epics.push({ epic: e.slug, epic_status: e.status ?? 'intake', verdict, counts, coverage: cov, gaps: mine });
+    epics.push({ epic: e.slug, epic_status: e.status ?? 'intake', mode, task_modes: taskModes, verdict, counts, coverage: cov, gaps: mine });
   }
 
   const counts = { error: 0, warning: 0, info: 0 };

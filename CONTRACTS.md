@@ -31,8 +31,9 @@ node tools/validate.mjs --list                  # contracts, versions, artifact 
   `<epic>/REQ-n`; within an epic the bare id is enough. ADRs belong to no epic, so they always qualify.
 - **Shared definitions** (ids, dates, status enums, `budget`, `sessionRef`, `traceGap`) are in
   `common.schema.json` and referenced with `$ref`.
-- **Versioning.** Each schema is `1.0.0`. A change that makes a valid artifact invalid is a major
-  bump; a new optional field is minor. The harness is pre-1.0 as a whole (README).
+- **Versioning.** Each schema started at `1.0.0` and carries its own `x-version`
+  (`validate.mjs --list` prints them). A change that makes a valid artifact invalid is a major
+  bump; a new optional field or enum value is minor. The harness is pre-1.0 as a whole (README).
 
 ## Catalogue
 
@@ -126,16 +127,19 @@ title`, `**Status:**`, `**Date:**`, `**Decision:**`, `**Why:**`, `**Consequences
 
 **Purpose.** The planning-layer state machine of `spec.md` (intake → scoping → draft → approved →
 in-progress → done; blocked). Not in the brief's table; added so the epic status is checked the
-same way as the task status. **Schema** `epic.schema.json` 1.0.0: agentic-template's spec
+same way as the task status. **Schema** `epic.schema.json` 1.1.0: agentic-template's spec
 frontmatter exactly (`epic`, `status`, `priority`, `size`, `business_value`, `initiative`, `owner`),
-`owner` required from `approved` on; sections Problem, Scope, Requirements, Tasks, Acceptance.
-**Compat.** Both template epics validate unchanged.
+`owner` required from `approved` on, plus the optional harness field `mode`, the default methodology
+of the epic's tasks (a task's own `mode` overrides it; absent everywhere, `spec-driven`); sections
+Problem, Scope, Requirements, Tasks, Acceptance. The trace check reports each task's effective mode
+(`--json`: `epics[].task_modes`) and an override of the epic's mode as `info`. **Compat.** Both
+template epics validate unchanged.
 
 ### task
 
 **Purpose.** One unit of work, the coordination substrate: the frontmatter is the kanban column and
 the claim lock; the body is the contract the coder builds against. **Schema** `task.schema.json`
-1.0.0. Required (agentic-template's fields, same meaning): `id`, `epic`, `status`, `priority`, `cuj`,
+1.1.0. Required (agentic-template's fields, same meaning): `id`, `epic`, `status`, `priority`, `cuj`,
 `guiding_docs`, `branch`, `depends_on`, `owner`. Optional template fields: `parent`, `size`,
 `kickback_reason`. **Optional harness fields:**
 
@@ -148,7 +152,7 @@ the claim lock; the body is the contract the coder builds against. **Schema** `t
 | `evaluator` | ordered `{kind: tests|script|agent-review|human|eval, ref}` that decide "met" |
 | `budget` | `{max_turns, max_usd, max_minutes, max_tokens}` for the whole task |
 | `sessions` | `sessionRef[]` the agent appends in its handoff (the runner never writes the task file) |
-| `mode` | spec-driven, research-plan-implement, ralph-loop, icm-pipeline |
+| `mode` | spec-driven, research-plan-implement, ralph-loop, icm-pipeline; absent: the epic's `mode`, else spec-driven |
 
 `cuj` additionally accepts a list (`cuj: [CUJ-1, CUJ-2]`). Rules: a claimed task (in-progress,
 review, human-review, merging) has an owner; `id` equals the file name and `epic` the folder;

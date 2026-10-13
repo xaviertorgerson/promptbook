@@ -78,7 +78,7 @@ if (flag('--trace')) {
   if (global.length) { console.log('project'); global.forEach(show); }
   for (const e of result.epics) {
     const c = e.coverage;
-    console.log(`epic ${e.epic} [${e.epic_status}] — ${e.verdict.toUpperCase()}: ${e.counts.error} error(s), ${e.counts.warning} warning(s); journeys ${c.journeys.covered}/${c.journeys.total}, requirements ${c.requirements.covered}/${c.requirements.total}, tasks citing a requirement ${c.tasks.covered}/${c.tasks.total}, criteria in tests ${c.criteria.covered}/${c.criteria.total}`);
+    console.log(`epic ${e.epic} [${e.epic_status}, ${e.mode}] — ${e.verdict.toUpperCase()}: ${e.counts.error} error(s), ${e.counts.warning} warning(s); journeys ${c.journeys.covered}/${c.journeys.total}, requirements ${c.requirements.covered}/${c.requirements.total}, tasks citing a requirement ${c.tasks.covered}/${c.tasks.total}, criteria in tests ${c.criteria.covered}/${c.criteria.total}`);
     e.gaps.forEach(show);
   }
   console.log(`${failed ? 'FAIL' : 'PASS'} trace: ${result.counts.error} error(s), ${result.counts.warning} warning(s), ${result.counts.info} info${strict ? ' (strict)' : ''}`);

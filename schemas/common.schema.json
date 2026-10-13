@@ -3,7 +3,7 @@
   "$id": "https://harness.dev/schemas/common.schema.json",
   "title": "Shared definitions",
   "description": "Ids, dates, references and status vocabularies every contract shares. Not an artifact itself.",
-  "x-version": "1.0.0",
+  "x-version": "1.1.0",
   "$defs": {
     "nonEmptyString": { "type": "string", "minLength": 1 },
     "slug": {
@@ -79,6 +79,10 @@
     "attention": {
       "description": "Runtime attention of a run or record. Never a workflow status (state-machines/attention.yaml).",
       "enum": ["working", "needs-human", "complete"]
+    },
+    "mode": {
+      "description": "The methodology that selects skills and adds guards (playbook/methodology/modes.md). An epic's mode is the default for its tasks; a task's own mode overrides it. Not a runtime's engagement mode.",
+      "enum": ["spec-driven", "research-plan-implement", "ralph-loop", "icm-pipeline"]
     },
     "priority": { "enum": ["P0", "P1", "P2", "P3"] },
     "size": { "enum": ["XS", "S", "M", "L", "XL"] },

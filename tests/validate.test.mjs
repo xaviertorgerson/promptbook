@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { describe, it } from 'node:test';
+import { after, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
 import { walk } from '../tools/lib/glob.mjs';
@@ -17,6 +17,26 @@ const reg = registry();
 // The template's real work queue, when this checkout sits beside it. Optional: CI elsewhere skips.
 const STACK_DRIFT = process.env.HARNESS_SMOKE_PROJECT ?? '/home/claude/wt-stack-drift';
 const TEMPLATE = process.env.HARNESS_TEMPLATE ?? '/home/claude/agentic-template';
+
+// A copy of a trace fixture project in a temp dir, with files replaced or edited: { 'rel/path': text | (old) => text }.
+const TMP = fs.mkdtempSync(path.join(fs.realpathSync(process.env.TMPDIR ?? '/tmp'), 'harness-validate-'));
+after(() => fs.rmSync(TMP, { recursive: true, force: true }));
+let copies = 0;
+function project(base, edits = {}) {
+  const dir = path.join(TMP, `p${(copies += 1)}`);
+  fs.cpSync(path.join(FIX, 'trace', base), dir, { recursive: true });
+  for (const [rel, edit] of Object.entries(edits)) {
+    const f = path.join(dir, rel);
+    fs.mkdirSync(path.dirname(f), { recursive: true });
+    fs.writeFileSync(f, typeof edit === 'function' ? edit(fs.existsSync(f) ? fs.readFileSync(f, 'utf8') : '') : edit);
+  }
+  return dir;
+}
+const taskText = (id, fm = {}, body = {}) => {
+  const front = { id, epic: 'invoicing', status: 'ready', priority: 'P2', size: 'S', cuj: 'CUJ-1', guiding_docs: ['specs/invoicing/spec.md'], branch: `feat/${id.toLowerCase()}`, depends_on: [], owner: null, requirements: ['REQ-1'], ...fm };
+  const yaml = Object.entries(front).filter(([, v]) => v !== undefined).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join('\n');
+  return `---\n${yaml}\n---\n\n# ${id} · ${body.title ?? 'a task'}\n\n## Context\n${body.context ?? 'x'}\n\n## Acceptance criteria (EARS)\n${body.criteria ?? '- AC-1 — When an owner lists invoices, the API shall return them newest first.'}\n\n## Open questions\n${body.questions ?? ''}\n\n## Agent log (append-only, newest last)\n`;
+};
 
 const errorsOf = (r) => r.results.flatMap((x) => x.findings.filter((f) => f.severity === 'error'));
 const cases = (kind, contract) => {
@@ -184,6 +204,19 @@ describe('trace graph', () => {
     assert.deepEqual(r.epics[0].coverage.criteria, { covered: 2, total: 2 });
   });
 
+  it('an epic mode is the default for its tasks; a task mode overrides it (info)', () => {
+    const dir = project('complete', {
+      'specs/invoicing/spec.md': (t) => t.replace('owner: maria\n', 'owner: maria\nmode: research-plan-implement\n'),
+      'specs/invoicing/tasks/INV-2.md': taskText('INV-2', { mode: 'ralph-loop' }),
+      'specs/invoicing/tasks/INV-3.md': taskText('INV-3'),
+    });
+    const e = trace(dir).epics[0];
+    assert.equal(e.mode, 'research-plan-implement');
+    assert.deepEqual(e.task_modes, { 'INV-1': 'research-plan-implement', 'INV-2': 'ralph-loop', 'INV-3': 'research-plan-implement' });
+    assert.deepEqual(e.gaps.filter((g) => g.rule === 'task-mode-overrides-epic').map((g) => [g.subject, g.severity]), [['INV-2', 'info']]);
+    assert.equal(trace(path.join(FIX, 'trace/complete')).epics[0].task_modes['INV-1'], 'spec-driven', 'no mode anywhere: spec-driven');
+  });
+
   it('a broken project reports each broken link by rule', () => {
     const r = trace(path.join(FIX, 'trace/broken'));
     const rules = new Set(r.gaps.filter((g) => g.severity === 'error').map((g) => g.rule));
@@ -227,7 +260,7 @@ describe('CLI', () => {
   it('prints PASS/FAIL per file with a JSON pointer, a line and the rule, and exits non-zero on failure', () => {
     const r = cli('fixtures/invalid/task/claimed-task-has-owner.md');
     assert.equal(r.status, 1);
-    assert.match(r.stdout, /^FAIL fixtures\/invalid\/task\/claimed-task-has-owner\.md \[task@1\.0\.0\]/m);
+    assert.match(r.stdout, /^FAIL fixtures\/invalid\/task\/claimed-task-has-owner\.md \[task@\d+\.\d+\.\d+\]/m);
     assert.match(r.stdout, /^ {2}\/owner claimed-task-has-owner:11: /m);
   });
 
