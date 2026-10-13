@@ -1,0 +1,7 @@
+# An example the rule does not match: the compiled rule would not prove what it claims.
+policy_version: 1
+profiles:
+  laptop: { tier: ask, engines: [codex] }
+deny_read: ["**/.env"]
+forbid:
+  - { command: [git, push, --force], examples: [git push -f origin main] }

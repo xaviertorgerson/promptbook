@@ -1,0 +1,20 @@
+# Two tasks need far more work than their per-run caps and task budgets allow. The runner stops each
+# run at its ceiling; the supervisor surfaces the ceiling as needs-human and never retries blindly.
+# The human raises a budget once, then parks the task. The runtime has an overall budget too.
+name: budget-exhaustion
+description: Runs hit max_usd and max_turns ceilings; tasks exhaust budgets; the human raises then parks.
+seed: 5
+policy:
+  tier: unattended
+  forbid:
+    - { command: [git, push, [--force, -f]] }
+  budgets: { max_turns: 120, max_usd: 3 }
+supervisor: { max_workers: 2, budget_usd: 40 }
+human: { on_budget: raise, raise_usd: 4, max_raises: 1 }
+faults:
+  budget_exhaustion: { tasks: [BUD-1, BUD-3], factor: 6 }
+tasks:
+  - { id: BUD-1, size: L, touches: ["src/a/**"], budget: { max_usd: 8, max_turns: 400 } }
+  - { id: BUD-2, size: S, touches: ["src/b/**"], budget: { max_usd: 6 } }
+  - { id: BUD-3, size: M, touches: ["src/c/**"], budget: { max_usd: 5 } }
+  - { id: BUD-4, size: S, touches: ["src/d/**"] }

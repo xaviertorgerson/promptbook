@@ -1,0 +1,9 @@
+{
+  "generated_by": "harness compile-policy",
+  "source": "agent-policy.yaml",
+  "engine": "codex",
+  "profile": "ci",
+  "tier": "unattended",
+  "args": [],
+  "timeout_seconds": 3600
+}

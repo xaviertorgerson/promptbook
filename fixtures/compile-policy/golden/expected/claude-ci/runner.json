@@ -1,0 +1,20 @@
+{
+  "generated_by": "harness compile-policy",
+  "source": "agent-policy.yaml",
+  "engine": "claude",
+  "profile": "ci",
+  "tier": "unattended",
+  "args": [
+    "--permission-mode",
+    "dontAsk",
+    "--allowedTools",
+    "Bash(pnpm *),Bash(git status *),Bash(git log *),Bash(git diff *),Edit(**),WebFetch(domain:github.com),WebFetch(domain:*.github.com),WebFetch(domain:registry.npmjs.org)",
+    "--disallowedTools",
+    "Read(**/.env),Read(**/secrets/**),Read(~/.ssh/**),Read(//etc/shadow),Bash(rm -rf / *),Bash(git push --force *),Bash(git push -f *),Bash(herdr workspace close *),Edit(**/.git/hooks/**),WebFetch(domain:internal.example.com),WebFetch(domain:*.internal.example.com),mcp__prod-db__execute,WebFetch(domain:tracking.example.com)",
+    "--max-turns",
+    "200",
+    "--max-budget-usd",
+    "5"
+  ],
+  "timeout_seconds": 3600
+}

@@ -1,0 +1,10 @@
+{"prompt":"Draft a spec for a new widget that sorts invoices.","expect":"trigger","kind":"positive"}
+{"prompt":"Sketch the widget we talked about yesterday.","expect":"trigger","kind":"positive"}
+{"prompt":"Write up this widget idea before we build it.","expect":"trigger","kind":"positive"}
+{"prompt":"I have a widget idea; turn it into a spec.","expect":"trigger","kind":"positive"}
+{"prompt":"Does the sorting widget meet its spec?","expect":"no-trigger","kind":"near-miss","route_to":"checking-widgets"}
+{"prompt":"Check the finished widget against AC-2.","expect":"no-trigger","kind":"near-miss","route_to":"checking-widgets"}
+{"prompt":"Release the sorting widget.","expect":"no-trigger","kind":"near-miss","route_to":"releasing-gizmos"}
+{"prompt":"Review this pull request for the widget.","expect":"no-trigger","kind":"near-miss","route_to":"reviewing-code"}
+{"prompt":"What's the weather in Lisbon?","expect":"no-trigger","kind":"negative","route_to":"none"}
+{"prompt":"Translate this paragraph into French.","expect":"no-trigger","kind":"negative","route_to":"none"}

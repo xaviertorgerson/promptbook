@@ -1,0 +1,9 @@
+{"prompt":"Does the sorting widget meet its spec?","expect":"trigger","kind":"positive"}
+{"prompt":"Check this widget against its criteria.","expect":"trigger","kind":"positive"}
+{"prompt":"Verify AC-1 to AC-4 on the finished widget.","expect":"trigger","kind":"positive"}
+{"prompt":"Is the invoice widget done according to the spec?","expect":"trigger","kind":"positive"}
+{"prompt":"Draft a spec for a new widget.","expect":"no-trigger","kind":"near-miss","route_to":"drafting-widgets"}
+{"prompt":"Sketch a widget idea.","expect":"no-trigger","kind":"near-miss","route_to":"drafting-widgets"}
+{"prompt":"Release the checked widget.","expect":"no-trigger","kind":"near-miss","route_to":"shipping-widgets"}
+{"prompt":"What's the capital of Peru?","expect":"no-trigger","kind":"negative","route_to":"none"}
+{"prompt":"Write a haiku about rain.","expect":"no-trigger","kind":"negative","route_to":"none"}

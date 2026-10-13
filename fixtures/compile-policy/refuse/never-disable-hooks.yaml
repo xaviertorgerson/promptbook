@@ -1,0 +1,8 @@
+# An extension block that would switch hooks off: refused (HAR-2), whatever the engine.
+policy_version: 1
+profiles:
+  laptop: { tier: ask, engines: [claude] }
+deny_read: ["**/.env"]
+forbid: []
+x-claude-extra:
+  disableAllHooks: true

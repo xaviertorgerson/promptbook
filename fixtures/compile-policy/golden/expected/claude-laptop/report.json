@@ -1,0 +1,11 @@
+{
+  "tier": "auto-edit",
+  "warnings": [
+    {
+      "rule": "egress-prompts",
+      "message": "WebFetch outside allow_domains prompts a human instead of being denied; the sandbox allowlist binds shell commands only"
+    }
+  ],
+  "accepted": [],
+  "notes": []
+}

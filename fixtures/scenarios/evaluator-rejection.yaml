@@ -1,0 +1,19 @@
+# The evaluator rejects one task twice before passing it, and another every time. The writer iterates
+# on findings; after the review-round limit the supervisor stops and asks the human, who sends the
+# criteria back to the planner (respec). Missing tests are rejections too.
+name: evaluator-rejection
+description: Repeated evaluator rejections; a review loop that never converges goes to the human.
+seed: 7
+policy:
+  tier: autonomous
+  forbid:
+    - { command: [git, push, [--force, -f]] }
+supervisor: { max_review_rounds: 3 }
+work: { cover_rate: 0.6 }
+evaluator: { reject_rate: 0.1 }
+faults:
+  evaluator_rejection: { tasks: { EVR-1: 2, EVR-2: always } }
+tasks:
+  - { id: EVR-1, size: S, touches: ["src/a/**"], criteria: 3 }
+  - { id: EVR-2, size: S, touches: ["src/b/**"] }
+  - { id: EVR-3, size: M, touches: ["src/c/**"], criteria: 4 }

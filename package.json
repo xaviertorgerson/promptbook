@@ -7,9 +7,18 @@
   "engines": {
     "node": ">=22"
   },
+  "bin": {
+    "harness": "tools/cli.mjs"
+  },
   "packageManager": "pnpm@10.28.0",
   "scripts": {
     "validate": "node tools/validate.mjs",
+    "trace": "node tools/validate.mjs --trace",
+    "lint": "node tools/lint-skills.mjs",
+    "simulate": "node tools/simulate.mjs",
+    "compile-policy": "node tools/compile-policy.mjs",
+    "lock": "node tools/lock.mjs",
+    "eval-routing": "node tools/eval-routing.mjs",
     "test": "node --test \"tests/**/*.test.mjs\""
   },
   "dependencies": {

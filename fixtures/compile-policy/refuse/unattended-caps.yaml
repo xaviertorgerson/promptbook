@@ -1,0 +1,8 @@
+# An unattended tier with a budget that caps neither turns nor spend (HAR-3).
+policy_version: 1
+profiles:
+  ci: { tier: unattended, engines: [claude] }
+deny_read: ["**/.env"]
+forbid: []
+budgets:
+  unattended: { max_minutes: 30 }
