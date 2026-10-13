@@ -1,0 +1,33 @@
+# Tier 2: the owner lets the coordinator pick and sequence the rating-engine tasks, decide findings
+# by a stated policy, finalize, and land task PRs into the epic's integration branch by squash,
+# behind an independent review of the current head and the required checks. The integration
+# branch reaches main only through a PR a human merges (tier 3); no action here covers main.
+id: GRANT-4
+granted_by: maria
+granted_to: { role: orchestrator, runtime: claude-loop }
+granted_at: "2026-10-13T08:00:00Z"
+source: "https://github.com/acme/billing/issues/251#issuecomment-2"
+scope:
+  objective: Deliver the rating-engine epic on integration/rating-engine
+  repositories: [acme/billing]
+  epics: [rating-engine]
+  tasks: [BILL-5, BILL-6, BILL-7, BILL-8]
+  non_goals: [invoicing, tax, schema drops]
+actions:
+  - select-tasks
+  - { action: dispose-findings, policy: "Fix findings that block a criterion or are material and in scope; file the rest as follow-ups" }
+  - finalize
+  - action: merge
+    repo: acme/billing
+    target: integration/rating-engine
+    strategy: squash
+    requires: [independent-review, required-checks, current-head]
+limits:
+  max_workers: 3
+  budget: { max_usd: 40, max_turns: 1200 }
+  stop_when:
+    - the epic acceptance holds on the integration branch
+    - two consecutive runs make no progress
+    - a semantic merge conflict
+expires_at: "2026-10-20T08:00:00Z"
+revocable: true
