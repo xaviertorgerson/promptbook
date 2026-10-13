@@ -1,0 +1,335 @@
+---
+name: drafting-widgets
+description: Use when someone asks to draft a widget spec, sketch a new widget, or says "write up this widget idea" before any widget exists. Do not use for checking a finished widget against its spec (checking-widgets) or for releasing a widget (shipping-widgets).
+license: MIT
+metadata:
+  version: "0.1.0"
+  layer: L3
+---
+
+# Drafting widgets
+
+Turn a widget idea into a one-page widget spec a builder can start from.
+
+## Inputs
+
+- The request, in the user's words.
+- Any existing widget specs in the project.
+
+## Procedure
+
+1. Restate the widget's purpose in one sentence.
+2. List the widget's parts, each with one acceptance criterion `AC-n`.
+3. Write the spec from the template in [references/template.md](references/template.md).
+
+## Outputs
+
+A widget spec file with every criterion numbered.
+
+## Gates and stop conditions
+
+Stop and set attention `needs-human` when the purpose cannot be stated in one sentence.
+
+## References
+
+- references/template.md — the spec template.
+- detail line 1 that belongs in references/
+- detail line 2 that belongs in references/
+- detail line 3 that belongs in references/
+- detail line 4 that belongs in references/
+- detail line 5 that belongs in references/
+- detail line 6 that belongs in references/
+- detail line 7 that belongs in references/
+- detail line 8 that belongs in references/
+- detail line 9 that belongs in references/
+- detail line 10 that belongs in references/
+- detail line 11 that belongs in references/
+- detail line 12 that belongs in references/
+- detail line 13 that belongs in references/
+- detail line 14 that belongs in references/
+- detail line 15 that belongs in references/
+- detail line 16 that belongs in references/
+- detail line 17 that belongs in references/
+- detail line 18 that belongs in references/
+- detail line 19 that belongs in references/
+- detail line 20 that belongs in references/
+- detail line 21 that belongs in references/
+- detail line 22 that belongs in references/
+- detail line 23 that belongs in references/
+- detail line 24 that belongs in references/
+- detail line 25 that belongs in references/
+- detail line 26 that belongs in references/
+- detail line 27 that belongs in references/
+- detail line 28 that belongs in references/
+- detail line 29 that belongs in references/
+- detail line 30 that belongs in references/
+- detail line 31 that belongs in references/
+- detail line 32 that belongs in references/
+- detail line 33 that belongs in references/
+- detail line 34 that belongs in references/
+- detail line 35 that belongs in references/
+- detail line 36 that belongs in references/
+- detail line 37 that belongs in references/
+- detail line 38 that belongs in references/
+- detail line 39 that belongs in references/
+- detail line 40 that belongs in references/
+- detail line 41 that belongs in references/
+- detail line 42 that belongs in references/
+- detail line 43 that belongs in references/
+- detail line 44 that belongs in references/
+- detail line 45 that belongs in references/
+- detail line 46 that belongs in references/
+- detail line 47 that belongs in references/
+- detail line 48 that belongs in references/
+- detail line 49 that belongs in references/
+- detail line 50 that belongs in references/
+- detail line 51 that belongs in references/
+- detail line 52 that belongs in references/
+- detail line 53 that belongs in references/
+- detail line 54 that belongs in references/
+- detail line 55 that belongs in references/
+- detail line 56 that belongs in references/
+- detail line 57 that belongs in references/
+- detail line 58 that belongs in references/
+- detail line 59 that belongs in references/
+- detail line 60 that belongs in references/
+- detail line 61 that belongs in references/
+- detail line 62 that belongs in references/
+- detail line 63 that belongs in references/
+- detail line 64 that belongs in references/
+- detail line 65 that belongs in references/
+- detail line 66 that belongs in references/
+- detail line 67 that belongs in references/
+- detail line 68 that belongs in references/
+- detail line 69 that belongs in references/
+- detail line 70 that belongs in references/
+- detail line 71 that belongs in references/
+- detail line 72 that belongs in references/
+- detail line 73 that belongs in references/
+- detail line 74 that belongs in references/
+- detail line 75 that belongs in references/
+- detail line 76 that belongs in references/
+- detail line 77 that belongs in references/
+- detail line 78 that belongs in references/
+- detail line 79 that belongs in references/
+- detail line 80 that belongs in references/
+- detail line 81 that belongs in references/
+- detail line 82 that belongs in references/
+- detail line 83 that belongs in references/
+- detail line 84 that belongs in references/
+- detail line 85 that belongs in references/
+- detail line 86 that belongs in references/
+- detail line 87 that belongs in references/
+- detail line 88 that belongs in references/
+- detail line 89 that belongs in references/
+- detail line 90 that belongs in references/
+- detail line 91 that belongs in references/
+- detail line 92 that belongs in references/
+- detail line 93 that belongs in references/
+- detail line 94 that belongs in references/
+- detail line 95 that belongs in references/
+- detail line 96 that belongs in references/
+- detail line 97 that belongs in references/
+- detail line 98 that belongs in references/
+- detail line 99 that belongs in references/
+- detail line 100 that belongs in references/
+- detail line 101 that belongs in references/
+- detail line 102 that belongs in references/
+- detail line 103 that belongs in references/
+- detail line 104 that belongs in references/
+- detail line 105 that belongs in references/
+- detail line 106 that belongs in references/
+- detail line 107 that belongs in references/
+- detail line 108 that belongs in references/
+- detail line 109 that belongs in references/
+- detail line 110 that belongs in references/
+- detail line 111 that belongs in references/
+- detail line 112 that belongs in references/
+- detail line 113 that belongs in references/
+- detail line 114 that belongs in references/
+- detail line 115 that belongs in references/
+- detail line 116 that belongs in references/
+- detail line 117 that belongs in references/
+- detail line 118 that belongs in references/
+- detail line 119 that belongs in references/
+- detail line 120 that belongs in references/
+- detail line 121 that belongs in references/
+- detail line 122 that belongs in references/
+- detail line 123 that belongs in references/
+- detail line 124 that belongs in references/
+- detail line 125 that belongs in references/
+- detail line 126 that belongs in references/
+- detail line 127 that belongs in references/
+- detail line 128 that belongs in references/
+- detail line 129 that belongs in references/
+- detail line 130 that belongs in references/
+- detail line 131 that belongs in references/
+- detail line 132 that belongs in references/
+- detail line 133 that belongs in references/
+- detail line 134 that belongs in references/
+- detail line 135 that belongs in references/
+- detail line 136 that belongs in references/
+- detail line 137 that belongs in references/
+- detail line 138 that belongs in references/
+- detail line 139 that belongs in references/
+- detail line 140 that belongs in references/
+- detail line 141 that belongs in references/
+- detail line 142 that belongs in references/
+- detail line 143 that belongs in references/
+- detail line 144 that belongs in references/
+- detail line 145 that belongs in references/
+- detail line 146 that belongs in references/
+- detail line 147 that belongs in references/
+- detail line 148 that belongs in references/
+- detail line 149 that belongs in references/
+- detail line 150 that belongs in references/
+- detail line 151 that belongs in references/
+- detail line 152 that belongs in references/
+- detail line 153 that belongs in references/
+- detail line 154 that belongs in references/
+- detail line 155 that belongs in references/
+- detail line 156 that belongs in references/
+- detail line 157 that belongs in references/
+- detail line 158 that belongs in references/
+- detail line 159 that belongs in references/
+- detail line 160 that belongs in references/
+- detail line 161 that belongs in references/
+- detail line 162 that belongs in references/
+- detail line 163 that belongs in references/
+- detail line 164 that belongs in references/
+- detail line 165 that belongs in references/
+- detail line 166 that belongs in references/
+- detail line 167 that belongs in references/
+- detail line 168 that belongs in references/
+- detail line 169 that belongs in references/
+- detail line 170 that belongs in references/
+- detail line 171 that belongs in references/
+- detail line 172 that belongs in references/
+- detail line 173 that belongs in references/
+- detail line 174 that belongs in references/
+- detail line 175 that belongs in references/
+- detail line 176 that belongs in references/
+- detail line 177 that belongs in references/
+- detail line 178 that belongs in references/
+- detail line 179 that belongs in references/
+- detail line 180 that belongs in references/
+- detail line 181 that belongs in references/
+- detail line 182 that belongs in references/
+- detail line 183 that belongs in references/
+- detail line 184 that belongs in references/
+- detail line 185 that belongs in references/
+- detail line 186 that belongs in references/
+- detail line 187 that belongs in references/
+- detail line 188 that belongs in references/
+- detail line 189 that belongs in references/
+- detail line 190 that belongs in references/
+- detail line 191 that belongs in references/
+- detail line 192 that belongs in references/
+- detail line 193 that belongs in references/
+- detail line 194 that belongs in references/
+- detail line 195 that belongs in references/
+- detail line 196 that belongs in references/
+- detail line 197 that belongs in references/
+- detail line 198 that belongs in references/
+- detail line 199 that belongs in references/
+- detail line 200 that belongs in references/
+- detail line 201 that belongs in references/
+- detail line 202 that belongs in references/
+- detail line 203 that belongs in references/
+- detail line 204 that belongs in references/
+- detail line 205 that belongs in references/
+- detail line 206 that belongs in references/
+- detail line 207 that belongs in references/
+- detail line 208 that belongs in references/
+- detail line 209 that belongs in references/
+- detail line 210 that belongs in references/
+- detail line 211 that belongs in references/
+- detail line 212 that belongs in references/
+- detail line 213 that belongs in references/
+- detail line 214 that belongs in references/
+- detail line 215 that belongs in references/
+- detail line 216 that belongs in references/
+- detail line 217 that belongs in references/
+- detail line 218 that belongs in references/
+- detail line 219 that belongs in references/
+- detail line 220 that belongs in references/
+- detail line 221 that belongs in references/
+- detail line 222 that belongs in references/
+- detail line 223 that belongs in references/
+- detail line 224 that belongs in references/
+- detail line 225 that belongs in references/
+- detail line 226 that belongs in references/
+- detail line 227 that belongs in references/
+- detail line 228 that belongs in references/
+- detail line 229 that belongs in references/
+- detail line 230 that belongs in references/
+- detail line 231 that belongs in references/
+- detail line 232 that belongs in references/
+- detail line 233 that belongs in references/
+- detail line 234 that belongs in references/
+- detail line 235 that belongs in references/
+- detail line 236 that belongs in references/
+- detail line 237 that belongs in references/
+- detail line 238 that belongs in references/
+- detail line 239 that belongs in references/
+- detail line 240 that belongs in references/
+- detail line 241 that belongs in references/
+- detail line 242 that belongs in references/
+- detail line 243 that belongs in references/
+- detail line 244 that belongs in references/
+- detail line 245 that belongs in references/
+- detail line 246 that belongs in references/
+- detail line 247 that belongs in references/
+- detail line 248 that belongs in references/
+- detail line 249 that belongs in references/
+- detail line 250 that belongs in references/
+- detail line 251 that belongs in references/
+- detail line 252 that belongs in references/
+- detail line 253 that belongs in references/
+- detail line 254 that belongs in references/
+- detail line 255 that belongs in references/
+- detail line 256 that belongs in references/
+- detail line 257 that belongs in references/
+- detail line 258 that belongs in references/
+- detail line 259 that belongs in references/
+- detail line 260 that belongs in references/
+- detail line 261 that belongs in references/
+- detail line 262 that belongs in references/
+- detail line 263 that belongs in references/
+- detail line 264 that belongs in references/
+- detail line 265 that belongs in references/
+- detail line 266 that belongs in references/
+- detail line 267 that belongs in references/
+- detail line 268 that belongs in references/
+- detail line 269 that belongs in references/
+- detail line 270 that belongs in references/
+- detail line 271 that belongs in references/
+- detail line 272 that belongs in references/
+- detail line 273 that belongs in references/
+- detail line 274 that belongs in references/
+- detail line 275 that belongs in references/
+- detail line 276 that belongs in references/
+- detail line 277 that belongs in references/
+- detail line 278 that belongs in references/
+- detail line 279 that belongs in references/
+- detail line 280 that belongs in references/
+- detail line 281 that belongs in references/
+- detail line 282 that belongs in references/
+- detail line 283 that belongs in references/
+- detail line 284 that belongs in references/
+- detail line 285 that belongs in references/
+- detail line 286 that belongs in references/
+- detail line 287 that belongs in references/
+- detail line 288 that belongs in references/
+- detail line 289 that belongs in references/
+- detail line 290 that belongs in references/
+- detail line 291 that belongs in references/
+- detail line 292 that belongs in references/
+- detail line 293 that belongs in references/
+- detail line 294 that belongs in references/
+- detail line 295 that belongs in references/
+- detail line 296 that belongs in references/
+- detail line 297 that belongs in references/
+- detail line 298 that belongs in references/
+- detail line 299 that belongs in references/
+- detail line 300 that belongs in references/

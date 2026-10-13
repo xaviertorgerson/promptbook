@@ -1,0 +1,2 @@
+{"prompt":"Sort these widgets for me.","expect":"no-trigger","kind":"near-miss","route_to":"drafting-widgets","note":"the old trigger; must not load the deprecated skill"}
+{"prompt":"What's the weather in Lisbon?","expect":"no-trigger","kind":"negative","route_to":"none"}
