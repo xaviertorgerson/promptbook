@@ -1,0 +1,11 @@
+{"prompt":"Is the settle-up plan ready for approval?","expect":"trigger","kind":"positive"}
+{"prompt":"Run the trace check and write readiness.md for the invoicing epic.","expect":"trigger","kind":"positive"}
+{"prompt":"Before I approve the spec: are there orphan requirements or journeys without tasks?","expect":"trigger","kind":"positive"}
+{"prompt":"Do any of the parallel tasks in this plan overlap on files?","expect":"trigger","kind":"positive"}
+{"prompt":"Can we approve the spec and start the loop? Check it first.","expect":"trigger","kind":"positive"}
+{"prompt":"The readiness report says CUJ-2 has no task. Add the task.","expect":"no-trigger","kind":"near-miss","route_to":"planning-work"}
+{"prompt":"NFR-3 has no measure; fix it.","expect":"no-trigger","kind":"near-miss","route_to":"writing-requirements"}
+{"prompt":"Verify SPLIT-2's pull request actually meets its acceptance criteria.","expect":"no-trigger","kind":"near-miss","route_to":"verifying-work"}
+{"prompt":"CUJ-1 is user-facing and has no flow; design it.","expect":"no-trigger","kind":"near-miss","route_to":"designing-flows"}
+{"prompt":"Show me the disk usage of this directory.","expect":"no-trigger","kind":"negative","route_to":"none"}
+{"prompt":"Write a haiku about deadlines.","expect":"no-trigger","kind":"negative","route_to":"none"}

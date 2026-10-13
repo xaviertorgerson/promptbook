@@ -1,0 +1,9 @@
+{"prompt":"The brief is approved. Write the personas for the bill-splitting app.","expect":"trigger","kind":"positive"}
+{"prompt":"Who are our users, really? Define PER-1 and PER-2 and mark what we actually know versus what we're guessing.","expect":"trigger","kind":"positive"}
+{"prompt":"We're adding a read-only auditor role. Do we need a new persona for it?","expect":"trigger","kind":"positive"}
+{"prompt":"Our personas doc has five made-up people with hobbies. Cut it down to the ones that matter for design decisions.","expect":"trigger","kind":"positive"}
+{"prompt":"Is this idea worth building? Write the product brief with outcomes and non-goals.","expect":"no-trigger","kind":"near-miss","route_to":"framing-products"}
+{"prompt":"Write the critical user journeys for the organiser persona: logging a bill and settling up.","expect":"no-trigger","kind":"near-miss","route_to":"mapping-journeys"}
+{"prompt":"Design the screens and empty states for the settle-up flow.","expect":"no-trigger","kind":"near-miss","route_to":"designing-flows"}
+{"prompt":"Add retries with backoff to the webhook sender.","expect":"no-trigger","kind":"negative","route_to":"none"}
+{"prompt":"Explain what this regular expression matches.","expect":"no-trigger","kind":"negative","route_to":"none"}
