@@ -226,15 +226,21 @@ harness adds a mandatory expiry.
 
 **Purpose.** The operator's (L1) agent policy: autonomy tier per machine profile, what is never read
 (`deny_read`), never done (`forbid`), asked about (`ask`), pre-approved (`allow`), network `egress`,
-`sandbox`, and run `budgets`; compiled per engine. **Schema** `policy.schema.json` 1.0.0. Tiers:
+`sandbox`, and run `budgets`; compiled per engine. **Schema** `policy.schema.json` 1.1.0. Tiers:
 read-only, ask, auto-edit, autonomous, unattended (an unattended profile requires
-`budgets.unattended`). A rule has exactly one matcher: `command` (argv prefix, with alternatives),
+`budgets.unattended`). A profile may name `requires`: preconditions the operator keeps outside the
+policy (`prod-unreachable-from-this-host`, `non-root-container`); the bypass tier (autonomous)
+must name them (a validation warning, a compile error) and the compiler passes them to the launcher
+in `runner.json`. A rule has exactly one matcher: `command` (argv prefix, with alternatives),
 `write` (path glob) or `tool` (web-fetch with a domain, web-search, `mcp:server[:tool]`). An `allow`
 or `ask` that a `forbid` covers is a warning (it never takes effect). `accept_gaps` records the
 degradations the operator accepts. **Swap story.** One policy, three engines: the compiler emits
 Claude settings, Codex config + execpolicy rules, Gemini settings + policy TOML; per-engine maps and
 gaps are in `adapters/{claude,codex,gemini}/README.md`. **Fail closed:** an unrepresentable deny is
-a compile error unless accepted with a reason; an unrepresentable ask is dropped with a warning.
+a compile error unless accepted with a reason; an unrepresentable ask is dropped with a warning. The
+bypass tier also needs the policy's own isolation (`sandbox.enabled`, `fail_if_unavailable`,
+`egress.default: deny`) or, where the host is isolated another way, that field's gap accepted by
+name; its `requires` is never waivable.
 **Compat.** The dotfiles' `settings.json.tmpl` is restated as the valid fixture.
 
 ### toolkit-lock

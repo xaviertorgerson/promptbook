@@ -13,13 +13,14 @@
 #   autoMode.soft_deny "Never run terraform apply" -> forbid [terraform, apply]: a wall is a deny
 #   autoMode.hard_deny "Never run rm -rf ... "     -> prose for the auto-mode classifier; no argv form
 #
-# The bypass tier needs a sandbox, fail_if_unavailable and egress default deny (HAR-4). The
-# hand-written file has none of them, so this policy states them the way the tier requires, and the
-# diff shows the gap.
+# The bypass tier needs a sandbox, fail_if_unavailable and egress default deny, or each gap accepted
+# by name, and it names the preconditions it relies on outside the policy (HAR-4). The hand-written
+# file has no sandbox and open egress, so this policy states them the way the tier requires, and the
+# diff shows the gap; the devbox README's tailnet ACL is the named precondition.
 policy_version: 1
 owner: xaviertorgerson
 profiles:
-  workstation: { tier: autonomous, engines: [claude], description: "the dotfiles' bypass default" }
+  workstation: { tier: autonomous, engines: [claude], description: "the dotfiles' bypass default", requires: [prod-unreachable-from-this-host] }
 deny_read:
   - "**/.env"
   - "**/.env.local"

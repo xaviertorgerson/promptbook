@@ -28,5 +28,7 @@
       "reason": "the runner enforces turns and spend from its own logs"
     }
   ],
-  "notes": []
+  "notes": [
+    "bypass tier devbox requires: prod-unreachable-from-this-host, non-root-container (the launcher checks each before starting; the policy cannot)"
+  ]
 }

@@ -4,6 +4,10 @@
   "engine": "codex",
   "profile": "devbox",
   "tier": "autonomous",
+  "requires": [
+    "prod-unreachable-from-this-host",
+    "non-root-container"
+  ],
   "args": [],
   "timeout_seconds": null
 }

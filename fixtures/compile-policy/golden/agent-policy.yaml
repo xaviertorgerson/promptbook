@@ -4,7 +4,7 @@
 policy_version: 1
 owner: operator
 profiles:
-  devbox: { tier: autonomous, engines: [claude, codex, gemini], description: "sandboxed devbox; production unreachable by network ACL" }
+  devbox: { tier: autonomous, engines: [claude, codex, gemini], description: "sandboxed devbox; production unreachable by network ACL", requires: [prod-unreachable-from-this-host, non-root-container] }
   laptop: { tier: auto-edit, engines: [claude, codex, gemini] }
   reader: { tier: read-only, engines: [claude, codex, gemini] }
   ci: { tier: unattended, engines: [claude, codex, gemini] }

@@ -108,9 +108,11 @@ validates the policy, then emits one profile's settings, following `adapters/<en
 
 Fail closed: a deny-side field an engine cannot represent is an error that prints the `accept_gaps`
 stanza that would accept it; an unrepresentable ask or allow is dropped with a warning; on any error
-nothing is written. Refused outright: the bypass tier (`autonomous`) without `sandbox.enabled`,
-`sandbox.fail_if_unavailable` and `egress.default: deny` (HAR-4); an unattended tier without turn and
-spend caps (HAR-3); any `x-` extension that disables hooks (HAR-2); an `examples` entry its rule does
+nothing is written. Refused outright: the bypass tier (`autonomous`) without a `requires` list naming
+its outside preconditions, or without `sandbox.enabled`, `sandbox.fail_if_unavailable` and
+`egress.default: deny` unless the missing field's gap is accepted by name (`accept_gaps` sandbox or
+egress, with a reason) (HAR-4); `requires` goes into `runner.json` and the notes for the launcher;
+an unattended tier without turn and spend caps (HAR-3); any `x-` extension that disables hooks (HAR-2); an `examples` entry its rule does
 not match. No output may carry `disableAllHooks`, `hooksConfig.enabled: false`, `disableYoloMode`,
 `tools.exclude`, a full-access mode, or a bypass key outside the bypass tier (checked on every
 compile). Unattended, an `ask` compiles to a denial. `--diff <settings.json|settings.json.tmpl>`

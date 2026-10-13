@@ -91,6 +91,12 @@ export const CHECKS = {
   },
 };
 
+// The bypass tier is safe only under preconditions the policy cannot enforce (HAR-4); a profile in
+// it that names none compiles nowhere (compile-policy fails closed), so say so at validation time.
+CHECKS['bypass-names-preconditions'] = ({ data }) => Object.entries(data?.profiles ?? {})
+  .filter(([, p]) => p?.tier === 'autonomous' && !p.requires?.length)
+  .map(([name]) => ({ severity: 'warning', rule: 'bypass-names-preconditions', pointer: `/profiles/${name}`, message: `profile "${name}" is the bypass tier and names no requires (e.g. [prod-unreachable-from-this-host]); compile-policy refuses it` }));
+
 // Required level-2 headings (x-sections). Matched against the heading text with the schema's regex.
 export function checkSections(sections, body, bodyLine) {
   const lines = splitLines(stripComments(body));

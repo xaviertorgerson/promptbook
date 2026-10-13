@@ -22,7 +22,9 @@ much a run may spend.**
    rules, and set an auto mode. It must not turn hooks off, and adds denies rather than removing the
    project's.
 5. **Bypass needs isolation.** Bypass defaults belong only on profiles where production is
-   unreachable at the network level and the agent runs as non-root in a sandbox or container.
+   unreachable at the network level and the agent runs as non-root in a sandbox or container. The
+   profile names those preconditions (`requires`); the compiler refuses a bypass tier without them,
+   and without the policy's own sandbox and egress deny unless each gap is accepted by name.
 6. **Branch protection is the backstop** for anything a hook may miss.
 
 ## Evidence
@@ -62,7 +64,8 @@ a user bypass default, but did under the no-prompt mode. The interactive prompt 
 
 ## Contracts used
 
-`policy` (tiers per machine profile, `forbid`, `ask`, `deny_read`, `egress`, budgets), compiled per
+`policy` (tiers per machine profile with their `requires`, `forbid`, `ask`, `deny_read`, `egress`,
+budgets, `accept_gaps`), compiled per
 engine by `tools/compile-policy.mjs`; `grant`; `run-record` (permission denials per run).
 
 ## Anti-patterns

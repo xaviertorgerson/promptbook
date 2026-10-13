@@ -12,8 +12,10 @@ import { toToml } from './toml.mjs';
 //                 hooksConfig.enabled false, security.disableYoloMode overrides, tools.exclude,
 //                 :danger-full-access, a bypass mode or its prompt skip outside the bypass tier
 //                 (assertNoUnsafeKeys, checked on every compile).
-//   preconditions the bypass tier (autonomous) needs the isolation HAR-4 states, and the unattended
-//                 tier the caps HAR-3 states; accept_gaps cannot waive either.
+//   preconditions the bypass tier (autonomous) names what keeps it safe outside the policy
+//                 (profile `requires`, never waivable) and is isolated by the policy's own sandbox
+//                 and egress deny, or by an accept_gaps entry for that field with a reason (HAR-4);
+//                 the unattended tier has the caps HAR-3 states, which accept_gaps cannot waive.
 
 export const ENGINES = ['claude', 'codex', 'gemini'];
 export const BYPASS_TIER = 'autonomous';
@@ -121,15 +123,27 @@ function preflight(ctx) {
   }
   if (ctx.tier === BYPASS_TIER) {
     // HAR-4: bypass only where the agent is sandboxed (non-root, never falling back to running
-    // unsandboxed) and production is unreachable at the network level; the policy's own network
-    // boundary is egress.default deny. Network ACLs outside the policy are the operator's to keep.
+    // unsandboxed) and production is unreachable at the network level. The policy's own isolation is
+    // the sandbox and egress.default deny; an operator who isolates the host another way (a
+    // container, a network ACL) accepts that field's gap by name, with a reason. What keeps the host
+    // safe outside the policy is named in the profile's requires, which nothing waives.
+    const accepted = (field) => (p.accept_gaps ?? []).find((g) => g.engine === ctx.engine && g.field === field);
     const missing = [];
-    if (p.sandbox?.enabled !== true) missing.push('sandbox.enabled: true');
-    if (p.sandbox?.fail_if_unavailable !== true) missing.push('sandbox.fail_if_unavailable: true');
-    if (p.egress?.default !== 'deny') missing.push('egress.default: deny (with allow_domains)');
+    const sandboxed = p.sandbox?.enabled === true && p.sandbox?.fail_if_unavailable === true;
+    const sandboxGap = accepted('sandbox');
+    if (!sandboxed && !sandboxGap) {
+      if (p.sandbox?.enabled !== true) missing.push('sandbox.enabled: true');
+      if (p.sandbox?.fail_if_unavailable !== true) missing.push('sandbox.fail_if_unavailable: true');
+    } else if (!sandboxed) ctx.accepted.push({ field: 'sandbox', message: `the bypass tier runs without the policy's sandbox (HAR-4)`, reason: sandboxGap.reason });
+    const egressGap = accepted('egress');
+    if (p.egress?.default !== 'deny' && !egressGap) missing.push('egress.default: deny (with allow_domains)');
+    else if (p.egress?.default !== 'deny') ctx.accepted.push({ field: 'egress', message: 'the bypass tier runs with open egress (HAR-4)', reason: egressGap.reason });
     if (missing.length) {
-      ctx.error('bypass-preconditions', `profile "${ctx.profileName}" is the bypass tier (${BYPASS_TIER}) without its preconditions (HAR-4: sandboxed, non-root, production unreachable): set ${missing.join(', ')}`);
+      ctx.error('bypass-preconditions', `profile "${ctx.profileName}" is the bypass tier (${BYPASS_TIER}) without its preconditions (HAR-4: sandboxed, non-root, production unreachable): set ${missing.join(', ')}, or accept the gap by name (accept_gaps: { engine: ${ctx.engine}, field: sandbox|egress, reason })`);
     }
+    const req = ctx.profile.requires ?? [];
+    if (!req.length) ctx.error('bypass-requires', `profile "${ctx.profileName}" is the bypass tier (${BYPASS_TIER}) and names no preconditions; set requires: [prod-unreachable-from-this-host, ...] (HAR-4). The compiler cannot see a network ACL or a container, so it will not assume one`);
+    else ctx.notes.push(`bypass tier ${ctx.profileName} requires: ${req.join(', ')} (the launcher checks each before starting; the policy cannot)`);
   }
   if (ctx.tier === 'unattended') {
     const b = p.budgets?.unattended ?? {};
@@ -263,6 +277,7 @@ function runnerFile(ctx, args, budget) {
     engine: ctx.engine,
     profile: ctx.profileName,
     tier: ctx.tier,
+    ...(ctx.profile?.requires?.length ? { requires: ctx.profile.requires } : {}),
     args,
     timeout_seconds: budget.max_minutes ? budget.max_minutes * 60 : null,
   };
