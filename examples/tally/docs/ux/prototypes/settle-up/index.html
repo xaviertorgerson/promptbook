@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tally prototype</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 16px/1.5 system-ui, sans-serif; max-width: 28rem; margin: 0 auto; padding: 1rem; }
+  section { display: none; border: 1px solid; border-radius: 8px; padding: 1rem; margin: 1rem 0; }
+  section:target { display: block; }
+  nav a { margin-right: .5rem; }
+  .skeleton { height: 1rem; background: #9995; margin: .5rem 0; border-radius: 4px; }
+</style>
+</head>
+<body>
+<!-- A throwaway clickable prototype for the planning proof: every step and state of UX-1 and UX-2,
+     switched by the fragment. Not an implementation. Fictional data. -->
+<h1>Tally prototype</h1>
+<nav aria-label="States">
+  <a href="#bills-empty">Bills: empty</a> <a href="#bills-loading">loading</a>
+  <a href="#bills-error">error</a> <a href="#bills">success</a>
+  <a href="#household">Household page</a> <a href="#household-empty">empty</a>
+  <a href="#revoked">Link revoked</a>
+</nav>
+
+<section id="bills-empty"><h2>Bills</h2><p>No bills this month yet.</p><a href="#new-bill">Add bill</a></section>
+<section id="bills-loading"><h2>Bills</h2><div class="skeleton"></div><div class="skeleton"></div><a href="#new-bill">Add bill</a></section>
+<section id="bills-error"><h2>New bill</h2><p role="alert">We couldn't save this bill. Your entry is kept.</p><a href="#bills">Retry</a></section>
+<section id="new-bill"><h2>New bill</h2>
+  <label>Amount <input inputmode="decimal" value="90.00"></label><br>
+  <label>Paid by <select><option>Dana</option><option>Sam</option><option>Ali</option></select></label><br>
+  <a href="#bills">Save</a></section>
+<section id="bills"><h2>Bills</h2><p role="status">Bill saved</p>
+  <table><caption>October bills</caption><tr><th>Bill</th><th>Each share</th></tr><tr><td>Electricity 90.00</td><td>30.00</td></tr></table>
+  <a href="#new-bill">Add bill</a></section>
+
+<section id="household"><h2>Your share</h2><p>You owe 30.00 for October.</p><a href="#household-paid">Mark 30.00 paid</a></section>
+<section id="household-paid"><h2>Your share</h2><p role="status">You owe 0.00.</p><a href="#household">Undo</a></section>
+<section id="household-empty"><h2>Your share</h2><p>Nothing to pay this month.</p></section>
+<section id="revoked"><h2>Link revoked</h2><p>This link no longer works. Ask your organiser for a new one.</p></section>
+</body>
+</html>
