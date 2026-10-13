@@ -291,8 +291,9 @@ skills add `origin:` and live in `.claude/skills/`, which the L3 path deliberate
 ### evidence
 
 **Purpose.** Why a skill is the way it is and whether it routes. **Schema** `evidence.schema.json`
-1.0.0 with two shapes: `#/$defs/entry` for `evals/evidence.md` entries (`## YYYY-MM-DD · title`
-with `**Kind:**` measured | observed | incident | audit | vendor-reported | literature, `**Source:**`,
+1.1.0 with two shapes: `#/$defs/entry` for `evals/evidence.md` entries (`## YYYY-MM-DD · title`, or
+`## YYYY-MM · title` when the source gives only a month; any other level-2 heading in the file is an
+error, `entry-heading`, so no evidence is silently dropped; with `**Kind:**` measured | observed | incident | audit | vendor-reported | literature, `**Source:**`,
 `**Claim:**`, optional result, engine, model, skill_version, revisit; vendor-reported and literature
 must cite a URL, measured must cite a source), and `#/$defs/routingCase` for `evals/routing.jsonl`
 lines (`prompt`, `expect` trigger | no-trigger, `kind` positive | near-miss | negative, `route_to`).

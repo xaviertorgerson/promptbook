@@ -1,6 +1,6 @@
 import { classify } from './ears.mjs';
 import { splitFrontmatter, parseYaml } from './loaders.mjs';
-import { blocks, boldFields, fenceMask, fieldBullets, isPlaceholder, listOf, normLabel, section, splitLines, stripComments, tables } from './markdown.mjs';
+import { blocks, boldFields, fenceMask, fieldBullets, headings, isPlaceholder, listOf, normLabel, section, splitLines, stripComments, tables } from './markdown.mjs';
 
 // Parsers for the contracts whose artifact is a run of Markdown entries rather than one frontmatter
 // block. Each turns the file into records shaped like the contract's schema; the normalization
@@ -323,10 +323,15 @@ export function parseUxFlows(text, ctx = {}) {
 
 const EVIDENCE_FIELDS = { kind: 'kind', source: 'source', claim: 'claim', result: 'result', engine: 'engine', model: 'model', 'skill version': 'skill_version', revisit: 'revisit' };
 
+// An entry heading: "## YYYY-MM-DD · title", or "## YYYY-MM · title" when only the month is known.
+const EVIDENCE_HEADING = /^([0-9]{4}-[0-9]{2}(?:-[0-9]{2})?)(?![0-9-])\s*(?:[·—–:-]\s*)?(.*)$/;
+
 export function parseEvidence(text) {
   const { lines } = prepare(text);
   const records = [];
-  for (const b of blocks(lines, /^([0-9]{4}-[0-9]{2}-[0-9]{2})\s*(?:[·—–:-]\s*)?(.*)$/, { maxLevel: 2, minLevel: 2 })) {
+  // Every level-2 heading is an entry: one that is not would silently drop the evidence under it.
+  const errors = headings(lines).filter((h) => h.level === 2 && !EVIDENCE_HEADING.test(h.text)).map((h) => ({ keyword: 'entry-heading', pointer: '', message: `"## ${h.text}" is not an evidence entry heading ("## YYYY-MM-DD · title" or "## YYYY-MM · title"); the bullets under it would be dropped`, line: h.index + 1 }));
+  for (const b of blocks(lines, EVIDENCE_HEADING, { maxLevel: 2, minLevel: 2 })) {
     const [, date, title] = b.match;
     const data = { date, title: clean(title) };
     const fieldLines = { date: b.heading.index + 1, title: b.heading.index + 1 };
@@ -338,7 +343,8 @@ export function parseEvidence(text) {
     }
     records.push(entryRecord(data, `${date}-${records.length}`, b.heading.index + 1, fieldLines));
   }
-  return { records, errors: records.length ? [] : [{ keyword: 'entries', pointer: '', message: 'no "## YYYY-MM-DD · title" entries', line: 1 }] };
+  if (!records.length && !errors.length) errors.push({ keyword: 'entries', pointer: '', message: 'no "## YYYY-MM-DD · title" entries', line: 1 });
+  return { records, errors };
 }
 
 export const PARSERS = {
