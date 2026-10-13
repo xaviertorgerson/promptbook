@@ -1,0 +1,41 @@
+# The coordinator's recovery note for SPLIT-1, as of 2026-10-15T11:00Z (the snapshot). dana ran the
+# skeleton herself: risk high never runs unattended. It is merged on main and its worktree was
+# audited and removed. complete: nothing is left for a human in this workflow.
+task_id: SPLIT-1
+runtime: multiplexer-coordinator
+mode: development
+objective: "Walking skeleton: one household's bill, read only through its link"
+intent_ref: specs/settle-up/tasks/SPLIT-1.md
+repository:
+  name: tally/tally
+  root: /Users/dana/src/tally
+  worktree: /Users/dana/src/tally/.worktrees/SPLIT-1
+  remote: origin
+  base: main
+  base_commit: 0b7d4e2c91a35f8e6d0a7b2c4e9f1a3d5b7c8e20
+  branch: feat/split-1-walking-skeleton
+agents: { author: dana (supervised session on the workstation), evaluator: tally-evaluator }
+role_sessions:
+  author: { session_id: 6a1f0c52-3d4b-4e8a-9f21-0c7d5b3a9e14, engine: claude, model: frontier, effort: high }
+  evaluator: { session_id: eval-3c9a1f4-k2, engine: gemini, model: frontier, effort: medium }
+pull_requests: ["https://forge.example.com/tally/tally/pull/1"]
+reviews:
+  - { pr: "https://forge.example.com/tally/tally/pull/1", head: 3c9a1f4, role: evaluator, outcome: pass, by: tally-evaluator, ref: .agent/verdicts/SPLIT-1-3c9a1f4.md }
+  - { pr: "https://forge.example.com/tally/tally/pull/1", head: 3c9a1f4, role: owner, outcome: pass, by: dana, ref: "https://forge.example.com/tally/tally/pull/1#review-1" }
+decisions:
+  - { decision: "dana runs SPLIT-1 in a supervised session; the coordinator never dispatches it", source: "GRANT-1 non_goals; SPLIT-1 agent log 2026-10-14", scope: SPLIT-1, at: "2026-10-14T08:30:00Z" }
+state:
+  name: complete
+  summary: Merged to main
+signals:
+  merge: { source: ci, value: success, observed_at: "2026-10-14T14:01:00Z" }
+result: "main@7e21c0b; staging serves the image by digest (AC-4, AC-5)"
+resources:
+  slug: feat_split_1_walking_skeleton
+  worktree_path: /Users/dana/src/tally/.worktrees/SPLIT-1
+  database: app_feat_split_1_walking_skeleton
+  ports: { slot: 0, first: 4500, last: 4509 }
+  caches: [.worktrees/SPLIT-1/dist, .worktrees/SPLIT-1/.agent]
+  audit: { at: "2026-10-14T14:30:00Z", result: passed, note: "clean tree, branch merged, nothing listening on 4500-4509" }
+  worktree_removed_at: "2026-10-14T14:31:00Z"
+updated_at: "2026-10-14T14:31:00Z"

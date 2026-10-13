@@ -1,0 +1,28 @@
+# Tally's lock (L2): the harness every artifact here is validated against, and the portable skill
+# library its agents load beside the harness's own skills. `harness lock --check` verifies both pins.
+# The harness is this repository itself (a local source, relative to this file) at the main commit
+# the example was written against. A real product also pins its stack pack (L4, ADR-0002); the
+# example leaves it out so the check needs nothing beyond this repository and one public source.
+lock_version: 1
+generated_at: 2026-10-13T21:07:41Z
+generated_by: harness/lock@1.0.0
+entries:
+  - name: harness
+    layer: L3
+    kind: harness
+    source: ../..
+    ref: main
+    commit: f88aec23f3ded0b144ff5621f60be2ed87650fa7
+    tree: e2c69ff167630d8df0033bfb0bab4ee51b454008
+    version: 0.1.0
+    autoUpdate: minor
+  - name: skilldex
+    layer: L3
+    kind: skill-library
+    source: https://github.com/QuentinTorg/skilldex
+    path: skills
+    ref: main
+    commit: fc572b66df2f565da2bd728e9fca7f88be475e31
+    tree: 19aae71ad3c64e08bb4a89900e4114c7ee6a47c0
+    version: 0.0.0+fc572b6
+    autoUpdate: "off"

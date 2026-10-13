@@ -1,0 +1,31 @@
+# dana, on the epic's issue after approving the spec: "Deliver SPLIT-2, SPLIT-3 and SPLIT-4 against
+# the approved spec. Choose and sequence them, approve the authors' plans, and route review
+# findings: material in-scope ones are fixed in the same PR, the rest become follow-ups. At most
+# three workers. SPLIT-1 is mine: it is high risk. Finalizing stays with the coder's gates and
+# merging with the separate grant. Ask me about product decisions, wider scope or repeated
+# non-progress." Finalize and merge are deliberately absent.
+id: GRANT-1
+granted_by: dana
+granted_to: { role: orchestrator, runtime: multiplexer-coordinator }
+granted_at: "2026-10-13T21:40:00Z"
+source: "https://forge.example.com/tally/tally/issues/1#issuecomment-3"
+scope:
+  objective: Deliver SPLIT-2, SPLIT-3 and SPLIT-4 of settle-up against specs/settle-up/spec.md
+  repositories: [tally/tally]
+  epics: [settle-up]
+  tasks: [SPLIT-2, SPLIT-3, SPLIT-4]
+  requirements: [specs/settle-up/spec.md#requirements]
+  non_goals: [SPLIT-1 (high risk; dana runs it supervised), uneven splits, reminders, any interface beyond the spec's four endpoints]
+actions:
+  - select-tasks
+  - approve-plan
+  - { action: dispose-findings, policy: "Fix material in-scope findings in the same PR; record tangential ones as follow-ups for the planner; never drop a correctness or security finding" }
+limits:
+  max_workers: 3
+  budget: { max_usd: 30 }
+  stop_when:
+    - every task in scope is integrated on integration/settle-up
+    - two consecutive runs on one task make no progress
+    - a product decision the spec does not make
+expires_at: "2026-10-27T21:40:00Z"
+revocable: true

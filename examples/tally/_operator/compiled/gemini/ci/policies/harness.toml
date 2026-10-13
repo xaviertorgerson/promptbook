@@ -1,0 +1,211 @@
+# Compiled from agent-policy.yaml (profile ci, tier unattended) by harness compile-policy.
+# User-tier policy (~/.gemini/policies/); the workspace tier is disabled upstream. Tool names other than
+# read_file, glob, write_file, replace and run_shell_command are unverified (adapters/gemini).
+
+[[rule]]
+toolName = ["read_file", "read_many_files", "glob", "search_file_content"]
+argsPattern = "\"[A-Za-z_]*paths?\":\\[?(?:\"[^\"]*\",)*\"(?:[^\"]*/)?\\.env\""
+decision = "deny"
+priority = 900
+denyMessage = "deny_read **/.env (agent-policy.yaml)"
+
+[[rule]]
+toolName = ["read_file", "read_many_files", "glob", "search_file_content"]
+argsPattern = "\"[A-Za-z_]*paths?\":\\[?(?:\"[^\"]*\",)*\"(?:[^\"]*/)?\\.env\\.[^/\"]*\""
+decision = "deny"
+priority = 900
+denyMessage = "deny_read **/.env.* (agent-policy.yaml)"
+
+[[rule]]
+toolName = ["read_file", "read_many_files", "glob", "search_file_content"]
+argsPattern = "\"[A-Za-z_]*paths?\":\\[?(?:\"[^\"]*\",)*\"(?:[^\"]*/)?secrets/[^\"]*\""
+decision = "deny"
+priority = 900
+denyMessage = "deny_read **/secrets/** (agent-policy.yaml)"
+
+[[rule]]
+toolName = ["read_file", "read_many_files", "glob", "search_file_content"]
+argsPattern = "\"[A-Za-z_]*paths?\":\\[?(?:\"[^\"]*\",)*\"[^\"]*/\\.ssh/[^\"]*\""
+decision = "deny"
+priority = 900
+denyMessage = "deny_read ~/.ssh/** (agent-policy.yaml)"
+
+[[rule]]
+toolName = ["read_file", "read_many_files", "glob", "search_file_content"]
+argsPattern = "\"[A-Za-z_]*paths?\":\\[?(?:\"[^\"]*\",)*\"[^\"]*/\\.config/shell/secrets\\.sh\""
+decision = "deny"
+priority = 900
+denyMessage = "deny_read ~/.config/shell/secrets.sh (agent-policy.yaml)"
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "git push --force"
+decision = "deny"
+priority = 900
+denyMessage = "no force-push of shared branches"
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "git push -f"
+decision = "deny"
+priority = 900
+denyMessage = "no force-push of shared branches"
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "rm -rf /"
+decision = "deny"
+priority = 900
+denyMessage = "never wipe the root"
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "dropdb"
+decision = "deny"
+priority = 900
+denyMessage = "no destructive data actions"
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "docker volume rm"
+decision = "deny"
+priority = 900
+denyMessage = "volumes hold the only copy of local data"
+
+[[rule]]
+toolName = ["write_file", "replace"]
+argsPattern = "\"[A-Za-z_]*paths?\":\\[?(?:\"[^\"]*\",)*\"(?:[^\"]*/)?\\.git/hooks/[^\"]*\""
+decision = "deny"
+priority = 900
+denyMessage = "hooks run on every commit"
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "psql"
+decision = "ask_user"
+priority = 500
+
+[[rule]]
+toolName = ["write_file", "replace"]
+argsPattern = "\"[A-Za-z_]*paths?\":\\[?(?:\"[^\"]*\",)*\"(?:[^\"]*/)?deploy/[^\"]*\""
+decision = "ask_user"
+priority = 500
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "git status"
+decision = "allow"
+priority = 100
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "git log"
+decision = "allow"
+priority = 100
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "git diff"
+decision = "allow"
+priority = 100
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "git show"
+decision = "allow"
+priority = 100
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "git branch"
+decision = "allow"
+priority = 100
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "git add"
+decision = "allow"
+priority = 100
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "git commit"
+decision = "allow"
+priority = 100
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "git fetch"
+decision = "allow"
+priority = 100
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "git pull"
+decision = "allow"
+priority = 100
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "git push"
+decision = "allow"
+priority = 100
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "git switch"
+decision = "allow"
+priority = 100
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "git checkout"
+decision = "allow"
+priority = 100
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "git worktree"
+decision = "allow"
+priority = 100
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "gh pr create"
+decision = "allow"
+priority = 100
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "gh pr view"
+decision = "allow"
+priority = 100
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "gh pr ready"
+decision = "allow"
+priority = 100
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "gh pr comment"
+decision = "allow"
+priority = 100
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "pnpm"
+decision = "allow"
+priority = 100
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "node"
+decision = "allow"
+priority = 100
+
+[[rule]]
+toolName = ["write_file", "replace"]
+decision = "allow"
+priority = 100

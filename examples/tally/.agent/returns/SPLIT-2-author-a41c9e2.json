@@ -1,0 +1,20 @@
+{
+  "task": "SPLIT-2",
+  "role": "coder",
+  "summary": "SPLIT-2 is at review with draft PR #2 on feat/split-2-save-once (base integration/settle-up@7e21c0b, head a41c9e2). POST /bills takes an idempotency key from the client; a repeat of the same key within 10 seconds returns the stored bill instead of a new one (AC-1). A failed save keeps the draft and shows Retry (AC-2); a non-positive amount shows a field error and stores nothing (AC-3); the save path holds p95 212 ms at 20 rps in the CI load test (AC-4). Each criterion has a test named for it. Lint, types, the bills suite and the criteria-in-test-names check pass. Nothing needs a human decision. Next: the evaluator's verdict on a41c9e2 (risk medium).",
+  "attention": "complete",
+  "artifacts": [
+    { "path": "src/bills/save.ts", "kind": "code" },
+    { "path": "tests/bills/save-once.test.ts", "kind": "test", "note": "SPLIT-2 AC-1..AC-4 in the test names" },
+    { "path": "specs/settle-up/tasks/SPLIT-2.md", "kind": "spec", "note": "status review, sessions entry, agent-log line" },
+    { "path": "https://forge.example.com/tally/tally/pull/2", "kind": "pr", "note": "draft" }
+  ],
+  "decisions_needed": [],
+  "criteria": { "met": ["AC-1", "AC-2", "AC-3", "AC-4"], "unmet": [] },
+  "verification": [
+    { "command": "pnpm test -- tests/bills", "result": "pass", "note": "4 tests" },
+    { "command": "harness trace . --strict", "result": "pass" },
+    { "command": "pnpm run load -- --path /bills --rps 20", "result": "pass", "note": "p95 212 ms" }
+  ],
+  "session": { "engine": "claude", "session_id": "2b8e47d1-90c3-4a5f-b6e2-71d4c0a9f358", "actor": "tally-coder", "role": "coder", "started_at": "2026-10-15T08:01:00Z", "ended_at": "2026-10-15T08:31:00Z", "outcome": "advanced", "run": ".agent/loop-runs.jsonl" }
+}

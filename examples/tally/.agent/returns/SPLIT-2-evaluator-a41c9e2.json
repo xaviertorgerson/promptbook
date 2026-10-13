@@ -1,0 +1,20 @@
+{
+  "task": "SPLIT-2",
+  "role": "evaluator",
+  "summary": "Verdict fail on SPLIT-2 head a41c9e2 (base 7e21c0b), risk medium, k = 2, evaluator gemini (writer claude: a different family). Gates green. AC-2, AC-3 and AC-4 pass 2/2. AC-1 fails 0/2: its test submits the same bill twice in sequence and asserts one 201; two identical submits sent concurrently both stored a bill in the preview (trace attached), because the key is checked before the insert and nothing in the table is unique (save.ts:41). One finding outside the criteria: the bills list query has no index on (household_id, created_at); it needs disposition. Forward the verdict file to the author, not this summary.",
+  "attention": "working",
+  "artifacts": [
+    { "path": ".agent/verdicts/SPLIT-2-a41c9e2.md", "kind": "report", "note": "full verdict, findings 1 and 2" }
+  ],
+  "decisions_needed": [],
+  "criteria": {
+    "met": ["AC-2", "AC-3", "AC-4"],
+    "unmet": [{ "id": "AC-1", "reason": "two concurrent identical submits both stored; the test asserts sequential submits only (save.ts:41)" }]
+  },
+  "verification": [
+    { "command": "pnpm test -- tests/bills (x2)", "result": "pass" },
+    { "command": "harness trace . --strict", "result": "pass" },
+    { "command": "preview: two concurrent POST /bills with one key (x2)", "result": "fail" }
+  ],
+  "session": { "engine": "gemini", "session_id": "eval-a41c9e2-k2", "actor": "tally-evaluator", "role": "evaluator", "started_at": "2026-10-15T08:42:00Z", "ended_at": "2026-10-15T09:01:00Z", "outcome": "advanced", "run": ".agent/loop-runs.jsonl" }
+}

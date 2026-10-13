@@ -1054,7 +1054,8 @@ export class World {
         this.decide(item.task, 'denial', { resolution: 'ran it by hand' });
         return;
       case 'budget': {
-        if (!['in-progress', 'ready'].includes(t.status)) return;
+        // review included: a task can run out of budget before its fix or finalize run.
+        if (!['in-progress', 'ready', 'review'].includes(t.status)) return;
         const n = this.human.raises.get(item.task) ?? 0;
         if (h.on_budget === 'raise' && n < h.max_raises) {
           this.human.raises.set(item.task, n + 1);

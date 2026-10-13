@@ -1,0 +1,38 @@
+# SPLIT-4's unattended run asked to open a database shell. The ci profile runs dontAsk, so the ask
+# was a denial: the run ended with permission_denials 1 and the task still in-progress (outcome
+# stalled). The workflow status did not move; attention did. The coordinator surfaced the question
+# to dana's phone and will not redispatch until she decides (no-progress-stops).
+task_id: SPLIT-4
+runtime: multiplexer-coordinator
+mode: development
+objective: Revoke a household link
+intent_ref: specs/settle-up/tasks/SPLIT-4.md
+grant: GRANT-1
+repository:
+  name: tally/tally
+  root: /home/dana/src/tally
+  worktree: /home/dana/src/tally/.worktrees/SPLIT-4
+  remote: origin
+  base: integration/settle-up
+  base_commit: 7e21c0b5a4d39f2e18c6b0a7d3f5e9c1a2b4d6f8
+  branch: feat/split-4-revoke-link
+workspace: { id: w3, label: SPLIT-4 revoke link }
+agents: { author: tally-coder }
+role_sessions:
+  author: { pane_id: "w3:p1", session_id: 9f4b2c71-6e8a-4d05-a1c3-5e7f9b0d2a86, engine: claude, model: frontier, effort: medium }
+wake: { watches: { author: watch-31 } }
+pull_requests: []
+state:
+  name: needs-human
+  summary: Denied psql; needs dana
+  next_action: "Decide on the denied command `psql app_feat_split_4_revoke_link -c '\\d links'`: run it yourself and paste the output into SPLIT-4's Working notes, or point the author at where the link table's columns are written down. Details: .agent/returns/SPLIT-4-author-denied.json"
+signals:
+  author: { source: claude-headless, value: success, observed_at: "2026-10-15T08:23:00Z" }
+result: .agent/returns/SPLIT-4-author-denied.json
+resources:
+  slug: feat_split_4_revoke_link
+  worktree_path: /home/dana/src/tally/.worktrees/SPLIT-4
+  database: app_feat_split_4_revoke_link
+  ports: { slot: 2, first: 4520, last: 4529 }
+  caches: [.worktrees/SPLIT-4/dist, .worktrees/SPLIT-4/.agent]
+updated_at: "2026-10-15T08:24:00Z"
