@@ -1,0 +1,28 @@
+# The human: "For the rating-engine epic in acme/billing, the coordinator may land reviewed PRs
+# into integration/rating-engine with a merge commit, once an independent review passed the current
+# head and the required checks are green. Not main, not acme/web. I merge the integration branch
+# into main myself." A separate grant from GRANT-7, so either can be revoked alone.
+id: GRANT-8
+granted_by: maria
+granted_to: { role: orchestrator, runtime: multiplexer-coordinator }
+granted_at: "2026-10-13T09:05:00Z"
+source: "https://forge.example.com/acme/billing/issues/300#issuecomment-5"
+scope:
+  objective: Integrate reviewed rating-engine PRs on integration/rating-engine
+  repositories: [acme/billing]
+  epics: [rating-engine]
+  non_goals: [merging into main, any repository other than acme/billing]
+actions:
+  - action: merge
+    repo: acme/billing
+    target: integration/rating-engine
+    strategy: merge
+    requires: [independent-review, required-checks, current-head]
+limits:
+  max_workers: 1
+  budget: { max_usd: 10 }
+  stop_when:
+    - a merge conflict that is not mechanical
+    - the checks on the merged result fail
+expires_at: "2026-10-27T09:00:00Z"
+revocable: true
