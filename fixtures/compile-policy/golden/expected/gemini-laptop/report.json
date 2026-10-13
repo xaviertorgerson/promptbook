@@ -1,0 +1,28 @@
+{
+  "tier": "auto-edit",
+  "warnings": [
+    {
+      "rule": "dropped",
+      "message": "sandbox.writable_roots write ~/.cache/pnpm dropped on gemini: container mounts are the launcher's job"
+    }
+  ],
+  "accepted": [
+    {
+      "field": "deny_read",
+      "reason": "Gemini runs in a container without the secret files mounted"
+    },
+    {
+      "field": "forbid",
+      "reason": "shell redirection into .git/hooks is denied by the project hook"
+    },
+    {
+      "field": "egress",
+      "reason": "the container's proxy enforces the domain list"
+    },
+    {
+      "field": "sandbox",
+      "reason": "the launcher refuses to start without the container"
+    }
+  ],
+  "notes": []
+}

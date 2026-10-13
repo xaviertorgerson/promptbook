@@ -1,0 +1,35 @@
+# Compiled from agent-policy.yaml (profile laptop, tier auto-edit) by harness compile-policy.
+# A fragment: merge into ~/.codex/config.toml; recompile rather than edit.
+
+default_permissions = "harness"
+approval_policy = "on-request"
+
+[permissions.harness]
+description = "Compiled from agent-policy.yaml (profile laptop, tier auto-edit) by harness compile-policy"
+extends = ":workspace"
+
+[permissions.harness.filesystem]
+"~/.ssh/**" = "deny"
+"/etc/shadow" = "deny"
+"~/.cache/pnpm" = "write"
+
+[permissions.harness.filesystem.":workspace_roots"]
+"**/.env" = "deny"
+"**/secrets/**" = "deny"
+"**/.git/hooks/**" = "read"
+"." = "write"
+
+[permissions.harness.network]
+enabled = true
+
+[permissions.harness.network.domains]
+"**.internal.example.com" = "deny"
+"**.github.com" = "allow"
+"registry.npmjs.org" = "allow"
+"tracking.example.com" = "deny"
+
+[features]
+network_proxy = true
+
+[mcp_servers.prod-db]
+disabled_tools = ["execute"]

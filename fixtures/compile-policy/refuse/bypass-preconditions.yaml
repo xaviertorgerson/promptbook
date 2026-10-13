@@ -1,0 +1,7 @@
+# A bypass tier on a profile with no sandbox and open egress: the compiler refuses it (HAR-4).
+policy_version: 1
+profiles:
+  laptop: { tier: autonomous, engines: [claude] }
+deny_read: ["**/.env"]
+forbid:
+  - { command: [git, push, [--force, -f]] }

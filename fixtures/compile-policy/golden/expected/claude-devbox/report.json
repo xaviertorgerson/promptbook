@@ -1,0 +1,11 @@
+{
+  "tier": "autonomous",
+  "warnings": [],
+  "accepted": [
+    {
+      "field": "egress",
+      "reason": "WebFetch under bypass reaches unlisted domains; the devbox's network ACL is the egress boundary"
+    }
+  ],
+  "notes": []
+}

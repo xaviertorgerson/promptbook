@@ -1,0 +1,49 @@
+# The user's real Claude settings (dotfiles home/dot_claude/settings.json.tmpl, identical on main
+# and fix/agent-setup on 2026-10-13) restated as the engine-neutral policy, field by field, so the
+# compiled settings can be diffed against the hand-written file (tests/compile-policy.test.mjs).
+#
+#   permissions.defaultMode bypassPermissions      -> tier autonomous
+#   permissions.deny Read(...) x6                  -> deny_read
+#   permissions.deny Bash(rm -rf /*)               -> forbid [rm, -rf, "/*"]  (the hand-written glob)
+#   permissions.allow Bash(npm run *) ... (docker) -> allow commands
+#   permissions.allow Edit(*), Write(*)            -> allow write "*"
+#   permissions.allow Read(*)                      -> no policy field: reads are never pre-approved by
+#                                                     the contract (deny_read is the only read rule)
+#   permissions.allow WebFetch(domain:*)           -> egress default allow (open egress)
+#   autoMode.soft_deny "Never run terraform apply" -> forbid [terraform, apply]: a wall is a deny
+#   autoMode.hard_deny "Never run rm -rf ... "     -> prose for the auto-mode classifier; no argv form
+#
+# The bypass tier needs a sandbox, fail_if_unavailable and egress default deny (HAR-4). The
+# hand-written file has none of them, so this policy states them the way the tier requires, and the
+# diff shows the gap.
+policy_version: 1
+owner: xaviertorgerson
+profiles:
+  workstation: { tier: autonomous, engines: [claude], description: "the dotfiles' bypass default" }
+deny_read:
+  - "**/.env"
+  - "**/.env.local"
+  - "**/.env.*.local"
+  - "**/.env.production"
+  - "**/secrets/**"
+  - "~/.ssh/**"
+forbid:
+  - { command: [rm, -rf, "/*"], reason: the hand-written Bash(rm -rf /*) }
+  - { command: [terraform, apply], reason: "autoMode soft_deny, restated as a wall" }
+allow:
+  - { command: [npm, run] }
+  - { command: [npx] }
+  - { command: [pnpm] }
+  - { command: [git] }
+  - { command: [gh] }
+  - { command: [make] }
+  - { command: [docker] }
+  - { write: "*" }
+egress:
+  default: deny
+  allow_domains: ["**.github.com", registry.npmjs.org, "**.anthropic.com"]
+sandbox: { enabled: true, fail_if_unavailable: true }
+budgets:
+  autonomous: { max_usd: 20 }
+accept_gaps:
+  - { engine: claude, field: egress, reason: "WebFetch under bypass reaches unlisted domains; the tailnet ACL keeps production unreachable from the devbox" }

@@ -1,0 +1,7 @@
+# A write wall Codex can only half-enforce, with no accept_gaps entry: the compile fails closed.
+policy_version: 1
+profiles:
+  laptop: { tier: ask, engines: [codex] }
+deny_read: ["**/.env"]
+forbid:
+  - { write: "**/.git/hooks/**", reason: hooks run on every commit }

@@ -1,0 +1,58 @@
+{
+  "permissions": {
+    "defaultMode": "plan",
+    "allow": [
+      "Bash(pnpm *)",
+      "Bash(git status *)",
+      "Bash(git log *)",
+      "Bash(git diff *)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:*.github.com)",
+      "WebFetch(domain:registry.npmjs.org)"
+    ],
+    "deny": [
+      "Read(**/.env)",
+      "Read(**/secrets/**)",
+      "Read(~/.ssh/**)",
+      "Read(//etc/shadow)",
+      "Bash(rm -rf / *)",
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(herdr workspace close *)",
+      "Edit(**/.git/hooks/**)",
+      "WebFetch(domain:internal.example.com)",
+      "WebFetch(domain:*.internal.example.com)",
+      "mcp__prod-db__execute",
+      "WebFetch(domain:tracking.example.com)"
+    ],
+    "ask": [
+      "Bash(psql *)",
+      "Edit(infra/**)",
+      "WebSearch"
+    ]
+  },
+  "sandbox": {
+    "enabled": true,
+    "failIfUnavailable": true,
+    "filesystem": {
+      "denyRead": [
+        "~/.ssh/**",
+        "/etc/shadow"
+      ],
+      "allowWrite": [
+        "~/.cache/pnpm"
+      ]
+    },
+    "network": {
+      "allowedDomains": [
+        "github.com",
+        "*.github.com",
+        "registry.npmjs.org"
+      ],
+      "deniedDomains": [
+        "tracking.example.com"
+      ],
+      "strictAllowlist": true
+    }
+  }
+}

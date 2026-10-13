@@ -1,0 +1,11 @@
+{
+  "generated_by": "harness compile-policy",
+  "source": "agent-policy.yaml",
+  "engine": "gemini",
+  "profile": "devbox",
+  "tier": "autonomous",
+  "args": [
+    "--approval-mode=yolo"
+  ],
+  "timeout_seconds": null
+}

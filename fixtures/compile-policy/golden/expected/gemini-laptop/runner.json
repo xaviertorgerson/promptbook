@@ -1,0 +1,9 @@
+{
+  "generated_by": "harness compile-policy",
+  "source": "agent-policy.yaml",
+  "engine": "gemini",
+  "profile": "laptop",
+  "tier": "auto-edit",
+  "args": [],
+  "timeout_seconds": null
+}

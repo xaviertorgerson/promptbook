@@ -1,0 +1,53 @@
+# A policy that exercises every mapping in adapters/{claude,codex,gemini}/README.md and compiles on
+# all three engines, with the degradations each engine needs accepted by name. The goldens next to
+# it (expected/<engine>-<profile>/) are what tests/compile-policy.test.mjs compares against.
+policy_version: 1
+owner: operator
+profiles:
+  devbox: { tier: autonomous, engines: [claude, codex, gemini], description: "sandboxed devbox; production unreachable by network ACL" }
+  laptop: { tier: auto-edit, engines: [claude, codex, gemini] }
+  reader: { tier: read-only, engines: [claude, codex, gemini] }
+  ci: { tier: unattended, engines: [claude, codex, gemini] }
+deny_read:
+  - "**/.env"
+  - "**/secrets/**"
+  - "~/.ssh/**"
+  - /etc/shadow
+forbid:
+  - { command: [rm, -rf, /], reason: never wipe the root }
+  - { command: [git, push, [--force, -f]], reason: no force-push of shared branches, examples: [git push --force origin main, git push -f] }
+  - { command: [herdr, workspace, close], reason: closing a workspace can end a worktree group, examples: [herdr workspace close w2] }
+  - { write: "**/.git/hooks/**", reason: hooks run on every commit }
+  - { tool: web-fetch, domain: "**.internal.example.com", reason: internal hosts are not for agents }
+  - { tool: "mcp:prod-db:execute", reason: no writes to the production database }
+ask:
+  - { command: [psql], reason: a database shell is a human checkpoint }
+  - { write: "infra/**", reason: infrastructure edits are reviewed live }
+  - { tool: web-search }
+allow:
+  - { command: [pnpm] }
+  - { command: [git, [status, log, diff]], examples: [git status, git log --oneline] }
+  - { write: "**" }
+  - { tool: web-fetch, domain: "**.github.com" }
+egress:
+  default: deny
+  allow_domains: ["**.github.com", registry.npmjs.org]
+  deny_domains: [tracking.example.com]
+sandbox:
+  enabled: true
+  fail_if_unavailable: true
+  writable_roots: ["~/.cache/pnpm"]
+budgets:
+  unattended: { max_turns: 200, max_usd: 5, max_minutes: 60 }
+  autonomous: { max_usd: 20 }
+accept_gaps:
+  - { engine: claude, field: egress, reason: "WebFetch under bypass reaches unlisted domains; the devbox's network ACL is the egress boundary" }
+  - { engine: codex, field: forbid, reason: "the write deny downgrades sandboxed commands only; apply_patch is covered by the project hook" }
+  - { engine: codex, field: sandbox, reason: "the devbox image fails to start without its sandbox" }
+  - { engine: codex, field: budgets, reason: "the runner enforces turns and spend from its own logs" }
+  - { engine: gemini, field: deny_read, reason: "Gemini runs in a container without the secret files mounted" }
+  - { engine: gemini, field: forbid, reason: "shell redirection into .git/hooks is denied by the project hook" }
+  - { engine: gemini, field: egress, reason: "the container's proxy enforces the domain list" }
+  - { engine: gemini, field: sandbox, reason: "the launcher refuses to start without the container" }
+  - { engine: gemini, field: budgets, reason: "the runner enforces turns and spend from its own logs" }
+  - { engine: gemini, field: tier, reason: "YOLO only inside the devbox container, measured against a deny probe before use" }
