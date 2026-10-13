@@ -93,6 +93,20 @@ describe('simulate: the faults happen and are handled as the contracts say', () 
     }
   });
 
+  it('a task out of budget at review gets the human\'s decision: a raise lands it, a refusal parks it', () => {
+    const task = { id: 'BAR-1', status: 'review', owner: 'sim-coder', budget: { max_usd: 0.1 }, touches: ['src/a/**'] };
+    const raise = runAll(normalize({ name: 'budget-at-review', human: { on_budget: 'raise', raise_usd: 2, max_raises: 1 }, tasks: [task] }), 5);
+    for (const r of raise) {
+      assert.deepEqual(r.violations, []);
+      assert.ok(r.world.forge.decisions.some((d) => d.task === 'BAR-1' && d.kind === 'budget'), 'the human raised the budget');
+      assert.equal(r.world.forge.tasks.get('BAR-1').status, 'merged');
+    }
+    for (const r of runAll(normalize({ name: 'budget-at-review', human: { on_budget: 'park' }, tasks: [task] }), 5)) {
+      assert.deepEqual(r.violations, []);
+      assert.equal(r.world.forge.tasks.get('BAR-1').status, 'suspended');
+    }
+  });
+
   it('unattended, an ask is a denial that reaches the human; nobody approves it', () => {
     const runs = runAll(loadScenario(path.join(SCEN, 'unattended-ask.yaml')), 10);
     for (const r of runs) {
