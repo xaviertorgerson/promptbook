@@ -241,6 +241,11 @@ function emitClaude(ctx) {
   const sandbox = {};
   if (p.sandbox?.enabled !== undefined) sandbox.enabled = p.sandbox.enabled;
   if (p.sandbox?.fail_if_unavailable !== undefined) sandbox.failIfUnavailable = p.sandbox.fail_if_unavailable;
+  // A bypass tier that relies on the policy's sandbox for its isolation (HAR-4, no accepted sandbox
+  // gap) must not let a command the sandbox blocked retry outside it: under bypassPermissions that
+  // retry runs with no prompt (sandboxing: the unsandboxed retry escape hatch).
+  const sandboxGap = (p.accept_gaps ?? []).some((g) => g.engine === 'claude' && g.field === 'sandbox');
+  if (tier === BYPASS_TIER && p.sandbox?.enabled === true && p.sandbox?.fail_if_unavailable === true && !sandboxGap) sandbox.allowUnsandboxedCommands = false;
   for (const w of p.sandbox?.writable_roots ?? []) {
     if (isHome(w) || isAbsolute(w)) fsys.allowWrite.push(w);
     else ctx.drop('sandbox.writable_roots', { write: w }, 'a relative sandbox path in user settings resolves against ~/.claude, not the workspace');

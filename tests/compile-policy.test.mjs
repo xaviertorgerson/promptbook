@@ -199,6 +199,13 @@ describe('compile-policy contract', () => {
       assert.ok(r.errors.some((e) => e.rule === 'egress-effective'), JSON.stringify(r.errors));
     });
 
+    it('a bypass tier that relies on the sandbox stops sandbox-blocked commands from retrying unsandboxed; one isolated otherwise does not', () => {
+      assert.equal(settings(compilePolicy(golden, { profile: 'devbox', engine: 'claude' })).sandbox.allowUnsandboxedCommands, false);
+      for (const profile of ['laptop', 'desk', 'ci']) assert.equal(settings(compilePolicy(golden, { profile, engine: 'claude' })).sandbox.allowUnsandboxedCommands, undefined, profile);
+      const container = compilePolicy(load(path.join(ROOT, 'fixtures/valid/policy/bypass-container.yaml')), { profile: 'devbox', engine: 'claude' });
+      assert.equal(settings(container).sandbox?.allowUnsandboxedCommands, undefined, 'the sandbox gap is accepted: the container is the isolation');
+    });
+
     it('credential masks compile to sandbox.credentials with TLS termination on Claude, and fail closed elsewhere until accepted', () => {
       const c = desk('claude');
       const s = settings(c).sandbox;

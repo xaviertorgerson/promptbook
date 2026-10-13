@@ -24,7 +24,9 @@ much a run may spend.**
 5. **Bypass needs isolation.** Bypass defaults belong only on profiles where production is
    unreachable at the network level and the agent runs as non-root in a sandbox or container. The
    profile names those preconditions (`requires`); the compiler refuses a bypass tier without them,
-   and without the policy's own sandbox and egress deny unless each gap is accepted by name.
+   and without the policy's own sandbox and egress deny unless each gap is accepted by name. A
+   bypass that relies on that sandbox also forbids a sandbox-blocked command's unsandboxed retry,
+   which bypass would run unasked.
 6. **Branch protection is the backstop** for anything a hook may miss.
 
 ## Evidence

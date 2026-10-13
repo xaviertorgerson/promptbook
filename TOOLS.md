@@ -137,7 +137,7 @@ on disk beside what it wrote, not only on stderr:
 
 | Engine | Files |
 |---|---|
-| claude | `settings.json` (permissions allow/deny/ask, `defaultMode` per tier, `auto` for the auto tier, `sandbox` with `credentials` masks with `network.tlsTerminate`), `runner.json` (unattended: `--permission-mode dontAsk --allowedTools … --max-turns --max-budget-usd`) |
+| claude | `settings.json` (permissions allow/deny/ask, `defaultMode` per tier, `auto` for the auto tier, `sandbox` with `allowUnsandboxedCommands: false` under a bypass that relies on it and `credentials` masks with `network.tlsTerminate`), `runner.json` (unattended: `--permission-mode dontAsk --allowedTools … --max-turns --max-budget-usd`) |
 | codex | `config.toml` (or `<profile>.config.toml` unattended: a `harness` permission profile, approval policy, network domains), `rules/harness.rules` (`prefix_rule` allow / prompt / forbidden with justification and match examples), `runner.json` |
 | gemini | `settings.json` (`defaultApprovalMode`, `tools.sandbox`, `tools.allowed`), `policies/harness.toml` (user-tier `[[rule]]` deny / ask_user / allow), `runner.json` |
 

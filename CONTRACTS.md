@@ -303,7 +303,9 @@ gaps are in `adapters/{claude,codex,gemini}/README.md`. **Fail closed:** an unre
 a compile error unless accepted with a reason; an unrepresentable ask is dropped with a warning. The
 bypass tier also needs the policy's own isolation (`sandbox.enabled`, `fail_if_unavailable`,
 `egress.default: deny`) or, where the host is isolated another way, that field's gap accepted by
-name; its `requires` is never waivable.
+name; its `requires` is never waivable. Where it relies on the sandbox, the compile also forbids an
+unsandboxed retry of a command the sandbox blocked (Claude `sandbox.allowUnsandboxedCommands:
+false`), which bypass would otherwise run without a prompt.
 **Compat.** The dotfiles' `settings.json.tmpl` is restated as the valid fixture.
 
 ### toolkit-lock
