@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import process from 'node:process';
+import { fileURLToPath } from 'node:url';
 import { buildPrompt, evaluate, loadSkills, runner } from './lib/eval-routing.mjs';
 
 const USAGE = `Routing evals: does each skill's description route its routing.jsonl prompts?
@@ -67,4 +68,4 @@ export function main(argv = process.argv.slice(2)) {
   return t.failed ? 1 : 0;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) process.exit(main());
+if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) process.exit(main());

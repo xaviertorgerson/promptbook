@@ -1,6 +1,8 @@
 #!/usr/bin/env node
+import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { fileURLToPath } from 'node:url';
 import { DEFAULT_DENY_TERMS, LIMITS, lintSkills } from './lib/lint-skills.mjs';
 
 const USAGE = `Lint skills against the harness authoring rules.
@@ -53,4 +55,4 @@ export function main(argv = process.argv.slice(2)) {
   return failed ? 1 : 0;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) process.exit(main());
+if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) process.exit(main());

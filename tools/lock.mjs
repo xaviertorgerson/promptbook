@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { fileURLToPath } from 'node:url';
 import { applyToDoc, defaultCache, processLock, readLock, validateLock } from './lib/lock.mjs';
 
 const USAGE = `Generate or verify toolkit.lock: the commit and git tree id each entry pins.
@@ -86,4 +87,4 @@ export function main(argv = process.argv.slice(2)) {
   return errors.length ? 1 : 0;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) process.exit(main());
+if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) process.exit(main());
