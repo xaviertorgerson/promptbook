@@ -1,0 +1,31 @@
+# Compiled from agent-policy.yaml (profile ci, tier unattended) by harness compile-policy.
+# A fragment: merge into ~/.codex/config.toml; recompile rather than edit.
+
+default_permissions = "harness"
+approval_policy = "never"
+
+[permissions.harness]
+description = "Compiled from agent-policy.yaml (profile ci, tier unattended) by harness compile-policy"
+extends = ":workspace"
+
+[permissions.harness.filesystem]
+"~/.ssh/**" = "deny"
+"~/.config/shell/secrets.sh" = "deny"
+
+[permissions.harness.filesystem.":workspace_roots"]
+"**/.env" = "deny"
+"**/.env.*" = "deny"
+"**/secrets/**" = "deny"
+"**/.git/hooks/**" = "read"
+"." = "write"
+
+[permissions.harness.network]
+enabled = true
+
+[permissions.harness.network.domains]
+"**.github.com" = "allow"
+"registry.npmjs.org" = "allow"
+"forge.example.com" = "allow"
+
+[features]
+network_proxy = true

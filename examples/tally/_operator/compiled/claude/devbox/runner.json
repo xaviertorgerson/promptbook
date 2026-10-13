@@ -1,0 +1,16 @@
+{
+  "generated_by": "harness compile-policy",
+  "source": "agent-policy.yaml",
+  "engine": "claude",
+  "profile": "devbox",
+  "tier": "autonomous",
+  "requires": [
+    "prod-unreachable-from-this-host",
+    "non-root-container"
+  ],
+  "args": [
+    "--max-budget-usd",
+    "20"
+  ],
+  "timeout_seconds": null
+}

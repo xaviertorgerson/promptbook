@@ -1,0 +1,65 @@
+# Compiled from agent-policy.yaml (profile ci, tier unattended) by harness compile-policy.
+# Most restrictive decision wins: forbidden > prompt > allow. Check: codex execpolicy check --rules <this file> -- <cmd>
+
+prefix_rule(
+    pattern = ["git", "push", ["--force", "-f"]],
+    decision = "forbidden",
+    justification = "no force-push of shared branches",
+    match = ["git push --force origin integration/settle-up", "git push -f"],
+)
+
+prefix_rule(
+    pattern = ["rm", "-rf", "/"],
+    decision = "forbidden",
+    justification = "never wipe the root",
+    match = ["rm -rf /"],
+)
+
+prefix_rule(
+    pattern = ["dropdb"],
+    decision = "forbidden",
+    justification = "no destructive data actions",
+    match = ["dropdb"],
+)
+
+prefix_rule(
+    pattern = ["docker", "volume", "rm"],
+    decision = "forbidden",
+    justification = "volumes hold the only copy of local data",
+    match = ["docker volume rm tally_pgdata"],
+)
+
+prefix_rule(
+    pattern = ["psql"],
+    decision = "forbidden",
+    justification = "ask in an unattended tier is a denial: a database shell is a human checkpoint",
+    match = ["psql app_feat_split_4_revoke_link"],
+)
+
+prefix_rule(
+    pattern = ["git", ["status", "log", "diff", "show", "branch", "add", "commit", "fetch", "pull", "push", "switch", "checkout", "worktree"]],
+    decision = "allow",
+    justification = "allow in agent-policy.yaml",
+    match = ["git status", "git push origin feat/split-2-save-once"],
+)
+
+prefix_rule(
+    pattern = ["gh", "pr", ["create", "view", "ready", "comment"]],
+    decision = "allow",
+    justification = "allow in agent-policy.yaml",
+    match = ["gh pr create --draft --base integration/settle-up"],
+)
+
+prefix_rule(
+    pattern = ["pnpm"],
+    decision = "allow",
+    justification = "allow in agent-policy.yaml",
+    match = ["pnpm"],
+)
+
+prefix_rule(
+    pattern = ["node"],
+    decision = "allow",
+    justification = "allow in agent-policy.yaml",
+    match = ["node"],
+)
