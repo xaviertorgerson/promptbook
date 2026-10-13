@@ -142,8 +142,10 @@ describe('the worked example: Tally', () => {
   it('the lock check passes: the harness pin (and Skilldex, when the network reaches it)', (t) => {
     const lockFile = path.join(EX, 'toolkit.lock');
     const pin = readLock(lockFile).data.entries.find((e) => e.kind === 'harness');
-    if (git('cat-file', '-e', `${pin.commit}^{commit}`).status !== 0 || git('rev-parse', '--verify', '--quiet', `refs/heads/${pin.ref}`).status !== 0) {
-      t.skip(`needs the full history and a local ${pin.ref} branch (a shallow or detached clone has neither)`);
+    // A detached CI checkout resolves the ref through origin, or verifies the pin by its commit; a
+    // shallow one may not hold the pinned commit at all.
+    if (git('cat-file', '-e', `${pin.commit}^{commit}`).status !== 0) {
+      t.skip(`needs the pinned commit ${pin.commit.slice(0, 12)} (a shallow clone lacks it)`);
       return;
     }
     let r = harness('lock', '--lock', rel(lockFile), '--check', '--json');

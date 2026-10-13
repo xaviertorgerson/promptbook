@@ -154,7 +154,11 @@ read with git plumbing, no network; remote sources use `git ls-remote` and a dep
 into `~/.cache/harness/lock`, and an unreachable remote fails with the reason (`--offline` skips
 remotes with a warning). `--check` changes nothing and exits 1 on drift: a pinned commit that is
 gone, a different tree, a moved tag, a branch rewritten past the pin, a version the tag contradicts;
-a branch that moved ahead is a warning. `--update [name...]` moves pins within each entry's
+a branch that moved ahead is a warning. A CI checkout often has no local branch: a local source's ref
+resolves as a tag, a branch, or `refs/remotes/origin/<ref>`, and when a detached or shallow checkout
+holds none of them, `--check` verifies the pin by its recorded commit and tree ("ref not present;
+verified by commit", warning `ref-absent`) instead of failing; a shallow clone that lacks the pinned
+commit itself fails `commit-exists` with the fix (fetch the full history). `--update [name...]` moves pins within each entry's
 `autoUpdate` (never to a prerelease), or a named entry to its newest tag. Comments survive.
 
 ## eval-routing
