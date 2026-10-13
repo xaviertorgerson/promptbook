@@ -33,7 +33,8 @@ including where every artifact goes and how existing repos move, is [LAYERS.md](
 3. Write `home/.chezmoidata/agent-policy.yaml` against `schemas/policy.schema.json`: tiers per machine
    profile, `deny_read`, `forbid`, `ask`, `egress`, budgets. Compile it per engine with
    `tools/compile-policy.mjs` from a chezmoi run script. The compiler's contract is to refuse a tier
-   that disables hooks.
+   that disables hooks, and a bypass tier that names no `requires` (the preconditions it relies on,
+   such as production being unreachable from the host).
 4. A run script fans pinned skills into `~/.agents/skills/` and copies them for engines that do not
    read that directory (`adapters/<engine>/README.md` says which).
 
@@ -64,7 +65,7 @@ simulation of the workflow for testing a binding.
 | `state-machines/` | `workflow`, `attention` and `authority` |
 | `adapters/` | thin, documented mappings to engines, runtimes and CI |
 | `skills/` | portable skills (gerund names, core frontmatter only) with `evals/` |
-| `tools/` | `validate`, `simulate`, `compile-policy`, `lock`, `lint-skills` (Node 22) |
+| `tools/` | `validate` (and `trace`), `simulate`, `compile-policy`, `lock`, `lint-skills`, `eval-routing`, `import-evals` (Node 22; [TOOLS.md](TOOLS.md)) |
 | `tests/`, `fixtures/` | `node --test` suites and valid/invalid examples per contract |
 | `examples/` | a worked product run through every contract |
 | `CHANGELOG.md` | every change, marked additive, behavioral or breaking |

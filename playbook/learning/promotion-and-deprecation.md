@@ -65,8 +65,10 @@ Third-party packs are mirrored into your own marketplace at a pinned commit, nev
 
 ## Contracts used
 
-`skill` (`metadata.version`, `metadata.deprecated`, `metadata.layer`), `toolkit-lock`, `evidence`;
-`tools/lock.mjs` (drift fails CI), `tools/lint-skills.mjs` (portable frontmatter).
+`skill` (`metadata.version`, `metadata.deprecated`, `metadata.layer`), `toolkit-lock` (`kind:
+skill-library` for a pinned outside skill), `evidence`; `tools/lock.mjs` (drift fails CI),
+`tools/lint-skills.mjs` (portable frontmatter; a deprecated skill's description starts
+"Deprecated:" and names its replacement).
 
 ## Anti-patterns
 

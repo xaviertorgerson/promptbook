@@ -51,8 +51,11 @@ way.
 
 ## Contracts used
 
-`evidence` (`evals/evidence.md` entries, `routing.jsonl` lines), `skill` (`metadata.version`),
-`run-record` (trial outcomes); `tools/lint-skills.mjs` checks the folder exists and parses.
+`evidence` (`evals/evidence.md` entries dated to the day or the month, `routing.jsonl` lines, and
+the routing results `harness eval-routing --runs k --out` writes, pass^k per case, which a measured
+entry cites), `skill` (`metadata.version`), `run-record` (trial outcomes); `tools/lint-skills.mjs`
+checks the folder exists and parses, and keeps each description under 400 characters and the set
+under 8000; `harness import-evals` converts an agentic-template `evals.md`.
 
 ## Anti-patterns
 
