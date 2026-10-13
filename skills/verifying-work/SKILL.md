@@ -66,11 +66,13 @@ evaluator's verdict on a different head.
    `complete` on pass, `working` on a fail the author can fix, `needs-human` when a verdict needs a
    decision only a human can make. Examples: references/return-pass-example.json,
    references/return-fail-example.json.
-10. **Route a fail to the same author.** `blocks AC-n` findings go back to the original writer as
-    they are: an unmet criterion blocks the PR by contract. `defect` and `follow-up` findings go to
-    whoever disposes findings (the human, or a coordinator under a `dispose-findings` grant and its
-    policy); only the selected ones reach the author. Forward the verdict file, never a paraphrase.
-    After fixes, evaluate the complete current head again, not only the changed lines.
+10. **Route a fail to the same author, with selected findings only.** Whoever disposes findings
+    (the human, or a coordinator under a `dispose-findings` grant and its policy) selects which
+    finding numbers the author fixes now. `blocks AC-n` findings are the default selection, since
+    the task cannot reach `human-review` with a criterion unmet, unless the human chooses to
+    re-spec that criterion instead. Forward the verdict file unedited plus the selection list,
+    never a paraphrase; the original writer (the persistent pair, not a new fixer) acts only on the
+    selected numbers. After fixes, evaluate the complete current head again.
 
 ## Outputs
 

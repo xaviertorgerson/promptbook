@@ -10,6 +10,7 @@ authorizes removing the primary checkout, closing a PR, deleting a branch, or lo
 |---|---|---|---|
 | 1 | It is a linked worktree, not the primary checkout | `git worktree list --porcelain`: the first entry is the primary; the path must not be it | it is the primary, or a parent that other worktrees or workspaces hang from |
 | 2 | It is this task's | path and branch equal the task record's `repository.worktree` and `branch` | anything differs: ask |
+| 2a | No open PR still needs it | the forge's PR state for the branch | the PR is open (draft or ready): the task is live, the author may still iterate there; keep it unless a human named this worktree for removal, and then only if checks 3 to 11 pass |
 | 3 | No uncommitted tracked changes | `git -C <wt> status --porcelain=v1` has no ` M`, `A `, `D ` lines | any |
 | 4 | No valuable untracked files | the `??` lines from the same command | anything not a known disposable artifact (build output, logs) |
 | 5 | No valuable ignored files | `git -C <wt> status --porcelain=v1 --ignored`, the `!!` lines | anything besides the allowlisted env copies and disposable caches. git's own removal deletes ignored files without asking (measured below) |

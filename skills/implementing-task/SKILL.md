@@ -68,11 +68,12 @@ never from a transcript. The acceptance criteria are the stopping condition.
     otherwise. Request verifying-work with only the evaluator packet (task criteria, diff ref
     `<base>...<head>`, how to run the tests and the PR preview), never your transcript or Working
     notes. Without a subagent mechanism, end the run at `review` and hand back `attention:
-    working` with "evaluation due on <head>" in the summary; the dispatcher starts the evaluator. A failing verdict comes back to you: fix only the findings that show an
-    `AC-n` unmet or that were selected (by the human, or under a `dispose-findings` grant's
-    policy), using the pinned resolving-findings skill; push; ask for re-evaluation of the full
-    current head. Stay at `review` while you iterate; use `iterate` (back to `in-progress`) only
-    when the approach itself must change.
+    working` with "evaluation due on <head>" in the summary; the dispatcher starts the evaluator.
+    A failing verdict comes back to you with a selection list (by the human, or under a
+    `dispose-findings` grant's policy; unmet criteria are selected by default): fix only the
+    selected findings with the pinned resolving-findings skill, push, and ask for re-evaluation
+    of the full current head. Stay at `review` while you iterate; use `iterate` (back to
+    `in-progress`) only when the approach itself must change.
 11. **Hand back.** Append one entry to the task's `sessions` (`engine`, `session_id`, `actor`,
     `role: coder`, `started_at`, `ended_at`, `outcome`, `run`) and one agent-log line (done, left,
     uncertain, status, session id). Commit and push. Write the `return` JSON to
