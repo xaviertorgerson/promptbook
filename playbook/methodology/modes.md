@@ -49,7 +49,7 @@ workspace-only), which describes who is engaged and lives in the task record.
   mostly content work, and "no controlled comparison" ([arXiv 2603.16021](https://arxiv.org/html/2603.16021)).
   Its stage contracts are consistent with the finding that instructions help and overviews do not
   ([arXiv 2602.11988](https://arxiv.org/abs/2602.11988v1)); that is a hypothesis, not evidence.
-- 2025-07-14 · controlled · focused prompts beat long ones on the same task (context rot), the shared
+- 2025-07-14 · controlled, vendor-run · focused prompts beat long ones on the same task (context rot), the shared
   premise of all four modes ([Chroma](https://www.trychroma.com/research/context-rot)).
 - recommendation · no study separates the gains of scoped context from the gains of the human gates
   these methods add; the mode mechanism is this playbook's design.

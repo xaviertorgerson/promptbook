@@ -39,8 +39,9 @@ cache warm → batch where latency allows → tune effort → only then change m
   invalidates the cache; changing effort invalidates messages
   ([prompt caching](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)).
 - 2026-10 · vendor · Anthropic measurements: caching cut agent-loop cost 2.7–5.3×; low effort then
-  re-run failures at high reached 97.0% at $0.17/task vs 95.3% at $0.29; Opus executors with a
-  same-tier advisor consulted it on 0 of 198 questions
+  re-run failures at high reached 97.0% at $0.17/task vs 95.3% at $0.29; Haiku and Sonnet executors
+  given an Opus advisor consulted it on 0 of 198 questions; an Opus executor with a stronger advisor
+  gained 1.7 points at about 2.1× cost, about what more effort buys
   ([optimizing](https://platform.claude.com/docs/about-claude/models/optimizing-for-cost-and-intelligence)).
 - 2026-04-09 · vendor · Sonnet executor with an Opus advisor: +2.7 points at 11.9% lower cost on one
   benchmark ([Claude blog](https://claude.com/blog/the-advisor-strategy)).

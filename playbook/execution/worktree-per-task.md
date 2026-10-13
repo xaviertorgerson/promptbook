@@ -36,8 +36,8 @@ pushed.
   per agent ([Imbue](https://imbue.com/sculptor)).
 - 2026-04-10 · vendor · Vibe Kanban, a worktree-per-agent board, sunset as native features absorbed
   its value ([Vibe Kanban](https://vibekanban.com/blog/shutdown)).
-- 2026-10 · vendor · Claude Code subagents with worktree isolation remove an unchanged worktree on
-  finish ([subagents](https://code.claude.com/docs/en/sub-agents)); adapters bind this in `adapters/`.
+- 2026-10 · vendor · Claude Code's `isolation: worktree` runs a subagent in a temporary worktree
+  ([subagents](https://code.claude.com/docs/en/sub-agents)); `adapters/` binds each engine's equivalent.
 
 ## Contracts used
 

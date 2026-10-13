@@ -41,7 +41,8 @@ feature introduces a new kind of user. A bug skips both.
 - 2026-02-12 · controlled · repository overviews in context files did not improve task success and
   raised cost over 20% ([arXiv 2602.11988](https://arxiv.org/abs/2602.11988v1)), which is why the
   brief is cited by section, not loaded every turn.
-- 2026-06-03 · secondary · BMAD's planning phase opens with a brief before the PRD
+- 2026-06-03 · secondary · BMAD's planning phase produces a brief, a PRD, a UX spec and an
+  architecture doc
   ([CodeMySpec](https://codemyspec.com/blog/bmad-method-explained)).
 - 2026-09-30 · practice · stagehand requires context that separates "required behavior, constraints,
   and non-goals" ([design principles](https://github.com/QuentinTorg/stagehand/blob/main/docs/design/01-design-principles.md)).

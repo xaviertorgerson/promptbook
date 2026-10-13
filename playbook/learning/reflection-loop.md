@@ -40,7 +40,7 @@ Three roles, kept separate:
   ([arXiv 2509.26354](https://arxiv.org/abs/2509.26354)).
 - 2026-05-21 · controlled · MemEvoBench: about 75% attack success from adversarial memory injection in
   round one ([alphaXiv 2604.15774](https://www.alphaxiv.org/abs/2604.15774)).
-- 2023–2025 · controlled · Reflexion, the Darwin Gödel Machine and GEPA improved only with external
+- 2023–2026 · controlled · Reflexion, the Darwin Gödel Machine and GEPA improved only with external
   signals ([2303.11366](https://arxiv.org/abs/2303.11366); [2505.22954](https://arxiv.org/abs/2505.22954);
   [2507.19457](https://arxiv.org/abs/2507.19457)).
 - 2026-05-19 · vendor · Managed Agents "dreaming" can auto-apply or require review; a customer's 6×

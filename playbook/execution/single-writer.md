@@ -31,8 +31,8 @@ every merge into a negotiation, and the human reviews a diff no one author under
 - 2026-01-28 · controlled · Google Research, 180 configurations: every multi-agent variant degraded
   sequential planning by 39–70% ([Google Research](https://research.google/blog/towards-a-science-of-scaling-agent-systems-when-and-why-agent-systems-work/)).
 - 2026-10 · vendor · OpenAI: "Be more careful with parallel write-heavy workflows"
-  ([Codex](https://learn.chatgpt.com/docs/agent-configuration/subagents)); Google: parallel subagents
-  editing code can overwrite each other ([Gemini CLI](https://developers.googleblog.com/subagents-have-arrived-in-gemini-cli/)).
+  ([Codex](https://learn.chatgpt.com/docs/agent-configuration/subagents)); 2026-04-15 · vendor · Google:
+  parallel subagents editing code can overwrite each other ([Gemini CLI](https://developers.googleblog.com/subagents-have-arrived-in-gemini-cli/)).
 - 2026-10 · vendor · Claude Code agent-team guidance avoids same-file edits and starts with research
   and review ([agent teams](https://code.claude.com/docs/en/agent-teams)).
 - 2026-09-30 · practice · stagehand: one persistent author, one independent reviewer, "No speculative

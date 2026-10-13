@@ -38,8 +38,8 @@ dimmer, and a rollback that needs a human at 3 a.m. comes late.
   ([Anthropic](https://www.anthropic.com/engineering/harness-design-long-running-apps)).
 - 2025-06-13 · vendor · Anthropic used rainbow deployments to shift traffic without breaking
   in-flight agents ([Anthropic](https://www.anthropic.com/engineering/multi-agent-research-system)).
-- 2026-10 · vendor · GrowthBook's flag workflows ship new flags disabled and guard rollouts with
-  automatic rollback ([growthbook/skills](https://github.com/growthbook/skills)).
+- 2026-09-30 · vendor · GrowthBook's flag workflows ship new flags disabled everywhere and guard
+  rollouts with automatic rollback ([growthbook/skills](https://github.com/growthbook/skills)).
 - 2026-03-25 · vendor · auto mode is "not a drop-in replacement" for human review on high-stakes
   infrastructure ([Anthropic](https://www.anthropic.com/engineering/claude-code-auto-mode)).
 

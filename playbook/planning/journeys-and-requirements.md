@@ -50,8 +50,8 @@ that is the task's stopping condition.
 - 2025-10-26 · controlled · MAST attributes about 44% of multi-agent failures to system design,
   including "unaware of stopping conditions" at 12.4%
   ([arXiv 2503.13657](https://arxiv.org/html/2503.13657v3)).
-- 2026-10-02 · vendor · Kiro writes requirements as user stories with acceptance criteria and traces
-  tasks back to requirement numbers ([Kiro](https://kiro.dev/docs/specs/)).
+- 2025-10-15 · practitioner · Kiro writes requirements as user stories with GIVEN/WHEN/THEN criteria
+  and traces tasks back to requirement numbers ([martinfowler.com](https://martinfowler.com/articles/exploring-gen-ai/sdd-3-tools.html)).
 - 2025-10-15 · practitioner · 16 criteria for one small bug shows the opposite failure
   ([martinfowler.com](https://martinfowler.com/articles/exploring-gen-ai/sdd-3-tools.html)).
 

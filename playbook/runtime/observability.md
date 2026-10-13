@@ -29,7 +29,7 @@ hitting. Dashboards of "activity" mislead: parallel motion is not progress.
 
 ## Evidence
 
-- 2026-10 · vendor · OTel GenAI agent spans define `invoke_agent`, `execute_tool` and
+- 2026-10 · standard · OTel GenAI agent spans define `invoke_agent`, `execute_tool` and
   `gen_ai.usage.cache_read.input_tokens`, status "Development"
   ([OTel](https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-agent-spans.md)).
 - 2026-10 · vendor · Claude Code exports cost and token metrics (including cache read and creation)

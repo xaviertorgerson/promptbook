@@ -41,7 +41,7 @@ work that never finished: an idle terminal is not a merged PR.
   webhooks, schedules, approvals or callbacks ([transcript, paraphrase](https://www.youtubetotranscript.com/transcript?v=l6KeLCuB90o)).
 - 2026-05-12 · vendor · Google ADK resumes runs from webhooks with a state delta
   ([Google](https://developers.googleblog.com/build-long-running-ai-agents-that-pause-resume-and-never-lose-context-with-adk/)).
-- 2026 · vendor · A2A task states include `INPUT_REQUIRED` and `AUTH_REQUIRED`; MCP Tasks use
+- 2026 · standard · A2A task states include `INPUT_REQUIRED` and `AUTH_REQUIRED`; MCP Tasks use
   `input_required` ([A2A](https://a2a-protocol.org/latest/specification/); [MCP](https://blog.modelcontextprotocol.io/posts/2026-07-28-release-candidate/)).
 - 2026-09-23 · practice · agentic-template's north star: "Event-driven, not polled"; its CI agents
   wake on forge events ([AGENTS.md](https://github.com/xaviertorgerson/agentic-template/blob/master/AGENTS.md)).

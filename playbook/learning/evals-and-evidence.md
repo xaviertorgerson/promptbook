@@ -36,7 +36,7 @@ way.
   engineering only +4.5; a small model with skills beat a large one without
   ([arXiv 2602.12670](https://arxiv.org/html/2602.12670v1)).
 - 2026-01-09 · vendor · Anthropic: start with 20–50 tasks from real failures, grade outcomes, track
-  pass^k, isolate trials; fixing grading bugs took one benchmark from 42% to 95%
+  pass^k, isolate trials; fixing grading bugs and scaffold took one benchmark from 42% to 95%
   ([Anthropic](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents)).
 - 2026-09-08 · vendor · Braintrust: about a 20-case smoke suite on PRs, full suite on main, trial
   counts for non-determinism ([Braintrust](https://www.braintrust.dev/articles/llm-eval-pipeline-github-actions)).

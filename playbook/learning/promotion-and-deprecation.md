@@ -47,8 +47,8 @@ Third-party packs are mirrored into your own marketplace at a pinned commit, nev
   Gemini CLI the reverse, and Codex shows both ([Claude Code](https://code.claude.com/docs/en/skills);
   [Gemini CLI](https://geminicli.com/docs/cli/skills/); [Codex](https://learn.chatgpt.com/docs/build-skills)).
 - 2026-02-05 · practitioner · 13.4% of 3,984 public skills had a critical issue, 76 malicious
-  ([Snyk](https://snyk.io/blog/toxicskills-malicious-ai-agent-skills-clawhub)); malicious skills passed
-  scanners ([Unit 42](https://unit42.paloaltonetworks.com/openclaw-ai-supply-chain-risk/)).
+  ([Snyk](https://snyk.io/blog/toxicskills-malicious-ai-agent-skills-clawhub)); 2026-06-23 · practitioner ·
+  malicious skills passed scanners ([Unit 42](https://unit42.paloaltonetworks.com/openclaw-ai-supply-chain-risk/)).
 - 2026-10 · vendor · with plugin auto-update on, reviewed files can change on disk
   ([plugin security](https://code.claude.com/docs/en/plugins/security)); marketplace entries can pin a
   40-char `sha` ([reference](https://code.claude.com/docs/en/plugins/marketplace-reference)).

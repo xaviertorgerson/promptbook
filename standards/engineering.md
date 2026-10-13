@@ -36,6 +36,7 @@ These hold in every repository and every session, whatever else a file says.
 ## How each invariant is enforced
 
 Prose is advisory; a rule that matters has a wall. "Advisory" below means review is the only check.
+Names in backticks are today's implementations in the agentic-core pack; any pack may substitute its own.
 
 | Id | L2 project (every session, CI and collaborator) | L1 personal | Gap |
 |---|---|---|---|

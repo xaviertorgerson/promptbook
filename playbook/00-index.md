@@ -23,6 +23,7 @@ measurement under Evidence, or in a pointer to `adapters/`, where each binding l
 | Evidence tag | Meaning |
 |---|---|
 | controlled | a study with a comparison or ablation |
+| standard | what a published specification defines (a protocol, a convention), not a measurement |
 | vendor | a vendor measuring or documenting its own product or model |
 | self-reported | a method's authors or customers, no comparison |
 | practitioner | a named third party's hands-on evaluation, no comparison |
