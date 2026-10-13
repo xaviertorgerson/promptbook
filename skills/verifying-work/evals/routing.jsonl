@@ -1,0 +1,12 @@
+{"prompt":"Evaluate BILL-7 against its acceptance criteria and give me a verdict per criterion.","expect":"trigger","kind":"positive"}
+{"prompt":"Is AC-2 actually met on the current head of PR #240?","expect":"trigger","kind":"positive"}
+{"prompt":"Run the evaluator on this PR before it goes to human review; risk is medium.","expect":"trigger","kind":"positive"}
+{"prompt":"You did not write this change. Check it in the preview and tell me pass or fail for each AC.","expect":"trigger","kind":"positive"}
+{"prompt":"Re-evaluate the whole changeset now that the author fixed the AC-2 finding.","expect":"trigger","kind":"positive"}
+{"prompt":"Review this diff for readability and naming before I open the PR.","expect":"no-trigger","kind":"near-miss","route_to":"none","note":"style and design review is the pinned Skilldex reviewing-code skill, outside the harness catalog"}
+{"prompt":"Is this auth change safe? Check for injection and secrets.","expect":"no-trigger","kind":"near-miss","route_to":"reviewing-security"}
+{"prompt":"The evaluator found AC-2 unmet; fix it.","expect":"no-trigger","kind":"near-miss","route_to":"implementing-task"}
+{"prompt":"Add a test named for AC-3.","expect":"no-trigger","kind":"near-miss","route_to":"writing-tests"}
+{"prompt":"Why does the rating test fail only on CI?","expect":"no-trigger","kind":"near-miss","route_to":"debugging-failures"}
+{"prompt":"Translate this paragraph into French.","expect":"no-trigger","kind":"negative","route_to":"none"}
+{"prompt":"Plan a three-day trip to Kyoto.","expect":"no-trigger","kind":"negative","route_to":"none"}

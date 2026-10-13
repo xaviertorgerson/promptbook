@@ -1,0 +1,18 @@
+{
+  "task": "BILL-7",
+  "role": "evaluator",
+  "summary": "Verdict pass on BILL-7 head 9e3b1a7 (base 4f1c2d9), risk medium, k = 2, evaluator gemini (writer claude: different family). Gates green on both runs. Each of AC-1..AC-3 has a test carrying its id that asserts the EARS response and fails on the base; preview walks for AC-2 (concurrent rerate rejected) and AC-3 (withdrawn change rates on the original plan) passed 2/2. The diff loosens no assertion. One follow-up outside the criteria (invoice preview double-counts prorations, pre-existing). This verdict is evidence for the independent-review guard on this head only; it is not approval.",
+  "attention": "complete",
+  "artifacts": [
+    { "path": ".agent/verdicts/BILL-7-9e3b1a7.md", "kind": "report", "note": "full verdict" }
+  ],
+  "decisions_needed": [],
+  "criteria": { "met": ["AC-1", "AC-2", "AC-3"], "unmet": [] },
+  "verification": [
+    { "command": "pnpm vitest run apps/api/src/core/rating (x2)", "result": "pass" },
+    { "command": "node scripts/ears-coverage.mjs specs/rating-engine/tasks/BILL-7.md", "result": "pass" },
+    { "command": "preview walk AC-2 and AC-3 (x2)", "result": "pass" },
+    { "command": "fail-without-change check AC-1..AC-3", "result": "pass" }
+  ],
+  "session": { "engine": "gemini", "session_id": "eval-8b21c0", "actor": "evaluator-gemini", "role": "evaluator" }
+}
