@@ -7,6 +7,5 @@
 {"prompt":"The PR is approved; merge it into main.","expect":"no-trigger","kind":"near-miss","route_to":"landing-changes"}
 {"prompt":"Which credential should the deploy job use to reach the cloud?","expect":"no-trigger","kind":"near-miss","route_to":"handling-credentials"}
 {"prompt":"Check the preview against BILL-7's acceptance criteria.","expect":"no-trigger","kind":"near-miss","route_to":"verifying-work"}
-{"prompt":"Can the orchestrator approve production releases on Fridays?","expect":"no-trigger","kind":"near-miss","route_to":"delegating-authority"}
 {"prompt":"What's the weather in Oslo tomorrow?","expect":"no-trigger","kind":"negative","route_to":"none"}
 {"prompt":"Write a limerick about a cat.","expect":"no-trigger","kind":"negative","route_to":"none"}

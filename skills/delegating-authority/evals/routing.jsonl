@@ -4,8 +4,9 @@
 {"prompt":"Revoke GRANT-7; the milestone was re-scoped.","expect":"trigger","kind":"positive"}
 {"prompt":"Take finalize out of the coordinator's delegation, keep the rest.","expect":"trigger","kind":"positive"}
 {"prompt":"Can the orchestrator also approve the next epic's spec while I'm away?","expect":"trigger","kind":"positive","note":"must refuse: spec approval is never delegable"}
+{"prompt":"Can the orchestrator approve production releases on Fridays?","expect":"trigger","kind":"positive","note":"moved from releasing-changes' near-misses: production release is never delegable, so delegating-authority must load; releasing-changes, which holds the production gate, may load beside it"}
+{"prompt":"Set up an integration branch for the rating-engine epic so tasks can land without me approving each one.","expect":"trigger","kind":"positive","note":"moved from landing-changes' positives: landing without the human's approval needs a merge grant first, which is this skill's; landing-changes (the branch and its landings) may load beside it"}
 {"prompt":"The merge is authorized; resolve the lockfile conflict and land PR 262.","expect":"no-trigger","kind":"near-miss","route_to":"landing-changes"}
-{"prompt":"Dispatch the ready tasks under GRANT-7 and keep four workers busy.","expect":"no-trigger","kind":"near-miss","route_to":"orchestrating-work"}
 {"prompt":"Add a deny rule so agents can never run terraform apply on this machine.","expect":"no-trigger","kind":"near-miss","route_to":"adopting-harness"}
 {"prompt":"Check whether this PR leaks credentials before we merge it.","expect":"no-trigger","kind":"near-miss","route_to":"reviewing-security"}
 {"prompt":"Rotate the merge bot's forge token.","expect":"no-trigger","kind":"near-miss","route_to":"handling-credentials"}

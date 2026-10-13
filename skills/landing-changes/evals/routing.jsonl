@@ -1,7 +1,6 @@
 {"prompt":"The PR for BILL-7 is approved; land it.","expect":"trigger","kind":"positive"}
 {"prompt":"Resolve these merge conflicts on PR #244 and merge it.","expect":"trigger","kind":"positive"}
 {"prompt":"Can the coordinator merge the rating-engine task PRs into the epic branch under GRANT-4?","expect":"trigger","kind":"positive"}
-{"prompt":"Set up an integration branch for the rating-engine epic so tasks can land without me approving each one.","expect":"trigger","kind":"positive"}
 {"prompt":"Run the merge queue for the approved PRs.","expect":"trigger","kind":"positive"}
 {"prompt":"Write the PR description for this branch and mark it ready for review.","expect":"no-trigger","kind":"near-miss","route_to":"preparing-pull-requests","note":"pinned Skilldex skill: PR text and finalization"}
 {"prompt":"Give the orchestrator merge rights on main for two weeks.","expect":"no-trigger","kind":"near-miss","route_to":"delegating-authority"}

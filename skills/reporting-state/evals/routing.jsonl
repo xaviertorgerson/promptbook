@@ -5,7 +5,7 @@
 {"prompt":"Why is BILL-7 showing red on the board?","expect":"trigger","kind":"positive"}
 {"prompt":"CI failed on PR 240. Does that need me?","expect":"trigger","kind":"positive"}
 {"prompt":"The reviewer pane went idle, so mark BILL-2 merged.","expect":"trigger","kind":"positive","note":"must refuse to change status; reconcile attention only"}
-{"prompt":"Move BILL-7 to human-review now that the criteria pass.","expect":"no-trigger","kind":"near-miss","route_to":"implementing-task"}
+{"prompt":"BILL-7's criteria pass; open the draft PR and move it to review.","expect":"no-trigger","kind":"near-miss","route_to":"implementing-task","note":"rewritten from \"Move BILL-7 to human-review now that the criteria pass\": implementing-task never makes that move (mark-pr-ready is an engineer's or a finalize-grant holder's), so the case asserted a route its owner refuses; the boundary it tests (status moves are the workflow skill's, not reporting-state's) is kept with the move implementing-task does make"}
 {"prompt":"BILL-2 was approved; land it and set it merged.","expect":"no-trigger","kind":"near-miss","route_to":"landing-changes"}
 {"prompt":"Three tasks are ready; start workers on them.","expect":"no-trigger","kind":"near-miss","route_to":"orchestrating-work"}
 {"prompt":"May the coordinator finalize PR 233 under our grant?","expect":"no-trigger","kind":"near-miss","route_to":"delegating-authority"}
