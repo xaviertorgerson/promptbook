@@ -178,10 +178,14 @@ hand-edited. **Compat.** New.
 
 **Purpose.** A runtime's recovery note for one task: what a replacement coordinator needs to resume
 (repository, worktree, agents, native session ids, PRs, attention, next action, human decisions).
-**Schema** `task-record.schema.json` 1.0.0; `state.name` is attention (working | needs-human |
+**Schema** `task-record.schema.json` 1.1.0; `state.name` is attention (working | needs-human |
 complete), never a workflow status; needs-human requires `next_action`; complete forbids it.
-Harness additions: `runtime`, `grant`, `signals{role: {source, value, observed_at}}`, structured
-`reviews[]` and `decisions[]`, `updated_at`. **Swap story.** A different runtime (a CLI loop, a CI
+Harness additions: `runtime`, `grant`, `signals{role: {source, value, observed_at}}` (source: an
+`attention.yaml` vocabulary — herdr, a2a, mcp-tasks, claude-headless, loop-outcome, ci — or
+codex-exec, forgejo, gitlab, other), structured `reviews[]` and `decisions[]`, `resources` (the
+worktree's derived `slug`, `worktree_path`, `database`, `ports{slot,first,last}`, `caches`,
+`services`, the last cleanup `audit{at, result: passed|blocked, blocked_by}` and
+`worktree_removed_at`, which requires an audit that passed), `updated_at`. **Swap story.** A different runtime (a CLI loop, a CI
 orchestrator, stagehand) keeps the same note; a coordinator can be replaced mid-task. **Compat.**
 A superset of stagehand's `assets/task-record.yaml`, which validates unchanged; the field map is in
 [adapters/herdr](adapters/herdr/README.md).

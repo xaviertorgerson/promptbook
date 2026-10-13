@@ -1,0 +1,27 @@
+# Invalid: the worktree was removed with no audit recorded. A record after the task merged and its worktree was cleaned up: the derived resources, the audit
+# that passed immediately before removal, and the last signal from the loop runner's own verdict.
+task_id: BILL-7
+runtime: claude-loop
+objective: Re-rate a prorated period without double-billing
+repository:
+  name: acme/billing
+  worktree: /home/dev/src/billing/.worktrees/BILL-7
+  base: main
+  base_commit: 4f1c2d97a0be5c1e3d2f8a6b9c0d1e2f3a4b5c6d
+  branch: feat/bill-7-rerate-proration
+pull_requests: ["https://forge.example.com/acme/billing/pulls/240"]
+state:
+  name: complete
+  summary: Merged; worktree removed
+signals:
+  author: { source: loop-outcome, value: advanced, observed_at: "2026-10-13T10:58:00Z" }
+  checks: { source: forgejo, value: success, observed_at: "2026-10-13T10:40:00Z" }
+resources:
+  slug: feat_bill_7_rerate_proration
+  worktree_path: /home/dev/src/billing/.worktrees/BILL-7
+  database: app_feat_bill_7_rerate_proration
+  ports: { slot: 2, first: 4420, last: 4429 }
+  caches: [.worktrees/BILL-7/dist, .worktrees/BILL-7/.agent]
+  services: [dev-feat_bill_7_rerate_proration]
+  worktree_removed_at: "2026-10-13T11:01:00Z"
+updated_at: "2026-10-13T11:01:00Z"
