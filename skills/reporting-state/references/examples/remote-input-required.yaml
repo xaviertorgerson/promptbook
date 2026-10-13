@@ -1,0 +1,13 @@
+# A delegated research task runs on a remote agent. It asked for input; the question is forwarded verbatim.
+task_id: BILL-13
+runtime: a2a-bridge
+mode: delegated-work
+objective: Compare three tax-rate data providers for the invoicing epic
+intent_ref: specs/invoicing/tasks/BILL-13.md
+state:
+  name: needs-human
+  summary: Remote agent needs region list
+  next_action: "Answer the remote agent's question: 'Which jurisdictions must the provider cover at launch: US only, or US and EU?'"
+signals:
+  worker: { source: a2a, value: TASK_STATE_INPUT_REQUIRED, observed_at: "2026-10-13T12:20:00Z" }
+updated_at: "2026-10-13T12:21:00Z"

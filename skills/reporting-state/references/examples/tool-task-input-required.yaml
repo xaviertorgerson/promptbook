@@ -1,0 +1,12 @@
+# A long-running tool call (an MCP task) asked for elicitation; no grant covers it, so a human answers.
+task_id: BILL-14
+runtime: cli-loop
+objective: Import last month's usage export for the backfill
+intent_ref: specs/rating-engine/tasks/BILL-14.md
+state:
+  name: needs-human
+  summary: Import tool needs a file choice
+  next_action: "Choose which export the import tool should read: usage-2026-09.csv or usage-2026-09-corrected.csv"
+signals:
+  author: { source: mcp-tasks, value: input_required, observed_at: "2026-10-13T13:05:00Z" }
+updated_at: "2026-10-13T13:06:00Z"
