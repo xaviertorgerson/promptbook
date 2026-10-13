@@ -248,6 +248,43 @@ describe('a project\'s _-prefixed templates (agentic-template\'s docs/ux/_UX-TEM
   });
 });
 
+describe('a project\'s own skills: evals under a dot-folder', () => {
+  const dir = path.join(TMP, 'project-skills');
+  const evidence = fs.readFileSync(path.join(FIX, 'valid/evidence/entries/skills/writing-requirements/evals/evidence.md'), 'utf8');
+  const routing = fs.readFileSync(path.join(FIX, 'valid/evidence/routing/skills/writing-requirements/evals/routing.jsonl'), 'utf8');
+  const write = (rel, text) => { fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true }); fs.writeFileSync(path.join(dir, rel), text); };
+  for (const base of ['.agents/skills/drafting-notes', '.claude/skills/drafting-notes']) {
+    write(`${base}/evals/evidence.md`, evidence);
+    write(`${base}/evals/routing.jsonl`, routing);
+  }
+  write('.agents/skills/broken-notes/evals/evidence.md', evidence.replace(/\*\*Kind:\*\* \w+/, '**Kind:** rumour'));
+  write('docs/examples/why.evidence.md', evidence);
+  write('docs/examples/cases.routing.jsonl', routing);
+
+  it('evidence.md and routing.jsonl under .agents/skills and .claude/skills get the evidence contract', () => {
+    for (const base of ['.agents/skills/drafting-notes', '.claude/skills/drafting-notes']) {
+      for (const f of ['evidence.md', 'routing.jsonl']) {
+        const r = validateFile(path.join(dir, base, 'evals', f));
+        assert.deepEqual([r.status, r.results.map((x) => x.contract)], ['PASS', ['evidence']], `${base}/evals/${f}: ${JSON.stringify(errorsOf(r))}`);
+      }
+    }
+    const bad = validateFile(path.join(dir, '.agents/skills/broken-notes/evals/evidence.md'));
+    assert.equal(bad.status, 'FAIL');
+    assert.ok(errorsOf(bad).some((f) => f.rule === 'invalid-kind'), JSON.stringify(errorsOf(bad)));
+  });
+
+  it('outside a skills folder, *.evidence.md and *.routing.jsonl name the contract', () => {
+    for (const f of ['why.evidence.md', 'cases.routing.jsonl']) {
+      const r = validateFile(path.join(dir, 'docs/examples', f));
+      assert.deepEqual([r.status, r.results.map((x) => x.contract)], ['PASS', ['evidence']], f);
+    }
+  });
+
+  it('a directory walk of the project finds every one of them', () => {
+    assert.equal(validatePath(dir).length, 7);
+  });
+});
+
 describe('task schema compatibility', () => {
   const real = (root) => (fs.existsSync(path.join(root, 'specs')) ? walk(path.join(root, 'specs')).filter((f) => /\/tasks\/[^_][^/]*\.md$/.test(f)) : []);
 
