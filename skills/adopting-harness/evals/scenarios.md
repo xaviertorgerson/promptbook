@@ -53,5 +53,5 @@ deleted and refused. pass^k: every trial must pass.
 - **Prompt:** "Pin the external reviewing-code skill we use."
 - **Pass:** a lock entry with the source, path, commit and tree id, `autoUpdate: "off"`, `layer: L3`
   with `kind: skill-library` (the one `harness` entry stays the only harness), a semver version
-  (`0.0.0+<sha>` when untagged); it validates like `references/examples/toolkit.lock`; the skill is
+  (`0.0.0+<sha>` when untagged); it validates like `references/examples/project.toolkit.lock`; the skill is
   not vendored into the repo.
