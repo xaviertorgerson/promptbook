@@ -1,5 +1,7 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import { parse as parseYamlText } from 'yaml';
 import { splitFrontmatter, parseYaml, readText } from './loaders.mjs';
 import { fenceMask, headings, splitLines, stripComments } from './markdown.mjs';
 import { registry as sharedRegistry } from './registry.mjs';
@@ -331,4 +333,70 @@ export function lintSkills(targets, opts = {}) {
     overlaps,
     counts,
   };
+}
+
+// ------------------------------------------------------------------------------------- budget set
+
+// The always-loaded budget applies to what an engine actually loads: every skill a machine profile
+// installs (the harness's, a skill library's, a runtime's), not the folder being linted. A budget set
+// names that installed set, as either
+//   a list of skill folders or folders of skills (YAML list, or one path per line; # comments), or
+//   a toolkit.lock (or toolkit.yaml) in the toolkit-lock contract: each entry with a local source
+//   contributes the skills under source/path (the harness: source/skills), narrowed by an entry's
+//   x-skills list when it has one; a remote entry cannot be read and is reported, not guessed.
+// Paths are relative to the set's file; ~ is the home directory.
+const expandHome = (p) => (p === '~' || p.startsWith('~/') ? path.join(os.homedir(), p.slice(1)) : p);
+const isRemoteSource = (s) => /^(?:https:\/\/|ssh:\/\/|git@|file:)/.test(s);
+
+function skillsUnder(dir) {
+  if (fs.existsSync(path.join(dir, 'SKILL.md'))) return [dir];
+  const direct = skillDirs(dir);
+  return direct.length || !fs.existsSync(path.join(dir, 'skills')) ? direct : skillDirs(path.join(dir, 'skills'));
+}
+
+export function budgetSet(file, { limit = LIMITS.descriptionBudget } = {}) {
+  const base = path.dirname(path.resolve(file));
+  const text = readText(file);
+  const findings = [];
+  const sources = [];
+  let data;
+  try { data = parseYamlText(text); } catch { data = null; }
+  const resolve = (p) => path.resolve(base, expandHome(String(p)));
+  if (data && typeof data === 'object' && !Array.isArray(data) && Array.isArray(data.entries)) {
+    for (const e of data.entries) {
+      if (!e?.source) continue;
+      if (isRemoteSource(e.source)) {
+        findings.push({ severity: 'warning', rule: 'budget-set-unread', message: `${e.name}: ${e.source} is remote; its skills are not counted (list the installed folders instead)` });
+        continue;
+      }
+      sources.push({ from: e.name, dir: resolve(path.join(e.source, e.path ?? (e.kind === 'harness' || (!e.kind && e.layer === 'L3') ? 'skills' : ''))), only: Array.isArray(e['x-skills']) ? e['x-skills'] : null });
+    }
+  } else {
+    const list = Array.isArray(data) ? data : text.split(/\r?\n/).map((l) => l.replace(/#.*$/, '').trim()).filter(Boolean);
+    for (const p of list) sources.push({ from: String(p), dir: resolve(p), only: null });
+  }
+  const seen = new Set();
+  const skills = [];
+  for (const src of sources) {
+    if (!fs.existsSync(src.dir) || !fs.statSync(src.dir).isDirectory()) {
+      findings.push({ severity: 'error', rule: 'budget-set-missing', message: `${src.from}: ${src.dir} is not a folder` });
+      continue;
+    }
+    for (const dir of skillsUnder(src.dir)) {
+      if (src.only && !src.only.includes(path.basename(dir))) continue;
+      if (seen.has(dir)) continue;
+      seen.add(dir);
+      const { data: fm } = loadFrontmatter(path.join(dir, 'SKILL.md'));
+      const description = typeof fm?.description === 'string' ? fm.description : '';
+      if (!description) findings.push({ severity: 'warning', rule: 'budget-set-unread', message: `${dir}: no description in SKILL.md; counted as 0` });
+      skills.push({ name: fm?.name ?? path.basename(dir), dir, from: src.from, chars: description.length });
+    }
+  }
+  const total = skills.reduce((a, s) => a + s.chars, 0);
+  if (total > limit) {
+    const longest = [...skills].sort((a, b) => b.chars - a.chars).slice(0, 3).map((s) => `${s.name} ${s.chars}`);
+    const byFrom = Object.entries(skills.reduce((m, s) => ({ ...m, [s.from]: (m[s.from] ?? 0) + 1 }), {})).map(([k, n]) => `${n} from ${k}`).join(', ');
+    findings.push({ severity: 'warning', rule: 'description-budget', score: total, message: `the installed set's ${skills.length} descriptions total ${total} characters, over the ${limit} an engine may keep loaded (2% of context or 8000 characters), so some may be cut before a router sees them (${byFrom}; longest: ${longest.join(', ')}); install a per-profile subset` });
+  }
+  return { file: path.resolve(file), skills, total, limit, findings };
 }

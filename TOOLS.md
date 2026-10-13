@@ -41,7 +41,7 @@ authoring rules. Errors name a stable rule; `--strict` fails on warnings too.
 | `name-is-gerund` | the first word ends in -ing: `writing-requirements` |
 | `description-use-when`, `description-do-not-use-for` | a "Use when …" trigger and a "Do not use for … (neighbour)" clause; warnings if out of order or naming no neighbour |
 | `description-length` | a description over 400 characters fails, over 300 warns: every description stays loaded in every session |
-| `description-budget` (warning) | the scanned set's descriptions together exceed 8000 characters (one engine keeps skill metadata within 2% of context or 8000 characters); the longest are named |
+| `description-budget` (warning) | the scanned set's descriptions together exceed 8000 characters (one engine keeps skill metadata within 2% of context or 8000 characters); the longest are named. The budget binds what a machine installs, not one library: `--budget-set <file>` sums the descriptions of an installed set (a list of skill folders or folders of skills, one per line or a YAML list; or a `toolkit.lock`, whose local entries contribute the skills under `source/path`, the harness's under `skills/`, narrowed by an `x-skills` list; a remote entry is reported as `budget-set-unread`, a listed folder that is missing fails `budget-set-missing`) and warns over 8000 with the count from each source; with no folder given only this check runs |
 | `deprecated-description` | a skill with `metadata.deprecated` is exempt from "Use when": its description starts with "Deprecated:" and names the replacement skill |
 | `parse-error` | the frontmatter is YAML; when a plain value holds ": " (the usual cause), the error says to quote it |
 | `body-length` | warn over 200 body lines, fail over 300 |
