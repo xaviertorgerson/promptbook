@@ -185,12 +185,14 @@ their sources.
 ### readiness-report
 
 **Purpose.** The trace check's verdict on one epic, generated for the product owner at the spec gate.
-**Schema** `readiness-report.schema.json` 1.1.0: `epic`, `generated_at`, `generator`,
-`source_commit`, `adoption` (full | legacy), `epic_status`, `verdict` (ready | not-ready), `counts`,
+**Schema** `readiness-report.schema.json` 1.2.0: `epic`, `generated_at`, `generator`,
+`source_commit` (the traced root's `HEAD` when it is a git repository), `adoption` (full | legacy), `epic_status`, `verdict` (ready | not-ready), `counts`,
 `coverage` (journeys with a task, requirements with a task, tasks citing a requirement, criteria
 named in a test, each `{covered,total}`), `gaps[]` (`traceGap`); a `ready` verdict has no error and
 no gap that blocks readiness. Written by `validate.mjs --trace <root> --readiness <dir>`; never
-hand-edited. **Compat.** New.
+hand-edited. `generated_at` and `source_commit` change on every check whatever the plan says, so
+`--no-timestamp` leaves both out (1.2.0: `generated_at` is optional) and a report committed with the
+plan changes only when the plan does; its own commit dates it. **Compat.** New.
 
 ### task-record
 
@@ -422,7 +424,8 @@ introduced — persona links, task → requirement, requirement → journey, UX,
 warning even on an approved epic, so adopting the harness never turns a green build red. Gaps that
 keep an epic from `ready` are marked `blocks_readiness` in either mode. With no test files at all,
 criterion coverage is a single `tests-exist` warning, as `ears-coverage.mjs` does in status mode.
-`--strict` makes warnings fail; `--readiness <dir>` writes each epic's `readiness.md`.
+`--strict` makes warnings fail; `--readiness <dir>` writes each epic's `readiness.md`
+(`--no-timestamp`: without `generated_at` and `source_commit`).
 
 **Test names.** A file's extension picks how its test names are read: JS/TS the first string of
 `it`/`test`/`describe` (ears-coverage's extractor); Go `t.Run("…")` and `func TestXxx`; Python

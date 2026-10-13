@@ -522,7 +522,38 @@ describe('trace graph', () => {
     assert.ok(tm.gaps.some((g) => g.rule === 'journey-has-task' && g.subject === 'CUJ-2'), 'CUJ-2 is attributed only in the spec index');
   });
 
-  it('the CLI exits 0 on the smoke project and 1 on the broken one', { skip: !fs.existsSync(STACK_DRIFT) }, () => {
+  it('--readiness records the root\'s HEAD as source_commit; --no-timestamp writes the same bytes on every run', () => {
+    const dir = project('complete');
+    const git = (...a) => spawnSync('git', ['-C', dir, '-c', 'user.name=t', '-c', 'user.email=t@example.com', ...a], { encoding: 'utf8' });
+    git('init', '-q');
+    git('add', '-A');
+    git('commit', '-q', '-m', 'plan');
+    const head = git('rev-parse', 'HEAD').stdout.trim();
+    const cli = (...a) => spawnSync(process.execPath, [path.join(ROOT, 'tools/validate.mjs'), '--trace', dir, ...a], { encoding: 'utf8' });
+    const report = (out) => fs.readFileSync(path.join(out, 'invoicing/readiness.md'), 'utf8');
+    const fm = (text) => parse(text.split('---')[1]);
+
+    const out = path.join(dir, 'reports');
+    assert.equal(cli('--readiness', out).status, 0);
+    assert.equal(fm(report(out)).source_commit, head);
+    assert.ok(fm(report(out)).generated_at);
+    assert.equal(validateFile(path.join(out, 'invoicing/readiness.md'), { contract: 'readiness-report' }).status, 'PASS');
+
+    const stable = path.join(dir, 'specs');
+    assert.equal(cli('--readiness', stable, '--no-timestamp').status, 0);
+    const first = report(stable);
+    assert.equal(fm(first).generated_at, undefined);
+    assert.equal(fm(first).source_commit, undefined);
+    git('add', '-A');
+    git('commit', '-q', '-m', 'the readiness report');
+    assert.equal(cli('--readiness', stable, '--no-timestamp').status, 0);
+    assert.equal(report(stable), first, 'a second check after committing the report changes nothing');
+    assert.equal(git('status', '--porcelain', 'specs').stdout, '');
+    const r = validateFile(path.join(stable, 'invoicing/readiness.md'));
+    assert.equal(r.status, 'PASS', JSON.stringify(errorsOf(r)));
+  });
+
+  it('the CLI exits 0 on the smoke project and 1 on the broken one',{ skip: !fs.existsSync(STACK_DRIFT) }, () => {
     const cli = (...a) => spawnSync(process.execPath, [path.join(ROOT, 'tools/validate.mjs'), ...a], { encoding: 'utf8' });
     const ok = cli('--trace', STACK_DRIFT);
     assert.equal(ok.status, 0, ok.stdout + ok.stderr);

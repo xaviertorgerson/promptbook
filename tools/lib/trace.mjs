@@ -454,13 +454,14 @@ export function trace(root, opts = {}) {
   return { root, adoption, generator: `harness/validate@${TRACE_VERSION}`, counts, epics, gaps, tests: { files: p.testFiles.length, names: p.names.length, globs: p.testGlobs } };
 }
 
-// The readiness report for one epic (schemas/readiness-report.schema.json), as Markdown text.
+// The readiness report for one epic (schemas/readiness-report.schema.json), as Markdown text. now:
+// null leaves generated_at out (a report committed with the plan).
 export function renderReadiness(result, epic, { now = new Date().toISOString(), commit } = {}) {
   const e = result.epics.find((x) => x.epic === epic);
   if (!e) throw new Error(`no epic ${epic}`);
   const fm = {
     epic: e.epic,
-    generated_at: now.replace(/\.\d{3}Z$/, 'Z'),
+    ...(now ? { generated_at: now.replace(/\.\d{3}Z$/, 'Z') } : {}),
     generator: result.generator,
     ...(commit ? { source_commit: commit } : {}),
     adoption: result.adoption,

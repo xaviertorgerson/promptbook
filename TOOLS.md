@@ -24,7 +24,9 @@ from its path in the project layout, else from its name's suffix (`*.grant.yaml`
 `*.template.*` and `_`-prefixed templates such as `docs/ux/_UX-TEMPLATE.md` are skipped unless
 `--contract` names one), so `harness validate skills` checks every renamed example too.
 `harness trace <root>`
-is `validate --trace <root>`; `--tests <glob>` picks the test files, `--test-pattern <regex>` adds a
+is `validate --trace <root>`; `--readiness <dir>` writes each epic's report with the root's `HEAD` as
+`source_commit`, and `--no-timestamp` leaves it and `generated_at` out for a report committed with
+the plan; `--tests <glob>` picks the test files, `--test-pattern <regex>` adds a
 way to read test names beyond the built-in JS/TS, Go, Python, JUnit/Kotlin, Rust and Ruby readers
 (fixtures: `fixtures/test-names/`).
 

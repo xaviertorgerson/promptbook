@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
@@ -14,7 +15,10 @@ const USAGE = `Validate harness artifacts against their contracts.
       [--tests "<glob>"]...                          test files to read names from (repeatable)
       [--test-pattern "<regex>"]...                  another way a test is named: group 1 (or the
                                                      match) of each match is a name (repeatable)
-      [--readiness <dir>]                            write <dir>/<epic>/readiness.md per epic
+      [--readiness <dir>]                            write <dir>/<epic>/readiness.md per epic, with
+                                                     the root's HEAD as source_commit (in a git repo)
+      [--no-timestamp]                               omit generated_at and source_commit, so a
+                                                     committed report changes only with the plan
       [--strict]                                     warnings fail too
   node tools/validate.mjs --list                     list contracts, versions and artifact paths
   options: --json (machine-readable), --quiet (failures only), --warnings (print warnings)
@@ -66,10 +70,15 @@ if (flag('--trace')) {
   const failed = result.counts.error > 0 || (strict && result.counts.warning > 0);
   const [out] = values('--readiness');
   if (out) {
+    // Both change on every check whatever the plan says; --no-timestamp leaves them out so a
+    // committed report does not dirty the tree (its own commit dates it).
+    const stable = flag('--no-timestamp');
+    const head = stable ? null : spawnSync('git', ['-C', root, 'rev-parse', '--verify', '--quiet', 'HEAD'], { encoding: 'utf8' });
+    const commit = head?.status === 0 ? head.stdout.trim() : undefined;
     for (const e of result.epics) {
       const dir = path.join(out, e.epic);
       fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(path.join(dir, 'readiness.md'), renderReadiness(result, e.epic));
+      fs.writeFileSync(path.join(dir, 'readiness.md'), renderReadiness(result, e.epic, { commit, ...(stable ? { now: null } : {}) }));
     }
   }
   if (flag('--json')) {
