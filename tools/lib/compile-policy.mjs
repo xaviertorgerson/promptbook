@@ -118,6 +118,9 @@ function preflight(ctx) {
     ctx.error('profile-exists', `no profile "${ctx.profileName}" (profiles: ${Object.keys(p.profiles ?? {}).join(', ')})`);
     return;
   }
+  // A profile's egress merged over the top-level one is held to the same rules as either alone.
+  if (p.egress && !p.egress.default) ctx.error('egress-effective', `profile "${ctx.profileName}": egress has no default (neither the profile nor the top level sets one)`);
+  if (p.egress?.default === 'deny' && !p.egress.allow_domains) ctx.error('egress-effective', `profile "${ctx.profileName}": egress default deny lists no allow_domains`);
   if (ctx.profile.engines && !ctx.profile.engines.includes(ctx.engine)) {
     ctx.error('engine-installed', `profile "${ctx.profileName}" lists engines ${ctx.profile.engines.join(', ')}; it does not install ${ctx.engine}`);
   }
@@ -154,7 +157,10 @@ function preflight(ctx) {
 
 // ------------------------------------------------------------------------------------- claude
 
-const CLAUDE_MODE = { 'read-only': 'plan', ask: 'default', 'auto-edit': 'acceptEdits', autonomous: 'bypassPermissions' };
+const CLAUDE_MODE = { 'read-only': 'plan', ask: 'default', 'auto-edit': 'acceptEdits', auto: 'auto', autonomous: 'bypassPermissions' };
+
+// Does an egress pattern (host, *.host, **.host) admit a plain host?
+const domainAdmits = (pattern, host) => (pattern.startsWith('**.') ? host === pattern.slice(3) || host.endsWith(`.${pattern.slice(3)}`) : pattern.startsWith('*.') ? host.endsWith(pattern.slice(1)) : host === pattern);
 
 // Read/Edit rule paths: gitignore syntax anchored at the settings source; // is the filesystem root.
 // A Windows path has no POSIX anchor: a gap for a deny, a drop for an ask or allow.
@@ -227,6 +233,7 @@ function emitClaude(ctx) {
       // it runs with nobody asked, which is a hole in the wall.
       const fetchForbidden = p.forbid.some((r) => r.tool === 'web-fetch' && !r.domain);
       if (tier === BYPASS_TIER && !fetchForbidden) ctx.gap('egress', 'WebFetch outside allow_domains runs unasked under bypassPermissions; the sandbox allowlist binds shell commands only (forbid {tool: web-fetch} removes the fetch tool instead)');
+      else if (tier === 'auto' && !fetchForbidden) ctx.gap('egress', 'WebFetch outside allow_domains is left to the auto-mode classifier, not denied; the sandbox allowlist binds shell commands only (forbid {tool: web-fetch} removes the fetch tool instead)');
       else if (tier !== 'unattended') ctx.warn('egress-prompts', 'WebFetch outside allow_domains prompts a human instead of being denied; the sandbox allowlist binds shell commands only');
     }
   }
@@ -242,6 +249,23 @@ function emitClaude(ctx) {
   if (Object.keys(filesystem).length) sandbox.filesystem = filesystem;
   const network = Object.fromEntries(Object.entries(net).filter(([, v]) => v.length));
   if (egress?.default === 'deny') network.strictAllowlist = true;
+
+  // Credential masks: sandboxed commands see a placeholder and the sandbox proxy restores the real
+  // value on requests to the inject hosts, which needs the proxy to terminate TLS (sandboxing: mask
+  // credentials). Masks bind sandboxed commands only, never the file tools.
+  const masks = p.sandbox?.credentials ?? [];
+  if (masks.length) {
+    if (p.sandbox?.enabled !== true) ctx.warn('credentials-need-sandbox', 'sandbox.credentials masks act only inside the sandbox, and sandbox.enabled is not true');
+    const inject = (c) => (c.inject_hosts ? { injectHosts: c.inject_hosts } : {});
+    const files = masks.filter((c) => c.path).map((c) => ({ path: c.path, mode: 'mask', ...(c.extract ? { extract: c.extract } : {}), ...inject(c) }));
+    const envVars = masks.filter((c) => c.env).map((c) => ({ name: c.env, mode: 'mask', ...inject(c) }));
+    sandbox.credentials = { ...(files.length ? { files } : {}), ...(envVars.length ? { envVars } : {}) };
+    network.tlsTerminate = {};
+    const allowed = egress?.allow_domains ?? [];
+    const unlisted = [...new Set(masks.flatMap((c) => c.inject_hosts ?? []))].filter((h) => !allowed.some((d) => domainAdmits(d, h)));
+    if (unlisted.length) ctx.warn('credential-host-unlisted', `the sandbox proxy restores a masked credential only on hosts the egress allow list admits; ${unlisted.join(', ')} ${unlisted.length > 1 ? 'are' : 'is'} not in egress.allow_domains, so requests there carry the placeholder`);
+    if (files.length) ctx.warn('mask-not-a-read-deny', `Claude Code's file tools can read ${files.map((f) => f.path).join(', ')}: a mask covers sandboxed commands only (a deny_read entry would deny the sandbox too); on macOS a masked file is blocked instead of masked`);
+  }
   if (Object.keys(network).length) sandbox.network = network;
 
   const permissions = {};
@@ -285,8 +309,8 @@ function runnerFile(ctx, args, budget) {
 
 // ------------------------------------------------------------------------------------- codex
 
-const CODEX_BASE = { 'read-only': ':read-only', ask: ':workspace', 'auto-edit': ':workspace', autonomous: ':workspace', unattended: ':workspace' };
-const CODEX_APPROVAL = { ask: 'on-request', 'auto-edit': 'on-request', autonomous: 'never', unattended: 'never' };
+const CODEX_BASE = { 'read-only': ':read-only', ask: ':workspace', 'auto-edit': ':workspace', auto: ':workspace', autonomous: ':workspace', unattended: ':workspace' };
+const CODEX_APPROVAL = { ask: 'on-request', 'auto-edit': 'on-request', auto: 'on-request', autonomous: 'never', unattended: 'never' };
 
 const starlark = (v) => (Array.isArray(v) ? `[${v.map(starlark).join(', ')}]` : JSON.stringify(v));
 
@@ -300,6 +324,7 @@ export function renderPrefixRule(r) {
 function emitCodex(ctx) {
   const { policy: p, tier } = ctx;
   if (tier === 'auto-edit') ctx.warn('degraded', 'Codex has no "edits free, commands ask" mode: auto-edit compiles like ask (approval_policy on-request)');
+  if (tier === 'auto') ctx.warn('degraded', 'Codex has no classifier-reviewed mode: auto compiles to approval_policy on-request on the workspace sandbox (sandboxed work runs without asking; anything outside it prompts)');
   const filesystem = {};
   const roots = {};
   const domains = {};
@@ -355,6 +380,7 @@ function emitCodex(ctx) {
   for (const d of p.egress?.allow_domains ?? []) setDomain(d, 'allow');
   for (const d of p.egress?.deny_domains ?? []) setDomain(d, 'deny');
   if (p.sandbox?.fail_if_unavailable) ctx.gap('sandbox', 'fail_if_unavailable has no documented Codex key');
+  if (p.sandbox?.credentials?.length) ctx.gap('sandbox', `credential masks have no documented Codex key: sandboxed commands would read ${p.sandbox.credentials.map((c) => c.path ?? `$${c.env}`).join(', ')} unmasked`);
   for (const w of p.sandbox?.writable_roots ?? []) setPath(w, 'write');
 
   const budget = p.budgets?.[tier] ?? {};
@@ -389,7 +415,7 @@ function emitCodex(ctx) {
 
 // ------------------------------------------------------------------------------------- gemini
 
-const GEMINI_MODE = { 'read-only': 'plan', ask: 'default', 'auto-edit': 'auto_edit' };
+const GEMINI_MODE = { 'read-only': 'plan', ask: 'default', 'auto-edit': 'auto_edit', auto: 'auto_edit' };
 
 const reEscape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -448,6 +474,7 @@ function emitGemini(ctx) {
     if (ctx.gap('tier', 'YOLO is a launch flag, and no page states that a user-tier deny outranks its auto-approval')) args.push('--approval-mode=yolo');
   }
   if (tier === 'unattended') ctx.notes.push('run gemini non-interactively; ask_user rules are denials there');
+  if (tier === 'auto') ctx.warn('degraded', 'Gemini has no classifier-reviewed mode: auto compiles to auto_edit (edits without asking, commands ask)');
 
   if (p.deny_read.length && ctx.gap('deny_read', `read denies reach only the file tools (${GEMINI_READ_TOOLS.join(', ')}; names unverified), not run_shell_command reads`)) {
     for (const g of p.deny_read) rule('forbid', { toolName: GEMINI_READ_TOOLS, argsPattern: globArgsPattern(g) }, { reason: `deny_read ${g} (${ctx.source})` });
@@ -467,6 +494,7 @@ function emitGemini(ctx) {
   if (allowed.length) tools.allowed = allowed;
   if (Object.keys(tools).length) settings.tools = tools;
   if (p.sandbox?.fail_if_unavailable) ctx.gap('sandbox', 'fail_if_unavailable has no Gemini key');
+  if (p.sandbox?.credentials?.length) ctx.gap('sandbox', `credential masks have no Gemini key: sandboxed commands would read ${p.sandbox.credentials.map((c) => c.path ?? `$${c.env}`).join(', ')} unmasked`);
   for (const w of p.sandbox?.writable_roots ?? []) ctx.drop('sandbox.writable_roots', { write: w }, 'container mounts are the launcher\'s job');
 
   const budget = p.budgets?.[tier] ?? {};
@@ -501,12 +529,25 @@ export function assertNoUnsafeKeys(files, { engine, tier }) {
 
 const EMIT = { claude: emitClaude, codex: emitCodex, gemini: emitGemini };
 
+// The policy one profile compiles from: its own sandbox and egress merged key by key over the
+// top-level ones (a key the profile sets replaces the top-level key; lists are replaced, not joined).
+export function effectivePolicy(policy, profileName) {
+  const prof = policy.profiles?.[profileName];
+  if (!prof?.sandbox && !prof?.egress) return policy;
+  return {
+    ...policy,
+    ...(prof.sandbox ? { sandbox: { ...policy.sandbox, ...prof.sandbox } } : {}),
+    ...(prof.egress ? { egress: { ...policy.egress, ...prof.egress } } : {}),
+  };
+}
+
 // Compile one profile for one engine. The policy must already be schema-valid (the CLI validates it
 // first). Returns { ok, files: [{ path, content, kind }], errors, warnings, accepted, notes }; files is
 // empty whenever errors is not.
 export function compilePolicy(policy, { profile, engine, source = 'agent-policy.yaml' }) {
   if (!ENGINES.includes(engine)) throw new Error(`unknown engine "${engine}" (${ENGINES.join(', ')})`);
-  const ctx = new Context(policy, profile, engine, source);
+  const ctx = new Context(effectivePolicy(policy, profile), profile, engine, source);
+  policy = ctx.policy;
   // A read-only tier never writes, so a write pre-approval would contradict it on every engine.
   if (ctx.tier === 'read-only' && (policy.allow ?? []).some((r) => r.write)) {
     for (const r of policy.allow.filter((x) => x.write)) ctx.drop('allow', r, 'the read-only tier never writes');

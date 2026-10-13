@@ -1,0 +1,34 @@
+{
+  "tier": "auto",
+  "warnings": [
+    {
+      "rule": "degraded",
+      "message": "Codex has no classifier-reviewed mode: auto compiles to approval_policy on-request on the workspace sandbox (sandboxed work runs without asking; anything outside it prompts)"
+    },
+    {
+      "rule": "dropped",
+      "message": "ask write infra/** dropped on codex: Codex has no ask for writes or tools"
+    },
+    {
+      "rule": "dropped",
+      "message": "ask tool web-search dropped on codex: Codex has no ask for writes or tools"
+    },
+    {
+      "rule": "merge-mcp",
+      "message": "merge mcp_servers.{prod-db}.disabled_tools into the existing server entries"
+    }
+  ],
+  "accepted": [
+    {
+      "field": "forbid",
+      "message": "write **/.git/hooks/**: a filesystem \"read\" downgrade covers sandboxed commands, not the apply_patch tool",
+      "reason": "the write deny downgrades sandboxed commands only; apply_patch is covered by the project hook"
+    },
+    {
+      "field": "sandbox",
+      "message": "credential masks have no documented Codex key: sandboxed commands would read ~/.config/gh/hosts.yml, $NPM_TOKEN unmasked",
+      "reason": "the devbox image fails to start without its sandbox; on the desk, Codex commands read the gh and npm credentials as they did before the masks"
+    }
+  ],
+  "notes": []
+}

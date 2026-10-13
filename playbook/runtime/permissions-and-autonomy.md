@@ -64,7 +64,8 @@ a user bypass default, but did under the no-prompt mode. The interactive prompt 
 
 ## Contracts used
 
-`policy` (tiers per machine profile with their `requires`, `forbid`, `ask`, `deny_read`, `egress`,
+`policy` (tiers per machine profile, `auto` among them, with their `requires` and their own
+`sandbox` and `egress` overrides; `forbid`, `ask`, `deny_read`, `egress`, sandbox credential masks,
 budgets, `accept_gaps`), compiled per
 engine by `tools/compile-policy.mjs`; `grant`; `run-record` (permission denials per run).
 

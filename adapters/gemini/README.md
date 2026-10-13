@@ -35,6 +35,7 @@ non-interactive mode `ask_user` is treated as `deny`.
 | `tier: read-only` | `general.defaultApprovalMode: "plan"` | Strict read-only mode. [configuration][config] |
 | `tier: ask` | `general.defaultApprovalMode: "default"` | |
 | `tier: auto-edit` | `general.defaultApprovalMode: "auto_edit"` | |
+| `tier: auto` | `general.defaultApprovalMode: "auto_edit"` | No classifier-reviewed mode; the closest stricter one edits without asking and asks for commands. Compiled with a `degraded` warning. |
 | `tier: autonomous` | no settings key: YOLO "can only be enabled from the command line"; the launcher passes it | Whether an admin- or user-tier `deny` outranks YOLO's auto-approval is not stated on the page read *(unverified)*; until a probe shows it, the compiler refuses `autonomous` for Gemini unless `accept_gaps` names `{engine: gemini, field: tier}`. |
 | `tier: unattended` | launcher passes the non-interactive flags; `ask_user` becomes deny | |
 | `deny_read` | `[[rule]] toolName = [<the file-reading tools>], argsPattern = "<regex of the glob>", decision = "deny"` | The tool names (`read_file`, `read_many_files`, the search and glob tools) are taken from the installed version's tool list at compile time *(not verified here)*; **partial**, and `run_shell_command` reads (`cat .env`) are not covered without a sandbox. Error unless `accept_gaps` names `{engine: gemini, field: deny_read}` or the profile runs Gemini sandboxed without the files mounted. |
@@ -48,6 +49,7 @@ non-interactive mode `ask_user` is treated as `deny`.
 | `sandbox.enabled` | `tools.sandbox: true` (or `docker`, `podman`, ...) | Seatbelt profiles `permissive-open` … `strict-proxied` on macOS. |
 | `sandbox.fail_if_unavailable` | — | **No equivalent**; error unless accepted. |
 | `sandbox.writable_roots` | — | Container mounts are the launcher's job. |
+| `sandbox.credentials` (masks) | — | **No equivalent**: sandboxed commands would read the credential unmasked; error unless `accept_gaps` names `{engine: gemini, field: sandbox}` (a container that mounts no credentials is the usual reason). |
 | `budgets` | subagent `max_turns`, `timeout_mins` only; none for the main session | Runner timeout; `max_usd` → error unless accepted. |
 
 **Never emitted:** `hooksConfig.enabled: false`, `security.disableYoloMode: false` overrides on a

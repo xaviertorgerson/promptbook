@@ -1,0 +1,11 @@
+{
+  "tier": "auto",
+  "warnings": [
+    {
+      "rule": "mask-not-a-read-deny",
+      "message": "Claude Code's file tools can read ~/.config/gh/hosts.yml: a mask covers sandboxed commands only (a deny_read entry would deny the sandbox too); on macOS a masked file is blocked instead of masked"
+    }
+  ],
+  "accepted": [],
+  "notes": []
+}

@@ -29,7 +29,7 @@
     {
       "field": "sandbox",
       "message": "fail_if_unavailable has no Gemini key",
-      "reason": "the launcher refuses to start without the container"
+      "reason": "the launcher refuses to start without the container, which mounts no gh or npm credentials"
     }
   ],
   "notes": []

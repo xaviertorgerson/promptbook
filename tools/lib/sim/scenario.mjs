@@ -74,7 +74,7 @@ export const FAULTS = {
   question: { tasks: [] },
 };
 
-const TIERS = ['read-only', 'ask', 'auto-edit', 'autonomous', 'unattended'];
+const TIERS = ['read-only', 'ask', 'auto-edit', 'auto', 'autonomous', 'unattended'];
 const SIZES = ['XS', 'S', 'M', 'L', 'XL'];
 const TASK_KEYS = new Set(['id', 'epic', 'priority', 'size', 'risk', 'touches', 'depends_on', 'criteria', 'budget', 'status', 'owner', 'title', 'lands_to']);
 

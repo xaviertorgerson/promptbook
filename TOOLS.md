@@ -137,12 +137,17 @@ on disk beside what it wrote, not only on stderr:
 
 | Engine | Files |
 |---|---|
-| claude | `settings.json` (permissions allow/deny/ask, `defaultMode` per tier, `sandbox`), `runner.json` (unattended: `--permission-mode dontAsk --allowedTools … --max-turns --max-budget-usd`) |
+| claude | `settings.json` (permissions allow/deny/ask, `defaultMode` per tier, `auto` for the auto tier, `sandbox` with `credentials` masks with `network.tlsTerminate`), `runner.json` (unattended: `--permission-mode dontAsk --allowedTools … --max-turns --max-budget-usd`) |
 | codex | `config.toml` (or `<profile>.config.toml` unattended: a `harness` permission profile, approval policy, network domains), `rules/harness.rules` (`prefix_rule` allow / prompt / forbidden with justification and match examples), `runner.json` |
 | gemini | `settings.json` (`defaultApprovalMode`, `tools.sandbox`, `tools.allowed`), `policies/harness.toml` (user-tier `[[rule]]` deny / ask_user / allow), `runner.json` |
 
-Fail closed: a deny-side field an engine cannot represent is an error that prints the `accept_gaps`
-stanza that would accept it; an unrepresentable ask or allow is dropped with a warning; on any error
+A profile's own `sandbox` and `egress` are merged key by key over the top-level ones before
+compiling (the merged egress still needs a default, and a deny default its allow list:
+`egress-effective`). Fail closed: a deny-side field an engine cannot represent is an error that
+prints the `accept_gaps` stanza that would accept it (credential masks on Codex and Gemini are a
+`sandbox` gap; the auto tier's WebFetch outside a deny egress list, left to Claude's classifier, an
+`egress` gap); a tier an engine has no mode for compiles to its stricter equivalent with a `degraded`
+warning; an unrepresentable ask or allow is dropped with a warning; on any error
 nothing is written. Refused outright: the bypass tier (`autonomous`) without a `requires` list naming
 its outside preconditions, or without `sandbox.enabled`, `sandbox.fail_if_unavailable` and
 `egress.default: deny` unless the missing field's gap is accepted by name (`accept_gaps` sandbox or

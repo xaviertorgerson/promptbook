@@ -278,9 +278,20 @@ harness adds a mandatory expiry.
 
 **Purpose.** The operator's (L1) agent policy: autonomy tier per machine profile, what is never read
 (`deny_read`), never done (`forbid`), asked about (`ask`), pre-approved (`allow`), network `egress`,
-`sandbox`, and run `budgets`; compiled per engine. **Schema** `policy.schema.json` 1.2.0. Tiers:
-read-only, ask, auto-edit, autonomous, unattended (an unattended profile requires
-`budgets.unattended`). A profile may name `requires`: preconditions the operator keeps outside the
+`sandbox`, and run `budgets`; compiled per engine. **Schema** `policy.schema.json` 1.3.0. Tiers:
+read-only, ask, auto-edit, auto, autonomous, unattended (an unattended profile requires
+`budgets.unattended`). `auto` (1.3.0) is a classifier-reviewed tier: routine actions run without
+asking, the engine's classifier blocks or asks for risky ones, ask rules still prompt and walls hold;
+it compiles to Claude's auto mode, and to the stricter auto-edit equivalent, with a warning, on an
+engine with no classifier mode (Codex on-request, Gemini auto_edit). A profile may carry its own
+`sandbox` and `egress`, merged key by key over the top-level ones (1.3.0). `sandbox.credentials`
+(1.3.0) lists credential masks: a file (`path`, optional `extract`) or an environment variable
+(`env`) that sandboxed commands may use without reading it, the real value reaching only
+`inject_hosts`; a mask is not a wall (the file tools are not covered), and a path `deny_read` names
+cannot also be masked (`credential-not-denied`). **Migration:** the dotfiles' top-level
+`x-claude: { default_mode: { workstation: auto } }` (read by their `settings.json.tmpl` to put
+Claude in auto mode while the profile said auto-edit) becomes `profiles.workstation.tier: auto`;
+Codex compiles exactly as it did, so drop the `x-claude` key and the template's lookup. A profile may name `requires`: preconditions the operator keeps outside the
 policy (`prod-unreachable-from-this-host`, `non-root-container`); the bypass tier (autonomous)
 must name them (a validation warning, a compile error) and the compiler passes them to the launcher
 in `runner.json`. A rule has exactly one matcher: `command` (argv prefix, with alternatives),
