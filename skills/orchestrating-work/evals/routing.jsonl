@@ -1,0 +1,15 @@
+{"prompt":"Run the rating-engine epic: dispatch the ready tasks to workers, at most three at a time, and pair each with a reviewer.","expect":"trigger","kind":"positive"}
+{"prompt":"Keep the agents going on the ready queue overnight and tell me in the morning what needs me.","expect":"trigger","kind":"positive"}
+{"prompt":"The coordinator session crashed mid-epic. Pick up where it left off without redoing anything.","expect":"trigger","kind":"positive"}
+{"prompt":"What are the agents doing right now, and which tasks are waiting on me?","expect":"trigger","kind":"positive"}
+{"prompt":"BILL-4 and BILL-6 both look ready; which can run in parallel without stepping on each other?","expect":"trigger","kind":"positive"}
+{"prompt":"The loop stopped after BILL-3 stalled. What should happen next?","expect":"trigger","kind":"positive"}
+{"prompt":"Take BILL-12 and implement it end to end.","expect":"no-trigger","kind":"near-miss","route_to":"implementing-task","note":"one task, done by the agent itself"}
+{"prompt":"Write a grant that lets the coordinator merge into the integration branch for this epic only.","expect":"no-trigger","kind":"near-miss","route_to":"delegating-authority"}
+{"prompt":"Land PR 240 now that it's approved.","expect":"no-trigger","kind":"near-miss","route_to":"landing-changes"}
+{"prompt":"The author pane went blocked; update its task record.","expect":"no-trigger","kind":"near-miss","route_to":"reporting-state"}
+{"prompt":"Which model should the explorer subagent use?","expect":"no-trigger","kind":"near-miss","route_to":"routing-models"}
+{"prompt":"Should this epic use research-plan-implement or spec-driven?","expect":"no-trigger","kind":"near-miss","route_to":"choosing-methodology"}
+{"prompt":"Decompose the approved invoicing spec into task files.","expect":"no-trigger","kind":"near-miss","route_to":"planning-work"}
+{"prompt":"Explain how a Kubernetes operator reconciles desired state.","expect":"no-trigger","kind":"negative","route_to":"none"}
+{"prompt":"Rename the variable rate to unitRate in rating.ts.","expect":"no-trigger","kind":"negative","route_to":"none"}

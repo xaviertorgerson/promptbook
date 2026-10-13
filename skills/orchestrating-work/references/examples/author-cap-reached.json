@@ -1,0 +1,41 @@
+{
+  "task": "BILL-9",
+  "role": "author",
+  "summary": "Stopped at the 120-turn ceiling with AC-1 and AC-2 met and AC-3 unmet. AC-3 needs the invoice snapshot table that BILL-11 introduces; working around it would duplicate BILL-11's migration. Commits are pushed to feat/bill-9-credit-notes and the draft PR is open.",
+  "attention": "needs-human",
+  "artifacts": [
+    {
+      "path": "https://forge.example.com/acme/billing/pull/251",
+      "kind": "pr"
+    },
+    {
+      "path": "specs/rating-engine/tasks/BILL-9.md",
+      "kind": "spec",
+      "note": "handoff appended to the agent log"
+    }
+  ],
+  "decisions_needed": [
+    {
+      "question": "BILL-9 AC-3 depends on the snapshot table from BILL-11. Add BILL-11 to depends_on and park BILL-9 as blocked, or split AC-3 into a new task?",
+      "options": [
+        "park BILL-9 behind BILL-11",
+        "split AC-3 into a follow-up task"
+      ],
+      "recommendation": "park BILL-9 behind BILL-11",
+      "blocking": true,
+      "for": "human"
+    }
+  ],
+  "criteria": {
+    "met": [
+      "AC-1",
+      "AC-2"
+    ],
+    "unmet": [
+      {
+        "id": "AC-3",
+        "reason": "needs BILL-11's snapshot table"
+      }
+    ]
+  }
+}
