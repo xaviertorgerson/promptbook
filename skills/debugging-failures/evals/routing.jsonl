@@ -1,0 +1,12 @@
+{"prompt":"Why is the nightly export failing?","expect":"trigger","kind":"positive","note":"ported from debug-forensics evals"}
+{"prompt":"This test is flaky, fix it.","expect":"trigger","kind":"positive","note":"ported from debug-forensics evals"}
+{"prompt":"Users report the invoice total is off by one cent.","expect":"trigger","kind":"positive","note":"ported from debug-forensics evals"}
+{"prompt":"The AC-2 test passes locally but fails on CI every third run.","expect":"trigger","kind":"positive"}
+{"prompt":"Since yesterday's deploy the API returns 500 on /orders. Here's the stack trace.","expect":"trigger","kind":"positive","note":"pasted error"}
+{"prompt":"Run the weekly health sweep over the logs and dependencies.","expect":"no-trigger","kind":"near-miss","route_to":"none","note":"owned by an L4 runtime audit (the template's nightly-audit), not an L3 skill"}
+{"prompt":"Add tests for the export.","expect":"no-trigger","kind":"near-miss","route_to":"writing-tests","note":"ported from debug-forensics evals"}
+{"prompt":"Look at the last 50 failed agent runs and propose changes to our skills.","expect":"no-trigger","kind":"near-miss","route_to":"reflecting-on-runs"}
+{"prompt":"Is this webhook handler safe against forged requests?","expect":"no-trigger","kind":"near-miss","route_to":"reviewing-security"}
+{"prompt":"Check whether this PR meets its acceptance criteria before the human reviews it.","expect":"no-trigger","kind":"near-miss","route_to":"verifying-work"}
+{"prompt":"Write a haiku about autumn.","expect":"no-trigger","kind":"negative","route_to":"none"}
+{"prompt":"Convert 72 degrees Fahrenheit to Celsius.","expect":"no-trigger","kind":"negative","route_to":"none"}
