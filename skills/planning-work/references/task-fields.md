@@ -14,7 +14,7 @@ keeps its meaning, and the harness fields are optional to the schema but expecte
 | `cuj` | the journey id (or a list) this slice serves; `null` only for a chore with no journey |
 | `guiding_docs` | paths (with `#anchor` for an ADR) the coder reads first; each must exist |
 | `branch` | `<type>/<prefix>-<n>-<slug>` |
-| `depends_on` | ids that must be merged first; the skeleton for every non-skeleton task |
+| `depends_on` | ids that must be merged first (or integrated, for a dependency in the same epic landing on its integration branch); the skeleton for every non-skeleton task |
 | `owner` | `null` when planned |
 
 ## Harness fields
@@ -27,7 +27,8 @@ keeps its meaning, and the harness fields are optional to the schema but expecte
 | `risk` | `low`, `medium`, `high`, or `{level, irreversible, reasons}` | `low` on anything touching money, personal data, auth, deletion or a public API |
 | `evaluator` | ordered `{kind, ref}`: tests, script, agent-review, human, eval | only "tests" on a high-risk task |
 | `budget` | `{max_turns, max_usd, max_minutes}` for the whole task across runs | no budget on an unattended task |
-| `mode` | the method that selects skills (below) | ralph-loop on high risk or an existing codebase |
+| `mode` | the method that selects skills (below), only where the task differs from the epic's `mode` | ralph-loop on high risk or an existing codebase |
+| `lands_to` | the epic's integration branch (`integration/<epic>`) when the epic lands there; absent means the protected branch | a branch of another epic, or the protected branch spelled out |
 
 ## Risk → evaluator
 
@@ -58,4 +59,5 @@ stops and asks; it is not retried blindly.
 | ralph-loop | greenfield work with strong tests and types | existing codebases, high or irreversible risk |
 | icm-pipeline | sequential, human-reviewed stages, often docs or content | concurrent work |
 
-The mode's selection rules belong to choosing-methodology; set the default here and let it override.
+The mode's selection rules belong to choosing-methodology. The epic's default is `mode` in the
+spec's frontmatter (absent: spec-driven); a task's `mode` overrides it.

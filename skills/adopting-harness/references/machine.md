@@ -57,8 +57,9 @@ never touches.
 - Unattended tiers emit nothing into settings that would loosen a project; the runner passes the
   no-prompt mode, the allowlist and the budget.
 - An `allow` or `ask` that a `forbid` covers is a warning (it never takes effect); fix the policy.
-- The bypass tier carries its precondition (production unreachable by network ACL; non-root in a
-  sandbox) in the profile's `description`, and the operator confirms it holds on that machine.
+- The bypass tier names its preconditions in the profile's `requires` (production unreachable by
+  network ACL: `prod-unreachable-from-this-host`; non-root in a container: `non-root-container`); the
+  compile refuses the tier without them and the operator confirms they hold on that machine.
 
 ## Runtime pins
 

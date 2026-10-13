@@ -15,20 +15,21 @@ PR. The protected branch stays human (tier 3); the coordinator lands only into t
 2. **Grant** (a human): a `grant` whose merge action names `repo`, `target: integration/<epic>`,
    one `strategy`, and `requires` with at least `independent-review` and `required-checks`
    (example: integration-example.grant.yaml). With an expiry and limits.
-3. **Tasks target it.** Each task's worktree bases on the integration branch's recorded commit
-   (managing-worktrees); each task PR's base is `integration/<epic>`.
+3. **Tasks target it.** Each task sets `lands_to: integration/<epic>`; its worktree bases on the
+   integration branch's recorded commit (managing-worktrees); its PR's base is `integration/<epic>`.
 4. **Land task PRs** with the main procedure, tier 2: the grant check, the evaluator's pass on the
    current head, mechanical conflicts only, checks on the merged result, one at a time or through
-   the queue. Each task goes `human-review` → `merging` (`approve-pr` under the grant) → `merged`
-   (`land`). Note: `merged` here means merged into the integration branch; the agent-log line names
-   the target so nobody reads it as landed on the protected branch.
+   the queue. Each task goes `human-review` → `merging` (`approve-pr` under the grant) → `integrated`
+   (`integrate`). It is not `merged` until the integration branch reaches the protected branch;
+   a dependent in the same epic may start once its dependency is `integrated`.
 5. **Keep it current.** Merge the protected branch into the integration branch regularly (never
    rebase a shared integration branch). A semantic conflict there goes to a human like any other.
-6. **Close the epic.** When every task is merged and the epic's acceptance holds on the
+6. **Close the epic.** When every task is `integrated` and the epic's acceptance holds on the
    integration branch, open one PR `integration/<epic>` → protected branch with: the tasks, the
    acceptance evidence (verdicts, the preview of the integrated build), the grant id, and anything
-   the coordinator decided under `dispose-findings`. A human reviews and merges it (tier 3). Then
-   the epic's `finish` transition, by the owner or planner.
+   the coordinator decided under `dispose-findings`. A human reviews and merges it (tier 3) and records
+   `promote` (`integrated` → `merged`) for each task it carried. Then the epic's `finish`
+   transition, by the owner or planner.
 7. **Afterwards.** The coordinator records the grant's end (expired, revoked, or the `stop_when`
    outcome reached). The integration branch is deleted only by a human.
 

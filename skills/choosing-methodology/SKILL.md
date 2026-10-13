@@ -45,11 +45,13 @@ the default and override per task only when a task's shape differs.
 3. **State what the mode loads and guards** (`references/modes.md`): the skills the runtime loads
    for its tasks (and no other workflow skills), the guards it adds to transitions, and the invariants
    it can never remove (walls, the evaluator for risk medium and up, human merge, human spec approval).
-4. **Record it.** Set `mode` on each task file (the `task` contract's field); state the epic default
-   in the epic's spec body (its frontmatter has no `mode` field yet). Add one line of rationale to
-   the spec ("mode: research-plan-implement — brownfield payment path, risk high"). Validate the task
-   files if the validator is available: `node tools/validate.mjs specs/<epic>/tasks/`.
-5. **Hand the guards to the runtime**: the runtime reads `mode` at dispatch, loads that mode's skill
+4. **Record it.** Set the epic's default as `mode` in the spec's frontmatter (the `epic` contract;
+   absent means spec-driven) and `mode` on a task file only where the task differs (a task's `mode`
+   overrides the epic's). Add one line of rationale to the spec ("mode: research-plan-implement —
+   brownfield payment path, risk high"). Validate if the validator is available:
+   `node tools/validate.mjs specs/<epic>/`.
+5. **Hand the guards to the runtime**: the runtime reads the effective mode (the task's, else the
+   epic's, else spec-driven) at dispatch, loads that mode's skill
    set and passes the guards to its gate checks (orchestrating-work).
 
 ### Switching mode mid-epic
@@ -68,7 +70,9 @@ A mode change on a task already past `spec-draft` is a kick-back, never a silent
 5. A `spec-draft` task just changes `mode`. A `ready` task has no transition back to `spec-draft`:
    the owner or an engineer edits `mode` before anyone claims it (suspend it first if a claim is
    imminent), and the new mode's claim guard applies. Merged tasks keep theirs.
-6. Changing the epic default changes nothing already in flight.
+6. Changing the epic's `mode` changes the effective mode of every task without its own `mode`.
+   Before changing it, pin the old value on tasks already claimed (their switch goes through review
+   and `respec` as above); `ready` tasks follow rule 5.
 
 ## Outputs
 

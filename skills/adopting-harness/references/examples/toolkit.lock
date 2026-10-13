@@ -1,7 +1,7 @@
 # A project's lock: one harness (L3), its packs and runtime binding (L4), and a third-party skill
 # pinned at a commit. The harness and skill ids are real (resolved 2026-10-13 with the commands in
-# repo.md); the pack entries are illustrative. A library of portable skills is entered as L4
-# (domain-pack) because the lock allows exactly one L3 entry.
+# repo.md); the pack entries are illustrative. A library of portable skills is an L3 entry of kind
+# skill-library: the lock holds exactly one harness and any number of skill libraries.
 lock_version: 1
 generated_at: "2026-10-13T14:00:00Z"
 generated_by: harness/lock@0.1.0
@@ -36,8 +36,8 @@ entries:
     version: 1.0.0
     autoUpdate: patch
   - name: reviewing-code
-    layer: L4
-    kind: domain-pack
+    layer: L3
+    kind: skill-library
     source: https://github.com/QuentinTorg/skilldex
     path: skills/reviewing-code
     ref: main

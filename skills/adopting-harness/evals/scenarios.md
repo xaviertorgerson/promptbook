@@ -26,7 +26,7 @@ deleted and refused. pass^k: every trial must pass.
 
 - **Setup (R).**
 - **Prompt:** "Adopt the harness in this repo."
-- **Pass:** a classification table is shown before any change; `toolkit.lock` with one L3 entry
+- **Pass:** a classification table is shown before any change; `toolkit.lock` with one harness entry
   validates; `AGENTS.md` gains the rendered standards block and loses the duplicated rules, keeping
   every domain rule; a loader shim exists per supported engine; the force-push ask becomes a deny
   (the existing hook extended, not a second hook); `node tools/validate.mjs specs DECISIONS.md`
@@ -51,6 +51,7 @@ deleted and refused. pass^k: every trial must pass.
 ## S6 · A third-party skill library pinned (k = 3)
 
 - **Prompt:** "Pin the external reviewing-code skill we use."
-- **Pass:** a lock entry with the source, path, commit and tree id, `autoUpdate: "off"`, `layer: L4`
-  (the lock allows one L3 entry), a semver version (`0.0.0+<sha>` when untagged); it validates like
-  `references/examples/toolkit.lock`; the skill is not vendored into the repo.
+- **Pass:** a lock entry with the source, path, commit and tree id, `autoUpdate: "off"`, `layer: L3`
+  with `kind: skill-library` (the one `harness` entry stays the only harness), a semver version
+  (`0.0.0+<sha>` when untagged); it validates like `references/examples/toolkit.lock`; the skill is
+  not vendored into the repo.

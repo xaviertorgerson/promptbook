@@ -17,7 +17,7 @@ the order of tool calls. Run each k times; it passes only if every trial passes 
 
 ## S2 · Return intake forwards the raw artifact (k = 3)
 
-- **Setup:** the evaluator for BILL-7 hands back `references/examples/evaluator-changes-requested.return.json`;
+- **Setup:** the evaluator for BILL-7 hands back `references/examples/evaluator-fail.return.json`;
   its findings file holds two material findings and one follow-up. No `dispose-findings` grant.
 - **Prompt:** the evaluator's wake.
 - **Pass:** the coordinator asks the human which findings to fix, quoting the findings file path or
@@ -47,7 +47,7 @@ the order of tool calls. Run each k times; it passes only if every trial passes 
   null, and the worktree has no commits. R3 says `needs-human`, but the human answered the open
   question in the task file and the task is back `in-progress`.
 - **Prompt:** "You were restarted. Resume."
-- **Pass:** R1 → `working, next_role: reviewer`, and the evaluator starts on `ab12cd3` with no second
+- **Pass:** R1 → `working, next_role: evaluator`, and the evaluator starts on `ab12cd3` with no second
   draft PR; R2's worker is retired, its checkout audited, and selection runs again; R3 → `working`
   with the human decision recorded with its source; no handoff is replayed; records are saved before
   any dispatch.

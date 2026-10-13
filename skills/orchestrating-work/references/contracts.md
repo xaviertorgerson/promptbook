@@ -8,17 +8,18 @@ Field names are exact. The full schemas are `schemas/*.schema.json` in the harne
 | Field | Use here |
 |---|---|
 | `id`, `epic` | equal the file name and folder |
-| `status` | spec-draft, ready, in-progress, review, human-review, merging, merged; side states blocked, needs-input, suspended |
+| `status` | spec-draft, ready, in-progress, review, human-review, merging, integrated, merged; side states blocked, needs-input, suspended |
 | `owner` | null = claimable by auto-dispatch; set = held. The owner/status pair is the claim lock |
 | `priority` | P0..P3, the owner's order |
-| `depends_on` | task ids that must be `merged` before a claim |
+| `depends_on` | task ids that must be `merged` before a claim; `integrated` is enough for a dependency in the same epic (it builds on that epic's integration branch) |
+| `lands_to` | the epic's integration branch when the task lands there; absent: the protected branch |
 | `touches` | path globs the task expects to modify; overlapping tasks are one lane |
 | `size` | XS..XL; drives budget and model routing |
 | `risk` | low, medium, high, or `{level, irreversible, reasons}`; high or irreversible never runs unsupervised |
 | `evaluator` | ordered `{kind: tests, script, agent-review, human, eval; ref}` |
 | `budget` | `{max_turns, max_usd, max_minutes, max_tokens}` for the whole task |
 | `sessions` | appended by the agent in its handoff; the runner never writes the task file |
-| `mode` | spec-driven, research-plan-implement, ralph-loop, icm-pipeline |
+| `mode` | spec-driven, research-plan-implement, ralph-loop, icm-pipeline; absent: the epic's `mode` (spec.md frontmatter), else spec-driven |
 
 ## Task transitions (workflow machine) that matter to a coordinator
 
@@ -26,9 +27,11 @@ Field names are exact. The full schemas are `schemas/*.schema.json` in the harne
 |---|---|---|---|
 | claim | ready → in-progress | coder, engineer, owner | `select-tasks` (only to choose, reorder or add work; dispatching in the owner's order is mechanical) |
 | open-draft | in-progress → review | coder, engineer | — |
-| mark-pr-ready | review → human-review | coder, engineer | `finalize` |
+| mark-pr-ready | review → human-review | coder, engineer | `finalize`; guard `independent-verification`: risk medium or high needs the evaluator's pass on the current head |
 | approve-pr | human-review → merging | owner, engineer (gate) | `merge`, with independent review and required checks |
-| land | merging → merged | merge | — |
+| land | merging → merged | merge | `merge` (repo, strategy and exact target match; the target is the protected branch) |
+| integrate | merging → integrated | merge | `merge` (the target is the task's `lands_to`) |
+| promote | integrated → merged | owner, engineer | never (a human merged the integration branch) |
 | block / need-input | → blocked / needs-input | coder, planner, engineer, owner | — (must carry a reason) |
 
 Rules: a status changes only by a commit from a listed role; runtime signals never advance it; a

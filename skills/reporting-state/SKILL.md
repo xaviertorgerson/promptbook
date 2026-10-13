@@ -46,7 +46,7 @@ signal ever moves a task's workflow status.
 5. **Update the record** (template in `references/task-record-template.md`):
    - `state.name`: the attention.
    - `state.summary`: a specific 3–5-word phrase ("Awaiting proration decision"), ≤ 120 characters.
-   - `state.next_role`: author, reviewer, worker, workspace_agent or orchestrator while working; omit when complete.
+   - `state.next_role`: author, reviewer, evaluator, worker, workspace_agent or orchestrator while working; omit when complete.
    - `state.next_action`: one concrete step; required for needs-human, absent when complete.
    - `role_sessions.<role>`: session id, engine, model, effort when a session started or changed; a
      fresh session replacing a lost one is new, never labeled a resume.

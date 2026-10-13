@@ -45,7 +45,8 @@ The rules you rely on from `workflow`, `attention` and `authority` are excerpted
 ### 2. Select (mechanical; `references/dispatch-loop.md`)
 
 A task is dispatchable when all hold:
-- `status: ready`, `owner: null`, every `depends_on` task is `merged`, its epic is approved or in-progress;
+- `status: ready`, `owner: null`, every `depends_on` task is `merged` (or `integrated`, when it is in
+  the same epic and lands on that epic's integration branch), its epic is approved or in-progress;
 - its `touches` are disjoint from every in-flight task's `touches` (no `touches` means it runs alone in its epic);
 - its mode's guards hold (`references/contracts.md`, Mode guards); for example research-plan-implement
   needs an approved plan in the task's working notes before the claim;

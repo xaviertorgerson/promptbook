@@ -1,4 +1,4 @@
-# Task record template (task-record contract 1.0.0)
+# Task record template (task-record contract 1.2.0)
 
 One per task per runtime, at `.orchestrator/tasks/<task_id>.yaml`, untracked. Omit unused fields.
 Unknown fields are errors except `x-*`.
@@ -20,12 +20,13 @@ pull_requests: [<url>]
 state:                          # required
   name: working                 # working | needs-human | complete
   summary: <3-5 words, max 120 chars>
-  next_role: author             # author | reviewer | worker | workspace_agent | orchestrator | null; omit when complete
+  next_role: author             # author | reviewer | evaluator | worker | workspace_agent | orchestrator | null; omit when complete
   next_action: <one concrete step>   # required for needs-human; absent when complete
 signals:                        # last observation per role; evidence, never a transition
-  author: { source: herdr, value: blocked, observed_at: "<ISO 8601>" }   # herdr | a2a | mcp-tasks | claude-headless | codex-exec | ci | other
+  author: { source: herdr, value: blocked, observed_at: "<ISO 8601>" }   # herdr | a2a | mcp-tasks | claude-headless | codex-exec | loop-outcome | ci | forgejo | gitlab | other
 result: <latest result or verification reference>
-reviews: [{ pr: <url>, head: <sha>, outcome: pass, by: <reviewer>, ref: <findings path> }]   # pass | changes-requested | comment
+reviews: [{ pr: <url>, head: <sha>, role: evaluator, outcome: pass, by: <evaluator>, ref: <verdict path> }]   # evaluator: pass | fail; reviewer: pass | changes-requested | comment
+resources: { slug: <branch slug>, worktree_path: <path>, database: <name>, ports: { slot: <n>, first: <port>, last: <port> } }   # managing-worktrees; audit and worktree_removed_at at cleanup
 decisions: [{ decision: <what the human decided>, source: <where>, scope: <task or grant>, at: "<ISO 8601>" }]
 updated_at: "<ISO 8601>"
 ```

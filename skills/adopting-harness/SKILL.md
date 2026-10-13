@@ -57,8 +57,9 @@ contracts all three speak.** Adoption is additive and reconciling: never clobber
      settings override; the compile refuses such a tier;
    - add deny rules; never remove or override a project's denies;
    - a bypass or autonomous default only on profiles where production is unreachable at the network
-     level and the agent runs non-root in a sandbox or container; state that precondition in the
-     profile's `description`;
+     level and the agent runs non-root in a sandbox or container; name those preconditions in the
+     profile's `requires` (`prod-unreachable-from-this-host`, `non-root-container`): the compile
+     refuses a bypass tier without them and hands them to the launcher to check;
    - unattended profiles run the engine's no-prompt mode with an explicit allowlist, and a budget.
 5. **Pin runtimes.** Agents, terminal multiplexers and their plugins at exact versions in the
    package or tool manager; bumps arrive as reviewed changes checked against plugins' minimum-version
@@ -69,10 +70,11 @@ contracts all three speak.** Adoption is additive and reconciling: never clobber
 
 ### 3. A repository (L2)
 
-1. **Lock.** Write `toolkit.lock`: exactly one L3 entry (the harness) and one L4 entry per pack,
-   runtime binding and third-party skill source. Use the lock tool if available (`harness lock`, or
-   `node tools/lock.mjs`); otherwise resolve commit and tree by hand (`references/repo.md`).
-   Validate: `node tools/validate.mjs toolkit.lock`. CI fails on drift.
+1. **Lock.** Write `toolkit.lock`: exactly one harness entry (L3), one `skill-library` entry (L3)
+   per third-party portable skill source, and one L4 entry per pack and runtime binding. Use the
+   lock tool if available (`harness lock`, or `node tools/lock.mjs`); otherwise resolve commit and
+   tree by hand (`references/repo.md`). Validate: `node tools/validate.mjs toolkit.lock`. CI fails
+   on drift.
 2. **Instruction map and shims.** `AGENTS.md` is the map (about 120 lines): north star, commands,
    pointers, domain rules, and the standards block rendered from the pinned harness. Each engine gets
    a one-line loader (an import file, or a settings key naming `AGENTS.md`). Stack guardrails live

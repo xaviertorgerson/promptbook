@@ -17,12 +17,14 @@ implementation, and never invent a criterion the spec does not support.
 
 ## Inputs
 
-- `specs/<epic>/spec.md` (REQ and NFR rows), `cuj.md`, `docs/ux/<epic>.md`, `DECISIONS.md` (one-way
-  ADRs and their fitness functions), the brief's riskiest assumption.
+- `specs/<epic>/spec.md` (REQ and NFR rows; the epic's default `mode` in its frontmatter),
+  `cuj.md`, `docs/ux/<epic>.md`, `DECISIONS.md` (one-way ADRs and their fitness functions), the
+  brief's riskiest assumption.
 - Existing tasks across `specs/*/tasks/` (ids are never reused; prefixes stay per epic).
 - Contract `task`: required `id`, `epic`, `status`, `priority`, `cuj`, `guiding_docs`, `branch`,
   `depends_on`, `owner`; optional `parent`, `size`, `requirements`, `touches`, `inputs`, `risk`,
-  `evaluator`, `budget`, `mode`; sections Context, Acceptance criteria, Open questions, Agent log.
+  `evaluator`, `budget`, `mode`, `lands_to`; sections Context, Acceptance criteria, Open questions,
+  Agent log.
   Templates: `references/task-template.task.md`, `references/skeleton-task-template.task.md`.
 
 ## Procedure
@@ -58,8 +60,11 @@ implementation, and never invent a criterion the spec does not support.
    - `evaluator`: ordered checks that decide "met": tests and the criterion-coverage script
      always; a separate reviewing agent from medium risk; a human for high risk.
    - `budget`: `{max_turns, max_usd, max_minutes}` for the whole task, from size and risk.
-   - `mode`: spec-driven by default; research-plan-implement for deep changes in unfamiliar code;
-     never ralph-loop for high risk or an existing codebase (choosing-methodology owns the choice).
+   - `mode`: only where the task differs from the epic's `mode` (the spec's frontmatter; absent
+     means spec-driven); research-plan-implement for deep changes in unfamiliar code; never
+     ralph-loop for high risk or an existing codebase (choosing-methodology owns the choice).
+   - `lands_to`: only when the epic lands through an integration branch (`integration/<epic>`);
+     the task then goes `merging` → `integrated`, and `merged` when a human merges that branch.
 6. **Write the criteria**: AC-1…AC-n restating only the requirements this task implements, one
    EARS sentence each ending with the REQ/NFR id; UI tasks name the states the flow designed. Each
    AC id will appear in a test name `<TASK-ID> AC-n …`.

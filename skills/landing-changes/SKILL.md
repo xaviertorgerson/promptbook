@@ -18,12 +18,13 @@ exact head and green checks on the merged result. Overlapping logic is never res
 
 - The PR: repository, base (target) branch, head commit, approvals with their head, check results,
   mergeability, the forge's branch protection and merge-queue settings for the target.
-- The task file (`task` contract): `status` (expected `human-review` or `merging`), `branch`, the
-  agent log; the epic for an integration flow.
+- The task file (`task` contract): `status` (expected `human-review` or `merging`), `branch`,
+  `lands_to` (the epic's integration branch, when it lands there), the agent log.
 - The grant, if a coordinator acts under one (`grant` contract): `granted_to`, `scope`, `actions`
   with `merge{repo, target, strategy, requires}`, `limits`, `expires_at`, `revoked_at`, `narrowed`.
 - The verdict of the independent evaluation bound to the head (verifying-work), and the task
-  record's `reviews[]` (`pr`, `head`, `outcome`, `by`).
+  record's `reviews[]` (`pr`, `head`, `outcome`, `role`, `by`; the evaluator's verdict is `role:
+  evaluator` with `outcome` pass or fail).
 - Your own identity, to check you authored nothing in the PR.
 
 ## Procedure
@@ -67,24 +68,27 @@ exact head and green checks on the merged result. Overlapping logic is never res
    one change at a time: re-run the full required checks on the merged result and merge only on
    green, with the approved strategy, through the forge's PR merge (never a direct push, never
    auto-merge on the protected branch). A clean base plus a clean PR can still merge red.
-9. **Record the land.** `land` (`merging` → `merged`) belongs to the merge role, only on a green
-   merged result: one commit naming the merge commit, the target, the strategy, the tier and the
-   grant id if any. At tier 2 the coordinator makes `approve-pr` under the grant and the merge role
-   lands; where the runtime has no separate merge role and the coordinator presses merge itself,
-   it records `land` in the merge role's name and cites the grant (references/authority-tiers.md
-   notes this gap in the workflow contract). On red merged checks: `return-to-human` with the
+9. **Record the land**, only on a green merged result: one commit naming the merge commit, the
+   target, the strategy, the tier and the grant id if any. Into the protected branch: `land`
+   (`merging` → `merged`). Into the epic's integration branch (the task's `lands_to`): `integrate`
+   (`merging` → `integrated`); the task becomes `merged` only through `promote`, a human's, after the
+   human merges the integration branch (step 10). Both belong to the merge role, or to the
+   coordinator under a live merge grant whose repo, strategy and exact target match (a runtime with
+   no separate merge role). On red merged checks: `return-to-human` with the
    failure, and the author gets it back through the human. Append the land record
    (references/land-record.md); the runner writes the run-record line with `grant`.
 10. **Epic integration flow** (references/integration-branch.md): the coordinator lands task PRs into
     `integration/<epic>` under the grant; keeps the integration branch current by merging the
     protected branch into it; when the epic's acceptance holds, opens one PR from the integration
     branch to the protected branch with the acceptance evidence. A human reviews and merges that
-    PR (tier 3). No grant covers it.
+    PR (tier 3) and records `promote` (`integrated` → `merged`) for each task it carried. No grant
+    covers it. A task a later integration breaks goes back with a reason (`reopen` → `in-progress`,
+    or `respec`).
 
 ## Outputs
 
-- A merged PR (or a PR returned to a human with the reason), the task at `merged` or back at
-  `human-review`, a land record, and the grant's limits updated in the coordinator's notes.
+- A merged PR (or a PR returned to a human with the reason), the task at `merged` (protected
+  branch), `integrated` (integration branch) or back at `human-review`, a land record, and the grant's limits updated in the coordinator's notes.
 - Grant files validate against the `grant` contract: references/integration-example.grant.yaml.
   If `harness validate` is available, run `node tools/validate.mjs --contract grant <file>`.
 

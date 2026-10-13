@@ -2,10 +2,11 @@
 
 ## toolkit.lock
 
-Shape (`toolkit-lock` contract 1.0.0): `lock_version: 1`, optional `generated_at`, `generated_by`,
+Shape (`toolkit-lock` contract 1.1.0): `lock_version: 1`, optional `generated_at`, `generated_by`,
 and `entries[]` of `{name, layer, kind, source, path, ref, commit, tree, version, autoUpdate,
-mirrored}`. Names are unique; exactly one entry has `layer: L3` (the harness); every other entry is
-`layer: L4` with `kind` one of harness, engine-binding, stack-pack, runtime, domain-pack.
+mirrored}`. Names are unique; exactly one L3 entry is the harness (`kind: harness`, or no kind);
+other L3 entries are `kind: skill-library`; L4 entries are engine-binding, stack-pack, runtime or
+domain-pack.
 
 Without the lock tool, resolve each entry by hand:
 
@@ -17,9 +18,9 @@ git -C <clone> rev-parse <commit>:<path>        # tree of a subdirectory, when `
 
 `commit` and `tree` are full 40- or 64-hex ids. The tree id detects a rewritten tag or a
 force-pushed mirror. `autoUpdate`: `off` for anything third-party or mirrored; `patch` or `minor`
-for your own packs. A third-party portable skill library is an L4 entry (`kind: domain-pack`)
-because the lock allows exactly one L3 entry. A source with no releases still needs a semver
-`version`; record `0.0.0+<short commit>` until it tags one.
+for your own packs. A third-party portable skill library is an L3 entry with `kind: skill-library`
+(the lock holds exactly one `harness` and any number of skill libraries). A source with no releases
+still needs a semver `version`; record `0.0.0+<short commit>` until it tags one.
 
 Validate: `node tools/validate.mjs toolkit.lock`. In CI, compare the lock to what is installed and
 fail on drift.

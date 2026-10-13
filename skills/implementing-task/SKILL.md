@@ -64,16 +64,17 @@ never from a transcript. The acceptance criteria are the stopping condition.
    attribution, pushed to the task branch after each. Open a draft PR (PR text: the pinned
    preparing-pull-requests skill, draft mode). Set `status: in-progress → review` (transition
    `open-draft`, guard: the draft PR exists) with an agent-log line. Update Working notes.
-10. **Get the independent evaluation.** Mandatory when `risk` is `medium` or `high`; the default
-    otherwise. Request verifying-work with only the evaluator packet (task criteria, diff ref
-    `<base>...<head>`, how to run the tests and the PR preview), never your transcript or Working
-    notes. Without a subagent mechanism, end the run at `review` and hand back `attention:
-    working` with "evaluation due on <head>" in the summary; the dispatcher starts the evaluator.
-    A failing verdict comes back to you with a selection list (by the human, or under a
-    `dispose-findings` grant's policy; unmet criteria are selected by default): fix only the
-    selected findings with the pinned resolving-findings skill, push, and ask for re-evaluation
-    of the full current head. Stay at `review` while you iterate; use `iterate` (back to
-    `in-progress`) only when the approach itself must change.
+10. **Get the independent evaluation.** Mandatory when `risk` is `medium` or `high`: the workflow
+    guard `independent-verification` holds `mark-pr-ready` until an evaluator that did not write the
+    change records a pass on the current head. The default otherwise. Request verifying-work with
+    only the evaluator packet (task criteria, diff ref `<base>...<head>`, how to run the tests and
+    the PR preview), never your transcript or Working notes. Without a subagent mechanism, end the
+    run at `review` and hand back `attention: working` with "evaluation due on <head>" in the
+    summary; the dispatcher starts the evaluator. A failing verdict comes back to you with a
+    selection list (by the human, or under a `dispose-findings` grant's policy; unmet criteria are
+    selected by default): fix only the selected findings with the pinned resolving-findings skill,
+    push, and ask for re-evaluation of the full current head. Stay at `review` while you iterate;
+    use `iterate` (back to `in-progress`) only when the approach itself must change.
 11. **Hand back.** Append one entry to the task's `sessions` (`engine`, `session_id`, `actor`,
     `role: coder`, `started_at`, `ended_at`, `outcome`, `run`) and one agent-log line (done, left,
     uncertain, status, session id). Commit and push. Write the `return` JSON to
@@ -98,8 +99,9 @@ never from a transcript. The acceptance criteria are the stopping condition.
 ## Gates and stop conditions
 
 - **Your last transition is `review`.** Never set `human-review`, `merging` or `merged`. Marking the
-  PR ready (`mark-pr-ready`) happens after a passing verdict on the current head, by an engineer or
-  by a coordinator holding a live `finalize` grant. Landing is landing-changes.
+  PR ready (`mark-pr-ready`) happens after a passing verdict on the current head (guard
+  `independent-verification` from risk medium), by an engineer or by a coordinator holding a live
+  `finalize` grant. Landing is landing-changes.
 - Never push to the default or integration branch, never force-push, never approve or merge your
   own PR, never answer a permission prompt. A permission denial is a question for a human.
 - A human who sets `owner` to themselves, or moves `status` (suspend, kick back), wins: commit,

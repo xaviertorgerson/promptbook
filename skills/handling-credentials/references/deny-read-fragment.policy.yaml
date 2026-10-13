@@ -4,7 +4,7 @@
 policy_version: 1
 owner: xaviertorgerson
 profiles:
-  personal: { tier: autonomous, engines: [claude, codex], description: "laptop; walls hold" }
+  personal: { tier: autonomous, engines: [claude, codex], requires: [prod-unreachable-from-this-host], description: "laptop; walls hold" }
   devbox: { tier: unattended, engines: [claude, codex], description: "no vault; production unreachable by ACL" }
 deny_read:
   - "**/.env"

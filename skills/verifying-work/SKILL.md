@@ -79,16 +79,19 @@ evaluator's verdict on a different head.
 - A verdict file per evaluated head (references/verdict-template.md).
 - A `return` JSON (contract `return`, role `evaluator`). If `harness validate` is available, run
   `node tools/validate.mjs --contract return <file>`.
-- For the coordinator: a `reviews[]` entry for the task record (`pr`, `head`, `outcome`: `pass` or
-  `changes-requested`, `by`, `ref` to the verdict). The writer adds the agent-log line; the runner
+- For the coordinator: a `reviews[]` entry for the task record (`pr`, `head`, `role: evaluator`,
+  `outcome` `pass` or `fail`, `by`, `ref` to the verdict). On risk medium or high, a `pass` on the
+  current head is what the workflow guard `independent-verification` requires before
+  `mark-pr-ready`. The writer adds the agent-log line; the runner
   records the run. The evaluator writes neither the task file nor the code.
 
 ## Gates and stop conditions
 
 - **Never edit** source, tests, the task file, the PR's state or description. Never approve, merge,
   or mark ready. Never post a review on someone else's PR without a `publish-review` decision.
-- A pass is evidence for the `independent-review` guard, not approval; review counts are not
-  approval. A changed head voids the verdict.
+- A pass is evidence for the `independent-verification` guard (`mark-pr-ready`) and the
+  `independent-review` guard (a grant's `approve-pr`), not approval; review counts are not approval.
+  A changed head voids the verdict.
 - Hand to a human (`needs-human` with a question): a criterion that cannot be judged without a
   product decision (ambiguous or contradictory); the preview or test infrastructure is down for
   reasons outside the change; the packet's head and the PR disagree and you cannot tell which is

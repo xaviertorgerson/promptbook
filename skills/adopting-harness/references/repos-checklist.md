@@ -20,7 +20,7 @@ acting.
 | runtimes installed as "latest" | pin | exact versions; bumps by reviewed change against plugin floors |
 | install scripts for agents and runtime integrations | stay | L1 installs agents |
 | secrets wiring from a password manager | stay | L1; never on an always-on box without need |
-| a network rule keeping production unreachable from the agent machine | stay | the precondition of that profile's bypass tier, named in its description |
+| a network rule keeping production unreachable from the agent machine | stay | the precondition of that profile's bypass tier, named in its `requires` |
 | an advisor model of the same strength as the main model | drop | unless an eval shows a gain (routing-models) |
 | the repo's own `AGENTS.md` | stay | it is that repository's L2 |
 

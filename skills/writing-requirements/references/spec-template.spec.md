@@ -6,6 +6,7 @@ size: M                      # XS · S · M · L · XL
 business_value: medium       # low · medium · high (or 1-5)
 initiative: null             # an initiative slug, or null
 owner: null                  # the human product owner; required from approved on
+# mode: spec-driven          # optional: the default methodology for the epic's tasks (choosing-methodology)
 ---
 
 # Epic: <epic name>

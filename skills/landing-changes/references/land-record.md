@@ -11,7 +11,7 @@ Under a grant:
 
 ```markdown
 - 2026-10-14 orchestrator — approve-pr under GRANT-4 (verdict pass at 3a9f2b1, .agent/verdicts/BILL-6-3a9f2b1.md); status → merging.
-- 2026-10-14 orchestrator — landed PR #244 into integration/rating-engine by squash as 5c2d8e0 (tier 2, GRANT-4); merged checks green; status → merged.
+- 2026-10-14 orchestrator — integrated PR #244 into integration/rating-engine by squash as 5c2d8e0 (tier 2, GRANT-4); merged checks green; status → integrated.
 ```
 
 Returned to a human:
