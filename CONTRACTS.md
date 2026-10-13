@@ -304,8 +304,8 @@ lines `harness eval-routing --out` writes (`routing-results*.jsonl`: `skill`, `c
 `prompt`, `expect`, `kind`, `route_to`, `model`, `runs`, `answers[]` per run, `passes`, `pass` —
 pass^k, every run — `errors`, `at`, `skill_version`; counts must agree), the measured source an
 evidence entry cites.
-**Compat.** agentic-template keeps both in one `evals.md` (a routing table and an Evidence list); a
-converter is a later tool.
+**Compat.** agentic-template keeps both in one `evals.md` (a routing table and an Evidence list);
+`harness import-evals` converts one, marking what a human must still decide (TOOLS.md).
 
 ### harness-review
 

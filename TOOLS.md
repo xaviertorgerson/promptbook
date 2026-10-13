@@ -14,6 +14,7 @@ harness <command> [args]          # package.json bin: tools/cli.mjs; or pnpm <co
   compile-policy  agent-policy.yaml into one engine's settings      tools/compile-policy.mjs
   lock            pin or verify toolkit.lock                        tools/lock.mjs
   eval-routing    routing evals through a model command             tools/eval-routing.mjs
+  import-evals    an agentic-template evals.md into the eval files  tools/import-evals.mjs
 ```
 
 ## validate, trace
@@ -44,6 +45,7 @@ authoring rules. Errors name a stable rule; `--strict` fails on warnings too.
 | `route-to-known`, `route-to-self` | a `route_to` names a scanned skill, a sibling of a linted skill, a pinned Skilldex skill (`reviewing-code`, `preparing-pull-requests`, `resolving-findings`, `writing-specifications`, `building-skills`), `--known`, or `none` |
 | `scenarios-count`, `scenario-format`, `scenario-stop-condition` | ≥ 3 scenarios in `scenarios.md`, each with setup, prompt, pass criteria and k; one should hand to a human |
 | `evidence-count` and the evidence contract's rules | ≥ 1 dated entry; literature and vendor-reported cite a URL |
+| `imported-needs-review` | nothing `import-evals` could not fill is left: a routing case noted `needs route_to`, a scenario line marked `TODO(import)` |
 | `deprecated-never-triggers` | a skill with `metadata.deprecated` keeps only no-trigger cases |
 | `description-overlap` (warning) | two descriptions' trigger phrases (the "Use when" clause, stop words removed) share more than 0.3 Jaccard; the pair and the shared words are named. agentic-template's 19 skills peak at 0.17 |
 
@@ -161,3 +163,16 @@ case and passes a case only when all k pass (pass^k); `--model <label>` names th
 <routing-results….jsonl>` writes one result per case in the evidence contract's `routingResult`
 shape, which `harness validate` checks and an evidence entry cites as its measured source. Ported from agentic-template's
 `scripts/skill-evals.mjs`. Tests use `fixtures/eval-routing/fake-router.mjs`; no test calls a model.
+
+## import-evals
+
+`harness import-evals <evals.md> --out <skill>/evals [--skill <name>] [--rename old=new,...] [--k n]
+[--force] [--dry-run]` converts an agentic-template `evals.md` (a "Trigger routing" table, "Scenarios"
+with Fixture/Assertions, an "Evidence" list) into `routing.jsonl`, `scenarios.md` and `evidence.md`
+in the evidence contract's shapes. A trigger row is a positive case; a no-trigger row that names a
+skill is a near-miss routed to it (after `--rename`); any other no-trigger row is a negative case
+with `note: "needs route_to: <what the source said>"`. Scenarios keep their fixture and assertions
+and get a `TODO(import)` prompt (the source has none); evidence keeps its date (day or month) and
+text, kind audit or observed, citing the source file. Lint fails both markers
+(`imported-needs-review`) until a human resolves them. It refuses to overwrite without `--force`.
+Fixtures: two real evals.md files under `fixtures/import-evals/`.

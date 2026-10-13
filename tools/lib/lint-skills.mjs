@@ -254,6 +254,9 @@ export function lintSkills(targets, opts = {}) {
       const positive = cases.filter((c) => c.expect === 'trigger');
       const nearMiss = cases.filter((c) => c.kind === 'near-miss' && c.route_to);
       const negative = cases.filter((c) => c.kind === 'negative');
+      for (const c of cases.filter((x) => /^needs route_to\b/.test(x.note ?? ''))) {
+        f('error', 'imported-needs-review', routing, c.line, `an imported case awaits a human: ${c.note} (name the neighbour skill in route_to and make it a near-miss, or confirm a negative and drop the note)`);
+      }
       for (const c of cases.filter((x) => x.expect === 'no-trigger' && !x.kind)) {
         f('error', 'routing-kind-declared', routing, c.line, 'a no-trigger case says whether it is a near-miss or a negative (kind)');
       }
@@ -278,6 +281,9 @@ export function lintSkills(targets, opts = {}) {
     }
 
     if (fs.existsSync(scenarios)) {
+      splitLines(readText(scenarios)).forEach((l, i) => {
+        if (/TODO\(import\)/.test(l)) f('error', 'imported-needs-review', scenarios, i + 1, `an imported scenario awaits a human: ${l.trim().slice(0, 100)}`);
+      });
       const list = parseScenarios(readText(scenarios));
       if (list.length < limits.scenarios && !s.deprecated) f('error', 'scenarios-count', scenarios, null, `${list.length} scenario(s) (need ≥ ${limits.scenarios}, each a "## " or "### " heading)`);
       for (const sc of list) {

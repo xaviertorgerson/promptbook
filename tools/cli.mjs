@@ -18,6 +18,7 @@ export const COMMANDS = {
   'compile-policy': { script: 'compile-policy.mjs', about: 'compile agent-policy.yaml into an engine\'s settings' },
   lock: { script: 'lock.mjs', about: 'pin or verify toolkit.lock' },
   'eval-routing': { script: 'eval-routing.mjs', about: 'run routing evals through a model command' },
+  'import-evals': { script: 'import-evals.mjs', about: 'convert an agentic-template evals.md into the eval files' },
 };
 
 const USAGE = `harness — the contracts' tools (Layer 3).
