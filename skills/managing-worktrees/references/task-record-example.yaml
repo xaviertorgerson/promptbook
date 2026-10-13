@@ -1,0 +1,33 @@
+# A task record right after the worktree was created and the task claimed, with the base commit
+# recorded. The contract has no field for derived resources, so they sit under an x- extension key;
+# the naming rule can always recompute them from the branch.
+task_id: BILL-7
+runtime: claude-loop
+mode: development
+objective: Re-rate a prorated period without double-billing
+intent_ref: specs/rating-engine/tasks/BILL-7.md
+repository:
+  name: acme/billing
+  root: /home/dev/src/billing
+  worktree: /home/dev/src/billing/.worktrees/BILL-7
+  remote: origin
+  base: main
+  base_commit: 4f1c2d97a0be5c1e3d2f8a6b9c0d1e2f3a4b5c6d
+  branch: feat/bill-7-rerate-proration
+agents:
+  author: coder-agent-2
+role_sessions:
+  author: { session_id: 3f0c6c1e-6d1f-4b55-9c49-1f1f6b7b0c11, engine: claude, model: opus, effort: medium }
+pull_requests: []
+state:
+  name: working
+  summary: Worktree ready, smoke green
+  next_role: author
+  next_action: Implement AC-1 against the recorded base
+result: "smoke check passed on 4f1c2d9"
+x-resources:
+  slug: feat_bill_7_rerate_proration
+  database: app_feat_bill_7_rerate_proration
+  ports: { slot: 2, first: 4420, last: 4429 }
+  caches: [.worktrees/BILL-7/dist, .worktrees/BILL-7/.agent]
+updated_at: "2026-10-13T09:02:00Z"

@@ -1,0 +1,12 @@
+{"prompt":"Promote the build that passed QA to UAT.","expect":"trigger","kind":"positive"}
+{"prompt":"Set up a preview environment for every PR so the evaluator can click through it.","expect":"trigger","kind":"positive"}
+{"prompt":"Put the new rerate logic behind a feature flag and dark launch it.","expect":"trigger","kind":"positive"}
+{"prompt":"The error rate spiked after the deploy; roll back the release.","expect":"trigger","kind":"positive"}
+{"prompt":"Why didn't the train promote to production this Wednesday?","expect":"trigger","kind":"positive"}
+{"prompt":"Plan this column rename so the release can still roll back.","expect":"trigger","kind":"positive"}
+{"prompt":"The PR is approved; merge it into main.","expect":"no-trigger","kind":"near-miss","route_to":"landing-changes"}
+{"prompt":"Which credential should the deploy job use to reach the cloud?","expect":"no-trigger","kind":"near-miss","route_to":"handling-credentials"}
+{"prompt":"Check the preview against BILL-7's acceptance criteria.","expect":"no-trigger","kind":"near-miss","route_to":"verifying-work"}
+{"prompt":"Can the orchestrator approve production releases on Fridays?","expect":"no-trigger","kind":"near-miss","route_to":"delegating-authority"}
+{"prompt":"What's the weather in Oslo tomorrow?","expect":"no-trigger","kind":"negative","route_to":"none"}
+{"prompt":"Write a limerick about a cat.","expect":"no-trigger","kind":"negative","route_to":"none"}

@@ -1,0 +1,32 @@
+{
+  "task": "BILL-7",
+  "role": "coder",
+  "summary": "BILL-7 is at review with draft PR #240 on feat/bill-7-rerate-proration (base main@4f1c2d9, head 9e3b1a7). A rerate of a prorated period now replaces both segments' line items in one transaction (AC-1), a row lock on the period rejects a concurrent rerate of either segment (AC-2), and a withdrawn plan change rates the whole period on the original plan (AC-3). Each criterion has a test named for it in rerate.spec.ts. Lint, types, the rating suite and the criteria-in-test-names check pass. The independent evaluator (different model family, clean context) passed every criterion on head 9e3b1a7 twice (risk medium, k = 2); its verdict is linked below. Nothing needs a human decision. Next: an engineer marks the PR ready (mark-pr-ready), or a coordinator holding a finalize grant does. One follow-up for the planner is in Working notes: the invoice preview double-counts prorations, outside this task's touches.",
+  "attention": "complete",
+  "artifacts": [
+    { "path": "apps/api/src/core/rating/rerate.ts", "kind": "code" },
+    { "path": "apps/api/src/core/rating/rerate.spec.ts", "kind": "test", "note": "BILL-7 AC-1..AC-3 in the test names" },
+    { "path": "specs/rating-engine/tasks/BILL-7.md", "kind": "spec", "note": "status review, Working notes, sessions entry, agent-log line" },
+    { "path": ".agent/verdicts/BILL-7-9e3b1a7.md", "kind": "report", "note": "evaluator verdict, pass^2 on 9e3b1a7" },
+    { "path": "https://github.com/acme/billing/pull/240", "kind": "pr", "note": "draft" }
+  ],
+  "decisions_needed": [],
+  "criteria": { "met": ["AC-1", "AC-2", "AC-3"], "unmet": [] },
+  "verification": [
+    { "command": "pnpm exec biome ci .", "result": "pass" },
+    { "command": "pnpm exec tsc --noEmit", "result": "pass" },
+    { "command": "pnpm vitest run apps/api/src/core/rating", "result": "pass", "note": "41 tests, 3 new" },
+    { "command": "node scripts/ears-coverage.mjs specs/rating-engine/tasks/BILL-7.md", "result": "pass" },
+    { "command": "verifying-work on 9e3b1a7 (k=2)", "result": "pass" }
+  ],
+  "session": {
+    "engine": "claude",
+    "session_id": "3f0c6c1e-6d1f-4b55-9c49-1f1f6b7b0c11",
+    "actor": "coder-agent-2",
+    "role": "coder",
+    "started_at": "2026-10-13T09:00:00Z",
+    "ended_at": "2026-10-13T09:41:00Z",
+    "outcome": "advanced",
+    "run": ".agent/loop-runs.jsonl"
+  }
+}

@@ -1,0 +1,39 @@
+# A policy fragment for a personal machine and the CI profile: the deny-read wall closes the gaps
+# found on 2026-10-13 (modern SSH keys, cloud and registry credentials, the forge CLI token, the
+# agent's own login, and the file the password manager renders into).
+policy_version: 1
+owner: xaviertorgerson
+profiles:
+  personal: { tier: autonomous, engines: [claude, codex], description: "laptop; walls hold" }
+  devbox: { tier: unattended, engines: [claude, codex], description: "no vault; production unreachable by ACL" }
+deny_read:
+  - "**/.env"
+  - "**/.env.*.local"
+  - "**/.env.local"
+  - "**/.env.production"
+  - "**/secrets/**"
+  - "**/*.pem"
+  - "**/*.key"
+  - "**/*.p12"
+  - "**/terraform.tfstate*"
+  - "~/.ssh/**"
+  - "~/.aws/**"
+  - "~/.config/gcloud/**"
+  - "~/.kube/config"
+  - "~/.docker/config.json"
+  - "~/.npmrc"
+  - "~/.netrc"
+  - "~/.config/gh/hosts.yml"
+  - "~/.claude/.credentials.json"
+  - "~/.config/shell/secrets.sh"
+forbid:
+  - { command: [git, push, [--force, -f]], reason: no force-push of shared branches }
+  - { command: [printenv], reason: never echo the environment; test presence instead }
+  - { write: "**/.env", reason: secrets never written by an agent }
+  - { tool: "mcp:production-db", reason: production-capable servers never in an agent session }
+egress:
+  default: deny
+  allow_domains: ["**.github.com", registry.npmjs.org, "**.anthropic.com"]
+sandbox: { enabled: true, fail_if_unavailable: true }
+budgets:
+  unattended: { max_turns: 200, max_usd: 5 }

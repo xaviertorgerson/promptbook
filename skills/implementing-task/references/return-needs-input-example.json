@@ -1,0 +1,37 @@
+{
+  "task": "BILL-4",
+  "role": "coder",
+  "summary": "BILL-4 is parked at needs-input (status was in-progress). The period split at the plan-change date is implemented and tested (AC-1). AC-2 cannot be built without a decision the spec does not make: prorate by calendar days or by billing days. Both change every prorated invoice. The question is in the task's Open questions, marked blocking, with a recommendation. Work so far is committed and pushed on feat/bill-4-prorate (head 2b7c9d0); Working notes hold the next step so a fresh session can resume once the question is answered.",
+  "attention": "needs-human",
+  "artifacts": [
+    { "path": "apps/api/src/core/rating/split.ts", "kind": "code" },
+    { "path": "apps/api/src/core/rating/split.spec.ts", "kind": "test", "note": "BILL-4 AC-1" },
+    { "path": "specs/rating-engine/tasks/BILL-4.md", "kind": "spec", "note": "Open question added; status → needs-input" }
+  ],
+  "decisions_needed": [
+    {
+      "question": "Prorate a mid-period plan change by calendar days or by billing days?",
+      "options": ["calendar days", "billing days"],
+      "recommendation": "calendar days: matches the invoices customers already receive",
+      "blocking": true,
+      "for": "human"
+    }
+  ],
+  "criteria": {
+    "met": ["AC-1"],
+    "unmet": [{ "id": "AC-2", "reason": "blocked on the proration basis (Open question 1)" }]
+  },
+  "verification": [
+    { "command": "pnpm vitest run apps/api/src/core/rating/split.spec.ts", "result": "pass" },
+    { "command": "node scripts/ears-coverage.mjs specs/rating-engine/tasks/BILL-4.md", "result": "fail", "note": "AC-2 has no test yet, by design" }
+  ],
+  "session": {
+    "engine": "codex",
+    "session_id": "0199a1f2-7c3e-7b10-8f4d-2a9e6b1c0d55",
+    "actor": "coder-agent-1",
+    "role": "coder",
+    "started_at": "2026-10-13T10:05:00Z",
+    "ended_at": "2026-10-13T10:31:00Z",
+    "outcome": "stalled"
+  }
+}
