@@ -291,6 +291,51 @@ describe('trace graph', () => {
     assert.equal(trace(path.join(FIX, 'trace/complete')).epics[0].task_modes['INV-1'], 'spec-driven', 'no mode anywhere: spec-driven');
   });
 
+  describe('plan shape', () => {
+    const adr = '\n## ADR-0002: Invoices are stored as rendered PDFs\n**Status:** Proposed\n**Date:** 2026-10-12\n**Decision:** Store the rendered PDF.\n**Why:** The rendered file is the legal artifact.\n**Door:** one-way\n**Reversed when:** a regulator requires structured invoices.\n**Consequences:** Re-rendering is not a feature.\n';
+    const plan = (status, { skeletonRoot = false } = {}) => project('complete', {
+      'specs/invoicing/spec.md': (t) => t.replace('status: approved', `status: ${status}`).replace('**ADRs:** ADR-0001', '**ADRs:** ADR-0001, ADR-0002'),
+      'DECISIONS.md': (t) => `${t}${adr}`,
+      'specs/invoicing/tasks/INV-1.md': (t) => (skeletonRoot ? t.replace('depends_on: []', 'depends_on: [INV-2]') : t),
+      'specs/invoicing/tasks/INV-2.md': taskText('INV-2', { 'x-skeleton': true, touches: ['src/**'], depends_on: skeletonRoot ? [] : ['INV-3'] }, { title: 'Walking skeleton: download end to end' }),
+      'specs/invoicing/tasks/INV-3.md': taskText('INV-3', { touches: ['src/api/invoices/**'], depends_on: skeletonRoot ? ['INV-2'] : [] }),
+      'specs/invoicing/tasks/INV-4.md': taskText('INV-4', { touches: ['src/api/invoices/list.ts'], depends_on: skeletonRoot ? ['INV-2', 'INV-3'] : [] }),
+      'specs/invoicing/tasks/INV-5.md': taskText('INV-5', { size: 'XL', depends_on: skeletonRoot ? ['INV-2'] : [] }),
+      'specs/invoicing/tasks/INV-6.md': taskText('INV-6', { depends_on: skeletonRoot ? ['INV-2'] : [] }, { questions: '- [ ] Which PDF library? **Blocks readiness** until the owner picks.\n- [x] Paper size? A4.' }),
+    });
+    const by = (r, rule) => r.gaps.filter((g) => g.rule === rule).map((g) => [g.subject, g.severity]);
+
+    it('an approved epic: unordered overlapping tasks, a skeleton that is not the root, an undecided one-way door, a blocked or XL ready task are errors', () => {
+      const r = trace(plan('approved'));
+      assert.deepEqual(by(r, 'overlapping-tasks-ordered').filter(([s]) => s === 'INV-3 INV-4'), [['INV-3 INV-4', 'error']]);
+      const sk = by(r, 'skeleton-is-root');
+      assert.ok(sk.length === 2 && sk.every(([s, sev]) => s === 'INV-2' && sev === 'error'), JSON.stringify(sk));
+      assert.deepEqual(by(r, 'one-way-door-decided'), [['ADR-0002', 'error']]);
+      assert.deepEqual(by(r, 'ready-task-unblocked'), [['INV-6', 'error']], 'the answered question does not block');
+      assert.deepEqual(by(r, 'task-size-fits'), [['INV-5', 'error']]);
+      assert.equal(r.epics[0].verdict, 'not-ready');
+    });
+
+    it('before approval the epic-level rules are warnings; a ready task still answers for itself', () => {
+      const r = trace(plan('draft'));
+      for (const rule of ['overlapping-tasks-ordered', 'skeleton-is-root', 'one-way-door-decided']) assert.ok(by(r, rule).length && by(r, rule).every(([, sev]) => sev === 'warning'), rule);
+      assert.deepEqual(by(r, 'ready-task-unblocked'), [['INV-6', 'error']]);
+    });
+
+    it('a skeleton at the root with every task after it, and ordered lanes, raise nothing', () => {
+      const r = trace(plan('approved', { skeletonRoot: true }));
+      assert.deepEqual(by(r, 'skeleton-is-root'), []);
+      assert.deepEqual(by(r, 'overlapping-tasks-ordered').filter(([s]) => s === 'INV-3 INV-4'), [], 'INV-4 depends on INV-3');
+    });
+
+    it('legacy adoption keeps every plan rule a warning', () => {
+      const dir = plan('approved');
+      fs.rmSync(path.join(dir, 'docs/product/brief.md'));
+      const r = trace(dir);
+      for (const rule of ['overlapping-tasks-ordered', 'skeleton-is-root', 'one-way-door-decided', 'ready-task-unblocked', 'task-size-fits']) assert.ok(by(r, rule).every(([, sev]) => sev === 'warning'), rule);
+    });
+  });
+
   it('a broken project reports each broken link by rule', () => {
     const r = trace(path.join(FIX, 'trace/broken'));
     const rules = new Set(r.gaps.filter((g) => g.severity === 'error').map((g) => g.rule));

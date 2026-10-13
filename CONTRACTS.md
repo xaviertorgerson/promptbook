@@ -390,7 +390,13 @@ flowchart LR
 | `journey-has-task`, `requirement-has-task` | no orphan journey or requirement | see below |
 | `journey-has-requirement` | each journey is served by a requirement (CUJ column, or a task that cites both) | see below |
 | `journey-cites-persona`, `user-facing-journey-has-ux` | full adoption only | see below |
+| `overlapping-tasks-ordered` | two open tasks whose `touches` overlap are ordered by `depends_on` (one lane, one writer) | see below; blocks readiness |
+| `skeleton-is-root` | the walking skeleton (`x-skeleton: true`, `x-tags: [skeleton]`, or titled "Walking skeleton"), when there is one, depends on nothing in its epic and every other task depends on it | see below; blocks readiness |
+| `one-way-door-decided` | no ADR the epic cites (header, ADR column, `satisfies`, a task's guiding doc) is a one-way door still proposed | see below; blocks readiness |
+| `ready-task-unblocked` | a `ready` task has no unchecked Open question that says it blocks | error (warning in legacy adoption); blocks readiness |
+| `task-size-fits` | no task is `XL`: an error from `ready` on, a warning before | see below |
 | `persona-has-journey`, `persona-in-brief`, `nfr-has-decision`, `task-index-agrees`, `cites-current-decision`, `criterion-evidence-unambiguous`, `decision-link-agrees`, `tests-exist` | consistency | warning |
+| `task-mode-overrides-epic` | a task's `mode` differs from its epic's | info |
 
 **Severity policy.** A broken reference or an invalid artifact is always an error. A *missing* link
 is an error only when the artifact claims readiness — the epic is approved, in-progress or done, or

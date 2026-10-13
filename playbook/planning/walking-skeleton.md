@@ -43,8 +43,9 @@ A bug or a feature inside a proven skeleton skips this stage.
 
 ## Contracts used
 
-`task` (the skeleton task, `risk: high`, every feature task `depends_on` it), `decision` (the
-one-way ADRs it proves), `requirement` (the NFRs it measures first).
+`task` (the skeleton task, `risk: high`, marked `x-skeleton: true` or titled "Walking skeleton";
+every feature task `depends_on` it, which the trace check's `skeleton-is-root` holds), `decision`
+(the one-way ADRs it proves), `requirement` (the NFRs it measures first).
 
 ## Anti-patterns
 
