@@ -16,7 +16,7 @@ have stopped.
 
    The value names the reason, the replacement and the release that removes it.
 2. Shrink the old description to a pointer so it stops attracting prompts:
-   `Deprecated: replaced by debugging-failures. Do not use for any request (debugging-failures).`
+   `Deprecated, replaced by debugging-failures. Do not use for any request (debugging-failures).`
    A deprecated skill is the one case where the description does not open with "Use when".
 3. Add a rename entry in the pack's manifest (old name → new name) so installers move consumers
    forward. Where the pack is consumed through `toolkit.lock`, the next bump pull request in each
