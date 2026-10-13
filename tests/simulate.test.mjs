@@ -176,6 +176,17 @@ describe('simulate: the faults happen and are handled as the contracts say', () 
     }
   });
 
+  it('an evaluator\'s run is logged as the evaluator\'s verdict, never as the author advancing the task', () => {
+    const r = simulate(loadScenario(path.join(SCEN, 'evaluator-rejection.yaml')), { seed: 1, trace: false });
+    const evals = r.world.artifacts.runRecords.filter((x) => x.role === 'evaluator');
+    assert.ok(evals.length >= 2, 'the evaluator ran');
+    for (const x of evals) {
+      assert.ok(['verdict', 'failed'].includes(x.outcome), `${x.session_id}: ${x.outcome}`);
+      if (x.outcome === 'verdict') assert.equal(x.status_after, x.status_before, `${x.session_id} moved nothing`);
+    }
+    assert.ok(r.world.artifacts.runRecords.filter((x) => x.outcome === 'advanced').every((x) => x.role === 'author'), 'only authors advance');
+  });
+
   it('every run-record, return, grant and task record the simulation writes validates', () => {
     for (const f of fs.readdirSync(SCEN)) {
       const r = simulate(loadScenario(path.join(SCEN, f)), { trace: false });

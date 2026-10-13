@@ -20,6 +20,8 @@ import { Heap, makeRng, round } from './util.mjs';
 // orchestrator), record attention, consume run results. Everything it does is checked afterwards.
 
 export const RUNTIME_SIGNALS = new Set(['signal', 'ci', 'notice']);
+// A session's kind as a run record names its role: an evaluator's run ends in a verdict.
+const RUN_ROLE = { author: 'author', evaluator: 'evaluator', helper: 'reader' };
 
 const argvMatches = (rule, argv) => rule.command.length <= argv.length && rule.command.every((tok, i) => [].concat(tok).includes(argv[i]));
 export const ruleMatches = argvMatches;
@@ -773,7 +775,8 @@ export class World {
     }
     const statusAfter = this.forge.tasks.get(s.task)?.status ?? null;
     const outcomeFinal = outcome === 'advanced' && ['ready', 'in-progress', null].includes(statusAfter) ? 'stalled' : outcome;
-    s.result = { outcome: outcomeFinal, subtype: subtype ?? null, exit, reason: outcomeFinal === 'advanced' ? null : reason ?? (outcomeFinal === 'stalled' ? 'status unchanged after the run' : 'run failed'), statusAfter, claimLost: /^claim lost/.test(reason ?? '') };
+    const moved = ['advanced', 'verdict', 'read'].includes(outcomeFinal);
+    s.result = { outcome: outcomeFinal, subtype: subtype ?? null, exit, reason: moved ? null : reason ?? (outcomeFinal === 'stalled' ? 'status unchanged after the run' : 'run failed'), statusAfter, claimLost: /^claim lost/.test(reason ?? '') };
     if (s.kind === 'author') {
       const key = `${s.runtime}:${s.task}`;
       if (subtype?.startsWith('error_max')) this.ceilings.set(key, this.t);
@@ -796,6 +799,7 @@ export class World {
       status_after: statusAfter,
       engine: 'sim',
       runtime: s.runtime,
+      role: RUN_ROLE[s.kind] ?? 'other',
       status_before: s.statusBefore,
       permission_denials: s.denials.length,
       attention: ret?.attention ?? (crashed || subtype ? 'needs-human' : 'working'),
@@ -834,7 +838,7 @@ export class World {
       pr.reviews.push({ head: s.head, verdict, by: s.owner, role: 'evaluator', at: this.t, session: s.id });
       this.effect({ review: verdict, head: s.head, why });
       this.webhook({ what: 'review', task: taskId, value: verdict });
-      this.authorEnd(s, { outcome: 'advanced', subtype: 'success', exit: 0, reason: null, ret: { task: taskId, role: 'evaluator', summary: `Reviewed ${s.head}: ${verdict} (${why}).`, attention: 'complete', artifacts: [{ path: `pr/${pr.number}#review`, kind: 'report' }], decisions_needed: [], verification: [{ command: 'run the tests named for each criterion', result: verdict === 'pass' ? 'pass' : 'fail' }] } });
+      this.authorEnd(s, { outcome: 'verdict', subtype: 'success', exit: 0, reason: null, ret: { task: taskId, role: 'evaluator', summary: `Reviewed ${s.head}: ${verdict} (${why}).`, attention: 'complete', artifacts: [{ path: `pr/${pr.number}#review`, kind: 'report' }], decisions_needed: [], verification: [{ command: 'run the tests named for each criterion', result: verdict === 'pass' ? 'pass' : 'fail' }] } });
     });
     return s.id;
   }

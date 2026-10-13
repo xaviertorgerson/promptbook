@@ -34,7 +34,7 @@ evaluator:
 budget: { max_turns: 200, max_usd: 6, max_minutes: 150 }
 sessions:
   - { engine: claude, session_id: 6a1f0c52-3d4b-4e8a-9f21-0c7d5b3a9e14, actor: dana, role: coder, started_at: "2026-10-14T08:35:00Z", ended_at: "2026-10-14T12:50:00Z", outcome: advanced }
-  - { engine: gemini, session_id: eval-3c9a1f4-k2, actor: tally-evaluator, role: evaluator, started_at: "2026-10-14T13:06:00Z", ended_at: "2026-10-14T13:34:00Z", outcome: advanced, run: .agent/loop-runs.jsonl }
+  - { engine: gemini, session_id: eval-3c9a1f4-k2, actor: tally-evaluator, role: evaluator, started_at: "2026-10-14T13:06:00Z", ended_at: "2026-10-14T13:34:00Z", outcome: verdict, run: .agent/loop-runs.jsonl }
 ---
 
 # SPLIT-1 · Walking skeleton: one household's bill, read only through its link

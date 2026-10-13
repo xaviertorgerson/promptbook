@@ -170,11 +170,21 @@ describe('the worked example: Tally', () => {
     }
     const runs = fs.readFileSync(path.join(EX, '.agent/loop-runs.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
     for (const x of runs) assert.ok(taskFiles[x.task] && (!x.grant || grants.has(x.grant)), `run ${x.session_id}`);
+    // Every hand-back has its run record, and each run says whose it was: an evaluator's ends in a
+    // verdict, a reader's in a read, and neither moves the task; only an author advances one.
+    const ROLE = { coder: 'author', evaluator: 'evaluator', reader: 'reader' };
+    const OUTCOME = { evaluator: ['verdict'], reader: ['read'] };
     for (const f of fs.readdirSync(path.join(EX, '.agent/returns'))) {
       const ret = JSON.parse(fs.readFileSync(path.join(EX, '.agent/returns', f), 'utf8'));
       assert.ok(taskFiles[ret.task], f);
       for (const a of ret.artifacts.filter((x) => x.path.startsWith('.agent/'))) assert.ok(fs.existsSync(path.join(EX, a.path)), `${f} points at ${a.path}`);
+      const run = runs.find((x) => x.session_id === ret.session.session_id);
+      assert.ok(run, `${f}: no run record for session ${ret.session.session_id}`);
+      assert.equal(run.role, ROLE[ret.role], f);
+      if (OUTCOME[run.role]) assert.ok(OUTCOME[run.role].includes(run.outcome) && run.status_after === run.status_before, `${f}: a ${run.role}'s run is a ${OUTCOME[run.role]} that moves nothing`);
     }
+    assert.ok(runs.filter((x) => x.outcome === 'advanced').every((x) => x.role === 'author'), 'only an author advances a task');
+    assert.deepEqual(runs.filter((x) => x.role === 'evaluator').map((x) => x.outcome), ['verdict', 'verdict', 'verdict']);
     assert.deepEqual(new Set(Object.values(records).map((r) => r.state.name)), new Set(['working', 'needs-human', 'complete']));
     const denial = runs.find((x) => x.permission_denials > 0);
     assert.ok(denial && denial.outcome === 'stalled' && denial.attention === 'needs-human', 'a run whose ask was denied');

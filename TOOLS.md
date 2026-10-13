@@ -111,7 +111,8 @@ change no merge grant of its covers: `transitions-allowed`, `merge-requires-auth
 
 Output: `.sim-out/<scenario>-seed<n>.jsonl` (one event per line: time, actor, task, the commits it
 applied, effects, violations), `.summary.json` (merged, parked, needs-human, spend, makespan,
-throughput, violations with seed and event index), `.run-records.jsonl` and `.task-records.json` in
+throughput, violations with seed and event index), `.run-records.jsonl` (each line names its `role`;
+an evaluator's run ends in `verdict`, never an author's `advanced`) and `.task-records.json` in
 their contracts' shapes. A violation prints a `reproduce:` command. Scenarios:
 `fixtures/scenarios/{happy-path, parallel-overlap, crash-lost-events, merge-without-grant,
 budget-exhaustion, unattended-ask, evaluator-rejection, grant-expiry, wall-bypass,
