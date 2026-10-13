@@ -1,0 +1,34 @@
+# An operator's policy for three machine profiles. The devbox's autonomous tier is allowed only
+# because production is unreachable from it at the network level and agents run non-root in a
+# container; the description states that precondition (the policy contract has no field for it yet).
+policy_version: 1
+owner: you
+profiles:
+  laptop: { tier: auto-edit, engines: [claude, codex], description: "interactive; sandbox on" }
+  devbox: { tier: autonomous, engines: [claude, codex], description: "requires: production unreachable by network ACL from this host; agents run non-root in a container" }
+  ci: { tier: unattended, engines: [claude], description: "headless runs: no-prompt mode plus the allow list below; caps from budgets.unattended" }
+deny_read:
+  - "**/.env"
+  - "**/.env.*"
+  - "**/secrets/**"
+  - "~/.ssh/**"
+  - "~/.aws/**"
+forbid:
+  - { command: [git, push, [--force, -f]], reason: no force-push of shared branches }
+  - { command: [rm, -rf, /], reason: never wipe the root }
+  - { command: [terraform, apply], reason: infrastructure changes go through review }
+  - { command: [dropdb], reason: no destructive data actions }
+ask:
+  - { command: [psql], reason: a database shell is a human checkpoint }
+allow:
+  - { command: [git, [status, log, diff, show, branch, add, commit, fetch, pull, switch, checkout]], examples: [git status, git fetch origin] }
+  - { command: [node] }
+  - { command: [npm] }
+  - { write: "**" }
+egress:
+  default: deny
+  allow_domains: ["**.github.com", registry.npmjs.org, forge.example.com]
+sandbox: { enabled: true, fail_if_unavailable: true }
+budgets:
+  unattended: { max_turns: 200, max_usd: 5 }
+  autonomous: { max_usd: 20 }

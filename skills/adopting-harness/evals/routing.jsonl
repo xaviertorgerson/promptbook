@@ -1,0 +1,14 @@
+{"prompt":"Set up this new laptop so every agent I use gets the harness skills and my guardrails.","expect":"trigger","kind":"positive"}
+{"prompt":"Adopt the harness in this repo: add a toolkit.lock and make our guardrails real walls.","expect":"trigger","kind":"positive"}
+{"prompt":"Compile my agent-policy.yaml for the engines on the devbox profile.","expect":"trigger","kind":"positive"}
+{"prompt":"Our AGENTS.md and my personal instructions repeat the same git rules. Which copy goes?","expect":"trigger","kind":"positive"}
+{"prompt":"One of my engines doesn't see the skills in ~/.agents/skills. How should they be installed?","expect":"trigger","kind":"positive"}
+{"prompt":"Hooks are slow on my machine; just disable them all in my user settings while adopting.","expect":"trigger","kind":"positive","note":"must refuse to disable hooks"}
+{"prompt":"This retry-with-backoff skill from our project should become a harness skill for everyone.","expect":"no-trigger","kind":"near-miss","route_to":"promoting-learnings"}
+{"prompt":"Let the coordinator merge into the integration branch for this epic.","expect":"no-trigger","kind":"near-miss","route_to":"delegating-authority"}
+{"prompt":"Review this PR's new hook script for injection risks.","expect":"no-trigger","kind":"near-miss","route_to":"reviewing-security"}
+{"prompt":"Rotate the CI agent's API key and move it to short-lived tokens.","expect":"no-trigger","kind":"near-miss","route_to":"handling-credentials"}
+{"prompt":"A new model shipped; sweep effort and delete the harness parts that no longer pay.","expect":"no-trigger","kind":"near-miss","route_to":"reviewing-harness"}
+{"prompt":"Which model tier should the explorer subagent use?","expect":"no-trigger","kind":"near-miss","route_to":"routing-models"}
+{"prompt":"Install Docker on Ubuntu.","expect":"no-trigger","kind":"negative","route_to":"none"}
+{"prompt":"Help me adopt a rescue dog.","expect":"no-trigger","kind":"negative","route_to":"none"}
