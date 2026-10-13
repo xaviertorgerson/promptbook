@@ -1,6 +1,6 @@
 ---
 name: debugging-failures
-description: Use when something specific is wrong and the cause is unknown — "why is X happening", "this is broken", a bug report, an incident, a failing or flaky test, a test that fails only on CI, an error in the logs, a wrong number in production, a regression after a deploy. Reproduce, isolate, find the root cause, fix it at the cause and add a regression test. Do not use for a scheduled health sweep with no specific symptom (an L4 runtime audit), adding tests to working code (writing-tests), or mining many past runs for harness lessons (reflecting-on-runs).
+description: Use when one specific thing is broken now and the cause is unknown — "why is X failing", "this is broken", a bug report, an incident, a failing test, a flaky test to fix, a test that fails only on CI, an error in the logs, a wrong number in production, a regression after a deploy. Reproduce, isolate, find the root cause and fix it there. Do not use for a routine or scheduled health sweep, audit or log review with no specific symptom (an L4 runtime audit), questions about a past design decision, who wrote code or which commit introduced it (writing-commit-history), writing the regression test for a fix already made or adding tests to working code (writing-tests), or mining many past runs for harness lessons (reflecting-on-runs).
 license: MIT
 compatibility: Any agent runtime that reads Agent Skills; any language. Uses git for history and bisection.
 metadata:

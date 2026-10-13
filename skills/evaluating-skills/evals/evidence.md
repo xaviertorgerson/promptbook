@@ -32,3 +32,13 @@
 - **Source:** agentic-template .claude/skills/*/evals.md @ bbfad58
 - **Claim:** The 19 template routing tables hold 3–4 trigger rows and 2–3 do-not-trigger rows each; the neighbour sits in prose a runner cannot check, and no table separates unrelated prompts from near-misses.
 - **Result:** The minimums are 4 positive, 3 near-miss with route_to, 2 negative, as JSONL the validator checks.
+
+## 2026-10-13 · First routing run of the 33-skill catalog on the cheap model
+- **Kind:** measured
+- **Source:** the router prompt in references/routing-runner.md, sent through the engine's headless mode, 3 runs per case; catalog = the 8 learning and port skills (branch feat/skills-learning) + 20 sibling skills from the feat/skills-{planning,execution,runtime} worktrees as written on 2026-10-13 + 5 pinned Skilldex skills
+- **Claim:** Against stand-in neighbour descriptions the 8 skills passed 94/95; against the real, longer sibling descriptions the first full run passed 272/285 and moved to 266–282/285 across description edits. The cheap router ignored "Do not use for" clauses whenever trigger words overlapped, and answered none on about 9% of clear positives in one run.
+- **Result:** Three-run repeats stay mandatory; a new results row and runner notes say to lead with the deciding feature and to iterate on failing prompts before a full run. Final run 282/285; the residual failures are recorded in the affected skills' evidence.
+- **Engine:** claude
+- **Model:** haiku
+- **Skill version:** 0.1.0
+- **Revisit:** when the sibling skills merge and the catalog is final

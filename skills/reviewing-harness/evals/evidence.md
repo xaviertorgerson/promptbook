@@ -42,3 +42,12 @@
 - **Source:** playbook: harness-review (harness @ 4bdc755); agentic-template ADR-0021 on branch docs/adr-permission-precedence
 - **Claim:** The playbook excludes deny hooks, branch protection and secret guards from removal; ADR-0021 measured that only denies hold in every permission mode, so a removed deny has no fallback.
 - **Result:** Step 6 and the walls list in references/components.md; scenario S2 at k=10.
+
+## 2026-10-13 · Model-release prompts drifted to the reflector
+- **Kind:** measured
+- **Source:** routing run on the 33-skill catalog (see evaluating-skills evidence, 2026-10-13), 4 runs per prompt
+- **Claim:** "Sonnet 5.5 is out. Ablate the reviewer subagent and the extra rule blocks and delete what doesn't help" routed to reflecting-on-runs 4 of 4 while this description opened with the release trigger; opening with "harness components must be re-tested and the ones that no longer help deleted" fixed it (3–4 of 4). Final full run 33/33.
+- **Result:** The description leads with ablation and deletion; reflecting-on-runs names ablation and model releases as exclusions.
+- **Engine:** claude
+- **Model:** haiku
+- **Skill version:** 0.1.0

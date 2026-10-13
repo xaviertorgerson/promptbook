@@ -1,6 +1,6 @@
 ---
 name: writing-commit-history
-description: Use when writing or fixing a commit message, splitting work into commits, or reading history to answer a question — "write a commit message", "split this into commits", "why did X change", "when did this change", "who introduced this line", "read the history", "what does git log say about…". Writes history a future agent can reconstruct the why from, and mines it before guessing. Do not use for a stack's whole definition of done (an L4 pack's ship skill), writing pull request text (preparing-pull-requests), or merging and landing a branch (landing-changes).
+description: Use when writing a commit message, or for any question about the project's past that git can answer — why we switched to or chose X, when X last changed, who introduced some code and what its commit says — "write a commit message for this", "commit this", "split this diff into separate commits", "when did X last change", "who introduced this and why", "git blame this", "what does git log say about…". Writes commits a future agent can reconstruct the why from, and reads the log, blame and old messages before guessing. Do not use for something broken now whose cause is unknown (debugging-failures), reviewing a diff (reviewing-code), a stack's whole definition of done (an L4 pack's ship skill), writing pull request text (preparing-pull-requests), or merging and landing a branch (landing-changes).
 license: MIT
 compatibility: Any agent runtime that reads Agent Skills and works in git.
 metadata:

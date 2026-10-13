@@ -1,6 +1,6 @@
 ---
 name: promoting-learnings
-description: Use when a skill, rule, hook or verified learning should move to a wider scope or out of use — "promote this skill", "make this generic", "kick this up to the pack", "the next project should have this", "install it on all my machines", "deprecate", "retire" or "rename this skill", "pin this pack", "bump the lock" — or when an epic closes and its learnings must be harvested. Do not use for mining run records and failures for lessons (reflecting-on-runs), writing or running a skill's evals (evaluating-skills), or bringing a whole repository or machine onto the harness (adopting-harness).
+description: Use when a skill, rule, hook or verified learning should move to a wider scope, be renamed, or be retired — "promote this skill", "make this generic", "kick this up to the pack", "the next project should have this", "install it on all my machines", "deprecate X in favor of Y", "retire this skill", "rename this skill", "bump the harness or a pack pin in toolkit.lock" — or when an epic closes and its learnings must be harvested. Do not use for turning failed runs or accepted review findings into skill or rule fixes (reflecting-on-runs), writing or running a skill's evals (evaluating-skills), authoring a new skill (building-skills), or first bringing a repository or machine onto the harness (adopting-harness).
 license: MIT
 compatibility: Any agent runtime that reads Agent Skills and works in git with pull requests. Lock and validation checks need Node 22 when the harness tools are present.
 metadata:

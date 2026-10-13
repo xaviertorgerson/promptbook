@@ -61,6 +61,13 @@ Report one line per case (`ok|FAIL skill: "prompt" → expected X, got Y`) and a
   description is too broad.
 - Never fix a routing failure by adding the case's exact wording to the description. Add the class
   of phrasing ("criterion ids", "regression test"), then re-run.
+- Cheap routers weigh trigger words more than exclusions. When a near-miss keeps landing on the
+  wrong skill, move the deciding feature ("broken now" vs "a past change") into the first clause of
+  both descriptions rather than lengthening a "Do not use for" list.
+- Iterate on the failing prompts only (5 runs each, every candidate description), then confirm with
+  one full run of the catalog; a full run per edit is slow and its noise hides the effect.
+- A cheap model sometimes answers `none` on a clear prompt in a long catalog. Count it, but fix a
+  description only when the same prompt fails in more than one of three runs.
 
 ## Where it runs
 

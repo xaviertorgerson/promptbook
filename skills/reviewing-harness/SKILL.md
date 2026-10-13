@@ -1,6 +1,6 @@
 ---
 name: reviewing-harness
-description: Use when a new model was released or adopted, or the quarterly harness review is due — "a new model shipped, review the harness", "run the effort sweep", "which skills, rules or subagents can we drop now", "ablate the reviewer", "is this component still load-bearing", "re-tune model and effort per role", "bump the playbook as-of date". Do not use for writing or running one skill's evals (evaluating-skills), mining failed runs for small fixes (reflecting-on-runs), or retiring one skill a better one replaced (promoting-learnings).
+description: Use when harness components must be re-tested and the ones that no longer help deleted — after a new model ships, or at the quarterly harness review — "a new model is out, review the harness", "ablate the reviewer subagent", "delete the rule blocks or subagents that don't help", "remove this and measure what changes", "which components are still load-bearing", "run an effort sweep on the new model", "re-tune model and effort per role". Do not use for writing or running one skill's evals (evaluating-skills), turning failed runs and review findings into small fixes (reflecting-on-runs), choosing a model for one role or task outside a review (routing-models), or retiring one skill a better one replaced (promoting-learnings).
 license: MIT
 compatibility: Any agent runtime that reads Agent Skills and can run an eval suite non-interactively with selectable model and effort. Needs run records with cost and turns.
 metadata:

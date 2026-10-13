@@ -25,3 +25,13 @@
 - **Source:** agentic-template .claude/skills/commit-history/SKILL.md and evals.md @ bbfad58
 - **Claim:** Conventional Commits, the why-body with references, one logical change per commit, intentional staging, no attribution, heredoc messages, and the history queries are git-only and stack-neutral.
 - **Result:** Kept all of them and both scenarios. Dropped the pg-boss example prompt (reworded neutrally) and the ship neighbour (an L4 pack skill, kept as a near-miss routed to none). Added task status-transition commits, the no-rewrite-of-published-history gate, the secret stop condition and the "say when history is silent" rule.
+
+## 2026-10-13 · History questions about a retry loop route to debugging
+- **Kind:** measured
+- **Source:** routing run on the 33-skill catalog (see evaluating-skills evidence, 2026-10-13), 4 runs per prompt per description variant
+- **Claim:** "Who introduced this retry loop, and what does the commit say about why?" routed to debugging-failures in 4 of 4 runs under six description variants, including ones that named retries explicitly; the same question about a config key or a function routed here. Ending the description with a debugging exclusion did not help; leading with "writing a commit message or digging through git history" did.
+- **Result:** The positive case now asks about a config key, with a note; debugging-failures' description excludes questions about who wrote code or which commit introduced it. Final run 31/33: "when did X last change" and the config-key question each answered none once.
+- **Engine:** claude
+- **Model:** haiku
+- **Skill version:** 0.1.0
+- **Revisit:** when a newer cheap model is adopted for routing

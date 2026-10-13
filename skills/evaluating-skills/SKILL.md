@@ -1,6 +1,6 @@
 ---
 name: evaluating-skills
-description: Use when a skill's routing or behavior needs testing — "write evals for this skill", "add routing cases", "add near-misses", "does this skill still trigger", "run the skill evals", "add a scenario", "what k should pass^k use", "log evidence for this skill" — or after a skill's description or body changed. Do not use for authoring a new skill's body (building-skills), moving a skill to another layer or deprecating it (promoting-learnings), or a harness-wide effort sweep and removal tests after a model release (reviewing-harness).
+description: Use when a skill's routing or behavior needs testing — "write evals for this skill", "add routing cases", "add near-misses", "this skill triggers on the wrong prompts", "does this skill still trigger", "run the skill evals", "add a scenario", "what k should pass^k use", "log evidence for this skill" — or after a skill's description or body changed. Do not use for authoring a new skill's body (building-skills), moving a skill to another layer or deprecating it (promoting-learnings), or a harness-wide effort sweep and removal tests after a model release (reviewing-harness).
 license: MIT
 compatibility: Any agent runtime that reads Agent Skills. Routing runs need a cheap model callable non-interactively; validation needs Node 22 when the harness tools are present.
 metadata:
@@ -69,6 +69,7 @@ Copy the list into your working notes and tick it as you go.
 | positive missed | the description lacks the user's words | add trigger words; never add a procedure summary |
 | near-miss triggered | the boundary is too wide | sharpen "Do not use for" here and the neighbour's triggers there; add the case to both skills |
 | runs disagree | two skills both fit the prompt | decide the owner (a stop condition) and write the boundary into both descriptions |
+| a cheap router ignores "Do not use for" | it routes on overlapping trigger words | put the deciding feature in the first clause of the owner's description and the neighbour's distinguishing words in the neighbour's triggers |
 | scenario passes fewer than k times | a body step is ambiguous | rewrite that step; add a case for the failure seen |
 | scenario passes with and without the skill | it measures nothing | delete it and say why in `evidence.md` |
 | deprecated skill chosen | its description still attracts prompts | fix the replacement's triggers and the deprecated description (promoting-learnings) |

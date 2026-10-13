@@ -42,3 +42,12 @@
 - **Source:** agentic-template .claude/skills/promote-to-template/SKILL.md @ bbfad58
 - **Claim:** The generic test, the home-by-kind table, registration plus a changelog line classed additive/behavioral/breaking, and "never promote an unverified claim" are stack-neutral and were used in three projects.
 - **Result:** Kept those. Dropped the template-only steps (the sync's managed-file list, the sync dry run, the template check), which belong in the template's own pack reference.
+
+## 2026-10-13 · A lock bump can route to adopting-harness
+- **Kind:** measured
+- **Source:** routing run on the 33-skill catalog (see evaluating-skills evidence, 2026-10-13), 3 runs
+- **Claim:** 38 of 39 cases passed; "Bump the harness pin in toolkit.lock to v0.4.0" routed to adopting-harness once and in an earlier run twice, because that description triggers on "add a toolkit.lock". "Deprecate X in favor of Y" routed to building-skills until the description named the phrase.
+- **Result:** The description names "bump the harness or a pack pin in toolkit.lock" and "deprecate X in favor of Y"; adopting-harness should exclude pin bumps in its own description.
+- **Engine:** claude
+- **Model:** haiku
+- **Skill version:** 0.1.0
