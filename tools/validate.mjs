@@ -50,7 +50,7 @@ if (flag('--help') || flag('-h')) { console.log(USAGE); process.exit(0); }
 if (flag('--list')) {
   const r = registry();
   for (const c of r.contracts()) {
-    console.log(`${c.padEnd(18)} ${r.version(c).padEnd(7)} ${r.artifacts(c).map((a) => `${a.paths.join(' ')} (${a.format})`).join('; ')}`);
+    console.log(`${c.padEnd(18)} ${r.version(c).padEnd(7)} ${r.artifacts(c).map((a) => `${a.paths.join(' ')}${a.suffixes ? ` *${a.suffixes.join(' *')}` : ''} (${a.format})`).join('; ')}`);
   }
   process.exit(0);
 }

@@ -3,9 +3,9 @@
   "$id": "https://harness.dev/schemas/epic.schema.json",
   "title": "Epic",
   "description": "The frontmatter and required sections of specs/<epic>/spec.md: the planning-layer state machine. The same file carries the requirement contract in its Requirements tables.",
-  "x-version": "1.1.0",
+  "x-version": "1.2.0",
   "x-artifacts": [
-    { "format": "frontmatter-markdown", "paths": ["specs/*/spec.md"], "bind": { "epic": 1 } }
+    { "format": "frontmatter-markdown", "paths": ["specs/*/spec.md"], "suffixes": [".spec.md"], "bind": { "epic": 1 } }
   ],
   "x-sections": [
     { "id": "problem", "heading": "Problem / motivation", "match": "^Problem\\b" },

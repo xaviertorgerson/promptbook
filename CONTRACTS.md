@@ -21,7 +21,15 @@ node tools/validate.mjs --list                  # contracts, versions, artifact 
 - **Where** an artifact lives is `x-artifacts` in its schema: a format, path globs relative to the
   project root, and `bind` rules that tie a frontmatter field to a path segment (a task's `id` must
   equal its file name; its `epic`, its folder). The validator infers a file's contract from these
-  paths, or from `fixtures/{valid,invalid}/<contract>/`.
+  paths, or from `fixtures/{valid,invalid}/<contract>/`. A file outside the project layout (a
+  skill's example) names its contract by suffix, declared as `x-artifacts[].suffixes`:
+  `*.grant.yaml`, `*.return.json`, `*.task-record.yaml`, `*.run-record.jsonl`, `*.policy.yaml`,
+  `*.toolkit.lock`, `*.task.md`, `*.brief.md`, `*.persona.md` (frontmatter or a list),
+  `*.adr.md`, `*.ux.md`, `*.spec.md` (epic and requirements), `*.cuj.md`, `*.readiness.md`,
+  `*.harness-review.md`, `*.reflection.md`. A suffix applies only when no path does; it binds no
+  frontmatter field, and an entry file (`<epic>.cuj.md`, `<epic>.ux.md`) takes its epic from the name
+  before the suffix. A `*.template.*` file holds placeholders on purpose and gets no inferred
+  contract (`--contract` still validates it).
 - **Rules have names.** Conditional rules carry `x-rule`; errors report that name, a JSON pointer,
   and a file line. Rules JSON Schema cannot express are named checks listed in `x-checks`
   (`tools/lib/checks.mjs`). Unknown fields are errors, except `x-*` keys, which are free for local
@@ -67,7 +75,7 @@ node tools/validate.mjs --list                  # contracts, versions, artifact 
 ### brief
 
 **Purpose.** The root of the trace graph: problem, users, outcomes, non-goals, and the personas the
-product commits to. One per product. **Schema** `schemas/brief.schema.json` 1.0.0; `id: BRIEF`,
+product commits to. One per product. **Schema** `schemas/brief.schema.json` 1.1.0; `id: BRIEF`,
 `product`, `owner`, `status` (draft | approved | superseded), `updated`, `personas[]`, `links[]`;
 sections Problem, Users, Outcomes, Non-goals. **Swap story.** The brief can be written by hand, by an
 interview skill, or exported from a product tool; the trace check only reads this file. **Compat.**
@@ -77,7 +85,7 @@ trace check to legacy adoption (below).
 ### persona
 
 **Purpose.** A user the brief serves; journeys cite personas. **Schema** `persona.schema.json`
-1.0.0: `id` PER-n, `name`, `role`, `goals[]` (≥1), optional `pains`, `context`, `quote`,
+1.1.0: `id` PER-n, `name`, `role`, `goals[]` (≥1), optional `pains`, `context`, `quote`,
 `evidence[]`. **Location.** Either one `docs/product/personas.md` with `## PER-n · Name` entries and
 `- **Role:** …` / `- **Goals:**` bullets, or one frontmatter file per persona under `personas/`.
 **Swap story.** Personas from research tools, interviews or analytics land in the same shape.
@@ -86,7 +94,7 @@ trace check to legacy adoption (below).
 ### journey
 
 **Purpose.** A Critical User Journey: one end-to-end path that must work, the source of a task's
-event, state and unwanted-behaviour criteria. **Schema** `journey.schema.json` 1.0.0: `id` CUJ-n,
+event, state and unwanted-behaviour criteria. **Schema** `journey.schema.json` 1.1.0: `id` CUJ-n,
 `title`, `epic` (from the path), `actor`, `goal`, `trigger`, `success`, `unwanted`, optional `steps[]`,
 `personas[]`, `user_facing`, `extra{}`. **Swap story.** Journeys can be drafted by a product owner, a
 planner agent or a design tool; tasks reference them only by id. **Compat.** Describes
@@ -97,7 +105,7 @@ agentic-template's `cuj.md` unchanged (both epics validate as-is). New optional 
 
 **Purpose.** One checkable behaviour (functional, REQ) or one measurable quality (non-functional,
 NFR) of an epic; tasks implement requirements and ADRs satisfy them. **Schema**
-`requirement.schema.json` 1.1.0: `id`, `source_id`, `epic`, `kind`, `statement`, `ears` (set by the
+`requirement.schema.json` 1.2.0: `id`, `source_id`, `epic`, `kind`, `statement`, `ears` (set by the
 parser), `module`, `verified_by`, `cujs[]`, `adrs[]`; an NFR also requires `category` (performance,
 reliability, availability, security, privacy, accessibility, usability, operability, observability,
 cost, compliance, compatibility, maintainability, portability, scalability; the playbook's list is
@@ -108,7 +116,7 @@ table; legacy `R<n>` ids normalize to `REQ-<n>` (Normalization).
 ### ux-flow
 
 **Purpose.** The screens of a user-facing journey and its four states (empty, loading, error,
-success), designed before code, with a prototype link. **Schema** `ux-flow.schema.json` 1.0.0: `id`
+success), designed before code, with a prototype link. **Schema** `ux-flow.schema.json` 1.1.0: `id`
 UX-n, `title`, `epic`, `cujs[]` (≥1), `requirements[]`, `steps[]`, `states{empty,loading,error,success}`,
 `prototype` (inherited from the file's frontmatter), `accessibility`. **Swap story.** The prototype
 may live in any design tool; only its link is in git. **Compat.** New; agentic-template's
@@ -118,7 +126,7 @@ may live in any design tool; only its link is in git. **Compat.** New; agentic-t
 
 **Purpose.** An Architecture Decision Record: the immutable why, the options rejected, whether the
 door is one-way, what would reverse it, and the requirements it satisfies. **Schema**
-`decision.schema.json` 1.1.0: `id` ADR-nnnn, `title`, `status` (proposed | accepted | superseded |
+`decision.schema.json` 1.2.0: `id` ADR-nnnn, `title`, `status` (proposed | accepted | superseded |
 deprecated | rejected), `status_text`, `superseded_by[]`, `refined_by[]`, `date`, `supersedes`,
 `supersedes_ids[]`, `decision`, `why` (or `context`, the Nygard form's `**Context:**`, which stands in
 for it: `missing-why` only when neither is there), `consequences`, optional `options[]`, `door`,
@@ -133,7 +141,7 @@ title`, `**Status:**`, `**Date:**`, `**Decision:**`, `**Why:**`, `**Consequences
 
 **Purpose.** The planning-layer state machine of `spec.md` (intake → scoping → draft → approved →
 in-progress → done; blocked). Not in the brief's table; added so the epic status is checked the
-same way as the task status. **Schema** `epic.schema.json` 1.1.0: agentic-template's spec
+same way as the task status. **Schema** `epic.schema.json` 1.2.0: agentic-template's spec
 frontmatter exactly (`epic`, `status`, `priority`, `size`, `business_value`, `initiative`, `owner`),
 `owner` required from `approved` on, plus the optional harness field `mode`, the default methodology
 of the epic's tasks (a task's own `mode` overrides it; absent everywhere, `spec-driven`); sections
@@ -145,7 +153,7 @@ template epics validate unchanged.
 
 **Purpose.** One unit of work, the coordination substrate: the frontmatter is the kanban column and
 the claim lock; the body is the contract the coder builds against. **Schema** `task.schema.json`
-1.2.0. Required (agentic-template's fields, same meaning): `id`, `epic`, `status`, `priority`, `cuj`,
+1.3.0. Required (agentic-template's fields, same meaning): `id`, `epic`, `status`, `priority`, `cuj`,
 `guiding_docs`, `branch`, `depends_on`, `owner`. Optional template fields: `parent`, `size`,
 `kickback_reason`. **Optional harness fields:**
 
@@ -175,7 +183,7 @@ their sources.
 ### readiness-report
 
 **Purpose.** The trace check's verdict on one epic, generated for the product owner at the spec gate.
-**Schema** `readiness-report.schema.json` 1.0.0: `epic`, `generated_at`, `generator`,
+**Schema** `readiness-report.schema.json` 1.1.0: `epic`, `generated_at`, `generator`,
 `source_commit`, `adoption` (full | legacy), `epic_status`, `verdict` (ready | not-ready), `counts`,
 `coverage` (journeys with a task, requirements with a task, tasks citing a requirement, criteria
 named in a test, each `{covered,total}`), `gaps[]` (`traceGap`); a `ready` verdict has no error and
@@ -186,7 +194,7 @@ hand-edited. **Compat.** New.
 
 **Purpose.** A runtime's recovery note for one task: what a replacement coordinator needs to resume
 (repository, worktree, agents, native session ids, PRs, attention, next action, human decisions).
-**Schema** `task-record.schema.json` 1.2.0; `state.name` is attention (working | needs-human |
+**Schema** `task-record.schema.json` 1.3.0; `state.name` is attention (working | needs-human |
 complete), never a workflow status; needs-human requires `next_action`; complete forbids it.
 Harness additions: `runtime`, `grant`, `signals{role: {source, value, observed_at}}` (source: an
 `attention.yaml` vocabulary — herdr, a2a, mcp-tasks, claude-headless, loop-outcome, ci — or
@@ -205,7 +213,7 @@ A superset of stagehand's `assets/task-record.yaml`, which validates unchanged; 
 **Purpose.** A subagent's hand-back: a bounded summary (8,000 characters, about 2k tokens), the
 artifact paths it wrote, its attention, the decisions it needs, and each acceptance criterion met
 or unmet with a reason. needs-human requires at least one question; complete requires no unmet
-criterion. **Schema** `return.schema.json` 1.1.0; `task` is the workflow id (`<PREFIX>-<n>`) when
+criterion. **Schema** `return.schema.json` 1.2.0; `task` is the workflow id (`<PREFIX>-<n>`) when
 the work has one, otherwise the runtime's stable id, as `task-record.task_id` accepts (a review of
 an outside PR, a delegated job). **Swap story.** Any engine's structured output
 (`claude -p --json-schema`, a Codex output schema) or a JSON file; the dispatcher reads paths, not a
@@ -215,7 +223,7 @@ is optional there.
 ### run-record
 
 **Purpose.** One JSON line per agent run, appended by the runner. **Schema** `run-record.schema.json`
-1.0.0: exactly `scripts/loop.mjs`'s line — `task`, `session_id`, `started_at`, `ended_at`, `exit`
+1.1.0: exactly `scripts/loop.mjs`'s line — `task`, `session_id`, `started_at`, `ended_at`, `exit`
 (code or signal), `outcome` (advanced | stalled | failed), `reason`, `subtype`, `num_turns`,
 `total_cost_usd`, `status_after` — with null where loop.mjs writes null. Harness optional fields:
 `engine`, `runtime`, `model`, `status_before`, `permission_mode`, `permission_denials`, `attention`,
@@ -226,7 +234,7 @@ fixture `fixtures/valid/run-record/loop-mjs-outcomes.jsonl`.
 ### grant
 
 **Purpose.** A human delegating named decisions to a coordinator for a named scope, within limits,
-until an expiry (`state-machines/authority.yaml`). **Schema** `grant.schema.json` 1.0.0: `id`,
+until an expiry (`state-machines/authority.yaml`). **Schema** `grant.schema.json` 1.1.0: `id`,
 `granted_by`, `granted_to{role, agent, runtime}`, `granted_at`, `source`, `scope{objective,
 repositories, epics, tasks, requirements, non_goals}`, `actions[]`, `limits{max_workers, budget,
 stop_when}`, `expires_at`, `revocable: true`, `revoked_at/by/reason`, `narrowed[]`. Actions:
@@ -250,7 +258,7 @@ harness adds a mandatory expiry.
 
 **Purpose.** The operator's (L1) agent policy: autonomy tier per machine profile, what is never read
 (`deny_read`), never done (`forbid`), asked about (`ask`), pre-approved (`allow`), network `egress`,
-`sandbox`, and run `budgets`; compiled per engine. **Schema** `policy.schema.json` 1.1.0. Tiers:
+`sandbox`, and run `budgets`; compiled per engine. **Schema** `policy.schema.json` 1.2.0. Tiers:
 read-only, ask, auto-edit, autonomous, unattended (an unattended profile requires
 `budgets.unattended`). A profile may name `requires`: preconditions the operator keeps outside the
 policy (`prod-unreachable-from-this-host`, `non-root-container`); the bypass tier (autonomous)
@@ -270,7 +278,7 @@ name; its `requires` is never waivable.
 ### toolkit-lock
 
 **Purpose.** Pins the exact harness, the portable skill libraries and the L4 packs a project (or the
-dotfiles) runs. **Schema** `toolkit-lock.schema.json` 1.1.0: `lock_version`, `entries[]` of `{name,
+dotfiles) runs. **Schema** `toolkit-lock.schema.json` 1.2.0: `lock_version`, `entries[]` of `{name,
 layer (L3|L4), kind, source, path, ref, commit (full sha), tree (git tree id), version (semver,
 build metadata allowed: `0.0.0+fc572b6` for an untagged pin), autoUpdate (off | patch | minor |
 major), mirrored}`; names unique. `kind` at L3 is `harness` (exactly one; an L3 entry with no kind is

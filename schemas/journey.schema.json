@@ -3,9 +3,9 @@
   "$id": "https://harness.dev/schemas/journey.schema.json",
   "title": "Critical user journey",
   "description": "One CUJ entry of specs/<epic>/cuj.md, normalized from its '## CUJ-n · title' heading and '- **Field:** value' bullets (CONTRACTS.md, Normalization).",
-  "x-version": "1.0.0",
+  "x-version": "1.1.0",
   "x-artifacts": [
-    { "format": "markdown-entries", "parser": "journeys", "paths": ["specs/*/cuj.md"], "bind": { "epic": 1 } }
+    { "format": "markdown-entries", "parser": "journeys", "paths": ["specs/*/cuj.md"], "suffixes": [".cuj.md"], "bind": { "epic": 1 } }
   ],
   "type": "object",
   "required": ["id", "title", "epic", "actor", "goal", "trigger", "success", "unwanted"],

@@ -3,9 +3,9 @@
   "$id": "https://harness.dev/schemas/toolkit-lock.schema.json",
   "title": "Toolkit lock",
   "description": "toolkit.lock (YAML) in an L2 project, or in L1 dotfiles: the exact harness (L3), the portable skill libraries it runs beside (L3), and the implementation packs (L4) this project runs, pinned by commit and tree hash. Dependencies point one way: everything pins one harness.",
-  "x-version": "1.1.0",
+  "x-version": "1.2.0",
   "x-artifacts": [
-    { "format": "yaml", "paths": ["toolkit.lock"] }
+    { "format": "yaml", "paths": ["toolkit.lock"], "suffixes": [".toolkit.lock"] }
   ],
   "type": "object",
   "required": ["lock_version", "entries"],

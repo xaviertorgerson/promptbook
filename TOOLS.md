@@ -19,7 +19,10 @@ harness <command> [args]          # package.json bin: tools/cli.mjs; or pnpm <co
 
 ## validate, trace
 
-The contract validator and the trace graph; see [CONTRACTS.md](CONTRACTS.md). `harness trace <root>`
+The contract validator and the trace graph; see [CONTRACTS.md](CONTRACTS.md). A file's contract comes
+from its path in the project layout, else from its name's suffix (`*.grant.yaml`, `*.task.md`, …;
+`*.template.*` is skipped), so `harness validate skills` checks every renamed example too.
+`harness trace <root>`
 is `validate --trace <root>`; `--tests <glob>` picks the test files, `--test-pattern <regex>` adds a
 way to read test names beyond the built-in JS/TS, Go, Python, JUnit/Kotlin, Rust and Ruby readers
 (fixtures: `fixtures/test-names/`).

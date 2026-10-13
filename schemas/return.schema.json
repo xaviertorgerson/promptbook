@@ -3,9 +3,9 @@
   "$id": "https://harness.dev/schemas/return.schema.json",
   "title": "Return",
   "description": "A subagent's hand-back to the agent that dispatched it: a bounded summary, the artifacts it wrote, what it needs decided, and how it did against the criteria. Passed as a JSON object (e.g. a structured-output schema or a JSON file the dispatcher reads).",
-  "x-version": "1.1.0",
+  "x-version": "1.2.0",
   "x-artifacts": [
-    { "format": "json", "paths": [".agent/returns/*.json"] }
+    { "format": "json", "paths": [".agent/returns/*.json"], "suffixes": [".return.json"] }
   ],
   "type": "object",
   "required": ["summary", "attention", "artifacts", "decisions_needed"],

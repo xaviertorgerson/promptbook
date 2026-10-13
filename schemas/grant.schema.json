@@ -3,9 +3,9 @@
   "$id": "https://harness.dev/schemas/grant.schema.json",
   "title": "Authority grant",
   "description": "A human delegating named decisions to a coordinator for a named scope, within limits, until an expiry. Everything not granted stays human-owned (state-machines/authority.yaml). A grant never waives repository policy, protected branches, independent review or required checks.",
-  "x-version": "1.0.0",
+  "x-version": "1.1.0",
   "x-artifacts": [
-    { "format": "yaml", "paths": [".orchestrator/grants/*.yaml", "grants/*.yaml"] }
+    { "format": "yaml", "paths": [".orchestrator/grants/*.yaml", "grants/*.yaml"], "suffixes": [".grant.yaml", ".grant.yml"] }
   ],
   "type": "object",
   "required": ["id", "granted_by", "granted_to", "granted_at", "source", "scope", "actions", "limits", "expires_at"],

@@ -3,9 +3,9 @@
   "$id": "https://harness.dev/schemas/policy.schema.json",
   "title": "Agent policy",
   "description": "The L1 operator policy (agent-policy.yaml): autonomy tier per machine profile, what is never read, never done, asked about, or pre-approved, network egress, and run ceilings. Engine-neutral; compiled per engine by the adapters (adapters/*/README.md). Walls are denies (forbid, deny_read); ask is a human checkpoint and protects nothing unattended (ADR-0021).",
-  "x-version": "1.1.0",
+  "x-version": "1.2.0",
   "x-artifacts": [
-    { "format": "yaml", "paths": ["agent-policy.yaml", ".chezmoidata/agent-policy.yaml"] }
+    { "format": "yaml", "paths": ["agent-policy.yaml", ".chezmoidata/agent-policy.yaml"], "suffixes": [".policy.yaml", ".policy.yml"] }
   ],
   "type": "object",
   "required": ["policy_version", "profiles", "deny_read", "forbid"],

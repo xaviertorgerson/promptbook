@@ -3,9 +3,9 @@
   "$id": "https://harness.dev/schemas/run-record.schema.json",
   "title": "Run record",
   "description": "One JSON line per agent run, appended by the runner (never the agent). Exactly the line agentic-template's scripts/loop.mjs writes to .agent/loop-runs.jsonl; harness fields are optional additions.",
-  "x-version": "1.0.0",
+  "x-version": "1.1.0",
   "x-artifacts": [
-    { "format": "jsonl", "paths": [".agent/loop-runs.jsonl", ".agent/runs/*.jsonl"] }
+    { "format": "jsonl", "paths": [".agent/loop-runs.jsonl", ".agent/runs/*.jsonl"], "suffixes": [".run-record.jsonl"] }
   ],
   "type": "object",
   "required": ["task", "session_id", "started_at", "ended_at", "exit", "outcome", "reason", "subtype", "num_turns", "total_cost_usd", "status_after"],

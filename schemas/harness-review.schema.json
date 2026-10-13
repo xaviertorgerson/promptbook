@@ -5,7 +5,7 @@
   "description": "The record the reviewing-harness skill writes after a model release or a quarter: what was reviewed with which suite, the baseline, the ablations (one component removed per row) and the decisions they support. Markdown: a '# Harness review — YYYY-MM-DD — <model or quarter>' title, '- **Field:** value' header bullets, and level-2 sections.",
   "x-version": "1.0.0",
   "x-artifacts": [
-    { "format": "markdown-entries", "parser": "harness-review", "paths": ["harness-reviews/*.md"] }
+    { "format": "markdown-entries", "parser": "harness-review", "paths": ["harness-reviews/*.md"], "suffixes": [".harness-review.md"] }
   ],
   "type": "object",
   "required": ["date", "label", "trigger", "reviewed", "suite", "trials", "sections"],

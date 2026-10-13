@@ -6,10 +6,11 @@ import { after, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
 import { walk } from '../tools/lib/glob.mjs';
+import { PARSERS } from '../tools/lib/parsers.mjs';
 import { registry } from '../tools/lib/registry.mjs';
 import { namedIn, testNames } from '../tools/lib/ears.mjs';
 import { trace } from '../tools/lib/trace.mjs';
-import { fixtureCase, validateFile } from '../tools/lib/validate.mjs';
+import { fixtureCase, inferContracts, validateFile, validatePath } from '../tools/lib/validate.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FIX = path.join(ROOT, 'fixtures');
@@ -52,6 +53,14 @@ describe('schemas', () => {
       assert.match(schema['x-version'], /^\d+\.\d+\.\d+$/, name);
       if (name !== 'common') assert.doesNotThrow(() => reg.validator(name), name);
     }
+  });
+
+  it('CONTRACTS.md states each schema at its current x-version', () => {
+    const doc = fs.readFileSync(path.join(ROOT, 'CONTRACTS.md'), 'utf8');
+    const stated = [...doc.matchAll(/`(?:schemas\/)?([a-z-]+)\.schema\.json`\s+(\d+\.\d+\.\d+)/g)];
+    assert.ok(stated.length >= reg.contracts().length, `${stated.length} versions stated`);
+    for (const [, name, v] of stated) assert.equal(v, reg.version(name), `CONTRACTS.md says ${name} ${v}`);
+    for (const name of reg.contracts()) assert.ok(stated.some(([, n]) => n === name), `CONTRACTS.md never states ${name}'s version`);
   });
 
   it('every contract declares where its artifact lives', () => {
@@ -157,6 +166,58 @@ describe('toolkit-lock', () => {
     const r = validateFile(file);
     assert.equal(r.status, 'PASS');
     assert.deepEqual(r.results[0].findings.map((f) => [f.severity, f.rule]), [['warning', 'kind-matches-layer']]);
+  });
+});
+
+describe('contract by filename suffix (examples outside the project layout)', () => {
+  const V = (rel) => path.join(FIX, 'valid', rel);
+  const examples = {
+    'GRANT-8-integration.grant.yaml': ['grant', V('grant/project-delegation.yaml')],
+    'author-done.return.json': ['return', V('return/coder-complete.json')],
+    'BILL-7-claimed.task-record.yaml': ['task-record', V('task-record/worktree-resources.yaml')],
+    'loop.run-record.jsonl': ['run-record', V('run-record/loop-mjs-outcomes.jsonl')],
+    'devbox.policy.yaml': ['policy', V('policy/bypass-container.yaml')],
+    'project.toolkit.lock': ['toolkit-lock', V('toolkit-lock/skill-libraries/toolkit.lock')],
+    'at-review.task.md': ['task', V('task/harness-fields.md')],
+    'acme.brief.md': ['brief', V('brief/full/docs/product/brief.md')],
+    'owen.persona.md': ['persona', V('persona/file/docs/product/personas/per-3.md')],
+    'team.persona.md': ['persona', V('persona/list/docs/product/personas.md')],
+    'money.adr.md': ['decision', V('decision/context-form.md')],
+    'invoicing.ux.md': ['ux-flow', V('ux-flow/invoicing/docs/ux/invoicing.md')],
+    'rating-engine.spec.md': ['epic,requirement', V('epic/real-template-migration.md')],
+    'rating-engine.cuj.md': ['journey', V('journey/real-rating-engine/specs/rating-engine/cuj.md')],
+    'template-migration.readiness.md': ['readiness-report', V('readiness-report/generated-legacy/specs/template-migration/readiness.md')],
+    '2026-10-13-model-5-5.harness-review.md': ['harness-review', V('harness-review/model-release.md')],
+    'one-window.reflection.md': ['reflection-report', V('reflection-report/one-window.md')],
+  };
+  const dir = path.join(TMP, 'skill-examples/references/examples');
+  fs.mkdirSync(dir, { recursive: true });
+  for (const [name, [, src]] of Object.entries(examples)) fs.copyFileSync(src, path.join(dir, name));
+  fs.writeFileSync(path.join(dir, 'adr.template.md'), '## ADR-NNNN: <title>\n**Status:** <Proposed>\n');
+  fs.writeFileSync(path.join(dir, 'broken.grant.yaml'), 'id: GRANT-9\ngranted_by: maria\n');
+
+  for (const [name, [contracts]] of Object.entries(examples)) {
+    it(`${name} validates as ${contracts}`, () => {
+      const r = validateFile(path.join(dir, name));
+      assert.deepEqual(r.results.map((x) => x.contract).sort().join(), contracts);
+      assert.equal(r.status, 'PASS', JSON.stringify(errorsOf(r)));
+    });
+  }
+
+  it('an entry file takes its epic from the name before the suffix (journeys require one)', () => {
+    const [hit] = inferContracts(path.join(dir, 'rating-engine.cuj.md'));
+    assert.deepEqual([hit.contract, hit.captures], ['journey', ['rating-engine']]);
+    const epics = PARSERS.journeys(fs.readFileSync(path.join(dir, 'rating-engine.cuj.md'), 'utf8'), { epic: hit.captures[0] }).records.map((r) => r.data.epic);
+    assert.ok(epics.length && epics.every((e) => e === 'rating-engine'));
+  });
+
+  it('a broken example fails; a .template. file and a plain file are skipped; a directory walk finds them all', () => {
+    assert.equal(validateFile(path.join(dir, 'broken.grant.yaml')).status, 'FAIL');
+    assert.equal(validateFile(path.join(dir, 'adr.template.md')).status, 'SKIP');
+    const walked = validatePath(path.dirname(dir));
+    assert.equal(walked.length, Object.keys(examples).length + 1);
+    assert.ok(!walked.some((r) => r.file.endsWith('adr.template.md')));
+    assert.equal(validateFile(path.join(dir, 'adr.template.md'), { contract: 'decision' }).status, 'FAIL', '--contract still validates a template');
   });
 });
 

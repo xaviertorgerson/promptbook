@@ -3,9 +3,9 @@
   "$id": "https://harness.dev/schemas/task-record.schema.json",
   "title": "Task record",
   "description": "A runtime's recovery note for one task: what a replacement coordinator needs to resume. One per task per runtime, kept outside the task file (e.g. .orchestrator/tasks/<id>.yaml). A superset of stagehand's task-record.yaml; attention is runtime state and never advances the task's workflow status.",
-  "x-version": "1.2.0",
+  "x-version": "1.3.0",
   "x-artifacts": [
-    { "format": "yaml", "paths": [".orchestrator/tasks/*.yaml", ".orchestrator/archive/*.yaml"] }
+    { "format": "yaml", "paths": [".orchestrator/tasks/*.yaml", ".orchestrator/archive/*.yaml"], "suffixes": [".task-record.yaml", ".task-record.yml"] }
   ],
   "type": "object",
   "required": ["task_id", "state"],

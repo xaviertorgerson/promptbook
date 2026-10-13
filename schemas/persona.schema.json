@@ -3,10 +3,10 @@
   "$id": "https://harness.dev/schemas/persona.schema.json",
   "title": "Persona",
   "description": "A user the brief serves. Journeys cite personas as their actor; a persona no journey cites is an orphan.",
-  "x-version": "1.0.0",
+  "x-version": "1.1.0",
   "x-artifacts": [
-    { "format": "markdown-entries", "parser": "personas", "paths": ["docs/product/personas.md"] },
-    { "format": "frontmatter-markdown", "paths": ["docs/product/personas/*.md"] }
+    { "format": "markdown-entries", "parser": "personas", "paths": ["docs/product/personas.md"], "suffixes": [".persona.md"] },
+    { "format": "frontmatter-markdown", "paths": ["docs/product/personas/*.md"], "suffixes": [".persona.md"] }
   ],
   "type": "object",
   "required": ["id", "name", "role", "goals"],

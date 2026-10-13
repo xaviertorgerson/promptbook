@@ -5,7 +5,7 @@
   "description": "What the reflecting-on-runs skill proposes from one window of run records, verdicts and review threads: a list of deltas, each one operation on one item in one file, with the evidence behind it and its status. A curator applies accepted deltas; the reflector never edits a file wholesale.",
   "x-version": "1.0.0",
   "x-artifacts": [
-    { "format": "frontmatter-markdown", "paths": ["reflections/*.md"] }
+    { "format": "frontmatter-markdown", "paths": ["reflections/*.md"], "suffixes": [".reflection.md", ".reflection-report.md"] }
   ],
   "type": "object",
   "required": ["window", "deltas"],

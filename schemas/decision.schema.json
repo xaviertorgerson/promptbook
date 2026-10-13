@@ -3,9 +3,9 @@
   "$id": "https://harness.dev/schemas/decision.schema.json",
   "title": "Decision (ADR)",
   "description": "One '## ADR-NNNN: title' entry of DECISIONS.md, normalized from its '**Field:** value' lines (CONTRACTS.md, Normalization). Immutable once accepted; corrected by a superseding ADR.",
-  "x-version": "1.1.0",
+  "x-version": "1.2.0",
   "x-artifacts": [
-    { "format": "markdown-entries", "parser": "decisions", "paths": ["DECISIONS.md", "docs/adr/*.md"] }
+    { "format": "markdown-entries", "parser": "decisions", "paths": ["DECISIONS.md", "docs/adr/*.md"], "suffixes": [".adr.md"] }
   ],
   "type": "object",
   "required": ["id", "title", "status", "status_text", "decision", "consequences"],

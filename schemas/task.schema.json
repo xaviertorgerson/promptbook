@@ -3,11 +3,11 @@
   "$id": "https://harness.dev/schemas/task.schema.json",
   "title": "Task",
   "description": "One unit of work: specs/<epic>/tasks/<ID>.md. The frontmatter is the coordination substrate (board, loop, claiming); the body is what the coder builds against. A backward-compatible superset of agentic-template's task frontmatter: every field the template writes keeps its meaning, every harness field is optional.",
-  "x-version": "1.2.0",
+  "x-version": "1.3.0",
   "x-artifacts": [
     {
       "format": "frontmatter-markdown",
-      "paths": ["specs/*/tasks/*.md"],
+      "paths": ["specs/*/tasks/*.md"], "suffixes": [".task.md"],
       "bind": { "epic": 1, "id": "$name" }
     }
   ],
