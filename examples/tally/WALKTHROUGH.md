@@ -38,7 +38,7 @@ node tools/cli.mjs compile-policy examples/tally/_operator/agent-policy.yaml --p
 | Layer | In this example | Decides |
 |---|---|---|
 | L1 personal | [`_operator/agent-policy.yaml`](_operator/agent-policy.yaml) and its compiled settings, copied from dana's dotfiles | how often an agent asks: `workstation` auto-edit, `devbox` bypass (only with `requires` and the accepted egress gap), `ci` unattended (an ask is a denial) |
-| L2 project | `docs/`, `specs/`, `DECISIONS.md`, `ARCHITECTURE.md`, `tests/`, [`toolkit.lock`](toolkit.lock) | what is built, what is never allowed, and which harness it all speaks |
+| L2 project | `docs/`, `specs/`, `DECISIONS.md`, `ARCHITECTURE.md`, `tests/`, [`toolkit.lock`](toolkit.lock) | what is built, which harness it speaks, and what is never allowed (its walls, the hook and deny rules a template pack installs, are not reproduced here) |
 | L3 harness | this repository, pinned by `toolkit.lock`: the schemas every file validates against, the skills named below, the tools in the commands above | the contracts |
 | L4 runtime | `.orchestrator/` (grants, task records), `.agent/` (run records, returns, verdicts) — runtime state a product keeps untracked, committed here so the example is whole | how much a run may spend, and every binding to an engine |
 
@@ -51,7 +51,7 @@ for the human. They move separately: no row below moves a status on a signal.
 
 | # | Step | Skill | Artifact | Gate · passed by | Layer |
 |---|---|---|---|---|---|
-| 1 | Frame the product from six interviews; riskiest assumption A3 (links keep households apart) | framing-products | `docs/product/brief.md` | go decision · dana | L2 |
+| 1 | Frame the product from ten interviews; riskiest assumption A3 (links keep households apart) | framing-products | `docs/product/brief.md` | go decision · dana | L2 |
 | 2 | Two decision-relevant personas | defining-personas | `docs/product/personas.md` | — | L2 |
 | 3 | Two critical journeys, each with personas, trigger, success and unwanted outcome | mapping-journeys | `specs/settle-up/cuj.md` | — | L2 |
 | 4 | EARS requirements REQ-1..8; NFR-1..4 by category (NFR-4: compatibility) | writing-requirements | `specs/settle-up/spec.md` | — | L2 |
@@ -120,7 +120,7 @@ The coordinator wakes on events and a cheap check-in timer, reads the task files
 | 32 | dana answers SPLIT-4: read the schema in `migrations/0001_skeleton.sql`, no shell. The coordinator redispatches; evaluator pass; the coder marks ready; integrated under GRANT-2 | orchestrating-work, verifying-work, landing-changes | pr-approval · coordinator under GRANT-2 | needs-human → working → complete |
 | 33 | SPLIT-3: draft PR, evaluator pass, ready, integrated | implementing-task, verifying-work, landing-changes | pr-approval · coordinator under GRANT-2 | working → complete |
 | 34 | The coordinator opens `integration/settle-up` → `main` with the acceptance evidence, the grant ids and the disposed findings | landing-changes | — | complete |
-| 35 | **Tier 3**: dana reviews and merges the integration branch into `main`, then records `promote` for SPLIT-2..4 (integrated → merged) and `finish` on the epic | landing-changes | pr-approval and promote · dana (never grantable) | complete |
+| 35 | **Tier 3**: dana reviews and merges the integration branch into `main`, then records `promote` for SPLIT-2..4 (integrated → merged) and `finish` on the epic | landing-changes | pr-approval of the integration PR, then promote · dana (promote is never grantable) | complete |
 | 36 | Next, outside this example: production release by the train | releasing-changes | **gate 3**, production-release · dana | — |
 
 ## The faults the scenario replays
