@@ -1,6 +1,6 @@
 ---
 name: releasing-changes
-description: Use when merged work has to reach an environment, or the user says "promote the build to QA", "ship this to production", "set up a preview environment per PR", "put this behind a feature flag", "dark launch it", "add a kill switch", "roll back the release", "why didn't the train promote", "make deploys roll back automatically", or "plan this migration so the release can roll back". Builds one immutable artifact per merge and promotes it by digest through the stages, gives each PR a preview the evaluator can run, launches risky behavior dark behind flags, watches each rollout with probes that roll back automatically, keeps migrations expand-then-contract, and writes a release record. Agents prepare and run pre-production stages; production is a human-approved gate. Do not use for merging to the default branch (landing-changes), for the credentials a deploy uses (handling-credentials), or for judging a change against its criteria (verifying-work).
+description: Use when merged work must reach an environment — promote one build by digest through QA and UAT, per-PR preview environments, feature flags and dark launch, roll back a release, rollback-safe migrations, "why didn't the train promote". Do not use for merging (landing-changes).
 license: MIT
 compatibility: Any agent runtime with access to CI logs and the forge's deployment records; a registry that addresses artifacts by digest. No harness tool required.
 metadata:
@@ -13,6 +13,15 @@ metadata:
 What testing passed must be exactly what customers get. Build once, promote the same digest, let the
 running product (not a description of it) be judged, ship risk dark behind flags, and let probes,
 not a person at 3 a.m., roll back a bad rollout. The production hop is always a human's decision.
+
+Typical asks: "promote the build to QA", "ship this to production", "set up a preview environment
+per PR", "put this behind a feature flag", "dark launch it", "add a kill switch", "roll back the
+release", "why didn't the train promote", "make deploys roll back automatically", "plan this
+migration so the release can roll back".
+
+Hand off instead: merging to the default branch (landing-changes); the credentials a deploy uses
+(handling-credentials); judging a change against its criteria (verifying-work); deciding who may
+approve a release (delegating-authority).
 
 ## Inputs
 

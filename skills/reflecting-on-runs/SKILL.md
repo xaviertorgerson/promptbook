@@ -1,6 +1,6 @@
 ---
 name: reflecting-on-runs
-description: Use when failed or stalled agent runs, evaluator verdicts or accepted review findings should become small fixes to skills and rules — "what did we learn from last week's runs", "mine the failures", "run the reflector", "agents keep making the same mistake, what should we change", "turn these review findings into skill fixes", "postmortem last night's agent runs", "propose rule changes from the evidence logs" — or when a scheduled reflection job fires. Do not use for ablating or deleting components, effort sweeps or the review after a model release (reviewing-harness), git history questions about code (writing-commit-history), moving a learning to a wider scope or deprecating a skill (promoting-learnings), or diagnosing one live bug (debugging-failures).
+description: Use when agents keep making the same mistake or forgetting a rule, or failed runs, verdicts and accepted review findings should become small skill or rule fixes — "what did we learn from last week's runs", postmortem the loop, run the reflector. Do not use for a model release (reviewing-harness).
 license: MIT
 compatibility: Any agent runtime that reads Agent Skills and can open pull requests on the forge. Reads JSONL and Markdown; Node 22 for validation when the harness tools are present.
 metadata:
@@ -14,6 +14,15 @@ Lessons from failures evaporate unless someone writes them down, and an agent th
 instructions collapses them into generic advice or absorbs whatever a poisoned input told it. Act as
 the reflector and curator: read what went wrong, tie each lesson to an external signal, and propose
 small itemized deltas as pull requests a human merges.
+
+Typical asks: "what did we learn from last week's runs", "mine the failures", "run the reflector",
+"agents keep making the same mistake, what should we change", "turn these review findings into skill
+fixes", "postmortem last night's agent runs", "propose rule changes from the evidence logs", or a
+scheduled reflection job.
+
+Hand off instead: ablations, effort sweeps or the review after a model release (reviewing-harness);
+git history questions about code (writing-commit-history); moving a learning up or deprecating a
+skill (promoting-learnings); diagnosing one live bug (debugging-failures).
 
 ## Inputs
 

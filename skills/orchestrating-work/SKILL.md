@@ -1,6 +1,6 @@
 ---
 name: orchestrating-work
-description: Use when asked to coordinate, run, supervise, resume or report on several agent tasks at once — "run the epic", "dispatch the ready tasks", "keep the workers going overnight", "what are the agents doing", "the coordinator crashed, pick up where it left off", "the loop stopped, what now" — under any runtime (a sequential loop, forge-event CI agents, a terminal multiplexer, a hosted agent service). Selects work by mode, priority, depends_on and disjoint touches, pairs each author with an independent evaluator, holds every run to its caps, takes structured returns without paraphrasing them, reconciles from git and the forge on every wake, and hands decisions to a human instead of retrying. Do not use for doing one task yourself (implementing-task), writing or checking a grant (delegating-authority), merging (landing-changes), or only turning a runtime signal into a task record (reporting-state).
+description: Use when several agent tasks run at once — "run the epic", dispatch ready tasks to capped workers, which ready ones to start together now, keep the loop going overnight, "what are the agents doing", resume after a coordinator crash or a stalled loop. Do not use for one task (implementing-task).
 license: MIT
 compatibility: Any agent runtime that can start workers, read their answers, and see git and the forge. Optional - Node 22 and the harness validator.
 metadata:
@@ -14,6 +14,15 @@ You coordinate; you do not build. Turn ready tasks into thin, bounded assignment
 per task with an independent evaluator beside it, hold every run inside its caps, and keep a
 recovery record any replacement coordinator can resume from. What a human must decide goes to the
 human as one concrete action. Code owns the schedule; you judge only what code cannot.
+
+Typical asks: "run the epic", "dispatch the ready tasks", "keep the workers going overnight", "what
+are the agents doing", "the coordinator crashed, pick up where it left off", "the loop stopped, what
+now", under any runtime (a sequential loop, forge-event CI agents, a terminal multiplexer, a hosted
+agent service).
+
+Hand off instead: doing one task yourself (implementing-task); writing or checking a grant
+(delegating-authority); merging (landing-changes); only turning a runtime signal into a task record
+(reporting-state).
 
 ## Inputs
 

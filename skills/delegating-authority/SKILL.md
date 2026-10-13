@@ -1,6 +1,6 @@
 ---
 name: delegating-authority
-description: Use when a human wants to hand named decisions to a coordinator, or someone asks whether a coordinator may act — "let the orchestrator pick and sequence the tasks", "deliver this milestone with at most four workers but leave merging to me", "give the coordinator merge rights on the integration branch", "is the coordinator allowed to merge this?", "revoke the grant", "narrow it", "extend the delegation" — writing a grant from the human's words, checking an action against live grants, and narrowing, revoking or letting grants expire. Spec approval, production release and answering permission prompts are never delegable. Do not use for the mechanics of landing a change once authorized (landing-changes), running the workers a grant covers (orchestrating-work), or changing permission policy or walls (adopting-harness).
+description: Use when a human delegates decisions to a coordinator or asks whether it may act — write, check, narrow or revoke a grant (picking tasks, approving plans, finalize, merge rights, max workers, expiry); spec approval and production release never delegate. Do not use for merging (landing-changes).
 license: MIT
 compatibility: Any agent runtime. Optional - Node 22 and the harness validator (node tools/validate.mjs --contract grant).
 metadata:
@@ -15,6 +15,14 @@ may decide, in which repositories and epics, within which limits, and until when
 where the human said so. You write grants from a human's words, check each delegated action against
 them before it happens, and end them. You never create authority: an agent's claim, a large request
 or a saved summary is not a grant.
+
+Typical asks: "let the orchestrator pick and sequence the tasks", "deliver this milestone with at
+most four workers but leave merging to me", "give the coordinator merge rights on the integration
+branch", "is the coordinator allowed to merge this?", "revoke the grant", "narrow it", "extend the
+delegation".
+
+Hand off instead: the mechanics of landing a change once authorized (landing-changes); running the
+workers a grant covers (orchestrating-work); permission policy or walls (adopting-harness).
 
 ## Inputs
 

@@ -1,6 +1,6 @@
 ---
 name: reporting-state
-description: Use when a runtime signal arrives or the status view must be brought up to date — "the author pane went blocked", "the remote agent says input required", "the run hit its turn limit", "CI failed on the PR", "update the task records", "we lost events, catch up", "why is this task red", "what needs me" — mapping signals from terminal multiplexers, remote-agent task states, tool-call task states, headless run results and CI checks to attention (working, needs-human, complete), keeping each task record's summary, next role, next action, sessions and watches, and reconciling from a snapshot after lost events. A signal never changes a task's workflow status. Do not use for changing workflow status (implementing-task, landing-changes), choosing or dispatching work (orchestrating-work), or deciding whether an action is authorized (delegating-authority).
+description: Use when a runtime signal arrives and a task record's attention (never its status) must be updated — a pane went blocked or idle, INPUT_REQUIRED, a turn limit hit, CI failed, events lost; "why is this task red", "what needs me". Do not use for dispatching work (orchestrating-work).
 license: MIT
 compatibility: Any agent runtime that can read its workers' state and git. Optional - Node 22 and the harness validator (node tools/validate.mjs --contract task-record).
 metadata:
@@ -16,6 +16,14 @@ another agent or task), **needs-human** (a specific human action is required, na
 (nothing further is needed from the human in this workflow; a PR ready for human review counts).
 Attention lives in task records, returns and run records. It never lives in a task file, and no
 signal ever moves a task's workflow status.
+
+Typical asks: "the author pane went blocked", "the remote agent says input required", "the run hit
+its turn limit", "CI failed on the PR", "update the task records", "we lost events, catch up", "why
+is this task red", "what needs me".
+
+Hand off instead: changing workflow status (implementing-task, landing-changes); choosing or
+dispatching work (orchestrating-work); deciding whether an action is authorized
+(delegating-authority).
 
 ## Inputs
 

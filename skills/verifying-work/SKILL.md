@@ -1,6 +1,6 @@
 ---
 name: verifying-work
-description: Use when a change needs an independent judgement before it goes to a human, or the user says "evaluate BILL-7", "verify the PR against its acceptance criteria", "is AC-2 actually met", "run the evaluator on this head", "give me a verdict per criterion", or a task at risk medium or higher reaches review. Acts as the separate evaluator in a clean context, preferably a different model family from the writer; it runs the tests and the running app, scores each AC-n pass or fail with evidence, repeats k times by risk (pass^k), records the verdict and never edits. Do not use for a style or design review of a diff (the pinned reviewing-code skill), for a security review (reviewing-security), for fixing what it finds (the original author, via implementing-task), or for building the change (implementing-task).
+description: Use when a PR or change must be verified against its acceptance criteria by an independent evaluator — "evaluate BILL-7", "is AC-2 met on this head", "run the evaluator", "re-evaluate after the fix"; pass or fail per AC before human review. Do not use for a style review (reviewing-code).
 license: MIT
 compatibility: Any agent runtime with a way to start a fresh session or subagent and run the project's tests. Optional harness tools/validate.mjs (Node 22) to check the return.
 metadata:
@@ -14,6 +14,15 @@ Judge whether one changeset meets its task's acceptance criteria, from objective
 someone who did not write it. A writer grading its own work overrates it, and a same-context critic
 shares its blind spots, so the evaluator starts clean, prefers a different model family, runs things
 rather than reading claims, and never fixes what it finds.
+
+Typical asks: "evaluate BILL-7", "verify the PR against its acceptance criteria", "is AC-2 actually
+met", "run the evaluator on this head", "give me a verdict per criterion", or a task at risk medium
+or higher reaching review.
+
+Hand off instead: a style or design review of a diff (reviewing-code); a security review
+(reviewing-security); writing or finding missing tests, such as "cover AC-3 with a test" or "which
+criteria are untested" (writing-tests); fixing what it finds (the original author, via
+implementing-task).
 
 ## Inputs
 

@@ -1,6 +1,6 @@
 ---
 name: checking-plan-readiness
-description: Use when an epic's plan must be checked before the owner approves it and tasks become ready — "is the plan ready", "check readiness", "run the trace check", "are there orphans", "does every requirement have a task", "do any parallel tasks overlap", "write readiness.md", "can we approve the spec". Runs the trace check (brief to personas, journeys, requirements, UX, tasks and criteria in test names) with harness validate --trace, or a manual checklist that mirrors its rules; adds plan checks (touches overlap, task size, blocking questions, unaccepted one-way decisions, the skeleton as root); writes specs/<epic>/readiness.md per the readiness-report contract; lists orphans, overlaps and contradictions; hands the spec-approval decision to a human. Do not use for fixing the gaps it finds (the owning skill, e.g. writing-requirements or planning-work) or for verifying built work (verifying-work).
+description: Use when an epic's plan must be checked before the spec is approved — "is the plan ready", run the trace check, write readiness.md, find orphan requirements, journeys without tasks, parallel tasks that overlap. Do not use for fixing the gaps (planning-work) or built work (verifying-work).
 license: MIT
 compatibility: Any agent runtime that reads Agent Skills. Best with Node 22 and the harness validator (validate --trace --readiness); without it, the manual checklist in references/ applies.
 metadata:
@@ -13,6 +13,13 @@ metadata:
 Decide whether an epic's plan is complete enough for its owner to approve, by running checks, not
 by reading the plan and forming an opinion. The output is a readiness report, a list of what to fix
 and who fixes it, and one question for the owner. You never approve the spec.
+
+Typical asks: "is the plan ready", "check readiness", "run the trace check", "are there orphans",
+"does every requirement have a task", "do any parallel tasks overlap", "write readiness.md", "can we
+approve the spec".
+
+Hand off instead: fixing the gaps it finds (the owning skill, e.g. writing-requirements or
+planning-work); verifying built work (verifying-work).
 
 ## Inputs
 

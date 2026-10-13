@@ -1,6 +1,6 @@
 ---
 name: planning-work
-description: Use when an epic's requirements need to become a task graph an agent can execute — "plan this epic", "decompose into tasks", "break the spec down", "write the task files", "what's the walking skeleton", "which tasks can run in parallel", "size these tasks", "make this bug a task". Writes specs/<epic>/tasks/<ID>.md with the walking skeleton first and every other task depending on it, each task carrying requirements, touches, size, risk, inputs, evaluator, budget, mode, depends_on and EARS criteria AC-n, sized for one focused session, disjoint touches marking what may run in parallel, all at status spec-draft until a human approves the spec. Do not use for shaping a vague idea (framing-products, mapping-journeys), for writing the requirements themselves (writing-requirements), for checking the plan is complete (checking-plan-readiness), or for building a task (implementing-task).
+description: Use when an approved spec or epic must become task files — "plan this epic", "break it into tasks", walking skeleton first, depends_on, touches and which tasks can run in parallel, size, risk, EARS AC-n; split an XL task; make a bug a task. Do not use for building one (implementing-task).
 license: MIT
 compatibility: Any agent runtime that reads Agent Skills. Optional - Node 22 and the harness validator to check task files and the trace graph.
 metadata:
@@ -14,6 +14,14 @@ Decompose an epic into task files that are the queue: each one a thin vertical s
 finish and prove in one focused session, ordered by `depends_on`, starting with a walking skeleton
 that proves the riskiest assumption through the real pipeline. Decompose; do not design the
 implementation, and never invent a criterion the spec does not support.
+
+Typical asks: "plan this epic", "decompose into tasks", "break the spec down", "write the task
+files", "what's the walking skeleton", "which tasks can run in parallel", "size these tasks", "make
+this bug a task".
+
+Hand off instead: shaping a vague idea (framing-products, mapping-journeys); writing the
+requirements themselves (writing-requirements); checking the plan is complete
+(checking-plan-readiness); building a task (implementing-task).
 
 ## Inputs
 

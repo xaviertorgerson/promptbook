@@ -1,6 +1,6 @@
 ---
 name: choosing-methodology
-description: Use when deciding how an epic or task should be worked — "which methodology for this", "should this be spec-driven or research-plan-implement", "can we Ralph-loop this overnight", "this is a docs/content pipeline, not code", "switch this epic's mode", "the spec-driven ceremony is too heavy for this fix", "this brownfield change keeps going wrong" — picking a mode (spec-driven, research-plan-implement, ralph-loop, icm-pipeline) by size, risk, repo state (greenfield or existing code) and work type (code or content pipeline), stating what each mode loads and guards, and switching modes mid-epic safely. Do not use for writing the plan's content itself (writing-requirements, planning-work, mapping-journeys), for choosing how deep planning goes before tasks exist (planning-work), or for dispatching the tasks once a mode is set (orchestrating-work).
+description: Use when choosing which mode agents work an epic or task in — spec-driven, research-plan-implement, a Ralph loop overnight, or an icm-pipeline for docs or content; "which methodology for this epic", "too much ceremony for this fix", "switch its mode". Do not use for writing the plan (planning-work).
 license: MIT
 compatibility: Any agent runtime. Optional - Node 22 and the harness validator for the task contract.
 metadata:
@@ -14,6 +14,14 @@ A methodology is a **mode**: a swappable implementation of the same contracts. E
 same task file, the same workflow states, the same return contract and the same invariants. A mode
 only chooses which skills load and which extra guards apply to transitions. Pick one per epic as
 the default and override per task only when a task's shape differs.
+
+Typical asks: "which methodology for this", "should this be spec-driven or research-plan-implement",
+"can we Ralph-loop this overnight", "this is a docs/content pipeline, not code", "switch this epic's
+mode", "the spec-driven ceremony is too heavy for this fix", "this brownfield change keeps going
+wrong".
+
+Hand off instead: writing the plan's content (writing-requirements, planning-work,
+mapping-journeys); dispatching the tasks once a mode is set (orchestrating-work).
 
 ## Inputs
 

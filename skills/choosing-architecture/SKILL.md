@@ -1,6 +1,6 @@
 ---
 name: choosing-architecture
-description: Use when the requirements constrain structure and a decision needs recording before tasks — "choose the architecture", "which datastore / queue / auth model should we use", "write an ADR", "is this a one-way door", "which stack for this product", "we want to deviate from the stack pack", "draw the context and container view", "sketch the data model", "how do we keep this decision enforced". Turns ranked quality-attribute scenarios into options, classifies each decision as a one-way or two-way door, writes ADR-nnnn entries (options considered, door, reversal trigger, the NFRs they satisfy), picks an L4 stack pack or records a deviation with its trigger, sketches the context/container view and the data model, and names fitness functions that keep each decision true. Do not use for design choices inside an already-approved architecture while building a task (implementing-task), for writing the NFRs themselves (writing-requirements), or for cutting tasks (planning-work).
+description: Use when the architecture must be chosen and recorded as an ADR — datastore, tenancy model, queue, a stack-pack deviation, one-way vs two-way door, draw the context and container views, sketch the data model, fitness functions. Do not use for code-level choices inside a task (implementing-task).
 license: MIT
 compatibility: Any agent runtime that reads Agent Skills. Optional - Node 22 and the harness validator to check ADRs against the decision contract.
 metadata:
@@ -13,6 +13,15 @@ metadata:
 Decide structure from the qualities the product must have, not from tool features. Record each
 decision once, in the decision contract, with the options it beat, whether it is cheap to reverse,
 what would reopen it and which requirements it exists for, then make the decision enforce itself.
+
+Typical asks: "choose the architecture", "which datastore / queue / auth model should we use",
+"write an ADR", "is this a one-way door", "which stack for this product", "we want to deviate from
+the stack pack", "draw the context and container view", "sketch the data model", "how do we keep
+this decision enforced".
+
+Hand off instead: design choices inside an approved architecture while building a task
+(implementing-task); writing the NFRs themselves (writing-requirements); cutting tasks
+(planning-work).
 
 ## Inputs
 

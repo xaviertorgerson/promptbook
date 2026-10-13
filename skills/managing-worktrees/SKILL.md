@@ -1,6 +1,6 @@
 ---
 name: managing-worktrees
-description: Use when a task needs its own checkout, or the user says "set up a worktree for BILL-9", "give this branch its own database and ports", "refresh my branch on main", "rebase the task branch", "clean up the worktrees", "remove the worktree for the merged PR", "which worktrees are stale", or "two agents are fighting over the dev database". Creates one isolated checkout per task keyed on its branch, derives its database, port block and caches from a naming rule, copies env files without committing them, records the base commit, refreshes it, and removes it only after an audit. Do not use for merging or landing a branch (landing-changes), for implementing the task inside the worktree (implementing-task), or for deciding how many tasks run at once (orchestrating-work).
+description: Use when a task needs its own checkout or old ones must go — a worktree with its own database, ports and caches, copying env files in, refresh or rebase on main, stale worktrees, audited cleanup. Do not use for merging (landing-changes) or how many run at once (orchestrating-work).
 license: MIT
 compatibility: Any agent runtime that can run git 2.20 or later. Optional harness tools/validate.mjs (Node 22) to check task records.
 metadata:
@@ -13,6 +13,14 @@ metadata:
 Give each task one hermetic checkout and the resources derived from it, keep it current with its
 base, and remove it only when nothing in it can be lost. File isolation is not enough: a shared
 database, port or cache makes parallel tasks corrupt each other and look like flaky tests.
+
+Typical asks: "set up a worktree for BILL-9", "give this branch its own database and ports",
+"refresh my branch on main", "rebase the task branch", "clean up the worktrees", "remove the
+worktree for the merged PR", "which worktrees are stale", "two agents are fighting over the dev
+database".
+
+Hand off instead: merging or landing a branch (landing-changes); implementing the task inside the
+worktree (implementing-task); deciding how many tasks run at once (orchestrating-work).
 
 ## Inputs
 

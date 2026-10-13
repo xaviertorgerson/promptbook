@@ -1,6 +1,6 @@
 ---
 name: implementing-task
-description: Use when the user says "do the next task", "take BILL-12", "implement this task", "keep going", "pick up the ready task and build it", or a loop or dispatcher hands one ready task to a fresh session. Claims it by compare-and-swap, works in its own worktree, keeps a living plan in Working notes, builds only against the AC-n criteria with tests named for them, self-checks, gets an independent evaluation when risk is medium or higher, hands back a return and moves the task to review. Do not use for choosing or ordering work across many tasks (orchestrating-work), for setting up or cleaning a worktree on its own (managing-worktrees), for judging a change you did not write (verifying-work), for writing the tests alone (writing-tests), or for merging (landing-changes).
+description: Use when a ready task file (BILL-12, TMIG-3) is claimed from the queue and built — "do the next task", "take BILL-12", "keep going"; work in its worktree, make design choices inside it, fix evaluator findings, take it to review. Do not use for diagnosis (debugging-failures).
 license: MIT
 compatibility: Any agent runtime that reads Agent Skills and can run git. Optional harness tools/validate.mjs (Node 22) to check the task file and the return.
 metadata:
@@ -13,6 +13,14 @@ metadata:
 Take one `ready` task from claim to a draft PR at `review`, as its only writer. Every step leaves
 durable state in git (task file, commits, PR), so a crash or a fresh session resumes from the files,
 never from a transcript. The acceptance criteria are the stopping condition.
+
+Typical asks: "do the next task", "take BILL-12", "implement this task", "keep going", "pick up the
+ready task and build it", or a loop or dispatcher handing one ready task to a fresh session.
+
+Hand off instead: choosing or ordering work across many tasks (orchestrating-work); a worktree on
+its own (managing-worktrees); judging a change you did not write (verifying-work); a flaky or
+failing test (debugging-failures); a test-only ask such as "cover AC-3 with a test" (writing-tests);
+merging (landing-changes).
 
 ## Inputs
 

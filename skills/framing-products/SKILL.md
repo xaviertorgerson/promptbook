@@ -1,6 +1,6 @@
 ---
 name: framing-products
-description: Use when a new product, a new system or a big bet needs framing before any spec exists — "frame this idea", "write a product brief", "is this worth building", "should we build X", "go or no-go", "what problem are we solving", "write the one-pager so we can decide". Writes docs/product/brief.md (problem, users, outcomes with measures, non-goals, constraints, assumptions with tests, the riskiest assumption) and ends at a go / reshape / kill decision that a human makes. Never invents market facts. Do not use for detailing who the users are (defining-personas), for a feature inside an existing product (mapping-journeys), or for writing requirements (writing-requirements).
+description: Use when a new product idea needs a one-page brief and a go / reshape / kill decision before any spec — problem, users, outcomes with measures, non-goals, riskiest assumption; "is this worth building". Do not use for a feature of an existing product (mapping-journeys).
 license: MIT
 compatibility: Any agent runtime that reads Agent Skills. Optional - Node 22 and the harness validator to check the brief against its contract.
 metadata:
@@ -13,6 +13,12 @@ metadata:
 Turn an idea into a one-page brief that a human can answer with go, reshape or kill. The brief is
 the root of the trace graph (BRIEF → PER → CUJ → REQ/NFR → task → test), so it must be short, honest
 about what is only believed, and decided by a person, not by you.
+
+Typical asks: "frame this idea", "write a product brief", "is this worth building", "should we build
+X", "go or no-go", "what problem are we solving", "write the one-pager so we can decide".
+
+Hand off instead: detailing who the users are (defining-personas); a feature inside an existing
+product (mapping-journeys); writing requirements (writing-requirements).
 
 ## Inputs
 

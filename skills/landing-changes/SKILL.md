@@ -1,6 +1,6 @@
 ---
 name: landing-changes
-description: Use when an approved pull request must be merged, or the user says "the PR is approved, land it", "merge BILL-7", "resolve these merge conflicts", "rebase and land", "run the merge queue", "can the coordinator merge into the epic branch", "set up an integration branch for this epic", or "merge the integration branch into main". Checks the authority tier and any merge grant (repo, exact target, strategy, expiry, limits, independent review of the current head, required checks), lands one change at a time through the forge or its merge queue, auto-resolves only mechanical conflicts, re-runs checks on the merged result, and moves the task merging → merged. Never lands its own work. Do not use for writing or finalizing PR text (the pinned preparing-pull-requests skill), for judging whether the change meets its criteria (verifying-work), for issuing or revoking a grant (delegating-authority), or for deploying a merged build (releasing-changes).
+description: Use when PRs must be merged or an epic needs an integration branch — "the PR is approved, merge it", "land BILL-7", the merge queue, mechanical merge conflicts, a coordinator merging task PRs into the integration branch under a grant. Do not use for writing grants (delegating-authority).
 license: MIT
 compatibility: Any agent runtime with git and a forge that enforces branch protection and required checks. Optional harness tools/validate.mjs (Node 22) to check grant files.
 metadata:
@@ -13,6 +13,14 @@ metadata:
 Merge is where one agent's mistake becomes everyone's. Land only what a human approved, or what a
 live, scoped grant lets a coordinator stand in for, and only after an independent review of the
 exact head and green checks on the merged result. Overlapping logic is never resolved by an agent.
+
+Typical asks: "the PR is approved, land it", "merge BILL-7", "resolve these merge conflicts",
+"rebase and land", "run the merge queue", "can the coordinator merge into the epic branch", "set up
+an integration branch for this epic", "merge the integration branch into main".
+
+Hand off instead: writing or finalizing PR text (preparing-pull-requests); judging whether the
+change meets its criteria (verifying-work); issuing or revoking a grant (delegating-authority);
+deploying a merged build (releasing-changes).
 
 ## Inputs
 

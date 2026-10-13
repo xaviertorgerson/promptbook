@@ -1,6 +1,6 @@
 ---
 name: writing-requirements
-description: Use when an epic's journeys need checkable requirements before design or tasks — "write the requirements", "turn the CUJs into EARS", "write the spec for this epic", "our NFRs say 'fast', make them measurable", "what are the acceptance criteria patterns", "add a security / privacy / accessibility / cost requirement". Writes specs/<epic>/spec.md - REQ-n as EARS sentences (ubiquitous, event-driven, state-driven, unwanted-behaviour, optional-feature), NFR-n with a category and a measure, each traced to a CUJ - and the AC-n patterns tasks restate them in. Do not use for deciding whether to build (framing-products), for writing the journeys (mapping-journeys), for splitting the epic into tasks (planning-work), or for choosing an architecture (choosing-architecture). For a single change to one component's contract with no journey to trace, the pinned Skilldex writing-specifications skill may fit better.
+description: Use when an epic's journeys need a spec.md of checkable requirements — REQ-n in EARS, NFR-n with category and measure ("make 'fast' measurable"), each traced to a CUJ, AC-n patterns. Do not use for tasks (planning-work) or a one-component spec (writing-specifications).
 license: MIT
 compatibility: Any agent runtime that reads Agent Skills. Optional - Node 22 and the harness validator to check spec.md against the epic and requirement contracts.
 metadata:
@@ -13,6 +13,15 @@ metadata:
 Turn an epic's journeys into requirements an agent can stop on: each functional requirement one
 EARS sentence, each quality one measurable NFR, each traced to the journey it serves. If you cannot
 name the test that would prove a requirement, it is not a requirement yet.
+
+Typical asks: "write the requirements", "turn the CUJs into EARS", "write the spec for this epic",
+"our NFRs say 'fast', make them measurable", "what are the acceptance criteria patterns", "add a
+security / privacy / accessibility / cost requirement".
+
+Hand off instead: deciding whether to build (framing-products); writing the journeys
+(mapping-journeys); splitting the epic into tasks (planning-work); choosing an architecture
+(choosing-architecture). For a single change to one component's contract with no journey to trace,
+the pinned writing-specifications skill may fit better.
 
 ## Inputs
 

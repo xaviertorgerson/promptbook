@@ -1,6 +1,6 @@
 ---
 name: mapping-journeys
-description: Use when a product or a feature needs its critical user journeys before requirements, screens or tasks — "map the user journeys", "write the CUJs", "what must a user be able to do end to end", "add a feature so owners can …", "I want users to be able to …", "what are the critical paths for this epic", "which journeys does this change break". Writes CUJ-n entries in specs/<epic>/cuj.md per persona with trigger, steps, success, unwanted outcome, failure paths and why it is critical, and says which are user-facing. Do not use for deciding whether to build the product (framing-products), for writing REQ/NFR rows or acceptance criteria (writing-requirements), or for designing screens and states (designing-flows).
+description: Use when a product or new feature needs its critical user journeys before requirements or screens — "map the user journeys", "write the CUJs", "add a feature so owners can…", "what must work end to end", "which journeys does this touch". Do not use for the next step (writing-requirements).
 license: MIT
 compatibility: Any agent runtime that reads Agent Skills. Optional - Node 22 and the harness validator to check journeys against their contract.
 metadata:
@@ -13,6 +13,13 @@ metadata:
 Write the few end-to-end paths that must work, as `CUJ-n` entries an epic's requirements, screens
 and tasks cite. A journey is critical when a persona would notice it breaking and it costs an outcome
 the brief promises. Its trigger, success and unwanted outcome become the epic's EARS requirements.
+
+Typical asks: "map the user journeys", "write the CUJs", "what must a user be able to do end to
+end", "add a feature so owners can …", "I want users to be able to …", "what are the critical paths
+for this epic", "which journeys does this change break".
+
+Hand off instead: deciding whether to build the product (framing-products); REQ/NFR rows or
+acceptance criteria (writing-requirements); screens and states (designing-flows).
 
 ## Inputs
 
