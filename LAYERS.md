@@ -238,7 +238,7 @@ explicit models (no `inherit` for cost-sensitive roles):
 
 | Today | Move | Target |
 |---|---|---|
-| `preparing-pull-requests`, `reviewing-code`, `resolving-findings`, `writing-specifications`, `building-skills` | pin | `toolkit.lock` entries by commit and tree hash (L3-class: portable, engine-neutral); fanned out by L1; the harness does not vendor them |
+| `preparing-pull-requests`, `reviewing-code`, `resolving-findings`, `writing-specifications`, `building-skills` | pin | `toolkit.lock` entries `layer: L3, kind: skill-library` by commit and tree hash, versioned `0.0.0+<sha>` while untagged; fanned out by L1; the harness does not vendor them |
 | no versions, manifest or lock | none needed | the lock entry is the version; deprecations follow Skilldex's own retire-outright practice |
 | `.gemini/skills/*`, `epiphany_knowledge/` | not consumed | Skilldex's own authoring workspace |
 | `skills/.specs/` | stay upstream | design specs, not packaged |

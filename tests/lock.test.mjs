@@ -187,5 +187,8 @@ describe('lock', () => {
     assert.ok(!withinAutoUpdate('1.2.3', '2.0.0', 'minor'));
     assert.ok(!withinAutoUpdate('1.2.3', '1.2.4-rc.1', 'major'), 'never a prerelease');
     assert.ok(!withinAutoUpdate('1.2.3', '9.0.0', 'off'));
+    assert.equal(versionFromRef('v1.2.3+build.5'), '1.2.3+build.5');
+    assert.ok(withinAutoUpdate('0.0.0+fc572b6', '0.1.0', 'minor'), 'build metadata is accepted and ignored for precedence');
+    assert.ok(!withinAutoUpdate('1.2.3', '1.2.3+other', 'patch'), 'the same version with other build metadata is not newer');
   });
 });

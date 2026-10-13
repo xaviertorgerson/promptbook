@@ -251,11 +251,14 @@ name; its `requires` is never waivable.
 
 ### toolkit-lock
 
-**Purpose.** Pins the exact harness and L4 packs a project (or the dotfiles) runs. **Schema**
-`toolkit-lock.schema.json` 1.0.0: `lock_version`, `entries[]` of `{name, layer (L3|L4), kind,
-source, path, ref, commit (full sha), tree (git tree id), version (semver), autoUpdate (off | patch
-| minor | major), mirrored}`; names unique; exactly one L3 entry. The tree id detects a rewritten tag
-or a force-pushed mirror. **Compat.** Replaces agentic-template's `.template-version` file and the
+**Purpose.** Pins the exact harness, the portable skill libraries and the L4 packs a project (or the
+dotfiles) runs. **Schema** `toolkit-lock.schema.json` 1.1.0: `lock_version`, `entries[]` of `{name,
+layer (L3|L4), kind, source, path, ref, commit (full sha), tree (git tree id), version (semver,
+build metadata allowed: `0.0.0+fc572b6` for an untagged pin), autoUpdate (off | patch | minor |
+major), mirrored}`; names unique. `kind` at L3 is `harness` (exactly one; an L3 entry with no kind is
+the harness) or `skill-library` (any number, e.g. a Skilldex skill); at L4 `engine-binding`,
+`stack-pack`, `runtime` or `domain-pack` (a kind on the other layer is a warning). The tree id
+detects a rewritten tag or a force-pushed mirror. **Compat.** Replaces agentic-template's `.template-version` file and the
 plugin `version` pin as the single source.
 
 ### skill

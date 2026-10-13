@@ -90,6 +90,26 @@ describe('fixtures', () => {
   }
 });
 
+describe('toolkit-lock', () => {
+  const lock = parse(fs.readFileSync(path.join(FIX, 'valid/toolkit-lock/skill-libraries/toolkit.lock'), 'utf8'));
+  const v = (data) => { const fn = reg.validator('toolkit-lock'); return fn(data) ? [] : fn.errors; };
+  it('exactly one harness: skill libraries are L3 too, but never the harness', () => {
+    assert.deepEqual(v(lock), []);
+    assert.ok(v({ ...lock, entries: lock.entries.filter((e) => e.kind !== 'harness') }).length, 'skill libraries alone are no harness');
+    const noKind = { ...lock, entries: lock.entries.map((e) => (e.kind === 'harness' ? { ...e, kind: undefined } : e)).map((e) => JSON.parse(JSON.stringify(e))) };
+    assert.deepEqual(v(noKind), [], 'an L3 entry with no kind is the harness');
+  });
+  it('a kind on the wrong layer is a warning, not an error', () => {
+    const file = path.join(TMP, 'kinds', 'toolkit.lock');
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    const odd = { ...lock, entries: lock.entries.map((e) => (e.name === 'cli-runtime' ? { ...e, kind: 'skill-library' } : e)) };
+    fs.writeFileSync(file, JSON.stringify(odd));
+    const r = validateFile(file);
+    assert.equal(r.status, 'PASS');
+    assert.deepEqual(r.results[0].findings.map((f) => [f.severity, f.rule]), [['warning', 'kind-matches-layer']]);
+  });
+});
+
 describe('task schema compatibility', () => {
   const real = (root) => (fs.existsSync(path.join(root, 'specs')) ? walk(path.join(root, 'specs')).filter((f) => /\/tasks\/[^_][^/]*\.md$/.test(f)) : []);
 

@@ -97,6 +97,16 @@ CHECKS['bypass-names-preconditions'] = ({ data }) => Object.entries(data?.profil
   .filter(([, p]) => p?.tier === 'autonomous' && !p.requires?.length)
   .map(([name]) => ({ severity: 'warning', rule: 'bypass-names-preconditions', pointer: `/profiles/${name}`, message: `profile "${name}" is the bypass tier and names no requires (e.g. [prod-unreachable-from-this-host]); compile-policy refuses it` }));
 
+// toolkit.lock kinds and layers agree: harness and skill-library are L3 kinds, the others L4 ones.
+// A warning: the schema accepted any kind on any layer before skill-library existed.
+const L3_KINDS = new Set(['harness', 'skill-library']);
+CHECKS['lock-kinds'] = ({ data }) => (Array.isArray(data?.entries) ? data.entries : []).flatMap((e, i) => {
+  if (!e?.kind || !e.layer) return [];
+  if (e.layer === 'L3' && !L3_KINDS.has(e.kind)) return [{ severity: 'warning', rule: 'kind-matches-layer', pointer: `/entries/${i}/kind`, message: `${e.name}: an L3 entry is the harness or a skill-library, not ${e.kind}` }];
+  if (e.layer === 'L4' && L3_KINDS.has(e.kind)) return [{ severity: 'warning', rule: 'kind-matches-layer', pointer: `/entries/${i}/kind`, message: `${e.name}: ${e.kind} is an L3 kind; an L4 entry is an engine-binding, stack-pack, runtime or domain-pack` }];
+  return [];
+});
+
 // Required level-2 headings (x-sections). Matched against the heading text with the schema's regex.
 export function checkSections(sections, body, bodyLine) {
   const lines = splitLines(stripComments(body));
