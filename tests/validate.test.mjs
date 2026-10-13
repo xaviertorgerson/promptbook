@@ -153,6 +153,10 @@ describe('state machines', () => {
     assert.deepEqual(Object.keys(w.machines.epic.states).sort(), [...enumOf('epicStatus')].sort());
   });
 
+  it('workflow roles are exactly the common role enum', () => {
+    assert.deepEqual(Object.keys(load('workflow').roles).sort(), [...enumOf('role')].sort());
+  });
+
   it('every transition names known states, roles, guards, gates and grantable actions', () => {
     const w = load('workflow');
     const a = load('authority');

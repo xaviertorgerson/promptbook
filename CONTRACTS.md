@@ -29,7 +29,8 @@ node tools/validate.mjs --list                  # contracts, versions, artifact 
 - **Ids.** `BRIEF`, `PER-n`, `CUJ-n` and `REQ-n`/`NFR-n` (per epic), `UX-n`, `ADR-nnnn`,
   `<PREFIX>-n` for tasks, `AC-n` per task, `GRANT-n`. A reference across epics is `<epic>/CUJ-n` or
   `<epic>/REQ-n`; within an epic the bare id is enough. ADRs belong to no epic, so they always qualify.
-- **Shared definitions** (ids, dates, status enums, `budget`, `sessionRef`, `traceGap`) are in
+- **Shared definitions** (ids, dates, status enums, `mode`, `role` — the workflow roles, `evaluator`
+  among them —, `budget`, `sessionRef`, `traceGap`) are in
   `common.schema.json` and referenced with `$ref`.
 - **Versioning.** Each schema started at `1.0.0` and carries its own `x-version`
   (`validate.mjs --list` prints them). A change that makes a valid artifact invalid is a major
@@ -178,11 +179,13 @@ hand-edited. **Compat.** New.
 
 **Purpose.** A runtime's recovery note for one task: what a replacement coordinator needs to resume
 (repository, worktree, agents, native session ids, PRs, attention, next action, human decisions).
-**Schema** `task-record.schema.json` 1.1.0; `state.name` is attention (working | needs-human |
+**Schema** `task-record.schema.json` 1.2.0; `state.name` is attention (working | needs-human |
 complete), never a workflow status; needs-human requires `next_action`; complete forbids it.
 Harness additions: `runtime`, `grant`, `signals{role: {source, value, observed_at}}` (source: an
 `attention.yaml` vocabulary — herdr, a2a, mcp-tasks, claude-headless, loop-outcome, ci — or
-codex-exec, forgejo, gitlab, other), structured `reviews[]` and `decisions[]`, `resources` (the
+codex-exec, forgejo, gitlab, other), structured `reviews[]` (each bound to the head it judged:
+`outcome` pass | fail | changes-requested | comment, `role` reviewer for a code review or evaluator for
+the verdict on the criteria) and `decisions[]`, `resources` (the
 worktree's derived `slug`, `worktree_path`, `database`, `ports{slot,first,last}`, `caches`,
 `services`, the last cleanup `audit{at, result: passed|blocked, blocked_by}` and
 `worktree_removed_at`, which requires an audit that passed), `updated_at`. **Swap story.** A different runtime (a CLI loop, a CI

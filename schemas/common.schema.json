@@ -3,7 +3,7 @@
   "$id": "https://harness.dev/schemas/common.schema.json",
   "title": "Shared definitions",
   "description": "Ids, dates, references and status vocabularies every contract shares. Not an artifact itself.",
-  "x-version": "1.1.0",
+  "x-version": "1.2.0",
   "$defs": {
     "nonEmptyString": { "type": "string", "minLength": 1 },
     "slug": {
@@ -88,8 +88,8 @@
     "size": { "enum": ["XS", "S", "M", "L", "XL"] },
     "layer": { "enum": ["L1", "L2", "L3", "L4"] },
     "role": {
-      "description": "Workflow roles (state-machines/workflow.yaml). orchestrator acts only through a grant.",
-      "enum": ["owner", "engineer", "planner", "coder", "reviewer", "merge", "train", "orchestrator"]
+      "description": "Workflow roles (state-machines/workflow.yaml). orchestrator acts only through a grant; reviewer comments on code, evaluator judges the criteria; neither commits a status.",
+      "enum": ["owner", "engineer", "planner", "coder", "reviewer", "evaluator", "merge", "train", "orchestrator"]
     },
     "budget": {
       "description": "Ceilings for one run or one task. A runner enforces them; they are never advisory.",

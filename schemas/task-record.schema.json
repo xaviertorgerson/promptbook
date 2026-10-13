@@ -3,7 +3,7 @@
   "$id": "https://harness.dev/schemas/task-record.schema.json",
   "title": "Task record",
   "description": "A runtime's recovery note for one task: what a replacement coordinator needs to resume. One per task per runtime, kept outside the task file (e.g. .orchestrator/tasks/<id>.yaml). A superset of stagehand's task-record.yaml; attention is runtime state and never advances the task's workflow status.",
-  "x-version": "1.1.0",
+  "x-version": "1.2.0",
   "x-artifacts": [
     { "format": "yaml", "paths": [".orchestrator/tasks/*.yaml", ".orchestrator/archive/*.yaml"] }
   ],
@@ -115,7 +115,7 @@
         "next_role": {
           "description": "Optional while working: who acts next.",
           "type": ["string", "null"],
-          "enum": ["author", "reviewer", "worker", "workspace_agent", "orchestrator", null]
+          "enum": ["author", "reviewer", "evaluator", "worker", "workspace_agent", "orchestrator", null]
         },
         "next_action": {
           "description": "The concrete next step. Required for needs-human, absent when complete.",
@@ -217,7 +217,14 @@
         "properties": {
           "pr": { "type": "string" },
           "head": { "$ref": "common.schema.json#/$defs/gitSha" },
-          "outcome": { "enum": ["pass", "changes-requested", "comment"] },
+          "outcome": {
+            "description": "A code review passes, requests changes or comments; an evaluator's verdict on the criteria is pass or fail.",
+            "enum": ["pass", "fail", "changes-requested", "comment"]
+          },
+          "role": {
+            "description": "reviewer (code review), evaluator (the independent verdict on the criteria, workflow guard independent-verification), or a human role.",
+            "$ref": "common.schema.json#/$defs/role"
+          },
           "by": { "type": "string" },
           "ref": { "type": "string" }
         },
