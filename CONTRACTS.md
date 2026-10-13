@@ -140,7 +140,7 @@ template epics validate unchanged.
 
 **Purpose.** One unit of work, the coordination substrate: the frontmatter is the kanban column and
 the claim lock; the body is the contract the coder builds against. **Schema** `task.schema.json`
-1.1.0. Required (agentic-template's fields, same meaning): `id`, `epic`, `status`, `priority`, `cuj`,
+1.2.0. Required (agentic-template's fields, same meaning): `id`, `epic`, `status`, `priority`, `cuj`,
 `guiding_docs`, `branch`, `depends_on`, `owner`. Optional template fields: `parent`, `size`,
 `kickback_reason`. **Optional harness fields:**
 
@@ -154,8 +154,10 @@ the claim lock; the body is the contract the coder builds against. **Schema** `t
 | `budget` | `{max_turns, max_usd, max_minutes, max_tokens}` for the whole task |
 | `sessions` | `sessionRef[]` the agent appends in its handoff (the runner never writes the task file) |
 | `mode` | spec-driven, research-plan-implement, ralph-loop, icm-pipeline; absent: the epic's `mode`, else spec-driven |
+| `lands_to` | the branch its PR targets when not the protected branch: the epic's integration branch (`integration/<epic>`); the task then goes `merging` → `integrated`, and `merged` when a human merges that branch |
 
-`cuj` additionally accepts a list (`cuj: [CUJ-1, CUJ-2]`). Rules: a claimed task (in-progress,
+`cuj` additionally accepts a list (`cuj: [CUJ-1, CUJ-2]`). `status` adds `integrated` (on the
+epic's integration branch, not yet on the protected branch). Rules: a claimed task (in-progress,
 review, human-review, merging) has an owner; `id` equals the file name and `epic` the folder;
 criteria are `AC-n`, unique, EARS-shaped (the same five patterns as agentic-template's
 `ears-lint.mjs`); no self-dependency; sections Context, Acceptance criteria, Open questions, Agent
@@ -395,7 +397,8 @@ sequenceDiagram
   alt criteria met and gates green
     A->>G: status → human-review
     H->>G: approve PR (gate 2) — or a merge grant with independent review + checks
-    C->>G: merge agent lands; status → merged
+    C->>G: merge agent (or the orchestrator under the merge grant) lands; status → merged
+    Note over C,G: lands_to integration/epic: status → integrated, and a human's merge of that branch → merged
     H->>G: approve production release (gate 3)
   else needs-human
     C->>H: next_action (question, permission, budget)
@@ -406,6 +409,16 @@ The three human gates and every transition are in `state-machines/workflow.yaml`
 means what is `state-machines/attention.yaml`; what a human may delegate is
 `state-machines/authority.yaml`. The invariant that ties them: **status is a commit by an authorized
 role; a runtime signal is a hint that changes attention at most.**
+
+Landing (workflow 1.2.0, authority 1.1.0). `land` (→ `merged`), `integrate` (→ `integrated`) and
+`return-to-human` are the merge role's, or the orchestrator's under a live `merge` grant whose repo,
+strategy and exact target match — the target being the task's `lands_to`, else the protected branch
+(a runtime with no separate merge role). `promote` (`integrated` → `merged`) is a human's, after the
+human merged the integration branch (tier 3; never grantable). `reopen` and `respec` take an
+integrated task back with a reason when a later integration breaks it. `deps-merged` counts an
+`integrated` dependency only for a dependent in the same epic. `mark-pr-ready` carries
+`independent-verification`: a task of risk medium or high needs the evaluator's passing verdict on
+the current head. The simulator enforces all of it (TOOLS.md).
 
 ## Compatibility summary
 

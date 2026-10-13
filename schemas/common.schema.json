@@ -3,7 +3,7 @@
   "$id": "https://harness.dev/schemas/common.schema.json",
   "title": "Shared definitions",
   "description": "Ids, dates, references and status vocabularies every contract shares. Not an artifact itself.",
-  "x-version": "1.2.0",
+  "x-version": "1.3.0",
   "$defs": {
     "nonEmptyString": { "type": "string", "minLength": 1 },
     "slug": {
@@ -70,7 +70,7 @@
     "grantId": { "type": "string", "pattern": "^GRANT-[1-9][0-9]*$" },
     "taskStatus": {
       "description": "Workflow status of a task; the kanban column. Mirrors state-machines/workflow.yaml (task machine).",
-      "enum": ["spec-draft", "ready", "in-progress", "review", "human-review", "merging", "merged", "blocked", "needs-input", "suspended"]
+      "enum": ["spec-draft", "ready", "in-progress", "review", "human-review", "merging", "integrated", "merged", "blocked", "needs-input", "suspended"]
     },
     "epicStatus": {
       "description": "Planning status of an epic (spec.md). Mirrors state-machines/workflow.yaml (epic machine).",

@@ -28,8 +28,8 @@ export const DEFAULT_MODE = 'spec-driven';
 // A task's methodology: its own mode, else its epic's, else spec-driven (common.schema.json mode).
 export const effectiveMode = (task, epic) => task?.mode ?? epic?.mode ?? DEFAULT_MODE;
 const CLAIMED_EPIC = new Set(['approved', 'in-progress', 'done']);
-const CLAIMED_TASK = new Set(['ready', 'in-progress', 'review', 'human-review', 'merging', 'merged']);
-const EVIDENCED_TASK = new Set(['review', 'human-review', 'merging', 'merged']);
+const CLAIMED_TASK = new Set(['ready', 'in-progress', 'review', 'human-review', 'merging', 'integrated', 'merged']);
+const EVIDENCED_TASK = new Set(['review', 'human-review', 'merging', 'integrated', 'merged']);
 // Requirement ids named in a task's prose. REQ-n and NFR-n anywhere; the legacy R<n> only as "(R2)"
 // or "requirement R2", because a bare R2 is as likely to be Cloudflare R2 as requirement 2.
 const REQ_TOKEN = /\b(?:REQ|NFR)-[1-9][0-9]*\b|\(R[1-9][0-9]*\)|\brequirements? R[1-9][0-9]*\b/gi;

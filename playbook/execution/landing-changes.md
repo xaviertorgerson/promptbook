@@ -48,7 +48,10 @@ Treat merge authority as tiers, each granted explicitly and revocably:
 
 `grant` (scope, actions incl. `merge{repo,target,strategy}`, limits, expiry, revocable),
 `state-machines/authority.yaml`, `state-machines/workflow.yaml` (`human-review` → `merging` →
-`merged`), `run-record` (who merged what, under which grant).
+`merged` by `land`; with `lands_to: integration/<epic>`, `merging` → `integrated` by `integrate` at
+tier 2, then `promote` → `merged` by the human at tier 3; the orchestrator lands only under a live
+merge grant for that exact target), `task` (`lands_to`), `run-record` (who merged what, under which
+grant).
 
 ## Anti-patterns
 

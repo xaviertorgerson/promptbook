@@ -8,7 +8,7 @@
 #
 # Source: stagehand skills/orchestrating-development (SKILL.md "Authority and scope",
 # references/project-delegation.md), generalized; agentic-template docs/roles.md.
-version: 1.0.0
+version: 1.1.0
 contract: authority
 
 defaults:
@@ -36,6 +36,11 @@ never_grantable:
     why: Dropping databases, deleting volumes, wiping backups (agentic-template hard rule 3).
   - id: widen-grant
     why: Widening is a new grant from the human; a coordinator may only narrow its own.
+  - id: promote-integration
+    why: >-
+      An integration branch reaches the protected branch only by a human's merge (tier 3); workflow
+      transition promote. A merge grant names one exact target and never the protected branch's
+      promotion of an integration branch.
 
 grantable:
   select-tasks:
@@ -59,12 +64,15 @@ grantable:
     workflow: []
     does_not_cover: Publishing for a changed head without re-review.
   merge:
-    means: Land a PR on a protected branch through the forge, in place of the human approval.
-    workflow: [task.approve-pr]
+    means: >-
+      Approve a PR for landing in place of the human approval, and land it (or hand it back on a
+      semantic conflict or red merged checks) where the runtime has no separate merge role.
+    workflow: [task.approve-pr, task.land, task.integrate, task.return-to-human]
     parameters: [repo, target, strategy, requires]
     scope_rule: >-
       One repository, one exact target branch, one strategy. No wildcard target. A grant for
-      main does not cover release/*.
+      main does not cover release/*. The target is the branch the task lands on: its lands_to (the
+      epic's integration branch, tier 2), else the protected branch.
     always_requires: [independent-review, required-checks]
     also_checks: >-
       The actual base and head at merge time; record the result. Only the coordinator exercises it,

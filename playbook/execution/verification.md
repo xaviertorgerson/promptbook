@@ -49,7 +49,9 @@ weak verifier just produces wrong work faster. One lucky pass hides a flaky succ
 ## Contracts used
 
 `task` (`evaluator`, `risk`, `AC-n`), `return` (criteria met/unmet, findings), `run-record`
-(verdict), `state-machines/workflow.yaml` (`review` → `human-review` requires a verdict).
+(verdict), `task-record` (`reviews[]` with `role: evaluator`, outcome pass or fail),
+`state-machines/workflow.yaml` (`mark-pr-ready`, `review` → `human-review`, carries the
+`independent-verification` guard: the evaluator's pass on the current head for risk medium and up).
 
 ## Anti-patterns
 

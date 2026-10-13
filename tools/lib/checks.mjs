@@ -4,7 +4,7 @@ import { headings, splitLines, stripComments, fenceMask } from './markdown.mjs';
 // Named checks a schema lists under x-checks: rules JSON Schema cannot express because they read the
 // Markdown body or compare two fields. Each returns findings { rule, pointer, message, line, severity }.
 
-const CLAIMED = new Set(['ready', 'in-progress', 'review', 'human-review', 'merging', 'merged']);
+const CLAIMED = new Set(['ready', 'in-progress', 'review', 'human-review', 'merging', 'integrated', 'merged']);
 
 export const CHECKS = {
   // The acceptance criteria: ids present, canonical, unique, and EARS-shaped (agentic-template ears-lint

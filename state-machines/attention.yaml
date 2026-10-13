@@ -10,13 +10,13 @@
 # suggestion against evidence (the agent's latest answer, git, the PR, the task file) before it
 # records anything; a signal alone is a hint. Stagehand states the rule as: a wake is a hint, not
 # an event ledger.
-version: 1.0.0
+version: 1.1.0
 contract: attention
 
 states:
   working:     { color: yellow, means: "Agents have work underway, including handoffs or waits on another agent or task." }
   needs-human: { color: red,    means: "A specific human action is required to continue; the record names it in next_action." }
-  complete:    { color: green,  means: "Finished; nothing further is needed from the human within this workflow (a PR ready for review qualifies)." }
+  complete:    { color: green,  means: "Finished; nothing further is needed from the human within this workflow (a PR ready for review, or a change integrated on its epic's branch that waits for the human's merge of that branch, qualifies: the gate is a status, not attention)." }
 
 rules:
   - id: signals-never-advance-workflow
