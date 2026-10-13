@@ -1,0 +1,11 @@
+{"prompt":"Haiku 5.5 shipped last week. Review the harness against it.","expect":"trigger","kind":"positive"}
+{"prompt":"Run an effort sweep on the new model before we add any more subagents.","expect":"trigger","kind":"positive"}
+{"prompt":"Is the second review round still load-bearing, or can we drop it?","expect":"trigger","kind":"positive"}
+{"prompt":"The quarterly harness review is due; which skills and rule blocks can we delete?","expect":"trigger","kind":"positive"}
+{"prompt":"Ablate the explorer subagent and the context-reset loop and tell me what changes.","expect":"trigger","kind":"positive"}
+{"prompt":"Add pass^k scenarios to the landing-changes skill.","expect":"no-trigger","kind":"near-miss","route_to":"evaluating-skills"}
+{"prompt":"Read the last two weeks of failed runs and propose small fixes to our skills.","expect":"no-trigger","kind":"near-miss","route_to":"reflecting-on-runs"}
+{"prompt":"debugging-failures replaced old-debugging; retire the old one.","expect":"no-trigger","kind":"near-miss","route_to":"promoting-learnings"}
+{"prompt":"Which model and effort should the coder subagent use for small tasks?","expect":"no-trigger","kind":"near-miss","route_to":"routing-models","note":"per-task routing is routing-models; re-tuning after a release is this skill"}
+{"prompt":"Draft a polite email declining the meeting.","expect":"no-trigger","kind":"negative","route_to":"none"}
+{"prompt":"Sort these numbers in descending order: 4, 19, 7.","expect":"no-trigger","kind":"negative","route_to":"none"}
