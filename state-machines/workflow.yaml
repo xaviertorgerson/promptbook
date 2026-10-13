@@ -1,0 +1,184 @@
+# Workflow: the state machines whose status fields live in git.
+#
+# A transition is a commit to the artifact that holds the status (a task file, an epic spec.md, a
+# release record) by an actor this file lists for it. Nothing else moves a status: not a runtime
+# signal, not a CI result, not an idle agent (attention.yaml). CI results and reviews are evidence
+# a guard reads; the actor still makes the commit.
+#
+# Source: agentic-template docs/workflow.md, docs/roles.md and docs/interjection.md (2026-10-13),
+# generalized. Authority for the orchestrator role, and every `grant:` below, is authority.yaml.
+version: 1.0.0
+contract: workflow
+
+rules:
+  - id: transitions-are-commits
+    text: >-
+      A status changes only by a commit to its file, made by a role listed in the transition's `by`
+      (or by the orchestrator under a live grant naming the transition's `grant`). The commit
+      message or the agent-log line says which transition it is.
+  - id: signals-never-advance
+    text: >-
+      Runtime signals (agent idle/blocked/done, A2A and MCP task states, headless result subtypes,
+      CI conclusions) change attention at most, never status. See attention.yaml.
+  - id: claim-is-compare-and-swap
+    text: >-
+      A claim sets owner and status together in one commit on a fresh pull; a rejected push means
+      someone else won, so re-pull and take the next ready task. The owner/status pair is the lock.
+  - id: humans-win
+    text: >-
+      Auto-dispatch claims only owner=null tasks. A human setting owner (take-over) or status
+      (suspend, kick back) wins; a running agent commits its progress and yields.
+  - id: kickback-carries-a-reason
+    text: >-
+      A move to an earlier stage carries kickback_reason in the frontmatter or as the first new
+      agent-log line.
+  - id: side-states-resume-to-prior
+    text: >-
+      blocked, needs-input and suspended resume to the stage they were entered from ($prior), read
+      from the agent-log line that parked the task ("status → blocked" after "status was review").
+
+roles:
+  owner:        { kind: human, holds: [spec-approval, pr-approval, production-release] }
+  engineer:     { kind: human, holds: [pr-approval] }
+  planner:      { kind: agent }
+  coder:        { kind: agent }
+  reviewer:     { kind: agent, note: "Inline comments only; never approves, never pushes." }
+  merge:        { kind: agent, note: "The only automated role that lands on the protected branch, and only after pr-approval." }
+  train:        { kind: automation, note: "Promotes one built artifact through the stages; never retries a red hop." }
+  orchestrator: { kind: agent, note: "A coordinator. Holds nothing by default; acts only through a grant (authority.yaml)." }
+
+gates:
+  spec-approval:
+    machine: epic
+    transition: approve-spec
+    approver: [owner]
+    grantable: false
+    why: The owner decides what is worth building; delegating it removes the human from the plan.
+  pr-approval:
+    machine: task
+    transition: approve-pr
+    approver: [owner, engineer]
+    grantable: merge
+    why: >-
+      A human reviews the change. A merge grant lets a coordinator stand in only with an
+      independent review of the current head and the required checks, and only where the forge's
+      branch protection admits it.
+  production-release:
+    machine: release
+    transition: release
+    approver: [owner]
+    grantable: false
+    why: >-
+      Customers see it. A project may turn the gate into the train's own checks (auto-release), but
+      that switch is a human's config change, not a grant.
+
+guards:
+  epic-approved:            { checks: "The task's epic spec.md status is approved or in-progress." }
+  criteria-ears:            { checks: "Every acceptance criterion is AC-n and matches an EARS pattern (ears-lint)." }
+  no-blocking-question:     { checks: "No unchecked Open question is marked blocking." }
+  requirements-cited:       { checks: "The task cites at least one REQ/NFR of its epic (trace check; warning in legacy adoption)." }
+  deps-merged:              { checks: "Every depends_on task is merged." }
+  owner-free:               { checks: "owner is null, or the claimant is a human taking over." }
+  draft-pr-open:            { checks: "A draft PR exists for the task branch." }
+  criteria-named-in-tests:  { checks: "Every AC id appears in a test name (ears-coverage)." }
+  checks-green:             { checks: "The required checks on the PR head passed." }
+  criteria-met:             { checks: "The coder's last return reports every criterion met (return.criteria.unmet empty)." }
+  pr-ready:                 { checks: "The PR is marked ready for review." }
+  independent-review:       { checks: "A reviewer that did not author the change reviewed the current head and passed it." }
+  mechanical-only:          { checks: "Every conflict is mechanical (lockfiles, generated files, one-sided hunks)." }
+  merged-checks-green:      { checks: "The full checks passed on the merged result, not only on the PR head." }
+  dependency-cleared:       { checks: "The external dependency named when parking is resolved." }
+  question-answered:        { checks: "A human answered the Open question that parked the task." }
+  all-tasks-merged:         { checks: "Every task of the epic is merged." }
+  acceptance-met:           { checks: "The epic's Acceptance section holds, including the harvest line." }
+  stage-checks-green:       { checks: "The train's own checks for the hop passed (smoke, probe over the dwell, error rate, no hold)." }
+
+machines:
+  task:
+    artifact: specs/<epic>/tasks/<ID>.md
+    field: status
+    initial: spec-draft
+    terminal: [merged]
+    side_states: [blocked, needs-input, suspended]
+    states:
+      spec-draft:   { holder: planner,  means: "Drafted; open questions or unconfirmed criteria. Not buildable." }
+      ready:        { holder: null,     means: "Criteria confirmed, epic approved; claimable once depends_on are merged." }
+      in-progress:  { holder: coder,    means: "Claimed (owner set); a branch and worktree exist; first pass underway." }
+      review:       { holder: coder,    means: "Draft PR open; checks and the reviewer run; the coder iterates." }
+      human-review: { holder: engineer, means: "The PR is ready; the human approval gate." }
+      merging:      { holder: merge,    means: "Approved; the merge agent is landing it. Transient." }
+      merged:       { holder: null,     means: "Landed on the protected branch. Terminal." }
+      blocked:      { holder: null,     means: "An external dependency stops it." }
+      needs-input:  { holder: owner,    means: "A decision is required and must not be guessed." }
+      suspended:    { holder: owner,    means: "A human parked it with a handoff note." }
+    transitions:
+      - { id: mark-ready,        from: spec-draft,   to: ready,        by: [planner, owner, engineer], guards: [epic-approved, criteria-ears, no-blocking-question, requirements-cited] }
+      - { id: ask,               from: spec-draft,   to: needs-input,  by: [planner, owner, engineer] }
+      - { id: claim,             from: ready,        to: in-progress,  by: [coder, engineer, owner], grant: select-tasks, guards: [deps-merged, owner-free], sets: [owner],
+          note: "Dispatching the highest-priority ready task is mechanical, not select-tasks: the owner ordered the work at spec-approval. A coordinator choosing, reordering or adding work needs the grant." }
+      - { id: open-draft,        from: in-progress,  to: review,       by: [coder, engineer], guards: [draft-pr-open] }
+      - { id: mark-pr-ready,     from: review,       to: human-review, by: [coder, engineer], grant: finalize, guards: [checks-green, criteria-met, criteria-named-in-tests, pr-ready],
+          note: "In agentic-template the coder does this when the deterministic gates pass; a runtime whose default is human finalization (stagehand) needs the finalize grant." }
+      - { id: iterate,           from: review,       to: in-progress,  by: [coder, engineer] }
+      - { id: approve-pr,        from: human-review, to: merging,      by: [owner, engineer], gate: pr-approval, grant: merge, guards: [checks-green],
+          grant_guards: [independent-review, checks-green] }
+      - { id: land,              from: merging,      to: merged,       by: [merge], guards: [mechanical-only, merged-checks-green] }
+      - { id: return-to-human,   from: merging,      to: human-review, by: [merge], reason: true,
+          note: "A semantic conflict or red checks on the merged result; the merge agent never resolves those." }
+      - { id: redo,              from: human-review, to: ready,        by: [owner, engineer], reason: true, kickback: true }
+      - { id: respec,            from: [human-review, review], to: spec-draft, by: [owner, engineer], reason: true, kickback: true }
+      - { id: respec-surfaced,   from: review,       to: spec-draft,   by: [coder], reason: true, kickback: true,
+          note: "The coder found the spec wrong; it parks the task for the planner rather than coding around it." }
+      - { id: block,             from: [ready, in-progress, review, human-review], to: blocked,     by: [coder, planner, engineer, owner], reason: true }
+      - { id: need-input,        from: [ready, in-progress, review, human-review], to: needs-input, by: [coder, planner, engineer, owner], reason: true }
+      - { id: suspend,           from: [spec-draft, ready, in-progress, review, human-review], to: suspended, by: [owner, engineer], reason: true }
+      - { id: unblock,           from: blocked,      to: $prior,       by: [coder, planner, engineer, owner], guards: [dependency-cleared] }
+      - { id: resume-answered,   from: needs-input,  to: $prior,       by: [coder, planner, engineer, owner], guards: [question-answered],
+          note: "The human decides by answering; whoever picks the task up next records the move." }
+      - { id: unsuspend,         from: suspended,    to: $prior,       by: [owner, engineer] }
+    owner_changes:
+      - { id: take-over, by: [owner, engineer], sets: { owner: "<human>" }, note: "Any status. A running agent commits, writes its handoff, and yields." }
+      - { id: release,   by: [owner, engineer], sets: { owner: null },   note: "Hands the task back to auto-dispatch." }
+
+  epic:
+    artifact: specs/<epic>/spec.md
+    field: status
+    initial: intake
+    terminal: [done]
+    side_states: [blocked]
+    states:
+      intake:      { holder: owner,   means: "An idea captured as a stub spec." }
+      scoping:     { holder: owner,   means: "Problem, goals, non-goals and journeys being drafted." }
+      draft:       { holder: owner,   means: "Spec complete; the planner proposed the task decomposition." }
+      approved:    { holder: owner,   means: "The owner approved the spec. The first human gate." }
+      in-progress: { holder: planner, means: "Tasks executing." }
+      done:        { holder: null,    means: "Every task merged and the acceptance met. Terminal." }
+      blocked:     { holder: owner,   means: "An external dependency stops the epic." }
+    transitions:
+      - { id: scope,         from: intake,      to: scoping,     by: [owner] }
+      - { id: draft-spec,    from: scoping,     to: draft,       by: [owner] }
+      - { id: rescope,       from: draft,       to: scoping,     by: [owner], reason: true }
+      - { id: approve-spec,  from: draft,       to: approved,    by: [owner], gate: spec-approval }
+      - { id: start,         from: approved,    to: in-progress, by: [planner, owner] }
+      - { id: finish,        from: in-progress, to: done,        by: [owner, planner], guards: [all-tasks-merged, acceptance-met] }
+      - { id: block,         from: [scoping, draft, approved, in-progress], to: blocked, by: [owner], reason: true }
+      - { id: unblock,       from: blocked,     to: $prior,      by: [owner], guards: [dependency-cleared] }
+
+  release:
+    artifact: the forge's deployment record for one built artifact (one image, one sha)
+    field: stage
+    initial: built
+    terminal: [released, rolled-back]
+    side_states: [held]
+    states:
+      built:       { holder: train, means: "CI built the artifact once." }
+      staged:      { holder: train, means: "Deployed to a pre-production stage and dwelling." }
+      released:    { holder: owner, means: "Serving production." }
+      rolled-back: { holder: train, means: "Replaced by the previous release." }
+      held:        { holder: owner, means: "A hold (an open hold issue, a red drill) stops the train." }
+    transitions:
+      - { id: stage,     from: [built, staged], to: staged,      by: [train], guards: [stage-checks-green] }
+      - { id: release,   from: staged,          to: released,    by: [owner], gate: production-release, guards: [stage-checks-green] }
+      - { id: roll-back, from: released,        to: rolled-back, by: [train, owner, engineer], reason: true }
+      - { id: hold,      from: [built, staged], to: held,        by: [train, owner, engineer], reason: true }
+      - { id: unhold,    from: held,            to: $prior,      by: [owner, engineer] }
