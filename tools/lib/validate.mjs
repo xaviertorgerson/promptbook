@@ -64,20 +64,32 @@ const fieldOf = (instancePath) => {
   return (segs.at(-1) ?? 'document').replace(/_/g, '-');
 };
 
-// The rule an Ajv error reports: the deepest x-rule, or x-rules[<key the path takes out of that
-// node>], on the schema path; failing that, on the instance path through the contract's own schema
-// (for values validated through a $ref into common); failing that, a default from the keyword.
+// The rule an Ajv error reports, and the human description that goes with it: the nearest x-rule,
+// or x-rules[<key the path takes out of that node>], among the failing schema node's ancestors;
+// failing that, on the instance path through the contract's own schema (for values validated
+// through a $ref into common); failing that, a default named from the keyword.
 export function ruleOf(err, name, pointer, registry) {
-  const fromSteps = (steps) => {
-    for (const { node, key } of [...steps].reverse()) {
+  const fromSteps = (nearestFirst) => {
+    for (const { node, key } of nearestFirst) {
       if (!node || typeof node !== 'object' || Array.isArray(node)) continue;
-      if (key !== undefined && node['x-rules']?.[key]) return node['x-rules'][key];
-      if (node['x-rule']) return node['x-rule'];
+      if (key !== undefined && node['x-rules']?.[key]) return { rule: node['x-rules'][key] };
+      if (node['x-rule']) return { rule: node['x-rule'], why: node.description };
     }
     return null;
   };
-  const viaSchema = fromSteps(registry.nodesOnPath(name, err.schemaPath));
-  if (viaSchema) return viaSchema;
+  // The keyword's own node: parentSchema holds it, and the keyword is the first key out of it. A
+  // boolean false schema has no node to look up, so walk its schemaPath instead (relative to the
+  // validated fragment when there is one).
+  let own;
+  if (err.parentSchema && typeof err.parentSchema === 'object') {
+    own = registry.ancestry(err.parentSchema);
+    own[0].key = err.keyword;
+  } else {
+    // Ajv appends "/false schema" to the path of a boolean false subschema.
+    const raw = err.schemaPath.replace(/\/false schema$/, '');
+    const schemaPath = pointer && raw.startsWith('#') ? `${pointer}${raw.slice(1)}` : raw;
+    own = registry.nodesOnPath(name, schemaPath).reverse();
+  }
   const steps = [];
   let node = registry.at(name, pointer);
   for (const seg of err.instancePath.split('/').slice(1)) {
@@ -85,29 +97,32 @@ export function ruleOf(err, name, pointer, registry) {
     node = /^\d+$/.test(seg) ? node.items : node.properties?.[seg] ?? (typeof node.additionalProperties === 'object' ? node.additionalProperties : undefined);
     steps.push({ node, key: undefined });
   }
-  const viaInstance = fromSteps(steps);
-  if (viaInstance) return viaInstance;
+  const named = fromSteps(own) ?? fromSteps(steps.reverse());
+  if (named) return named;
   switch (err.keyword) {
-    case 'required': return `missing-${err.params.missingProperty.replace(/_/g, '-')}`;
-    case 'additionalProperties': return 'unknown-field';
-    case 'uniqueItems': return `duplicate-${fieldOf(err.instancePath)}`;
-    case 'false schema': return `forbidden-${fieldOf(err.instancePath)}`;
-    default: return `invalid-${fieldOf(err.instancePath)}`;
+    case 'required': return { rule: `missing-${err.params.missingProperty.replace(/_/g, '-')}` };
+    case 'additionalProperties': return { rule: 'unknown-field' };
+    case 'uniqueItems': return { rule: `duplicate-${fieldOf(err.instancePath)}` };
+    case 'false schema': return { rule: `forbidden-${fieldOf(err.instancePath)}` };
+    default: return { rule: `invalid-${fieldOf(err.instancePath)}` };
   }
 }
 
-function describe(err) {
-  if (err.keyword === 'additionalProperties') return `unknown field "${err.params.additionalProperty}"`;
-  if (err.keyword === 'false schema') return 'is not allowed here';
-  if (err.keyword === 'enum') return `${err.message}: ${err.params.allowedValues.map((v) => JSON.stringify(v)).join(', ')}`;
-  return err.message;
+function describe(err, why) {
+  let msg;
+  if (err.keyword === 'additionalProperties') msg = `unknown field "${err.params.additionalProperty}"`;
+  else if (err.keyword === 'false schema') msg = 'is not allowed here';
+  else if (err.keyword === 'enum') msg = `${err.message}: ${err.params.allowedValues.map((v) => JSON.stringify(v)).join(', ')}`;
+  else if (err.keyword === 'const') msg = `must be ${JSON.stringify(err.params.allowedValue)}`;
+  else msg = err.message;
+  return why ? `${msg} (${why.replace(/\.$/, '')})` : msg;
 }
 
-// Ajv reports an if/then failure twice (the then-keyword and the if); keep the specific one. An
-// anyOf/oneOf failure is reported with its branches; keep the branch errors only when the
-// combinator itself carries no rule.
-function prune(errors) {
-  return errors.filter((e) => e.keyword !== 'if');
+// Ajv reports an if/then failure twice (the then-keyword and the if), and a failed contains once
+// per item tried plus once for the contains itself; keep the specific error of each.
+function prune(errors, registry) {
+  const insideContains = (e) => e.parentSchema && typeof e.parentSchema === 'object' && registry.ancestry(e.parentSchema).slice(1).some((s) => s.key === 'contains');
+  return errors.filter((e) => e.keyword !== 'if' && !insideContains(e));
 }
 
 function schemaFindings(record, name, pointer, registry) {
@@ -115,13 +130,14 @@ function schemaFindings(record, name, pointer, registry) {
   if (v(record.data)) return [];
   const seen = new Set();
   const out = [];
-  for (const err of prune(v.errors)) {
-    const rule = ruleOf(err, name, pointer, registry);
-    const ptr = `${record.pointer}${err.instancePath}`;
+  for (const err of prune(v.errors, registry)) {
+    const { rule, why } = ruleOf(err, name, pointer, registry);
+    const at = err.keyword === 'additionalProperties' ? `${err.instancePath}/${err.params.additionalProperty}` : err.instancePath;
+    const ptr = `${record.pointer}${at}`;
     const key = `${rule}|${ptr}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    out.push({ severity: 'error', rule, pointer: ptr || '/', message: describe(err), line: record.lineOf(err.instancePath || '') ?? record.line });
+    out.push({ severity: 'error', rule, pointer: ptr || '/', message: describe(err, why), line: record.lineOf(at || '') ?? record.line });
   }
   return out;
 }

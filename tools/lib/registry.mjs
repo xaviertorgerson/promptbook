@@ -55,14 +55,34 @@ export class Registry {
       },
     });
     this.schemas = new Map();
+    // Every schema node -> { parent node, key from parent }. Ajv reports schemaPath relative to the
+    // $ref target that failed, without saying which document that is; with verbose on it also hands
+    // back the failing node itself (parentSchema), so its ancestors are found by identity.
+    this.parents = new WeakMap();
     for (const file of fs.readdirSync(dir).filter((f) => f.endsWith('.schema.json')).sort()) {
       const schema = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8'));
       const name = file.replace(/\.schema\.json$/, '');
       if (schema.$id !== `${SCHEMA_BASE}${file}`) throw new Error(`${file}: $id must be ${SCHEMA_BASE}${file}`);
       this.schemas.set(name, schema);
+      this.index(schema, null, undefined);
       this.ajv.addSchema(schema);
     }
     this.validators = new Map();
+  }
+
+  index(node, parent, key) {
+    if (!node || typeof node !== 'object') return;
+    this.parents.set(node, { parent, key });
+    for (const [k, v] of Object.entries(node)) this.index(v, node, k);
+  }
+
+  // The node and its ancestors, nearest first, each with the key that leads from it toward the node.
+  ancestry(node) {
+    const out = [{ node, key: undefined }];
+    for (let link = this.parents.get(node); link?.parent; link = this.parents.get(link.parent)) {
+      out.push({ node: link.parent, key: link.key });
+    }
+    return out;
   }
 
   // Contracts are every schema that describes an artifact; common holds shared definitions only.
@@ -122,9 +142,9 @@ export class Registry {
     return steps;
   }
 
-  // The schema object at a JSON pointer inside a contract (#/$defs/entry).
+  // The schema object at a fragment of a contract ("#/$defs/entry", or "" for the whole schema).
   at(name, pointer) {
-    return pointer ? this.nodesOnPath(name, `#${pointer}`).at(-1)?.node : this.schema(name);
+    return pointer ? this.nodesOnPath(name, pointer).at(-1)?.node : this.schema(name);
   }
 }
 

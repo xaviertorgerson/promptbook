@@ -171,6 +171,7 @@
         "strategy": { "enum": ["merge", "squash", "rebase"] },
         "requires": {
           "x-rule": "merge-requires-review-and-checks",
+          "description": "Must include independent-review and required-checks; a merge grant never waives either.",
           "type": "array",
           "items": { "enum": ["independent-review", "required-checks", "current-head", "human-approval"] },
           "uniqueItems": true,

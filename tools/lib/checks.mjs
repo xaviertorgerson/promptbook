@@ -1,4 +1,4 @@
-import { criteria } from './ears.mjs';
+import { classify, criteria } from './ears.mjs';
 import { headings, splitLines, stripComments, fenceMask } from './markdown.mjs';
 
 // Named checks a schema lists under x-checks: rules JSON Schema cannot express because they read the
@@ -23,7 +23,7 @@ export const CHECKS = {
       if (c.legacy) out.push({ severity: 'warning', rule: 'criterion-id-canonical', pointer: '(body)', line: c.line, message: `${c.written} is the legacy form; write ${c.id}` });
       if (seen.has(c.id)) out.push({ rule: 'criterion-id-unique', pointer: '(body)', line: c.line, message: `${c.id} repeats line ${seen.get(c.id)}` });
       else seen.set(c.id, c.line);
-      if (!/\bshall\b/i.test(c.statement) || !/^(when|while|where|if|the)\b/i.test(c.statement.trim()) || !isEars(c.statement)) {
+      if (!classify(c.statement)) {
         out.push({ rule: 'criterion-is-ears', pointer: '(body)', line: c.line, message: `${c.id} is not an EARS sentence (When/While/Where/If…then/The … shall …): "${c.statement.slice(0, 100)}"` });
       }
     }
@@ -90,11 +90,6 @@ export const CHECKS = {
     return out;
   },
 };
-
-function isEars(statement) {
-  const s = statement.trim();
-  return [/^when\b.+,.*\bshall\b/i, /^while\b.+,.*\bshall\b/i, /^where\b.+,.*\bshall\b/i, /^if\b.+,\s*then\b.+\bshall\b/i, /^the\b.+\bshall\b/i].some((re) => re.test(s));
-}
 
 // Required level-2 headings (x-sections). Matched against the heading text with the schema's regex.
 export function checkSections(sections, body, bodyLine) {
