@@ -69,10 +69,14 @@ unmet criterion.
 
 ## run-record (one JSON line per run, written by the runner)
 
-Required: `task`, `session_id`, `started_at`, `ended_at`, `exit`, `outcome` (advanced, stalled,
-failed), `reason` (null only when advanced), `subtype`, `num_turns`, `total_cost_usd`,
-`status_after`. Optional: `engine`, `runtime`, `model`, `status_before`, `permission_mode`,
-`permission_denials`, `attention`, `budget`, `grant`. `advanced` means the task left ready and in-progress.
+Required: `task`, `session_id`, `started_at`, `ended_at`, `exit`, `outcome` (an author's run:
+advanced, stalled, failed, needs-human; an evaluator's: verdict; a reader's or helper's: read),
+`reason` (null when advanced, verdict or read), `subtype`, `num_turns`, `total_cost_usd`,
+`status_after`. Optional: `engine`, `runtime`, `role` (author, evaluator, reader, planner,
+orchestrator, merge, other; absent means author), `model`, `status_before`, `permission_mode`,
+`permission_denials` (a count or one line per denied call), `attention`, `budget`, `grant`.
+`advanced` means the task left ready and in-progress; log an evaluator's or reader's run with its
+role and verdict or read, never as an author's advanced.
 
 ## authority defaults
 

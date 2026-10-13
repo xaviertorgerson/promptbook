@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { criteria, DEFAULT_TEST_GLOBS, namedIn, testNames } from './ears.mjs';
+import { criteria, DEFAULT_TEST_GLOBS, namingIndexes, testNames } from './ears.mjs';
 import { findFiles, globsOverlap, toPosix } from './glob.mjs';
 import { loadFrontmatterMarkdown, readText } from './loaders.mjs';
 import { parseDecisions, parseEpicAdrs, parseJourneys, parsePersonas, parseRequirements, parseTaskIndex, parseUxFlows } from './parsers.mjs';
@@ -75,6 +75,7 @@ function loadProject(root, { testGlobs = DEFAULT_TEST_GLOBS, testPatterns = [], 
     decisions: new Map(),
     testFiles: [],
     names: [],
+    nameFiles: [],
     invalid: [],
   };
   const validateInto = (file) => {
@@ -145,7 +146,11 @@ function loadProject(root, { testGlobs = DEFAULT_TEST_GLOBS, testPatterns = [], 
   }
 
   p.testFiles = findFiles(root, testGlobs);
-  for (const f of p.testFiles) p.names.push(...testNames(readText(f), { file: f, patterns: testPatterns }));
+  for (const f of p.testFiles) {
+    const names = testNames(readText(f), { file: f, patterns: testPatterns });
+    p.names.push(...names);
+    p.nameFiles.push(...names.map(() => rel(root, f)));
+  }
   p.testGlobs = testGlobs;
   return p;
 }
@@ -209,8 +214,14 @@ export function trace(root, opts = {}) {
   if (!testsPresent) {
     gap({ rule: 'tests-exist', severity: 'warning', subject: 'tests', message: `no test file matches ${p.testGlobs.length} glob(s); criterion coverage is not checked (as agentic-template's ears-coverage does in status mode)`, file: null, line: null });
   }
-  const acCount = new Map();
-  for (const t of allTasks.values()) for (const c of t.criteria) acCount.set(c.id, (acCount.get(c.id) ?? 0) + 1);
+  // Criterion evidence. A test name that carries a task id is qualified: it counts for the tasks it
+  // names, never another. A bare AC-n counts only for the one task of its epic with that id; when
+  // several have it, it counts for none of them (ambiguous-criterion-id).
+  const nameTasks = new Map([...allTasks.keys()].map((id) => [id, new Set(namingIndexes(p.names, id))]));
+  const qualifiedNames = new Set([...nameTasks.values()].flatMap((s) => [...s]));
+  const idNames = new Map();
+  const namesOf = (id) => idNames.get(id) ?? idNames.set(id, namingIndexes(p.names, id)).get(id);
+  const bareNamesOf = (id) => namesOf(id).filter((i) => !qualifiedNames.has(i));
 
   // ---------------------------------------------------------------- epics
   const epics = [];
@@ -227,6 +238,12 @@ export function trace(root, opts = {}) {
     }
 
     // Task -> journey, task -> requirement, task -> task, guiding docs, criteria -> tests.
+    const sharing = new Map();
+    for (const t of e.tasks.values()) for (const c of t.criteria) {
+      const ts = sharing.get(c.id) ?? sharing.set(c.id, []).get(c.id);
+      if (!ts.includes(t.id)) ts.push(t.id);
+    }
+    const evidence = [];
     const journeyTasks = new Map([...e.journeys.keys()].map((k) => [k, []]));
     const requirementTasks = new Map([...e.requirements.keys()].map((k) => [k, { strong: [], weak: [] }]));
     for (const t of e.tasks.values()) {
@@ -268,16 +285,22 @@ export function trace(root, opts = {}) {
       }
       for (const c of t.criteria) {
         cov.criteria.total += 1;
-        if (!testsPresent) continue;
-        const qualified = p.names.some((n) => namedIn([n], t.id) && namedIn([n], c.id));
-        const bare = qualified || namedIn(p.names, c.id);
-        if (bare) cov.criteria.covered += 1;
-        if (!EVIDENCED_TASK.has(t.status)) continue;
-        if (!bare) egap({ rule: 'criterion-named-in-test', severity: 'error', subject: `${t.id} ${c.id}`, message: `${t.id} is ${t.status} but no test name contains ${c.id}`, file: t.file, line: c.line, blocks_readiness: true });
-        else if (!qualified && acCount.get(c.id) > 1) egap({ rule: 'criterion-evidence-unambiguous', severity: 'warning', subject: `${t.id} ${c.id}`, message: `${c.id} appears in a test name, but ${acCount.get(c.id)} tasks have a ${c.id}; name the test "${t.id} ${c.id} ..."`, file: t.file, line: c.line });
+        if (!testsPresent) { evidence.push({ task: t.id, criterion: c.id, evidence: 'none' }); continue; }
+        const qualified = namesOf(c.id).some((i) => nameTasks.get(t.id).has(i));
+        const bare = bareNamesOf(c.id).length > 0;
+        const kind = qualified ? 'qualified' : !bare ? 'none' : sharing.get(c.id).length === 1 ? 'bare' : 'ambiguous';
+        evidence.push({ task: t.id, criterion: c.id, evidence: kind });
+        const covered = kind === 'qualified' || kind === 'bare';
+        if (covered) cov.criteria.covered += 1;
+        if (!EVIDENCED_TASK.has(t.status) || covered) continue;
+        const why = kind === 'ambiguous' ? `: a test name carries a bare ${c.id}, but ${sharing.get(c.id).join(', ')} each have one; name the test "${t.id} ${c.id} …"` : '';
+        egap({ rule: 'criterion-named-in-test', severity: 'error', subject: `${t.id} ${c.id}`, message: `${t.id} is ${t.status} but no test name carries ${c.id} for it${why}`, file: t.file, line: c.line, blocks_readiness: true });
       }
     }
-    if (!testsPresent) cov.criteria.covered = 0;
+    for (const [id, tasks] of sharing) {
+      const bare = testsPresent && tasks.length > 1 ? bareNamesOf(id) : [];
+      if (bare.length) egap({ rule: 'ambiguous-criterion-id', severity: 'warning', subject: id, message: `${bare.length} test name(s) carry a bare ${id} ("${p.names[bare[0]].slice(0, 80)}"), and ${tasks.join(', ')} each have a ${id}: it counts for none of them. Name the test "<TASK> ${id} …"`, file: p.nameFiles[bare[0]], line: null });
+    }
 
     // Dependency cycles (within and across epics, reported once per epic that holds a member).
     const seen = new Set();
@@ -423,7 +446,7 @@ export function trace(root, opts = {}) {
     const counts = { error: 0, warning: 0, info: 0 };
     for (const g of mine) counts[g.severity] += 1;
     const verdict = counts.error === 0 && !mine.some((g) => g.blocks_readiness) ? 'ready' : 'not-ready';
-    epics.push({ epic: e.slug, epic_status: e.status ?? 'intake', mode, task_modes: taskModes, verdict, counts, coverage: cov, gaps: mine });
+    epics.push({ epic: e.slug, epic_status: e.status ?? 'intake', mode, task_modes: taskModes, verdict, counts, coverage: cov, criteria_evidence: evidence, gaps: mine });
   }
 
   const counts = { error: 0, warning: 0, info: 0 };
@@ -431,13 +454,14 @@ export function trace(root, opts = {}) {
   return { root, adoption, generator: `harness/validate@${TRACE_VERSION}`, counts, epics, gaps, tests: { files: p.testFiles.length, names: p.names.length, globs: p.testGlobs } };
 }
 
-// The readiness report for one epic (schemas/readiness-report.schema.json), as Markdown text.
+// The readiness report for one epic (schemas/readiness-report.schema.json), as Markdown text. now:
+// null leaves generated_at out (a report committed with the plan).
 export function renderReadiness(result, epic, { now = new Date().toISOString(), commit } = {}) {
   const e = result.epics.find((x) => x.epic === epic);
   if (!e) throw new Error(`no epic ${epic}`);
   const fm = {
     epic: e.epic,
-    generated_at: now.replace(/\.\d{3}Z$/, 'Z'),
+    ...(now ? { generated_at: now.replace(/\.\d{3}Z$/, 'Z') } : {}),
     generator: result.generator,
     ...(commit ? { source_commit: commit } : {}),
     adoption: result.adoption,

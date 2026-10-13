@@ -30,3 +30,30 @@ export function grantHas(g, action, sc, task) {
   if (task && g.scope.tasks?.length && !g.scope.tasks.includes(task.id)) return false;
   return g.actions.some((a) => actionName(a) === action && (action !== 'merge' || (a.repo === sc.repo && a.target === landingTarget(sc, task) && a.strategy === sc.strategy)));
 }
+
+// Actions that start or steer workers. A grant that delegates one of them bounds how many run at
+// once (limits.max_workers) and what the runtime spends (limits.budget); a merge-only or
+// review-only grant bounds neither (authority.yaml lifecycle.limits).
+export const DISPATCH_ACTIONS = ['select-tasks', 'approve-plan', 'dispose-findings', 'finalize'];
+export const dispatches = (g) => g.actions.some((a) => DISPATCH_ACTIONS.includes(actionName(a)));
+
+// The workers cap at a moment: the supervisor's own cap, and the smallest max_workers among the
+// live grants that delegate dispatch.
+export function workerCap(grants, ms, base) {
+  return Math.min(base, ...grants.filter((g) => grantLiveAt(g, ms) && dispatches(g)).map((g) => g.limits?.max_workers ?? Infinity));
+}
+
+// The grant an action is exercised under: a live one that delegates it for the task; else one that
+// names the action at all (expired, or for another branch or scope), so a check can say why it does
+// not cover the action; else none. Merge authority therefore comes from a merge grant only.
+export function grantFor(grants, action, sc, task, ms) {
+  if (!action) return grants.find((g) => grantLiveAt(g, ms)) ?? grants[0] ?? null;
+  return grants.find((g) => grantLiveAt(g, ms) && grantHas(g, action, sc, task)) ?? grants.find((g) => g.actions.some((a) => actionName(a) === action)) ?? null;
+}
+
+// The grant a task's record names: the one under which its work is dispatched (a dispatch grant
+// whose scope covers the task), else any grant whose scope covers it.
+export function recordGrant(grants, sc, task) {
+  const covers = (g) => DISPATCH_ACTIONS.some((a) => grantHas(g, a, sc, task)) || grantHas(g, 'merge', sc, task);
+  return grants.find((g) => dispatches(g) && covers(g)) ?? grants.find(covers) ?? null;
+}

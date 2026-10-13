@@ -73,7 +73,7 @@ handling-credentials) and compiles it per engine; nothing in the product reads i
 |---|---|---|---|---|---|---|---|
 | 13 | 08:30 | dana claims SPLIT-1: risk high never runs unattended; worktree slot 0 on the workstation | managing-worktrees | SPLIT-1 → in-progress; record `resources` | — | working | L1 `workstation` (auto-edit) |
 | 14 | 12:52 | Skeleton built in her session; tests named `SPLIT-1 AC-n`; draft PR #1 | implementing-task, writing-tests | `tests/skeleton.test.ts`; → review | — | working | L2 |
-| 15 | 13:34 | Evaluator passes 3c9a1f4 (k = 2), including ADR-0001's tenancy probe | verifying-work | `.agent/verdicts/SPLIT-1-3c9a1f4.md`; run record 1 | independent verification · tally-evaluator | working | L1 `ci` |
+| 15 | 13:34 | Evaluator passes 3c9a1f4 (k = 2), including ADR-0001's tenancy probe | verifying-work | `.agent/verdicts/SPLIT-1-3c9a1f4.md`; run record 1 (role evaluator, outcome `verdict`) | independent verification · tally-evaluator | working | L1 `ci` |
 | 16 | 14:01 | **Gate 2, pr-approval**: dana approves; the merge agent lands on `main` after merged checks; staging serves the image by digest (AC-4, AC-5) | landing-changes, releasing-changes | → human-review → merging → **merged** | pr-approval · dana | complete | L4 merge role |
 | 17 | 14:31 | Cleanup audit passes; worktree removed | managing-worktrees | record `resources.audit`, `worktree_removed_at` | — | complete | L4 |
 | 18 | 14:40 | `integration/settle-up` created from `main`@7e21c0b, protected, required checks on | landing-changes | the branch | — | — | L2 forge |
@@ -88,13 +88,13 @@ The coordinator wakes on events and a cheap check-in timer, reads the task files
 | 19 | 08:00 | Check-in: SPLIT-2 and SPLIT-4 ready, deps merged, lanes disjoint → dispatch both (2 of 3 workers); SPLIT-3 waits on the migrations lane | orchestrating-work, routing-models | claims by tally-coder (compare-and-swap); records SPLIT-2, SPLIT-4 | select-tasks · GRANT-1 | SPLIT-2, SPLIT-4 working | L4, L1 `devbox` |
 | 20 | 08:23 | SPLIT-4's run wants `psql` on its worktree database; `ask` under `dontAsk` is a **denial**; the run hands back instead of working around it | implementing-task, reporting-state | return `SPLIT-4-author-denied.json`; run record 2: stalled, `permission_denials: 1`; status stays in-progress | — | SPLIT-4 **needs-human** (phone push) | L1 `ci` ask → L4 |
 | 21 | 08:31 | SPLIT-2 draft PR #2 at a41c9e2; the author's return says complete | implementing-task, writing-tests | return `SPLIT-2-author-a41c9e2.json`; run record 3; → review | — | working | L4 |
-| 22 | 09:01 | **Evaluator rejects** a41c9e2: two identical submits racing both stored (AC-1) | verifying-work | verdict and return `SPLIT-2-evaluator-a41c9e2.json`; run record 4 | independent verification failed · tally-evaluator | working | L1 `ci` (Gemini) |
+| 22 | 09:01 | **Evaluator rejects** a41c9e2: two identical submits racing both stored (AC-1) | verifying-work | verdict and return `SPLIT-2-evaluator-a41c9e2.json`; run record 4: `verdict` | independent verification failed · tally-evaluator | working | L1 `ci` (Gemini) |
 | 23 | 09:02 | Findings disposed: the race to the author now, a missing index to Working notes as a follow-up | orchestrating-work (resolving-findings) | SPLIT-2 Working notes; record `decisions` | dispose-findings · GRANT-1 | working | L4 |
 | 24 | 09:24 | Author fixes it: unique index in `migrations/0002`, a race test; d8f03b7 | implementing-task | run record 5; → in-progress → review | — | working | L4 |
 | 25 | 09:53 | Evaluator passes d8f03b7. **Its done wake is lost**; the events-lost notice (10:06) makes the coordinator read a snapshot and the verdict file (10:07) | verifying-work, reporting-state | `SPLIT-2-evaluator-d8f03b7.json`; run record 6; record `signals` | independent verification · tally-evaluator | working | L4 |
 | 26 | 10:10 | The coder marks PR #2 ready: checks green, criteria met and named in tests, the evaluator's pass on this head (GRANT-1 holds no finalize) | implementing-task | run record 7; → human-review | — | working | L4 |
 | 27 | 10:25 | **Gate 2 under a grant**: the coordinator approves (independent review and required checks on d8f03b7), rebases, re-runs checks on the merged result, integrates by merge commit | landing-changes (tier 2) | → merging → **integrated**; record `decisions` | pr-approval · coordinator under GRANT-2 | SPLIT-2 **complete** | L4 |
-| 28 | 10:28 | SPLIT-3 dispatched: SPLIT-2 is integrated in the same epic, which counts; a reader maps the ledger first | orchestrating-work | claim; return `SPLIT-3-reader-ledger.json` | select-tasks · GRANT-1 | SPLIT-3 working | L4 |
+| 28 | 10:28 | SPLIT-3 dispatched: SPLIT-2 is integrated in the same epic, which counts; a reader maps the ledger first | orchestrating-work | claim; return `SPLIT-3-reader-ledger.json`; run record 8: the reader's, outcome `read`, status unchanged | select-tasks · GRANT-1 | SPLIT-3 working | L4 |
 | 29 | 10:45 | SPLIT-2's cleanup audit is blocked: its dev server still listens on 4511 | managing-worktrees | record `resources.audit` (blocked) | — | complete | L4 |
 
 ### The snapshot — 2026-10-15 11:00
@@ -130,7 +130,7 @@ The coordinator wakes on events and a cheap check-in timer, reads the task files
 | 20, 32: the unattended `psql` ask | `faults.ask` on SPLIT-4, policy tier `unattended` | `asks-surface-to-human`, `no-progress-stops`, `stalls-surface` |
 | 22, 24: the evaluator rejects the first head | `faults.evaluator_rejection: { SPLIT-2: 1 }` | `guards-hold` (independent-verification), `merge-requires-authority` |
 | 25: the lost wake | `faults.lost_events` (a tenth of the wakes, some with no notice) | `signals-never-advance-workflow`, `stalls-surface` |
-| 27, 32-35: the integration-branch flow | GRANT-2 verbatim; `merge.queue_targets: [main]`; `human.on_integration: merge` | `merge-requires-authority`, `transitions-allowed`, `human-gates-by-humans` |
+| 27, 32-35: the integration-branch flow | GRANT-1 and GRANT-2 verbatim (GRANT-1's three workers and $30 bound the run; merge authority comes from GRANT-2 alone); `merge.queue_targets: [main]`; `human.on_integration: merge` | `merge-requires-authority`, `transitions-allowed`, `human-gates-by-humans` |
 
 Every seed of the fifty integrates SPLIT-2..4 under GRANT-2 and ends with dana promoting all three,
 with zero violations; `tests/example.test.mjs` checks that each fault actually fired.

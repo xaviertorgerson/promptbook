@@ -1,0 +1,80 @@
+{
+  "permissions": {
+    "defaultMode": "auto",
+    "allow": [
+      "Bash(pnpm *)",
+      "Bash(git status *)",
+      "Bash(git log *)",
+      "Bash(git diff *)",
+      "Edit(**)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:*.github.com)",
+      "WebFetch(domain:registry.npmjs.org)"
+    ],
+    "deny": [
+      "Read(**/.env)",
+      "Read(**/secrets/**)",
+      "Read(~/.ssh/**)",
+      "Read(//etc/shadow)",
+      "Bash(rm -rf / *)",
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(herdr workspace close *)",
+      "Edit(**/.git/hooks/**)",
+      "WebFetch(domain:internal.example.com)",
+      "WebFetch(domain:*.internal.example.com)",
+      "mcp__prod-db__execute",
+      "WebFetch(domain:tracking.example.com)"
+    ],
+    "ask": [
+      "Bash(psql *)",
+      "Edit(infra/**)",
+      "WebSearch"
+    ]
+  },
+  "sandbox": {
+    "enabled": true,
+    "failIfUnavailable": false,
+    "filesystem": {
+      "denyRead": [
+        "~/.ssh/**",
+        "/etc/shadow"
+      ],
+      "allowWrite": [
+        "~/.cache/pnpm"
+      ]
+    },
+    "credentials": {
+      "files": [
+        {
+          "path": "~/.config/gh/hosts.yml",
+          "mode": "mask",
+          "extract": "oauth_token:\\s*(\\S+)",
+          "injectHosts": [
+            "api.github.com"
+          ]
+        }
+      ],
+      "envVars": [
+        {
+          "name": "NPM_TOKEN",
+          "mode": "mask",
+          "injectHosts": [
+            "registry.npmjs.org"
+          ]
+        }
+      ]
+    },
+    "network": {
+      "allowedDomains": [
+        "github.com",
+        "*.github.com",
+        "registry.npmjs.org"
+      ],
+      "deniedDomains": [
+        "tracking.example.com"
+      ],
+      "tlsTerminate": {}
+    }
+  }
+}

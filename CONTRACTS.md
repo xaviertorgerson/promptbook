@@ -26,10 +26,12 @@ node tools/validate.mjs --list                  # contracts, versions, artifact 
   `*.grant.yaml`, `*.return.json`, `*.task-record.yaml`, `*.run-record.jsonl`, `*.policy.yaml`,
   `*.toolkit.lock`, `*.task.md`, `*.brief.md`, `*.persona.md` (frontmatter or a list),
   `*.adr.md`, `*.ux.md`, `*.spec.md` (epic and requirements), `*.cuj.md`, `*.readiness.md`,
-  `*.harness-review.md`, `*.reflection.md`. A suffix applies only when no path does; it binds no
+  `*.harness-review.md`, `*.reflection.md`, `*.evidence.md`, `*.routing.jsonl`. A suffix applies only when no path does; it binds no
   frontmatter field, and an entry file (`<epic>.cuj.md`, `<epic>.ux.md`) takes its epic from the name
-  before the suffix. A `*.template.*` file holds placeholders on purpose and gets no inferred
-  contract (`--contract` still validates it).
+  before the suffix. A `*.template.*` file, or one whose name starts with `_` (agentic-template's
+  `docs/ux/_UX-TEMPLATE.md`, `specs/<epic>/tasks/_TASK-TEMPLATE.md`), holds placeholders on purpose
+  and gets no inferred contract, nor does a file under a `_`-prefixed folder a path glob captures
+  (`specs/_drafts/spec.md`), as the trace skips them; `--contract` still validates it.
 - **Rules have names.** Conditional rules carry `x-rule`; errors report that name, a JSON pointer,
   and a file line. Rules JSON Schema cannot express are named checks listed in `x-checks`
   (`tools/lib/checks.mjs`). Unknown fields are errors, except `x-*` keys, which are free for local
@@ -64,7 +66,7 @@ node tools/validate.mjs --list                  # contracts, versions, artifact 
 | [policy](#policy) | `agent-policy.yaml` (L1 dotfiles) | YAML | operator | policy compiler → engine settings |
 | [toolkit-lock](#toolkit-lock) | `toolkit.lock` (L1 and L2) | YAML | lock tool | sync, CI |
 | [skill](#skill) | `skills/<name>/SKILL.md` (L3, L4) | frontmatter-md | skill author | every engine's skill loader |
-| [evidence](#evidence) | `skills/<name>/evals/{evidence.md,routing.jsonl}`, `routing-results*.jsonl` | entries / JSONL | skill author, eval runs | skill reviews, routing evals |
+| [evidence](#evidence) | `**/skills/<name>/evals/{evidence.md,routing.jsonl}` (a project's `.agents/skills/` too), `routing-results*.jsonl` | entries / JSONL | skill author, eval runs | skill reviews, routing evals |
 | [harness-review](#harness-review) | `harness-reviews/<date>-<label>.md` | Markdown record | the reviewing-harness skill | humans, the next review |
 | [reflection-report](#reflection-report) | `reflections/*.md` | frontmatter-md | the reflecting-on-runs skill | a curator, humans |
 
@@ -183,12 +185,14 @@ their sources.
 ### readiness-report
 
 **Purpose.** The trace check's verdict on one epic, generated for the product owner at the spec gate.
-**Schema** `readiness-report.schema.json` 1.1.0: `epic`, `generated_at`, `generator`,
-`source_commit`, `adoption` (full | legacy), `epic_status`, `verdict` (ready | not-ready), `counts`,
+**Schema** `readiness-report.schema.json` 1.2.0: `epic`, `generated_at`, `generator`,
+`source_commit` (the traced root's `HEAD` when it is a git repository), `adoption` (full | legacy), `epic_status`, `verdict` (ready | not-ready), `counts`,
 `coverage` (journeys with a task, requirements with a task, tasks citing a requirement, criteria
 named in a test, each `{covered,total}`), `gaps[]` (`traceGap`); a `ready` verdict has no error and
 no gap that blocks readiness. Written by `validate.mjs --trace <root> --readiness <dir>`; never
-hand-edited. **Compat.** New.
+hand-edited. `generated_at` and `source_commit` change on every check whatever the plan says, so
+`--no-timestamp` leaves both out (1.2.0: `generated_at` is optional) and a report committed with the
+plan changes only when the plan does; its own commit dates it. **Compat.** New.
 
 ### task-record
 
@@ -223,13 +227,25 @@ is optional there.
 ### run-record
 
 **Purpose.** One JSON line per agent run, appended by the runner. **Schema** `run-record.schema.json`
-1.1.0: exactly `scripts/loop.mjs`'s line — `task`, `session_id`, `started_at`, `ended_at`, `exit`
-(code or signal), `outcome` (advanced | stalled | failed), `reason`, `subtype`, `num_turns`,
-`total_cost_usd`, `status_after` — with null where loop.mjs writes null. Harness optional fields:
-`engine`, `runtime`, `model`, `status_before`, `permission_mode`, `permission_denials`, `attention`,
-`budget`, `grant`. Rules: failed and stalled carry a reason, advanced does not; advanced means the
-task left ready/in-progress; ended ≥ started. **Compat.** Lines from loop.mjs's own test runs are the
-fixture `fixtures/valid/run-record/loop-mjs-outcomes.jsonl`.
+1.2.0: exactly `scripts/loop.mjs`'s line — `task`, `session_id`, `started_at`, `ended_at`, `exit`
+(code or signal), `outcome`, `reason`, `subtype`, `num_turns`, `total_cost_usd`, `status_after` —
+with null where loop.mjs writes null. `outcome` is advanced | stalled | failed | needs-human (the
+loop's since it pins dontAsk: a denied call left the task where it was) for an author's run, and
+verdict (an evaluator judged the criteria) or read (a reader or helper answered a question) for a
+run that is not the author's. Harness optional fields: `engine`, `runtime`, `role` (author |
+evaluator | reader | planner | orchestrator | merge | other; absent, the author), `model`,
+`status_before`, `permission_mode`, `permission_denials` (a count, or one line per denied call as
+the dontAsk loop writes them), `attention`, `budget`, `grant`. Rules: failed, stalled and
+needs-human carry a reason, advanced, verdict and read do not; advanced means the task left
+ready/in-progress; a verdict is an evaluator's (`verdict-by-evaluator`), a read a reader's
+(`read-by-reader`); a verdict or read that left the status other than it found it is a warning
+(`run-kept-status`); ended ≥ started. 1.2.0 added `role`, the three outcomes and denial lines, so an
+evaluator's or reader's run is logged as what it was instead of an author's "advanced".
+**Compat.** Lines from loop.mjs's own test runs are the fixture
+`fixtures/valid/run-record/loop-mjs-outcomes.jsonl`; the dontAsk loop's lines (agentic-template
+`fix/agent-run-caps`: `needs-human`, `permission_denials` as lines), produced with a fake engine, are
+`loop-mjs-dontask.jsonl`, and a test holds the loop's outcome literals to the enum. A task's
+`sessions[]` entry (`common` `sessionRef`, 1.4.0) takes the same outcomes.
 
 ### grant
 
@@ -248,7 +264,11 @@ deleted, so the audit trail stays), its *dates* (`pending` before `granted_at`, 
 `revoked_by` and `revocation_reason`; it wins over expiry), its *narrowing* (`narrowed[]`, append-only;
 widening is a new grant), and its *recorded uses* (every task record, run record and orchestrator
 commit that names its id). A coordinator derives the state before each delegated action
-(`authority.yaml` lifecycle.validity); the simulator's `grantState()` is the reference. **Swap story.** Lets a
+(`authority.yaml` lifecycle.validity); the simulator's `grantState()` is the reference. A coordinator
+may hold several grants (a work grant and a merge grant, revocable alone): each action is exercised
+under the grant that delegates it, and the workers cap is the smallest `max_workers` among the live
+grants that dispatch work, so a merge-only grant's `max_workers` bounds its merges, not the epic's
+workers (`authority.yaml` 1.2.0 lifecycle.limits). **Swap story.** Lets a
 coordinator (stagehand, a CI orchestrator, a future agent) stand in for named human decisions with an
 auditable, expiring record instead of a remembered chat line. **Compat.** stagehand's
 project-delegation grants map field by field ([adapters/herdr](adapters/herdr/README.md)); the
@@ -258,9 +278,20 @@ harness adds a mandatory expiry.
 
 **Purpose.** The operator's (L1) agent policy: autonomy tier per machine profile, what is never read
 (`deny_read`), never done (`forbid`), asked about (`ask`), pre-approved (`allow`), network `egress`,
-`sandbox`, and run `budgets`; compiled per engine. **Schema** `policy.schema.json` 1.2.0. Tiers:
-read-only, ask, auto-edit, autonomous, unattended (an unattended profile requires
-`budgets.unattended`). A profile may name `requires`: preconditions the operator keeps outside the
+`sandbox`, and run `budgets`; compiled per engine. **Schema** `policy.schema.json` 1.3.0. Tiers:
+read-only, ask, auto-edit, auto, autonomous, unattended (an unattended profile requires
+`budgets.unattended`). `auto` (1.3.0) is a classifier-reviewed tier: routine actions run without
+asking, the engine's classifier blocks or asks for risky ones, ask rules still prompt and walls hold;
+it compiles to Claude's auto mode, and to the stricter auto-edit equivalent, with a warning, on an
+engine with no classifier mode (Codex on-request, Gemini auto_edit). A profile may carry its own
+`sandbox` and `egress`, merged key by key over the top-level ones (1.3.0). `sandbox.credentials`
+(1.3.0) lists credential masks: a file (`path`, optional `extract`) or an environment variable
+(`env`) that sandboxed commands may use without reading it, the real value reaching only
+`inject_hosts`; a mask is not a wall (the file tools are not covered), and a path `deny_read` names
+cannot also be masked (`credential-not-denied`). **Migration:** the dotfiles' top-level
+`x-claude: { default_mode: { workstation: auto } }` (read by their `settings.json.tmpl` to put
+Claude in auto mode while the profile said auto-edit) becomes `profiles.workstation.tier: auto`;
+Codex compiles exactly as it did, so drop the `x-claude` key and the template's lookup. A profile may name `requires`: preconditions the operator keeps outside the
 policy (`prod-unreachable-from-this-host`, `non-root-container`); the bypass tier (autonomous)
 must name them (a validation warning, a compile error) and the compiler passes them to the launcher
 in `runner.json`. A rule has exactly one matcher: `command` (argv prefix, with alternatives),
@@ -272,7 +303,9 @@ gaps are in `adapters/{claude,codex,gemini}/README.md`. **Fail closed:** an unre
 a compile error unless accepted with a reason; an unrepresentable ask is dropped with a warning. The
 bypass tier also needs the policy's own isolation (`sandbox.enabled`, `fail_if_unavailable`,
 `egress.default: deny`) or, where the host is isolated another way, that field's gap accepted by
-name; its `requires` is never waivable.
+name; its `requires` is never waivable. Where it relies on the sandbox, the compile also forbids an
+unsandboxed retry of a command the sandbox blocked (Claude `sandbox.allowUnsandboxedCommands:
+false`), which bypass would otherwise run without a prompt.
 **Compat.** The dotfiles' `settings.json.tmpl` is restated as the valid fixture.
 
 ### toolkit-lock
@@ -301,7 +334,7 @@ skills add `origin:` and live in `.claude/skills/`, which the L3 path deliberate
 ### evidence
 
 **Purpose.** Why a skill is the way it is and whether it routes. **Schema** `evidence.schema.json`
-1.2.0 with three shapes: `#/$defs/entry` for `evals/evidence.md` entries (`## YYYY-MM-DD · title`,
+1.3.0 with three shapes: `#/$defs/entry` for `evals/evidence.md` entries (`## YYYY-MM-DD · title`,
 or `## YYYY-MM · title` when the source gives only a month; any other level-2 heading in the file is
 an error, `entry-heading`, so no evidence is silently dropped; with `**Kind:**` measured | observed |
 incident | audit | vendor-reported | literature, `**Source:**`, `**Claim:**`, optional result,
@@ -311,7 +344,10 @@ no-trigger, `kind` positive | near-miss | negative, `route_to`); and `#/$defs/ro
 lines `harness eval-routing --out` writes (`routing-results*.jsonl`: `skill`, `case` `<skill>:<line>`,
 `prompt`, `expect`, `kind`, `route_to`, `model`, `runs`, `answers[]` per run, `passes`, `pass` —
 pass^k, every run — `errors`, `at`, `skill_version`; counts must agree), the measured source an
-evidence entry cites.
+evidence entry cites. The eval files validate wherever a skills folder is, dot-folder or not
+(`skills/`, a project's `.agents/skills/` or `.claude/skills/`, a user's `~/.agents/skills/`):
+unlike `SKILL.md`, whose L3 contract an engine's own skill folder may extend, the eval shapes are
+the same everywhere; `*.evidence.md` and `*.routing.jsonl` name the contract outside one (1.3.0).
 **Compat.** agentic-template keeps both in one `evals.md` (a routing table and an Evidence list);
 `harness import-evals` converts one, marking what a human must still decide (TOOLS.md).
 
@@ -393,7 +429,8 @@ flowchart LR
 | `artifact-valid` | every artifact it read passes its contract | error |
 | `*-exists` (persona, journey, requirement, decision, task, guiding-doc) | every id or path cited resolves | error |
 | `dependencies-acyclic` | `depends_on` has no cycle | error |
-| `criterion-named-in-test` | a task in review or later has every AC id in a test name (`--tests` globs; default the ears-coverage globs plus Go, Python, JUnit/Kotlin, Rust and Ruby test files) | error, blocks readiness |
+| `criterion-named-in-test` | a task in review or later has every AC id in a test name (`--tests` globs; default the ears-coverage globs plus Go, Python, JUnit/Kotlin, Rust and Ruby test files): a name that carries a task id counts for that task only; a bare `AC-n` counts only when one task of the epic has that id | error, blocks readiness |
+| `ambiguous-criterion-id` | a test name carries a bare `AC-n` that several tasks of the epic share: it counts for none of them; the warning names them | warning |
 | `task-cites-requirement` | every task cites ≥1 REQ/NFR (`requirements:`); an id named only in prose is a warning with the fix | see below |
 | `journey-has-task`, `requirement-has-task` | no orphan journey or requirement | see below |
 | `journey-has-requirement` | each journey is served by a requirement (CUJ column, or a task that cites both) | see below |
@@ -403,7 +440,7 @@ flowchart LR
 | `one-way-door-decided` | no ADR the epic cites (header, ADR column, `satisfies`, a task's guiding doc) is a one-way door still proposed | see below; blocks readiness |
 | `ready-task-unblocked` | a `ready` task has no unchecked Open question that says it blocks | error (warning in legacy adoption); blocks readiness |
 | `task-size-fits` | no task is `XL`: an error from `ready` on, a warning before | see below |
-| `persona-has-journey`, `persona-in-brief`, `nfr-has-decision`, `task-index-agrees`, `cites-current-decision`, `criterion-evidence-unambiguous`, `decision-link-agrees`, `tests-exist` | consistency | warning |
+| `persona-has-journey`, `persona-in-brief`, `nfr-has-decision`, `task-index-agrees`, `cites-current-decision`, `decision-link-agrees`, `tests-exist` | consistency | warning |
 | `task-mode-overrides-epic` | a task's `mode` differs from its epic's | info |
 
 **Severity policy.** A broken reference or an invalid artifact is always an error. A *missing* link
@@ -416,7 +453,8 @@ introduced — persona links, task → requirement, requirement → journey, UX,
 warning even on an approved epic, so adopting the harness never turns a green build red. Gaps that
 keep an epic from `ready` are marked `blocks_readiness` in either mode. With no test files at all,
 criterion coverage is a single `tests-exist` warning, as `ears-coverage.mjs` does in status mode.
-`--strict` makes warnings fail; `--readiness <dir>` writes each epic's `readiness.md`.
+`--strict` makes warnings fail; `--readiness <dir>` writes each epic's `readiness.md`
+(`--no-timestamp`: without `generated_at` and `source_commit`).
 
 **Test names.** A file's extension picks how its test names are read: JS/TS the first string of
 `it`/`test`/`describe` (ears-coverage's extractor); Go `t.Run("…")` and `func TestXxx`; Python
@@ -426,6 +464,16 @@ backticked function names; Rust `fn` names; Ruby `it`/`describe`/`context`/`spec
 name). An id matches in any case with a hyphen, an underscore or nothing between prefix and number
 (`AC-2`, `ac_2`, `AC2`, `bill_7_ac_2`), or in CamelCase after a lower-case letter or digit
 (`TestBILL7AC2`), never inside a longer id (`AC-21`, `FAC2`).
+
+**Which task a name evidences.** A name that carries a task id (`INV-1 AC-2 returns 404`,
+`test_inv_1_ac_2`) is qualified and counts for the tasks it names, never another. A name with a bare
+`AC-n` counts for the one task of its epic that has an `AC-n`; when several do, it is ambiguous and
+counts for none of them (`ambiguous-criterion-id`), so coverage can no longer read complete while a
+task's own criterion is untested. Ids are matched per name, not per enclosing `describe`: a bare
+`it('AC-2 …')` inside `describe('INV-1 …')` is bare. The epic's coverage ratio counts covered
+criteria, and `--json` lists each criterion's evidence (`epics[].criteria_evidence`: qualified,
+bare, ambiguous or none). A bare id unique in its epic still counts when another epic has the same
+id, so a project with several epics should qualify every name.
 
 On `wt-stack-drift` (two epics, no product docs, no tests) the check reports legacy adoption, 0
 errors, and 32 warnings: tasks that cite no requirement (with the exact `requirements: [REQ-2]` fix
@@ -484,7 +532,7 @@ the current head. The simulator enforces all of it (TOOLS.md).
 | agentic-template `specs/rating-engine/tasks/*.md` (4) and wt-stack-drift `specs/template-migration/tasks/*.md` (6) | task | all 10 validate unchanged |
 | both epics' `spec.md` and `cuj.md` | epic, requirement, journey | validate unchanged (12 `R<n>` rows normalized) |
 | `DECISIONS.md` (18 ADRs) | decision | validates; ADR-0001's `TODO(domain)` date is a warning |
-| `scripts/loop.mjs` run lines | run-record | validate unchanged |
+| `scripts/loop.mjs` run lines (and the dontAsk loop's on `fix/agent-run-caps`) | run-record | validate unchanged |
 | stagehand `assets/task-record.yaml` (filled) | task-record | validates unchanged |
 | stagehand project delegation | grant | expressible; the grant adds an expiry |
 | Herdr `AgentStatus`, A2A 1.0 `TaskState`, MCP Tasks `TaskStatus`, Claude result subtypes, GitHub check runs | attention.yaml | every value mapped; none to a workflow status |

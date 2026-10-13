@@ -3,7 +3,7 @@
   "$id": "https://harness.dev/schemas/policy.schema.json",
   "title": "Agent policy",
   "description": "The L1 operator policy (agent-policy.yaml): autonomy tier per machine profile, what is never read, never done, asked about, or pre-approved, network egress, and run ceilings. Engine-neutral; compiled per engine by the adapters (adapters/*/README.md). Walls are denies (forbid, deny_read); ask is a human checkpoint and protects nothing unattended (ADR-0021).",
-  "x-version": "1.2.0",
+  "x-version": "1.3.0",
   "x-artifacts": [
     { "format": "yaml", "paths": ["agent-policy.yaml", ".chezmoidata/agent-policy.yaml"], "suffixes": [".policy.yaml", ".policy.yml"] }
   ],
@@ -42,34 +42,8 @@
       "type": "array",
       "items": { "$ref": "#/$defs/rule" }
     },
-    "egress": {
-      "type": "object",
-      "required": ["default"],
-      "properties": {
-        "default": { "enum": ["deny", "allow"] },
-        "allow_domains": { "type": "array", "items": { "$ref": "#/$defs/domain" }, "uniqueItems": true },
-        "deny_domains": { "type": "array", "items": { "$ref": "#/$defs/domain" }, "uniqueItems": true }
-      },
-      "additionalProperties": false,
-      "if": { "properties": { "default": { "const": "deny" } } },
-      "then": { "x-rule": "egress-deny-lists-allowed-domains", "required": ["allow_domains"] }
-    },
-    "sandbox": {
-      "type": "object",
-      "properties": {
-        "enabled": { "type": "boolean" },
-        "fail_if_unavailable": {
-          "description": "Refuse to run rather than run unsandboxed.",
-          "type": "boolean"
-        },
-        "writable_roots": {
-          "description": "Directories beyond the workspace that sandboxed commands may write.",
-          "type": "array",
-          "items": { "$ref": "#/$defs/pathGlob" }
-        }
-      },
-      "additionalProperties": false
-    },
+    "egress": { "$ref": "#/$defs/egress" },
+    "sandbox": { "$ref": "#/$defs/sandbox" },
     "budgets": {
       "description": "Run ceilings by tier. An unattended tier must have one.",
       "type": "object",
@@ -93,7 +67,7 @@
   },
   "patternProperties": { "^x-": {} },
   "additionalProperties": false,
-  "x-checks": ["policy-shadowing", "bypass-names-preconditions"],
+  "x-checks": ["policy-shadowing", "bypass-names-preconditions", "credential-not-denied"],
   "allOf": [
     {
       "x-rule": "unattended-has-budget",
@@ -107,8 +81,8 @@
   ],
   "$defs": {
     "tier": {
-      "description": "How often an agent asks. read-only: never writes. ask: asks before edits and commands. auto-edit: edits in the workspace without asking, asks for commands. autonomous: does not ask, walls hold (interactive operator present). unattended: headless, never asks, asks become denials, the allowlist is the boundary.",
-      "enum": ["read-only", "ask", "auto-edit", "autonomous", "unattended"]
+      "description": "How often an agent asks. read-only: never writes. ask: asks before edits and commands. auto-edit: edits in the workspace without asking, asks for commands. auto: does not ask for routine actions; the engine's classifier reviews each action and blocks or asks for risky ones, ask rules still prompt, walls hold; an engine with no classifier mode compiles it to its stricter auto-edit equivalent (adapters). autonomous: does not ask, walls hold (interactive operator present). unattended: headless, never asks, asks become denials, the allowlist is the boundary.",
+      "enum": ["read-only", "ask", "auto-edit", "auto", "autonomous", "unattended"]
     },
     "profile": {
       "type": "object",
@@ -122,6 +96,14 @@
           "uniqueItems": true
         },
         "description": { "type": "string" },
+        "sandbox": {
+          "description": "This profile's sandbox, merged key by key over the top-level sandbox (a key set here replaces the top-level one; lists are replaced, not joined).",
+          "$ref": "#/$defs/sandbox"
+        },
+        "egress": {
+          "description": "This profile's egress, merged key by key over the top-level egress; the result needs a default, and a deny default an allow list.",
+          "$ref": "#/$defs/egressOverride"
+        },
         "requires": {
           "x-rule": "requires-are-named-preconditions",
           "description": "Named preconditions the operator keeps outside the policy for this profile to be safe (prod-unreachable-from-this-host, non-root-container). Mandatory for the bypass tier (autonomous): the compiler refuses that tier without it and emits the list for the launcher to check (HAR-4).",
@@ -132,6 +114,86 @@
         }
       },
       "additionalProperties": false
+    },
+    "egress": {
+      "type": "object",
+      "required": ["default"],
+      "properties": {
+        "default": { "enum": ["deny", "allow"] },
+        "allow_domains": { "type": "array", "items": { "$ref": "#/$defs/domain" }, "uniqueItems": true },
+        "deny_domains": { "type": "array", "items": { "$ref": "#/$defs/domain" }, "uniqueItems": true }
+      },
+      "additionalProperties": false,
+      "if": { "properties": { "default": { "const": "deny" } } },
+      "then": { "x-rule": "egress-deny-lists-allowed-domains", "required": ["allow_domains"] }
+    },
+    "egressOverride": {
+      "type": "object",
+      "minProperties": 1,
+      "properties": {
+        "default": { "enum": ["deny", "allow"] },
+        "allow_domains": { "type": "array", "items": { "$ref": "#/$defs/domain" }, "uniqueItems": true },
+        "deny_domains": { "type": "array", "items": { "$ref": "#/$defs/domain" }, "uniqueItems": true }
+      },
+      "additionalProperties": false
+    },
+    "sandbox": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "fail_if_unavailable": {
+          "description": "Refuse to run rather than run unsandboxed.",
+          "type": "boolean"
+        },
+        "writable_roots": {
+          "description": "Directories beyond the workspace that sandboxed commands may write.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/pathGlob" }
+        },
+        "credentials": {
+          "description": "Credentials sandboxed commands may use without reading them: each file or environment variable is masked (commands see a placeholder; the sandbox proxy restores the real value only on requests to inject_hosts, or to every allowed domain when it names none). A mask is not a wall: it does not cover the agent's own file tools, and a path deny_read names cannot also be masked.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/credentialMask" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "credentialMask": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "description": "One credential file, home-relative or absolute (no glob, no directory: a mask covers a single file).",
+          "type": "string",
+          "pattern": "^(?:~/|/)[^\\s*?\\[\\]{}]+[^/\\s]$"
+        },
+        "env": {
+          "description": "An environment variable holding a credential.",
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        },
+        "extract": {
+          "description": "With path: a regex whose first group is the secret within the file, so tools still parse the rest.",
+          "type": "string",
+          "minLength": 1
+        },
+        "inject_hosts": {
+          "description": "Hosts the real value may reach (plain host names); each must also be in the egress allow list.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "pattern": "^[A-Za-z0-9-]+(?:\\.[A-Za-z0-9-]+)+$" },
+          "uniqueItems": true
+        },
+        "reason": { "$ref": "common.schema.json#/$defs/nonEmptyString" }
+      },
+      "additionalProperties": false,
+      "x-rules": { "oneOf": "one-credential-per-mask" },
+      "oneOf": [
+        { "required": ["path"] },
+        { "required": ["env"] }
+      ],
+      "dependentSchemas": {
+        "extract": { "required": ["path"] }
+      }
     },
     "pathGlob": {
       "description": "A path glob: relative to each workspace root (**/.env), home-relative (~/.ssh/**) or absolute (//etc/** is not used; write /etc/**).",

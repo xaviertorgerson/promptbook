@@ -1,0 +1,27 @@
+{
+  "tier": "unattended",
+  "warnings": [
+    {
+      "rule": "dropped",
+      "message": "ask write deploy/** dropped on codex: Codex has no ask for writes or tools"
+    }
+  ],
+  "accepted": [
+    {
+      "field": "forbid",
+      "message": "write **/.git/hooks/**: a filesystem \"read\" downgrade covers sandboxed commands, not the apply_patch tool",
+      "reason": "the .git/hooks write deny downgrades sandboxed commands only; the product's walls (L2 hook deny) refuse apply_patch there"
+    },
+    {
+      "field": "sandbox",
+      "message": "fail_if_unavailable has no documented Codex key",
+      "reason": "the launcher refuses to start Codex where its sandbox is unavailable"
+    },
+    {
+      "field": "budgets",
+      "message": "max_turns, max_usd have no documented codex exec flag (a runner timeout enforces max_minutes only)",
+      "reason": "the runner stops a Codex run at the turn and spend caps from its own run records, and at max_minutes by timeout"
+    }
+  ],
+  "notes": []
+}

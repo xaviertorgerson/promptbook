@@ -21,9 +21,12 @@ harness <command> [args]          # package.json bin: tools/cli.mjs; or pnpm <co
 
 The contract validator and the trace graph; see [CONTRACTS.md](CONTRACTS.md). A file's contract comes
 from its path in the project layout, else from its name's suffix (`*.grant.yaml`, `*.task.md`, …;
-`*.template.*` is skipped), so `harness validate skills` checks every renamed example too.
+`*.template.*` and `_`-prefixed templates such as `docs/ux/_UX-TEMPLATE.md` are skipped unless
+`--contract` names one), so `harness validate skills` checks every renamed example too.
 `harness trace <root>`
-is `validate --trace <root>`; `--tests <glob>` picks the test files, `--test-pattern <regex>` adds a
+is `validate --trace <root>`; `--readiness <dir>` writes each epic's report with the root's `HEAD` as
+`source_commit`, and `--no-timestamp` leaves it and `generated_at` out for a report committed with
+the plan; `--tests <glob>` picks the test files, `--test-pattern <regex>` adds a
 way to read test names beyond the built-in JS/TS, Go, Python, JUnit/Kotlin, Rust and Ruby readers
 (fixtures: `fixtures/test-names/`).
 
@@ -38,7 +41,7 @@ authoring rules. Errors name a stable rule; `--strict` fails on warnings too.
 | `name-is-gerund` | the first word ends in -ing: `writing-requirements` |
 | `description-use-when`, `description-do-not-use-for` | a "Use when …" trigger and a "Do not use for … (neighbour)" clause; warnings if out of order or naming no neighbour |
 | `description-length` | a description over 400 characters fails, over 300 warns: every description stays loaded in every session |
-| `description-budget` (warning) | the scanned set's descriptions together exceed 8000 characters (one engine keeps skill metadata within 2% of context or 8000 characters); the longest are named |
+| `description-budget` (warning) | the scanned set's descriptions together exceed 8000 characters (one engine keeps skill metadata within 2% of context or 8000 characters); the longest are named. The budget binds what a machine installs, not one library: `--budget-set <file>` sums the descriptions of an installed set (a list of skill folders or folders of skills, one per line or a YAML list; or a `toolkit.lock`, whose local entries contribute the skills under `source/path`, the harness's under `skills/`, narrowed by an `x-skills` list; a remote entry is reported as `budget-set-unread`, a listed folder that is missing fails `budget-set-missing`) and warns over 8000 with the count from each source; with no folder given only this check runs |
 | `deprecated-description` | a skill with `metadata.deprecated` is exempt from "Use when": its description starts with "Deprecated:" and names the replacement skill |
 | `parse-error` | the frontmatter is YAML; when a plain value holds ": " (the usual cause), the error says to quote it |
 | `body-length` | warn over 200 body lines, fail over 300 |
@@ -69,12 +72,18 @@ epic's integration branch) admit a merge only with an approval of the head, and 
 signals (working, blocked, done, idle, unknown) are lossy and duplicable, with events-lost notices.
 
 A scenario names tasks (`depends_on`, `touches`, `size`, `risk`, `criteria`, `budget`, `lands_to`),
-the policy tier and its `forbid`/`ask`/`budgets`, an optional grant (validated against the grant
-contract), the supervisor's caps, the merge queue's `queue_targets` (default every branch), the
+the policy tier and its `forbid`/`ask`/`budgets`, its grants (`grant`, or `grants` for several,
+e.g. a work grant and a separate merge grant; each validated against the grant contract), the
+supervisor's caps, the merge queue's `queue_targets` (default every branch), the
 human's behaviour (`on_integration: merge|hold`), and faults: `concurrent_claims` (a rival runtime),
 `crash`, `lost_events`, `duplicate_wakes`, `unknown_signals`, `no_progress`, `budget_exhaustion`,
 `semantic_conflict`, `evaluator_rejection`, `grant_expiry`, `merge_without_grant`, `ask`, `wall`,
-`question`. Unknown keys are errors. `--project` reads `specs/<epic>/tasks/*.md` with the
+`question` (`grant_expiry.grant` names the one grant to expire; default every one). Unknown keys
+are errors. With several grants, each delegated action is exercised under the live grant that
+delegates it (merge authority comes from a merge grant only); the workers cap is the smallest
+`max_workers` among the live grants that dispatch work (`select-tasks`, `approve-plan`,
+`dispose-findings`, `finalize`), so a merge-only grant caps nothing it does not run; the runtime
+budget defaults to the tightest such grant's budget. `--project` reads `specs/<epic>/tasks/*.md` with the
 validator's loaders (`--config` adds actors and faults; `assume_approved: true` stands in for the
 spec gate).
 
@@ -108,7 +117,8 @@ change no merge grant of its covers: `transitions-allowed`, `merge-requires-auth
 
 Output: `.sim-out/<scenario>-seed<n>.jsonl` (one event per line: time, actor, task, the commits it
 applied, effects, violations), `.summary.json` (merged, parked, needs-human, spend, makespan,
-throughput, violations with seed and event index), `.run-records.jsonl` and `.task-records.json` in
+throughput, violations with seed and event index), `.run-records.jsonl` (each line names its `role`;
+an evaluator's run ends in `verdict`, never an author's `advanced`) and `.task-records.json` in
 their contracts' shapes. A violation prints a `reproduce:` command. Scenarios:
 `fixtures/scenarios/{happy-path, parallel-overlap, crash-lost-events, merge-without-grant,
 budget-exhaustion, unattended-ask, evaluator-rejection, grant-expiry, wall-bypass,
@@ -119,16 +129,25 @@ task, a dependent in another epic waits for merged, and the human merges the bra
 ## compile-policy
 
 `harness compile-policy <agent-policy.yaml> --profile <p> --engine claude|codex|gemini [--out <dir>]`
-validates the policy, then emits one profile's settings, following `adapters/<engine>/README.md`:
+validates the policy, then emits one profile's settings, following `adapters/<engine>/README.md`.
+`--out` also writes `report.json`: the tier, every warning (an ask or allow dropped, a mode
+degraded), every accepted gap as `{field, message, reason}` (what it degrades and the operator's
+reason) and the notes for the launcher, the same file the goldens hold, so what a compile gave up is
+on disk beside what it wrote, not only on stderr:
 
 | Engine | Files |
 |---|---|
-| claude | `settings.json` (permissions allow/deny/ask, `defaultMode` per tier, `sandbox`), `runner.json` (unattended: `--permission-mode dontAsk --allowedTools … --max-turns --max-budget-usd`) |
+| claude | `settings.json` (permissions allow/deny/ask, `defaultMode` per tier, `auto` for the auto tier, `sandbox` with `allowUnsandboxedCommands: false` under a bypass that relies on it and `credentials` masks with `network.tlsTerminate`), `runner.json` (unattended: `--permission-mode dontAsk --allowedTools … --max-turns --max-budget-usd`) |
 | codex | `config.toml` (or `<profile>.config.toml` unattended: a `harness` permission profile, approval policy, network domains), `rules/harness.rules` (`prefix_rule` allow / prompt / forbidden with justification and match examples), `runner.json` |
 | gemini | `settings.json` (`defaultApprovalMode`, `tools.sandbox`, `tools.allowed`), `policies/harness.toml` (user-tier `[[rule]]` deny / ask_user / allow), `runner.json` |
 
-Fail closed: a deny-side field an engine cannot represent is an error that prints the `accept_gaps`
-stanza that would accept it; an unrepresentable ask or allow is dropped with a warning; on any error
+A profile's own `sandbox` and `egress` are merged key by key over the top-level ones before
+compiling (the merged egress still needs a default, and a deny default its allow list:
+`egress-effective`). Fail closed: a deny-side field an engine cannot represent is an error that
+prints the `accept_gaps` stanza that would accept it (credential masks on Codex and Gemini are a
+`sandbox` gap; the auto tier's WebFetch outside a deny egress list, left to Claude's classifier, an
+`egress` gap); a tier an engine has no mode for compiles to its stricter equivalent with a `degraded`
+warning; an unrepresentable ask or allow is dropped with a warning; on any error
 nothing is written. Refused outright: the bypass tier (`autonomous`) without a `requires` list naming
 its outside preconditions, or without `sandbox.enabled`, `sandbox.fail_if_unavailable` and
 `egress.default: deny` unless the missing field's gap is accepted by name (`accept_gaps` sandbox or
@@ -139,7 +158,8 @@ not match. No output may carry `disableAllHooks`, `hooksConfig.enabled: false`, 
 compile). Unattended, an `ask` compiles to a denial. `--diff <settings.json|settings.json.tmpl>`
 compares the Claude output with a hand-written file.
 
-Goldens: `fixtures/compile-policy/golden/expected/<engine>-<profile>/` (`UPDATE_GOLDEN=1` rewrites).
+Goldens: `fixtures/compile-policy/golden/expected/<engine>-<profile>/`, each with its `report.json`
+(`UPDATE_GOLDEN=1` rewrites).
 `fixtures/compile-policy/dotfiles/agent-policy.yaml` restates the user's Claude settings for the diff
 test; stagehand's `herdr.rules` round-trips through the Codex compiler when the checkout is present.
 
@@ -151,7 +171,11 @@ read with git plumbing, no network; remote sources use `git ls-remote` and a dep
 into `~/.cache/harness/lock`, and an unreachable remote fails with the reason (`--offline` skips
 remotes with a warning). `--check` changes nothing and exits 1 on drift: a pinned commit that is
 gone, a different tree, a moved tag, a branch rewritten past the pin, a version the tag contradicts;
-a branch that moved ahead is a warning. `--update [name...]` moves pins within each entry's
+a branch that moved ahead is a warning. A CI checkout often has no local branch: a local source's ref
+resolves as a tag, a branch, or `refs/remotes/origin/<ref>`, and when a detached or shallow checkout
+holds none of them, `--check` verifies the pin by its recorded commit and tree ("ref not present;
+verified by commit", warning `ref-absent`) instead of failing; a shallow clone that lacks the pinned
+commit itself fails `commit-exists` with the fix (fetch the full history). `--update [name...]` moves pins within each entry's
 `autoUpdate` (never to a prerelease), or a named entry to its newest tag. Comments survive.
 
 ## eval-routing

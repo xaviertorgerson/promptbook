@@ -25,8 +25,8 @@ planning-work); verifying built work (verifying-work).
 
 - The project root: `docs/product/` (brief, personas), `specs/<epic>/` (spec.md, cuj.md, tasks/),
   `docs/ux/<epic>.md`, `DECISIONS.md` or `docs/adr/`, and the test files.
-- Contract `readiness-report` (`specs/<epic>/readiness.md`): frontmatter `epic`, `generated_at`,
-  `generator`, optional `source_commit`, `adoption` (full | legacy), `epic_status`, `verdict`
+- Contract `readiness-report` (`specs/<epic>/readiness.md`): frontmatter `epic`, `generator`,
+  optional `generated_at` and `source_commit`, `adoption` (full | legacy), `epic_status`, `verdict`
   (ready | not-ready), `counts` {error, warning, info}, `coverage` {journeys, requirements, tasks,
   criteria} each {covered, total}, `gaps[]` (rule, severity, blocks_readiness, epic, subject,
   message, file, line); sections Verdict, Coverage, Gaps. A `ready` verdict has no error and no gap
@@ -41,8 +41,9 @@ planning-work); verifying built work (verifying-work).
 2. **Run the trace.** If `harness validate` is available, run
    `harness validate --trace <root> --readiness specs` (from a harness checkout:
    `node tools/validate.mjs --trace <root> --readiness <root>/specs`; add `--tests "<glob>"` when
-   test files live outside the default globs). It writes `specs/<epic>/readiness.md` for every epic;
-   never edit that file by hand, regenerate it.
+   test files live outside the default globs). It writes `specs/<epic>/readiness.md` for every epic,
+   with the project's current commit; never edit that file by hand, regenerate it. When the report
+   is committed with the plan, add `--no-timestamp`: it then changes only when the plan does.
 3. **Otherwise, run the manual trace** in `references/readiness-checklist.md`, part A: the same
    rules, ids, severities and blocking flags as the tool. Then write `specs/<epic>/readiness.md` from
    `references/readiness-template.readiness.md` with `generator: manual/checking-plan-readiness@0.1.0`, the

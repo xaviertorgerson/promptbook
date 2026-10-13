@@ -59,7 +59,10 @@ Liveness is checked before every delegated action, not once per session.
 
 The agreed outcome reached, the budget boundary, a revoked or expired grant, a consequential
 ambiguity, or repeated non-progress end the delegation early. `max_workers` and `budget` are
-enforced by the runtime; breaching either is a stop condition.
+enforced by the runtime; breaching either is a stop condition. A coordinator holding several grants
+(a work grant and a separate merge grant) acts under the one that delegates each action, and caps
+its workers at the smallest `max_workers` among the live grants that dispatch work (select-tasks,
+approve-plan, dispose-findings, finalize); a merge-only grant's `max_workers` bounds its merges.
 
 ## Conflicts
 

@@ -6,11 +6,13 @@ import path from 'node:path';
 import { after, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
-import { findFiles, walk } from '../tools/lib/glob.mjs';
+import { walk } from '../tools/lib/glob.mjs';
 import { readLock } from '../tools/lib/lock.mjs';
 import { registry } from '../tools/lib/registry.mjs';
-import { criteria as readCriteria, DEFAULT_TEST_GLOBS, namedIn, testNames } from '../tools/lib/ears.mjs';
+import { criteria as readCriteria } from '../tools/lib/ears.mjs';
 import { loadFrontmatterMarkdown } from '../tools/lib/loaders.mjs';
+import { workerCap } from '../tools/lib/sim/authority.mjs';
+import { exportTaskRecords } from '../tools/lib/sim/invariants.mjs';
 import { loadScenario } from '../tools/lib/sim/scenario.mjs';
 import { simulate } from '../tools/lib/sim/simulate.mjs';
 
@@ -63,12 +65,11 @@ describe('the worked example: Tally', () => {
     const [e] = t.epics;
     assert.equal(e.verdict, 'ready');
     for (const [k, c] of Object.entries(e.coverage)) assert.equal(c.covered, c.total, k);
-    // The coverage count accepts a bare AC-n named for another task; the example names each test
-    // "<TASK> AC-n", so hold it to that whatever the task's status.
-    const names = findFiles(EX, DEFAULT_TEST_GLOBS).flatMap((f) => testNames(fs.readFileSync(f, 'utf8'), { file: f }));
-    for (const [id, { criteria }] of Object.entries(taskFiles)) {
-      for (const ac of criteria) assert.ok(names.some((n) => namedIn([n], id) && namedIn([n], ac)), `no test name carries "${id} ${ac}"`);
-    }
+    // Coverage counts a bare AC-n only when one task of the epic has it; the example names each
+    // test "<TASK> AC-n" anyway, so hold every criterion, whatever its task's status, to that.
+    const key = (x) => `${x.task} ${x.criterion}`;
+    const want = Object.entries(taskFiles).flatMap(([task, { criteria }]) => criteria.map((criterion) => ({ task, criterion, evidence: 'qualified' })));
+    assert.deepEqual(e.criteria_evidence.toSorted((a, b) => key(a).localeCompare(key(b))), want.toSorted((a, b) => key(a).localeCompare(key(b))));
   });
 
   it('simulates the queue as it stands, 50 seeds, with no invariant violated', () => {
@@ -95,13 +96,16 @@ describe('the worked example: Tally', () => {
       const integrated = commits.filter((c) => c.transition === 'integrate');
       assert.deepEqual(integrated.map((c) => c.task).sort(), ['SPLIT-2', 'SPLIT-3', 'SPLIT-4'], `seed ${seed}`);
       assert.ok(integrated.every((c) => c.role === 'orchestrator' && c.grant === 'GRANT-2'), `seed ${seed}: integrated under GRANT-2`);
+      const recs = exportTaskRecords(w).filter((x) => x.task_id !== 'SPLIT-1');
+      assert.ok(recs.length && recs.every((x) => x.grant === 'GRANT-1'), `seed ${seed}: the task records name GRANT-1, the grant that dispatched the work`);
       assert.deepEqual(commits.filter((c) => c.transition === 'promote' && c.by === 'dana').map((c) => c.task).sort(), ['SPLIT-2', 'SPLIT-3', 'SPLIT-4'], `seed ${seed}: dana merged the branch`);
     }
   });
 
-  it('the scenario is a copy of the project: its tasks, GRANT-2, and the operator\'s command rules and caps', () => {
+  it('the scenario is a copy of the project: its tasks, both grants, and the operator\'s command rules and caps', () => {
     const sc = yaml('simulate.yaml');
-    assert.deepEqual(sc.grant, yaml('.orchestrator/grants/GRANT-2.yaml'));
+    const grantFiles = fs.readdirSync(path.join(EX, '.orchestrator/grants')).sort().map((f) => yaml(`.orchestrator/grants/${f}`));
+    assert.deepEqual(sc.grants, grantFiles);
     assert.deepEqual(sc.tasks.map((t) => t.id).sort(), Object.keys(taskFiles).sort());
     for (const t of sc.tasks) {
       const { data: f, criteria } = taskFiles[t.id];
@@ -116,7 +120,13 @@ describe('the worked example: Tally', () => {
     assert.equal(sc.policy.tier, policy.profiles.ci.tier);
     const { max_turns, max_usd } = policy.budgets.unattended;
     assert.deepEqual(sc.policy.budgets, { max_turns, max_usd });
-    assert.equal(sc.supervisor.budget_usd, yaml('.orchestrator/grants/GRANT-1.yaml').limits.budget.max_usd);
+    // The runtime's budget and workers cap are GRANT-1's, the grant that dispatches the work;
+    // GRANT-2 delegates merge alone, so its max_workers (one merge at a time) caps no dispatch.
+    const [g1, g2] = grantFiles;
+    const norm = loadScenario(path.join(EX, 'simulate.yaml'));
+    assert.equal(norm.supervisor.budget_usd, g1.limits.budget.max_usd);
+    assert.equal(workerCap(norm.grants, Date.parse(sc.start), norm.supervisor.max_workers), g1.limits.max_workers);
+    assert.equal(g2.limits.max_workers, 1);
   });
 
   it('the compiled policy is the compiler\'s output: every profile × engine recompiles to the committed files', () => {
@@ -143,8 +153,10 @@ describe('the worked example: Tally', () => {
   it('the lock check passes: the harness pin (and Skilldex, when the network reaches it)', (t) => {
     const lockFile = path.join(EX, 'toolkit.lock');
     const pin = readLock(lockFile).data.entries.find((e) => e.kind === 'harness');
-    if (git('cat-file', '-e', `${pin.commit}^{commit}`).status !== 0 || git('rev-parse', '--verify', '--quiet', `refs/heads/${pin.ref}`).status !== 0) {
-      t.skip(`needs the full history and a local ${pin.ref} branch (a shallow or detached clone has neither)`);
+    // A detached CI checkout resolves the ref through origin, or verifies the pin by its commit; a
+    // shallow one may not hold the pinned commit at all.
+    if (git('cat-file', '-e', `${pin.commit}^{commit}`).status !== 0) {
+      t.skip(`needs the pinned commit ${pin.commit.slice(0, 12)} (a shallow clone lacks it)`);
       return;
     }
     let r = harness('lock', '--lock', rel(lockFile), '--check', '--json');
@@ -169,11 +181,21 @@ describe('the worked example: Tally', () => {
     }
     const runs = fs.readFileSync(path.join(EX, '.agent/loop-runs.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
     for (const x of runs) assert.ok(taskFiles[x.task] && (!x.grant || grants.has(x.grant)), `run ${x.session_id}`);
+    // Every hand-back has its run record, and each run says whose it was: an evaluator's ends in a
+    // verdict, a reader's in a read, and neither moves the task; only an author advances one.
+    const ROLE = { coder: 'author', evaluator: 'evaluator', reader: 'reader' };
+    const OUTCOME = { evaluator: ['verdict'], reader: ['read'] };
     for (const f of fs.readdirSync(path.join(EX, '.agent/returns'))) {
       const ret = JSON.parse(fs.readFileSync(path.join(EX, '.agent/returns', f), 'utf8'));
       assert.ok(taskFiles[ret.task], f);
       for (const a of ret.artifacts.filter((x) => x.path.startsWith('.agent/'))) assert.ok(fs.existsSync(path.join(EX, a.path)), `${f} points at ${a.path}`);
+      const run = runs.find((x) => x.session_id === ret.session.session_id);
+      assert.ok(run, `${f}: no run record for session ${ret.session.session_id}`);
+      assert.equal(run.role, ROLE[ret.role], f);
+      if (OUTCOME[run.role]) assert.ok(OUTCOME[run.role].includes(run.outcome) && run.status_after === run.status_before, `${f}: a ${run.role}'s run is a ${OUTCOME[run.role]} that moves nothing`);
     }
+    assert.ok(runs.filter((x) => x.outcome === 'advanced').every((x) => x.role === 'author'), 'only an author advances a task');
+    assert.deepEqual(runs.filter((x) => x.role === 'evaluator').map((x) => x.outcome), ['verdict', 'verdict', 'verdict']);
     assert.deepEqual(new Set(Object.values(records).map((r) => r.state.name)), new Set(['working', 'needs-human', 'complete']));
     const denial = runs.find((x) => x.permission_denials > 0);
     assert.ok(denial && denial.outcome === 'stalled' && denial.attention === 'needs-human', 'a run whose ask was denied');

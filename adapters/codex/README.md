@@ -27,6 +27,7 @@ approvals, the full config reference); those claims are marked *unverified*.
 | `tier: read-only` | `default_permissions = ":read-only"` | Built-in profile. [config basics][config] |
 | `tier: ask` | `default_permissions = ":workspace"`, `approval_policy = "on-request"` | `untrusted` is retired, `on-failure` deprecated. [config reference][config-ref] |
 | `tier: auto-edit` | `default_permissions = ":workspace"`, `approval_policy = "on-request"` | Codex has no separate "edits free, commands ask" mode: workspace writes are already sandbox-allowed; commands outside the sandbox prompt. Same output as `ask`; documented degradation. |
+| `tier: auto` | `default_permissions = ":workspace"`, `approval_policy = "on-request"` | Codex has no classifier-reviewed mode in the docs read; the closest stricter mode is the workspace sandbox with on-request approvals: sandboxed work runs without asking, anything outside it prompts. Compiled with a `degraded` warning (never an error: it asks more, it does not loosen a wall). |
 | `tier: autonomous` | `default_permissions = "harness"` (extends `:workspace`), `approval_policy = "never"` | Never `:danger-full-access`; requirements may forbid `never`, in which case the compile fails. [managed config][managed] |
 | `tier: unattended` | profile file `~/.codex/<profile>.config.toml` with `approval_policy = "never"` and the `allow` rules as `prefix_rule(decision = "allow")` | Anything else is denied by the sandbox, not prompted. |
 | `deny_read: [glob]` | `[permissions.harness.filesystem.":workspace_roots"] "<glob>" = "deny"` for relative globs; `[permissions.harness.filesystem] "<abs or ~ path>" = "deny"` for home/absolute | Unbounded `**` may need `glob_scan_max_depth` on Linux/WSL/Windows. Applies to sandboxed commands. [permissions][perm] |
@@ -41,6 +42,7 @@ approvals, the full config reference); those claims are marked *unverified*.
 | `egress.allow_domains` / `deny_domains` | `[permissions.harness.network.domains] "<d>" = "allow"` (or `"deny"`), `network.enabled = true` | `**.host` and `*.host` have the same meaning as the policy. Requires the network proxy feature. |
 | `egress.default: deny` | `network.enabled = true` with only the allow list | |
 | `sandbox.*` | the permission profile is the sandbox | `fail_if_unavailable`: no documented key — **no equivalent**; error unless accepted. |
+| `sandbox.credentials` (masks) | — | **No equivalent**: sandboxed commands would read the credential unmasked; error unless `accept_gaps` names `{engine: codex, field: sandbox}`. |
 | `budgets` | runner flags/timeouts around `codex exec` | No documented turn or spend cap key *(unverified)*; the runner enforces a wall-clock timeout, and `max_turns`/`max_usd` fail the compile unless `accept_gaps` names `{engine: codex, field: budgets}`. |
 
 **Degradation (fail closed).** An unrepresentable `forbid` or `deny_read` is a compile error, never a

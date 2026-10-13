@@ -17,14 +17,17 @@
   "accepted": [
     {
       "field": "forbid",
+      "message": "write **/.git/hooks/**: a filesystem \"read\" downgrade covers sandboxed commands, not the apply_patch tool",
       "reason": "the write deny downgrades sandboxed commands only; apply_patch is covered by the project hook"
     },
     {
       "field": "sandbox",
-      "reason": "the devbox image fails to start without its sandbox"
+      "message": "fail_if_unavailable has no documented Codex key",
+      "reason": "the devbox image fails to start without its sandbox; on the desk, Codex commands read the gh and npm credentials as they did before the masks"
     },
     {
       "field": "budgets",
+      "message": "max_turns, max_usd have no documented codex exec flag (a runner timeout enforces max_minutes only)",
       "reason": "the runner enforces turns and spend from its own logs"
     }
   ],

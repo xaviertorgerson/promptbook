@@ -122,6 +122,53 @@ describe('lock', () => {
     assert.ok(rules(r).includes('error:pin-on-ref'), rules(r).join());
   });
 
+  it('a CI checkout: a branch only origin tracks resolves; a ref absent from a detached or shallow checkout is verified by commit', () => {
+    // fetch-depth 0, detached: main exists only as refs/remotes/origin/main.
+    const ci = path.join(TMP, 'ci-full');
+    spawnSync('git', ['clone', '-q', pack, ci], { env: ENV });
+    git(ci, 'checkout', '-q', '--detach');
+    git(ci, 'branch', '-D', 'main');
+    const full = project('ci-full-project', [harnessEntry({ source: '../ci-full' }), webEntry({ source: '../ci-full' })]);
+    const r = cli(full);
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.equal(lockOf(full).entries[1].commit, commits.v2, 'main resolved through origin/main');
+    assert.equal(cli(full, '--check').status, 0);
+
+    // fetch-depth 1 of a tag: detached and shallow, no main anywhere; the pin is the checked-out commit.
+    const shallow = path.join(TMP, 'ci-shallow');
+    spawnSync('git', ['clone', '-q', '--depth', '1', '--branch', 'v2.0.0', `file://${pack}`, shallow], { env: ENV });
+    assert.equal(git(shallow, 'rev-parse', '--is-shallow-repository'), 'true');
+    const pinned = { commit: commits.v2, tree: git(pack, 'rev-parse', `${commits.v2}:packs/web`), version: '0.3.0' };
+    const dir = project('ci-shallow-project', [harnessEntry({ source: '../ci-shallow', ref: 'v2.0.0', commit: commits.v2, tree: git(pack, 'rev-parse', 'v2.0.0^{tree}'), version: '2.0.0' }), webEntry({ source: '../ci-shallow', ...pinned })]);
+    let res = processLock(lockOf(dir), { mode: 'check', lockDir: dir });
+    assert.deepEqual(rules(res), ['warning:ref-absent']);
+    assert.match(res.entries[1].findings[0].message, /not present .*; verified by commit/);
+    const out = cli(dir, '--check');
+    assert.equal(out.status, 0, out.stdout + out.stderr);
+    assert.match(out.stdout, /warning ref-absent: ref "main" not present in this shallow checkout/);
+
+    // Verified by commit is a real check: a tree that differs is still drift.
+    const l = lockOf(dir);
+    l.entries[1].tree = git(pack, 'rev-parse', `${commits.v1}:packs/web`);
+    write(path.join(dir, 'toolkit.lock'), stringify(l));
+    res = processLock(lockOf(dir), { mode: 'check', lockDir: dir });
+    assert.ok(rules(res).includes('error:tree-matches'), rules(res).join());
+
+    // A pin older than the shallow history cannot be verified; the error says why.
+    const old = project('ci-shallow-old', [webEntry({ source: '../ci-shallow', ref: 'v1.0.0', commit: commits.v1, tree: git(pack, 'rev-parse', `${commits.v1}:packs/web`), version: '0.3.0' })]);
+    res = processLock(lockOf(old), { mode: 'check', lockDir: old });
+    assert.ok(rules(res).includes('error:commit-exists'), rules(res).join());
+    assert.match(res.entries[0].findings.find((f) => f.rule === 'commit-exists').message, /shallow clone/);
+
+    // An ordinary checkout on a branch still treats a vanished ref as drift.
+    const plain = path.join(TMP, 'plain');
+    fs.cpSync(pack, plain, { recursive: true });
+    git(plain, 'checkout', '-q', '-b', 'work');
+    git(plain, 'branch', '-D', 'main');
+    const gone = project('plain-project', [webEntry({ source: '../plain', ...pinned })]);
+    assert.ok(rules(processLock(lockOf(gone), { mode: 'check', lockDir: gone })).includes('error:ref-resolves'));
+  });
+
   it('--update moves within autoUpdate (minor stays below 2.0.0); a named entry moves to the newest tag', () => {
     const dir = project('update', [harnessEntry(), webEntry()]);
     cli(dir);

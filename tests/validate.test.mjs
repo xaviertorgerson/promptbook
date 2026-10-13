@@ -221,6 +221,93 @@ describe('contract by filename suffix (examples outside the project layout)', ()
   });
 });
 
+describe('a project\'s _-prefixed templates (agentic-template\'s docs/ux/_UX-TEMPLATE.md)', () => {
+  const dir = path.join(TMP, 'templates');
+  const ux = '---\nepic: my-epic\n---\n\n# UX — <epic name>\n\n## UX-1 · <the journey>\n- **CUJs:** CUJ-1\n- **Steps:**\n  1. **<Screen>** → <action>\n';
+  const files = {
+    'docs/ux/_UX-TEMPLATE.md': ux,
+    'docs/product/_BRIEF-TEMPLATE.md': '---\nid: BRIEF\nproduct: <name>\n---\n',
+    'specs/invoicing/tasks/_TASK-TEMPLATE.md': '---\nid: <PREFIX>-<n>\nepic: <epic>\n---\n',
+    'specs/_drafts/spec.md': '---\nepic: _drafts\nstatus: intake\n---\n',
+    '.orchestrator/grants/_GRANT-TEMPLATE.yaml': 'id: GRANT-<n>\n',
+  };
+  for (const [rel, text] of Object.entries(files)) {
+    fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
+    fs.writeFileSync(path.join(dir, rel), text);
+  }
+
+  it('gets no contract from its path, so a directory walk skips it', () => {
+    for (const rel of Object.keys(files)) assert.equal(validateFile(path.join(dir, rel)).status, 'SKIP', rel);
+    assert.deepEqual(validatePath(dir), []);
+  });
+
+  it('--contract still validates it', () => {
+    const r = validateFile(path.join(dir, 'docs/ux/_UX-TEMPLATE.md'), { contract: 'ux-flow' });
+    assert.equal(r.status, 'FAIL', 'its placeholders are not a flow');
+    assert.equal(validateFile(path.join(dir, '.orchestrator/grants/_GRANT-TEMPLATE.yaml'), { contract: 'grant' }).status, 'FAIL');
+  });
+});
+
+describe('a project\'s own skills: evals under a dot-folder', () => {
+  const dir = path.join(TMP, 'project-skills');
+  const evidence = fs.readFileSync(path.join(FIX, 'valid/evidence/entries/skills/writing-requirements/evals/evidence.md'), 'utf8');
+  const routing = fs.readFileSync(path.join(FIX, 'valid/evidence/routing/skills/writing-requirements/evals/routing.jsonl'), 'utf8');
+  const write = (rel, text) => { fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true }); fs.writeFileSync(path.join(dir, rel), text); };
+  for (const base of ['.agents/skills/drafting-notes', '.claude/skills/drafting-notes']) {
+    write(`${base}/evals/evidence.md`, evidence);
+    write(`${base}/evals/routing.jsonl`, routing);
+  }
+  write('.agents/skills/broken-notes/evals/evidence.md', evidence.replace(/\*\*Kind:\*\* \w+/, '**Kind:** rumour'));
+  write('docs/examples/why.evidence.md', evidence);
+  write('docs/examples/cases.routing.jsonl', routing);
+
+  it('evidence.md and routing.jsonl under .agents/skills and .claude/skills get the evidence contract', () => {
+    for (const base of ['.agents/skills/drafting-notes', '.claude/skills/drafting-notes']) {
+      for (const f of ['evidence.md', 'routing.jsonl']) {
+        const r = validateFile(path.join(dir, base, 'evals', f));
+        assert.deepEqual([r.status, r.results.map((x) => x.contract)], ['PASS', ['evidence']], `${base}/evals/${f}: ${JSON.stringify(errorsOf(r))}`);
+      }
+    }
+    const bad = validateFile(path.join(dir, '.agents/skills/broken-notes/evals/evidence.md'));
+    assert.equal(bad.status, 'FAIL');
+    assert.ok(errorsOf(bad).some((f) => f.rule === 'invalid-kind'), JSON.stringify(errorsOf(bad)));
+  });
+
+  it('outside a skills folder, *.evidence.md and *.routing.jsonl name the contract', () => {
+    for (const f of ['why.evidence.md', 'cases.routing.jsonl']) {
+      const r = validateFile(path.join(dir, 'docs/examples', f));
+      assert.deepEqual([r.status, r.results.map((x) => x.contract)], ['PASS', ['evidence']], f);
+    }
+  });
+
+  it('a directory walk of the project finds every one of them', () => {
+    assert.equal(validatePath(dir).length, 7);
+  });
+});
+
+describe('run-record: who ran it', () => {
+  const outcomes = reg.schema('run-record').properties.outcome.enum;
+
+  it('every outcome agentic-template\'s loop writes (fix/agent-run-caps, dontAsk) is one the contract accepts', (t) => {
+    const src = spawnSync('git', ['-c', 'safe.directory=*', '-C', TEMPLATE, 'show', 'fix/agent-run-caps:scripts/loop.mjs'], { encoding: 'utf8' });
+    if (src.status !== 0) return t.skip(`no fix/agent-run-caps in ${TEMPLATE}`);
+    const expr = src.stdout.match(/\boutcome: ([^\n]*?),\s*\n/)[1];
+    const written = [...expr.matchAll(/'([a-z-]+)'/g)].map((m) => m[1]);
+    assert.deepEqual(written.sort(), ['advanced', 'failed', 'needs-human', 'stalled']);
+    for (const o of written) assert.ok(outcomes.includes(o), o);
+    assert.match(src.stdout, /permission_denials: denials/, 'it writes the denial lines the contract accepts');
+  });
+
+  it('a verdict or read that left the task in another status is a warning: it was probably the author\'s', () => {
+    const file = path.join(TMP, 'moved.run-record.jsonl');
+    const line = fs.readFileSync(path.join(FIX, 'valid/run-record/roles.jsonl'), 'utf8').split('\n')[0];
+    fs.writeFileSync(file, `${line.replace('"status_after":"review"', '"status_after":"human-review"')}\n`);
+    const r = validateFile(file);
+    assert.equal(r.status, 'PASS');
+    assert.deepEqual(r.results[0].findings.map((f) => [f.severity, f.rule]), [['warning', 'run-kept-status']]);
+  });
+});
+
 describe('task schema compatibility', () => {
   const real = (root) => (fs.existsSync(path.join(root, 'specs')) ? walk(path.join(root, 'specs')).filter((f) => /\/tasks\/[^_][^/]*\.md$/.test(f)) : []);
 
@@ -352,6 +439,42 @@ describe('trace graph', () => {
     assert.equal(trace(path.join(FIX, 'trace/complete')).epics[0].task_modes['INV-1'], 'spec-driven', 'no mode anywhere: spec-driven');
   });
 
+  describe('criteria in tests: a bare AC-n several tasks share counts for none of them', () => {
+    // INV-1 (AC-1, AC-2, in review) and INV-2 (AC-1 only, in review) share AC-1; only INV-1 has AC-2.
+    const inv2 = taskText('INV-2', { status: 'review', owner: 'coder-agent' }, { criteria: '- AC-1 — When an owner lists invoices, the API shall return them newest first.' });
+    const run = (tests) => trace(project('complete', { 'specs/invoicing/tasks/INV-2.md': inv2, 'tests/invoicing.test.ts': tests }));
+    const ev = (r) => Object.fromEntries(r.epics[0].criteria_evidence.map((x) => [`${x.task} ${x.criterion}`, x.evidence]));
+    const by = (r, rule) => r.gaps.filter((g) => g.rule === rule).map((g) => g.subject).sort();
+
+    it('a bare AC-1 is ambiguous: neither task is covered, and the warning names both', () => {
+      const r = run("it('AC-1 returns the PDF', () => {});\nit('INV-1 AC-2 returns 404 for another tenant', () => {});\n");
+      assert.deepEqual(r.epics[0].coverage.criteria, { covered: 1, total: 3 });
+      assert.deepEqual(ev(r), { 'INV-1 AC-1': 'ambiguous', 'INV-1 AC-2': 'qualified', 'INV-2 AC-1': 'ambiguous' });
+      const amb = r.gaps.filter((g) => g.rule === 'ambiguous-criterion-id');
+      assert.equal(amb.length, 1);
+      assert.equal(amb[0].severity, 'warning');
+      assert.match(amb[0].message, /INV-1, INV-2/);
+      assert.equal(amb[0].file, 'tests/invoicing.test.ts');
+      assert.deepEqual(by(r, 'criterion-named-in-test'), ['INV-1 AC-1', 'INV-2 AC-1']);
+      assert.equal(r.epics[0].verdict, 'not-ready');
+    });
+
+    it('a qualified "<TASK> AC-n" counts for that task only', () => {
+      const r = run("it('INV-1 AC-1 returns the PDF', () => {});\nit('INV-1 AC-2 returns 404', () => {});\n");
+      assert.deepEqual(ev(r), { 'INV-1 AC-1': 'qualified', 'INV-1 AC-2': 'qualified', 'INV-2 AC-1': 'none' });
+      assert.deepEqual(by(r, 'criterion-named-in-test'), ['INV-2 AC-1']);
+      assert.deepEqual(by(r, 'ambiguous-criterion-id'), [], 'a qualified name is never ambiguous');
+    });
+
+    it('a bare id counts when exactly one task of the epic has it', () => {
+      const r = run("it('INV-1 AC-1 returns the PDF', () => {});\nit('INV-2 AC-1 lists newest first', () => {});\nit('AC-2 returns 404', () => {});\n");
+      assert.deepEqual(ev(r), { 'INV-1 AC-1': 'qualified', 'INV-1 AC-2': 'bare', 'INV-2 AC-1': 'qualified' });
+      assert.deepEqual(r.epics[0].coverage.criteria, { covered: 3, total: 3 });
+      assert.deepEqual(by(r, 'criterion-named-in-test'), []);
+      assert.deepEqual(by(r, 'ambiguous-criterion-id'), []);
+    });
+  });
+
   describe('plan shape', () => {
     const adr = '\n## ADR-0002: Invoices are stored as rendered PDFs\n**Status:** Proposed\n**Date:** 2026-10-12\n**Decision:** Store the rendered PDF.\n**Why:** The rendered file is the legal artifact.\n**Door:** one-way\n**Reversed when:** a regulator requires structured invoices.\n**Consequences:** Re-rendering is not a feature.\n';
     const plan = (status, { skeletonRoot = false } = {}) => project('complete', {
@@ -422,7 +545,38 @@ describe('trace graph', () => {
     assert.ok(tm.gaps.some((g) => g.rule === 'journey-has-task' && g.subject === 'CUJ-2'), 'CUJ-2 is attributed only in the spec index');
   });
 
-  it('the CLI exits 0 on the smoke project and 1 on the broken one', { skip: !fs.existsSync(STACK_DRIFT) }, () => {
+  it('--readiness records the root\'s HEAD as source_commit; --no-timestamp writes the same bytes on every run', () => {
+    const dir = project('complete');
+    const git = (...a) => spawnSync('git', ['-C', dir, '-c', 'user.name=t', '-c', 'user.email=t@example.com', ...a], { encoding: 'utf8' });
+    git('init', '-q');
+    git('add', '-A');
+    git('commit', '-q', '-m', 'plan');
+    const head = git('rev-parse', 'HEAD').stdout.trim();
+    const cli = (...a) => spawnSync(process.execPath, [path.join(ROOT, 'tools/validate.mjs'), '--trace', dir, ...a], { encoding: 'utf8' });
+    const report = (out) => fs.readFileSync(path.join(out, 'invoicing/readiness.md'), 'utf8');
+    const fm = (text) => parse(text.split('---')[1]);
+
+    const out = path.join(dir, 'reports');
+    assert.equal(cli('--readiness', out).status, 0);
+    assert.equal(fm(report(out)).source_commit, head);
+    assert.ok(fm(report(out)).generated_at);
+    assert.equal(validateFile(path.join(out, 'invoicing/readiness.md'), { contract: 'readiness-report' }).status, 'PASS');
+
+    const stable = path.join(dir, 'specs');
+    assert.equal(cli('--readiness', stable, '--no-timestamp').status, 0);
+    const first = report(stable);
+    assert.equal(fm(first).generated_at, undefined);
+    assert.equal(fm(first).source_commit, undefined);
+    git('add', '-A');
+    git('commit', '-q', '-m', 'the readiness report');
+    assert.equal(cli('--readiness', stable, '--no-timestamp').status, 0);
+    assert.equal(report(stable), first, 'a second check after committing the report changes nothing');
+    assert.equal(git('status', '--porcelain', 'specs').stdout, '');
+    const r = validateFile(path.join(stable, 'invoicing/readiness.md'));
+    assert.equal(r.status, 'PASS', JSON.stringify(errorsOf(r)));
+  });
+
+  it('the CLI exits 0 on the smoke project and 1 on the broken one',{ skip: !fs.existsSync(STACK_DRIFT) }, () => {
     const cli = (...a) => spawnSync(process.execPath, [path.join(ROOT, 'tools/validate.mjs'), ...a], { encoding: 'utf8' });
     const ok = cli('--trace', STACK_DRIFT);
     assert.equal(ok.status, 0, ok.stdout + ok.stderr);

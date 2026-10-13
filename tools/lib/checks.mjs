@@ -1,4 +1,5 @@
 import { classify, criteria } from './ears.mjs';
+import { globToRegExp } from './glob.mjs';
 import { headings, splitLines, stripComments, fenceMask } from './markdown.mjs';
 
 // Named checks a schema lists under x-checks: rules JSON Schema cannot express because they read the
@@ -57,6 +58,12 @@ export const CHECKS = {
     return [];
   },
 
+  // An evaluator's verdict and a reader's read commit no status: the task keeps the one it had.
+  'run-kept-status'({ data }) {
+    if (!['verdict', 'read'].includes(data?.outcome) || data.status_before === undefined || data.status_after === data.status_before) return [];
+    return [{ severity: 'warning', rule: 'run-kept-status', pointer: '/status_after', message: `a ${data.outcome} run left the task ${data.status_after}, not ${data.status_before}: a ${data.role ?? 'run'} commits no status; was this run the author's?` }];
+  },
+
   'grant-dates'({ data }) {
     const out = [];
     const t = (k) => (data?.[k] ? Date.parse(data[k]) : NaN);
@@ -96,6 +103,17 @@ export const CHECKS = {
 CHECKS['bypass-names-preconditions'] = ({ data }) => Object.entries(data?.profiles ?? {})
   .filter(([, p]) => p?.tier === 'autonomous' && !p.requires?.length)
   .map(([name]) => ({ severity: 'warning', rule: 'bypass-names-preconditions', pointer: `/profiles/${name}`, message: `profile "${name}" is the bypass tier and names no requires (e.g. [prod-unreachable-from-this-host]); compile-policy refuses it` }));
+
+// A credential is either never read (deny_read) or used without being read (a sandbox mask), not
+// both: one engine merges its read denies into the sandbox, where a deny always outranks a mask.
+CHECKS['credential-not-denied'] = ({ data }) => {
+  const denies = (Array.isArray(data?.deny_read) ? data.deny_read : []).filter((g) => typeof g === 'string').map((g) => [g, globToRegExp(g)]);
+  const where = [['/sandbox', data?.sandbox], ...Object.entries(data?.profiles ?? {}).map(([n, p]) => [`/profiles/${n}/sandbox`, p?.sandbox])];
+  return where.flatMap(([ptr, sb]) => (Array.isArray(sb?.credentials) ? sb.credentials : []).flatMap((c, i) => {
+    const hit = typeof c?.path === 'string' && denies.find(([, re]) => re.test(c.path));
+    return hit ? [{ rule: 'credential-not-denied', pointer: `${ptr}/credentials/${i}/path`, message: `${c.path} is masked and deny_read names it (${hit[0]}): a denied file is never readable, masked or not; drop the mask, or take the path out of deny_read to let sandboxed commands use it masked` }] : [];
+  }));
+};
 
 // toolkit.lock kinds and layers agree: harness and skill-library are L3 kinds, the others L4 ones.
 // A warning: the schema accepted any kind on any layer before skill-library existed.

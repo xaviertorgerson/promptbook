@@ -6,20 +6,21 @@ import path from 'node:path';
 import { after, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
-import { assertNoUnsafeKeys, commandMatches, compilePolicy, diffClaudeSettings, ENGINES, expandCommand, globArgsPattern, parseSettingsTemplate, renderDiff } from '../tools/lib/compile-policy.mjs';
+import { assertNoUnsafeKeys, commandMatches, compilePolicy, diffClaudeSettings, ENGINES, expandCommand, globArgsPattern, parseSettingsTemplate, renderDiff, renderReport } from '../tools/lib/compile-policy.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FIX = path.join(ROOT, 'fixtures/compile-policy');
 const GOLDEN = path.join(FIX, 'golden');
 const UPDATE = process.env.UPDATE_GOLDEN === '1';
 const DOTFILES = process.env.HARNESS_DOTFILES ?? '/home/claude/dotfiles';
+// The dotfiles' L1 branch, whose policy raises the workstation to Claude's auto mode with x-claude.
+const DOTFILES_L1_POLICY = process.env.HARNESS_DOTFILES_L1_POLICY ?? '/home/claude/wt-dotfiles-l1/home/.chezmoidata/agent-policy.yaml';
 const STAGEHAND = process.env.HARNESS_STAGEHAND ?? '/tmp/claude-0/-home-claude/4cb75181-a255-5446-ad02-7fa332a70b56/scratchpad/repos_sh/stagehand';
 const TMP = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'harness-policy-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 const load = (f) => parse(fs.readFileSync(f, 'utf8'));
 const golden = load(path.join(GOLDEN, 'agent-policy.yaml'));
-const report = (r) => `${JSON.stringify({ tier: r.tier, warnings: r.warnings, accepted: r.accepted.map(({ field, reason }) => ({ field, reason })), notes: r.notes }, null, 2)}\n`;
 const git = (cwd, ...a) => spawnSync('git', ['-c', 'safe.directory=*', '-C', cwd, ...a], { encoding: 'utf8' });
 
 describe('compile-policy goldens', () => {
@@ -29,7 +30,7 @@ describe('compile-policy goldens', () => {
         const r = compilePolicy(golden, { profile, engine });
         assert.equal(r.ok, true, JSON.stringify(r.errors, null, 2));
         const dir = path.join(GOLDEN, 'expected', `${engine}-${profile}`);
-        const files = [...r.files, { path: 'report.json', content: report(r) }];
+        const files = [...r.files, { path: 'report.json', content: renderReport(r) }];
         if (UPDATE) {
           fs.rmSync(dir, { recursive: true, force: true });
           for (const f of files) {
@@ -161,6 +162,83 @@ describe('compile-policy contract', () => {
     for (const r of rules) assert.ok(out.includes(`pattern = ${JSON.stringify(r.command).replace(/","/g, '", "').replace(/\["/g, '["').replace(/,\[/g, ', [')},\n    decision = "${r.decision}"`), `${JSON.stringify(r.command)} → ${r.decision}`);
   });
 
+  describe('policy 1.3.0: the auto tier, per-profile sandbox and egress, strict sandbox under bypass, credential masks', () => {
+    const settings = (r) => JSON.parse(r.files.find((f) => f.path === 'settings.json').content);
+    const desk = (engine, p = golden) => compilePolicy(p, { profile: 'desk', engine });
+
+    it('auto is Claude\'s auto mode, and the closest stricter mode, with a warning, where an engine has no classifier', () => {
+      const c = desk('claude');
+      assert.equal(c.ok, true, JSON.stringify(c.errors));
+      assert.equal(settings(c).permissions.defaultMode, 'auto');
+      assert.equal(settings(c).skipDangerousModePermissionPrompt, undefined, 'auto is not bypass');
+      const codex = desk('codex');
+      assert.match(codex.files[0].content, /approval_policy = "on-request"/);
+      assert.ok(codex.warnings.some((w) => w.rule === 'degraded' && /classifier/.test(w.message)));
+      const gem = desk('gemini');
+      assert.equal(settings(gem).general.defaultApprovalMode, 'auto_edit');
+      assert.ok(gem.warnings.some((w) => w.rule === 'degraded' && /classifier/.test(w.message)));
+    });
+
+    it('auto with a deny egress default fails closed on Claude: WebFetch outside the list is left to the classifier', () => {
+      const p = { ...golden, profiles: { ...golden.profiles, desk: { ...golden.profiles.desk, egress: undefined } }, accept_gaps: golden.accept_gaps.filter((g) => !(g.engine === 'claude' && g.field === 'egress')) };
+      const r = desk('claude', JSON.parse(JSON.stringify(p)));
+      assert.equal(r.ok, false);
+      assert.ok(r.errors.some((e) => e.rule === 'unrepresentable' && e.field === 'egress' && /auto-mode classifier/.test(e.message)), JSON.stringify(r.errors));
+    });
+
+    it('a profile\'s sandbox and egress override the top-level ones key by key', () => {
+      const d = settings(desk('claude'));
+      const l = settings(compilePolicy(golden, { profile: 'laptop', engine: 'claude' }));
+      assert.deepEqual([d.sandbox.failIfUnavailable, l.sandbox.failIfUnavailable], [false, true]);
+      assert.equal(d.sandbox.network.strictAllowlist, undefined, 'the desk\'s egress default is allow');
+      assert.equal(l.sandbox.network.strictAllowlist, true);
+      assert.deepEqual(d.sandbox.network.allowedDomains, l.sandbox.network.allowedDomains, 'keys the profile does not set come from the top level');
+      assert.deepEqual(d.sandbox.filesystem.allowWrite, ['~/.cache/pnpm']);
+      const noDefault = { policy_version: 1, profiles: { box: { tier: 'ask', egress: { allow_domains: ['example.com'] } } }, deny_read: ['**/.env'], forbid: [] };
+      const r = compilePolicy(noDefault, { profile: 'box', engine: 'claude' });
+      assert.ok(r.errors.some((e) => e.rule === 'egress-effective'), JSON.stringify(r.errors));
+    });
+
+    it('a bypass tier that relies on the sandbox stops sandbox-blocked commands from retrying unsandboxed; one isolated otherwise does not', () => {
+      assert.equal(settings(compilePolicy(golden, { profile: 'devbox', engine: 'claude' })).sandbox.allowUnsandboxedCommands, false);
+      for (const profile of ['laptop', 'desk', 'ci']) assert.equal(settings(compilePolicy(golden, { profile, engine: 'claude' })).sandbox.allowUnsandboxedCommands, undefined, profile);
+      const container = compilePolicy(load(path.join(ROOT, 'fixtures/valid/policy/bypass-container.yaml')), { profile: 'devbox', engine: 'claude' });
+      assert.equal(settings(container).sandbox?.allowUnsandboxedCommands, undefined, 'the sandbox gap is accepted: the container is the isolation');
+    });
+
+    it('credential masks compile to sandbox.credentials with TLS termination on Claude, and fail closed elsewhere until accepted', () => {
+      const c = desk('claude');
+      const s = settings(c).sandbox;
+      assert.deepEqual(s.credentials.files, [{ path: '~/.config/gh/hosts.yml', mode: 'mask', extract: 'oauth_token:\\s*(\\S+)', injectHosts: ['api.github.com'] }]);
+      assert.deepEqual(s.credentials.envVars, [{ name: 'NPM_TOKEN', mode: 'mask', injectHosts: ['registry.npmjs.org'] }]);
+      assert.deepEqual(s.network.tlsTerminate, {});
+      assert.ok(c.warnings.some((w) => w.rule === 'mask-not-a-read-deny' && /hosts\.yml/.test(w.message)), 'a mask is not a read deny for the file tools');
+      assert.ok(!c.warnings.some((w) => w.rule === 'credential-host-unlisted'), 'both inject hosts are in the allow list');
+      const unlisted = JSON.parse(JSON.stringify(golden));
+      unlisted.profiles.desk.sandbox.credentials[1].inject_hosts = ['npm.example.org'];
+      assert.ok(desk('claude', unlisted).warnings.some((w) => w.rule === 'credential-host-unlisted' && /npm\.example\.org/.test(w.message)));
+      for (const engine of ['codex', 'gemini']) {
+        const strict = { ...golden, accept_gaps: golden.accept_gaps.filter((g) => !(g.engine === engine && g.field === 'sandbox')) };
+        const r = desk(engine, strict);
+        assert.ok(r.errors.some((e) => e.field === 'sandbox' && /credential masks/.test(e.message)), `${engine}: ${JSON.stringify(r.errors)}`);
+      }
+    });
+
+    it('the dotfiles\' x-claude workaround is unnecessary: tier auto gives Claude auto mode and Codex what auto-edit gave it', { skip: !fs.existsSync(DOTFILES_L1_POLICY) }, () => {
+      const real = load(DOTFILES_L1_POLICY);
+      const { 'x-claude': workaround, ...rest } = real;
+      assert.ok(workaround?.default_mode?.workstation, 'the dotfiles still carry the workaround');
+      const migrated = { ...rest, profiles: { ...rest.profiles, workstation: { ...rest.profiles.workstation, tier: 'auto' } } };
+      const c = compilePolicy(migrated, { profile: 'workstation', engine: 'claude' });
+      assert.equal(c.ok, true, JSON.stringify(c.errors));
+      assert.equal(settings(c).permissions.defaultMode, workaround.default_mode.workstation);
+      const before = compilePolicy(real, { profile: 'workstation', engine: 'codex' });
+      const after = compilePolicy(migrated, { profile: 'workstation', engine: 'codex' });
+      const strip = (r) => r.files.filter((f) => f.path !== 'runner.json').map((f) => f.content.replace(/tier [a-z-]+/g, 'tier X'));
+      assert.deepEqual(strip(after), strip(before), 'Codex gets the same config and rules');
+    });
+  });
+
   it('Gemini: read denies match path arguments, single or listed, and nothing else', () => {
     const re = new RegExp(globArgsPattern('**/.env'));
     assert.ok(re.test(JSON.stringify({ file_path: '/w/app/.env' })));
@@ -217,6 +295,19 @@ describe('compile-policy CLI', () => {
     assert.equal(no.status, 1);
     assert.match(no.stderr, /REFUSED claude for profile laptop/);
     assert.ok(!fs.existsSync(bad));
+  });
+
+  it('--out writes report.json beside the files: the golden\'s warnings, accepted gaps with what each degrades, notes', () => {
+    for (const [engine, profile] of [['codex', 'ci'], ['claude', 'devbox'], ['gemini', 'laptop']]) {
+      const out = path.join(TMP, `report-${engine}-${profile}`);
+      const r = cli('fixtures/compile-policy/golden/agent-policy.yaml', '--profile', profile, '--engine', engine, '--out', out);
+      assert.equal(r.status, 0, r.stderr);
+      assert.match(r.stdout, /report\.json \(report\)/);
+      const written = fs.readFileSync(path.join(out, 'report.json'), 'utf8');
+      assert.equal(written, fs.readFileSync(path.join(GOLDEN, 'expected', `${engine}-${profile}`, 'report.json'), 'utf8'), `${engine}-${profile}`);
+      const rep = JSON.parse(written);
+      assert.ok(rep.accepted.length && rep.accepted.every((a) => a.field && a.message && a.reason), `${engine}-${profile}: each accepted gap says what it degrades and why`);
+    }
   });
 
   it('validates the policy first, and exits 2 on usage errors', () => {

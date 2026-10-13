@@ -4,6 +4,7 @@
   "accepted": [
     {
       "field": "egress",
+      "message": "WebFetch outside allow_domains runs unasked under bypassPermissions; the sandbox allowlist binds shell commands only (forbid {tool: web-fetch} removes the fetch tool instead)",
       "reason": "WebFetch under bypass reaches unlisted domains; the devbox's network ACL is the egress boundary"
     }
   ],

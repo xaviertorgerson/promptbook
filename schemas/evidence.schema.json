@@ -2,11 +2,11 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://harness.dev/schemas/evidence.schema.json",
   "title": "Skill evidence",
-  "description": "Why a skill is the way it is, and how to tell whether it routes. Three artifacts: dated evidence entries in skills/<name>/evals/evidence.md; routing cases, one JSON object per line, in skills/<name>/evals/routing.jsonl; and routing results, one line per case and run, written by harness eval-routing --out (routing-results*.jsonl), the measured source an evidence entry cites.",
-  "x-version": "1.2.0",
+  "description": "Why a skill is the way it is, and how to tell whether it routes. Three artifacts: dated evidence entries in skills/<name>/evals/evidence.md; routing cases, one JSON object per line, in skills/<name>/evals/routing.jsonl (wherever the skills folder is: the harness's skills/, a project's .agents/skills/ or an engine's dot-folder); and routing results, one line per case and run, written by harness eval-routing --out (routing-results*.jsonl), the measured source an evidence entry cites.",
+  "x-version": "1.3.0",
   "x-artifacts": [
-    { "format": "markdown-entries", "parser": "evidence", "paths": ["skills/*/evals/evidence.md"], "pointer": "#/$defs/entry" },
-    { "format": "jsonl", "paths": ["skills/*/evals/routing.jsonl"], "pointer": "#/$defs/routingCase" },
+    { "format": "markdown-entries", "parser": "evidence", "paths": ["**/skills/*/evals/evidence.md"], "suffixes": [".evidence.md"], "pointer": "#/$defs/entry" },
+    { "format": "jsonl", "paths": ["**/skills/*/evals/routing.jsonl"], "suffixes": [".routing.jsonl"], "pointer": "#/$defs/routingCase" },
     { "format": "jsonl", "paths": ["routing-results*.jsonl"], "pointer": "#/$defs/routingResult" }
   ],
   "$defs": {

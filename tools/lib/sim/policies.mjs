@@ -1,3 +1,4 @@
+import { dispatches } from './authority.mjs';
 import { touchesOverlap } from './util.mjs';
 
 // Supervisor policies: the orchestrating-work protocol as code. `orchestrating()` is the correct
@@ -50,7 +51,7 @@ export function orchestrating({ break: breaks = [] } = {}) {
   const broken = new Set([].concat(breaks));
   for (const b of broken) if (!MUTATIONS[b]) throw new Error(`unknown mutation ${b} (known: ${Object.keys(MUTATIONS).join(', ')})`);
   return ({ runtime }) => {
-    const st = { tasks: new Map(), pending: new Map(), grantNoted: null };
+    const st = { tasks: new Map(), pending: new Map(), grantNoted: new Set() };
     const T = (id) => {
       if (!st.tasks.has(id)) st.tasks.set(id, { ci: 0, ciHead: null, rounds: 0, roundHead: null, crashes: 0, waitSince: null, waitFor: null, completeRecorded: false });
       return st.tasks.get(id);
@@ -149,11 +150,12 @@ function decide(note, api, { st, T, broken }) {
     if (broken.has('auto-approve-ask')) { api.answerPrompt(p.id, 'approve'); continue; }
     wait(p.task, 'permission prompt', 'prompt', `Answer the permission prompt for \`${p.command}\``, [p.id]);
   }
-  if (v.grant && !v.grantLive && st.grantNoted !== v.grant.id && !broken.has('act-on-expired-grant')) {
-    st.grantNoted = v.grant.id;
-    api.record(v.grant.id, { attention: 'needs-human', summary: `${v.grant.id} lapsed`, next_action: `Renew ${v.grant.id} or take back finalize and merge`, item: 'grant' });
+  for (const g of v.grants) {
+    if (v.grantsLive.some((x) => x.id === g.id) || st.grantNoted.has(g.id) || broken.has('act-on-expired-grant')) continue;
+    st.grantNoted.add(g.id);
+    api.record(g.id, { attention: 'needs-human', summary: `${g.id} lapsed`, next_action: `Renew ${g.id} or take back what it delegated`, item: 'grant' });
   }
-  const granted = (action, t) => (broken.has('act-on-expired-grant') ? Boolean(v.grant) && hasAction(v.grant, action) : v.grantHas(action, t));
+  const granted = (action, t) => (broken.has('act-on-expired-grant') ? v.grants.some((g) => hasAction(g, action)) : v.grantHas(action, t));
 
   // ---------------------------------------------------------------- caps
   function caps(t) {
@@ -170,7 +172,8 @@ function decide(note, api, { st, T, broken }) {
       binding: taskLeft <= runtimeLeft ? 'budget' : 'spend-limit',
     };
   }
-  const workerCap = broken.has('unbounded-workers') ? Infinity : Math.min(cfg.max_workers, v.grantLive ? v.grant.limits?.max_workers ?? Infinity : Infinity);
+  // A grant that dispatches work caps the workers; a merge-only grant caps nothing it does not run.
+  const workerCap = broken.has('unbounded-workers') ? Infinity : Math.min(cfg.max_workers, ...v.grantsLive.filter(dispatches).map((g) => g.limits?.max_workers ?? Infinity));
   let capacity = workerCap - live.length;
   const affordable = (t) => {
     const c = caps(t);

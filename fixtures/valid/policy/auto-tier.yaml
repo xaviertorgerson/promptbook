@@ -1,0 +1,23 @@
+# The auto tier (the engine's classifier reviews each action) and a profile that overrides the
+# sandbox and egress key by key, with credential masks so sandboxed commands authenticate without
+# reading the secret. Policy 1.3.0.
+policy_version: 1
+profiles:
+  workstation:
+    tier: auto
+    engines: [claude, codex]
+    sandbox:
+      fail_if_unavailable: false
+      credentials:
+        - { path: ~/.config/gh/hosts.yml, extract: "oauth_token:\\s*(\\S+)", inject_hosts: [api.github.com] }
+        - { env: NPM_TOKEN, inject_hosts: [registry.npmjs.org], reason: npm publishes from inside the sandbox }
+  server:
+    tier: autonomous
+    engines: [claude]
+    requires: [prod-unreachable-from-this-host]
+    egress: { default: deny, allow_domains: ["**.github.com", registry.npmjs.org] }
+deny_read: ["**/.env", "~/.ssh/**"]
+forbid:
+  - { command: [git, push, [--force, -f]] }
+egress: { default: allow }
+sandbox: { enabled: true, fail_if_unavailable: true }

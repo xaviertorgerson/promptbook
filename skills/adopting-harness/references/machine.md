@@ -49,6 +49,26 @@ Copy rather than link into engine directories that do not follow symlinks reliab
 links pointing outside a working directory. Hand-made trial skills are real directories the script
 never touches.
 
+## The installed set's description budget
+
+Every installed skill's description is loaded into every session, and one engine keeps that metadata
+within 2% of context or 8,000 characters. The budget applies to what a profile installs, not to one
+library: the harness's 28 descriptions fit (7,899 characters), but a devbox that also installs five
+skills from a skill library and one from its multiplexer (34 skills, 9,901 characters) is over, so
+some descriptions may be cut before a router sees them. Check each profile's set before rendering:
+
+```sh
+harness lint --budget-set <profile>.skills    # one installed skills folder per line, or the profile's toolkit.lock
+```
+
+Over the budget, install a per-profile subset rather than shortening every description. A
+coordinator profile that dispatches, verifies and lands work does not need the planning skills
+(framing-products, defining-personas, mapping-journeys, writing-requirements, designing-flows,
+choosing-architecture, planning-work, checking-plan-readiness); a CI runner that only verifies needs
+verifying-work, writing-tests and reviewing-security, not the authoring ones. List each profile's
+subset in its data (a skills list per source, as an `x-skills` list narrows a lock entry) and let the
+fan-out script install only those; re-run the check when a pin moves.
+
 ## Policy compile checklist
 
 - Every tier compiles for every engine listed in its profile, or the compile fails; an

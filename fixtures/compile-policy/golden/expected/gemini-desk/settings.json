@@ -1,0 +1,14 @@
+{
+  "general": {
+    "defaultApprovalMode": "auto_edit"
+  },
+  "tools": {
+    "sandbox": true,
+    "allowed": [
+      "run_shell_command(pnpm)",
+      "run_shell_command(git status)",
+      "run_shell_command(git log)",
+      "run_shell_command(git diff)"
+    ]
+  }
+}

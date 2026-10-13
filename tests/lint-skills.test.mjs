@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { after, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { isGerundName, jaccard, lintSkills, markdownLinks, parseScenarios, scenarioMissing, triggerTokens } from '../tools/lib/lint-skills.mjs';
+import { budgetSet, isGerundName, jaccard, lintSkills, markdownLinks, parseScenarios, scenarioMissing, triggerTokens } from '../tools/lib/lint-skills.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FIX = path.join(ROOT, 'fixtures/lint');
@@ -153,5 +153,54 @@ describe('lint-skills CLI', () => {
     const j = JSON.parse(cli(dir, '--json').stdout);
     assert.equal(j.overlaps[0].rule, 'description-overlap');
     assert.equal(cli(dir, '--overlap', 'lots').status, 2);
+  });
+});
+
+describe('lint --budget-set: the installed set\'s description budget', () => {
+  const cli = (...a) => spawnSync(process.execPath, [path.join(ROOT, 'tools/lint-skills.mjs'), ...a], { encoding: 'utf8', cwd: ROOT });
+  const SKILLS = path.join(ROOT, 'skills');
+  const harnessChars = fs.readdirSync(SKILLS).filter((d) => fs.existsSync(path.join(SKILLS, d, 'SKILL.md'))).reduce((a, d) => a + fs.readFileSync(path.join(SKILLS, d, 'SKILL.md'), 'utf8').match(/^description: (.*)$/m)[1].length, 0);
+  const write = (name, text) => { const f = path.join(TMP, 'sets', name); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, text); return f; };
+
+  it('the harness alone fits; the harness plus a library a profile also installs is over, and says so', () => {
+    const alone = budgetSet(write('alone.txt', `${SKILLS}\n`));
+    assert.equal(alone.total, harnessChars);
+    assert.ok(alone.total <= 8000);
+    assert.deepEqual(alone.findings, []);
+    const devbox = budgetSet(write('devbox.yaml', `# what the devbox installs\n- ${SKILLS}\n- ${GOOD}\n- ${path.join(GOOD, 'drafting-widgets')}\n`));
+    assert.equal(devbox.skills.length, 32, 'a skill listed twice counts once');
+    assert.ok(devbox.total > 8000, `${devbox.total}`);
+    const w = devbox.findings.find((f) => f.rule === 'description-budget');
+    assert.ok(w && w.severity === 'warning' && /32 descriptions total \d+ characters, over the 8000/.test(w.message), JSON.stringify(devbox.findings));
+    assert.match(w.message, /28 from .*skills, 4 from /);
+  });
+
+  it('reads a toolkit.lock: local entries by their path (the harness by skills/), narrowed by x-skills; a remote one is reported, not guessed', () => {
+    const lock = write('profile/toolkit.lock', [
+      'lock_version: 1',
+      'entries:',
+      `  - { name: harness, layer: L3, kind: harness, source: ${ROOT}, ref: main, commit: ${'a'.repeat(40)}, tree: ${'b'.repeat(40)}, version: 0.1.0, autoUpdate: "off" }`,
+      `  - { name: widgets, layer: L3, kind: skill-library, source: ${path.join(ROOT, 'fixtures/lint/good')}, path: skills, ref: main, commit: ${'c'.repeat(40)}, tree: ${'d'.repeat(40)}, version: 0.0.0+ccccccc, autoUpdate: "off", x-skills: [drafting-widgets] }`,
+      `  - { name: skilldex, layer: L3, kind: skill-library, source: "https://github.com/QuentinTorg/skilldex", path: skills, ref: main, commit: ${'e'.repeat(40)}, tree: ${'f'.repeat(40)}, version: 0.0.0+eeeeeee, autoUpdate: "off" }`,
+      '',
+    ].join('\n'));
+    const r = budgetSet(lock);
+    assert.equal(r.skills.length, 29);
+    assert.deepEqual(r.skills.filter((s) => s.from === 'widgets').map((s) => s.name), ['drafting-widgets']);
+    assert.ok(r.findings.some((f) => f.rule === 'budget-set-unread' && /skilldex/.test(f.message)));
+  });
+
+  it('the CLI runs only the budget check when no folder is given; a missing folder fails; a missing file is a usage error', () => {
+    const over = write('over.txt', `${SKILLS}\n${GOOD}\n`);
+    const r = cli('--budget-set', over);
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.match(r.stdout, /^budget set .*: 32 skill\(s\), \d+ of 8000 characters$/m);
+    assert.match(r.stdout, /warning description-budget — the installed set's 32 descriptions/);
+    assert.equal(cli('--budget-set', over, '--strict').status, 1);
+    const j = JSON.parse(cli('--budget-set', over, '--json').stdout);
+    assert.equal(j.skills.length, 0, 'nothing else was linted');
+    assert.equal(j.budgetSet.skills.length, 32);
+    assert.equal(cli('--budget-set', write('missing.txt', `${path.join(TMP, 'nope')}\n`)).status, 1);
+    assert.equal(cli('--budget-set', path.join(TMP, 'no-such-file.txt')).status, 2);
   });
 });

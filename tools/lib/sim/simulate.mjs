@@ -18,9 +18,9 @@ export function machines() {
 
 export function simulate(sc, { seed = sc.seed, policy = orchestrating(), rivalPolicy = null, engine = 'correct', forgeProtection = true, cas = true, mergeBot = 'correct', trace = true, only = null } = {}) {
   const m = machines();
-  if (sc.grant) {
+  for (const g of sc.grants) {
     const v = sharedRegistry().validator('grant');
-    if (!v(sc.grant)) throw new Error(`${sc.source}: grant is not a valid grant: ${v.errors.map((e) => `${e.instancePath || '/'} ${e.message}`).join('; ')}`);
+    if (!v(g)) throw new Error(`${sc.source}: grant ${g.id ?? '?'} is not a valid grant: ${v.errors.map((e) => `${e.instancePath || '/'} ${e.message}`).join('; ')}`);
   }
   const world = new World(sc, { seed, machines: m, policies: { main: policy, rival: rivalPolicy ?? policy }, engine, forgeProtection, cas, mergeBot, trace });
   const checker = new Checker({ machines: m, only });

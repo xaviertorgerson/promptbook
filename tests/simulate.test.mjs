@@ -143,6 +143,52 @@ describe('simulate: the faults happen and are handled as the contracts say', () 
     for (const r of returned) assert.ok(r.trace.flatMap((l) => l.commits ?? []).filter((c) => c.transition === 'return-to-human').every((c) => c.role === 'merge'));
   });
 
+  describe('a runtime holding a work grant and a separate merge grant', () => {
+    const grant = (id, actions, limits) => ({ id, granted_by: 'owner', granted_to: { role: 'orchestrator', runtime: 'sim' }, granted_at: '+0m', source: `sim: ${id}`, scope: { objective: 'Deliver the sim epic', repositories: ['acme/app'], epics: ['sim'] }, actions, limits, expires_at: '+14d', revocable: true });
+    const work = grant('GRANT-1', ['select-tasks', 'approve-plan', 'finalize'], { max_workers: 2, budget: { max_usd: 60 } });
+    const mergeOnly = grant('GRANT-2', [{ action: 'merge', repo: 'acme/app', target: 'main', strategy: 'squash', requires: ['independent-review', 'required-checks'] }], { max_workers: 1, budget: { max_usd: 5 } });
+    const tasks = ['a', 'b', 'c', 'd', 'e'].map((x, i) => ({ id: `TWO-${i + 1}`, size: 'S', touches: [`src/${x}/**`] }));
+    const base = { name: 'two-grants', supervisor: { max_workers: 4 }, merge: { queue_targets: [] }, grants: [work, mergeOnly], tasks };
+    const peak = (w) => {
+      const marks = [...w.sessions.values()].filter((s) => s.runtime === 'main' && ['author', 'evaluator'].includes(s.kind)).flatMap((s) => [[s.startedAt, 1], [s.endedAt ?? Infinity, -1]]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+      let live = 0;
+      let max = 0;
+      for (const [, d] of marks) { live += d; max = Math.max(max, live); }
+      return max;
+    };
+
+    it('the workers cap is the work grant\'s (2), not the merge grant\'s (1) nor the supervisor\'s (4); the runtime budget is the work grant\'s', () => {
+      const sc = normalize(base);
+      assert.deepEqual(sc.grants.map((g) => g.id), ['GRANT-1', 'GRANT-2']);
+      assert.equal(sc.supervisor.budget_usd, 60);
+      const runs = runAll(sc, 10);
+      for (const r of runs) assert.deepEqual(r.violations, []);
+      assert.ok(runs.every((r) => peak(r.world) <= 2), 'never past the work grant\'s cap');
+      assert.ok(runs.some((r) => peak(r.world) === 2), 'a merge-only grant does not cap dispatch at its own max_workers');
+    });
+
+    it('merge authority comes from the merge grant only; finalize from the work grant', () => {
+      for (const r of runAll(normalize(base), 10, { trace: true })) {
+        const commits = r.trace.flatMap((l) => l.commits ?? []).filter((c) => c.role === 'orchestrator');
+        const by = (t) => [...new Set(commits.filter((c) => c.transition === t).map((c) => c.grant))];
+        assert.deepEqual(by('mark-pr-ready'), ['GRANT-1']);
+        assert.deepEqual(by('approve-pr'), ['GRANT-2']);
+        assert.deepEqual(by('land'), ['GRANT-2']);
+        assert.equal(r.summary.merged, 5);
+      }
+      const noMerge = runAll(normalize({ ...base, grants: [work], merge: { queue_targets: null } }), 5, { trace: true });
+      for (const r of noMerge) {
+        assert.deepEqual(r.violations, []);
+        assert.ok(r.trace.flatMap((l) => l.commits ?? []).filter((c) => c.transition === 'approve-pr').every((c) => c.role === 'owner'), 'without a merge grant the human approves');
+      }
+    });
+
+    it('grant and grants together are a scenario error; so is a grant id twice', () => {
+      assert.throws(() => normalize({ ...base, grant: work }), /grant and grants/);
+      assert.throws(() => normalize({ ...base, grants: [work, work] }), /GRANT-1 repeats/);
+    });
+  });
+
   it('an epic lands on its integration branch under the grant; the human merges the branch; another epic waits for merged', () => {
     const runs = runAll(loadScenario(path.join(SCEN, 'integration-branch.yaml')), 10, { trace: true });
     let builtOnIntegrated = 0;
@@ -174,6 +220,17 @@ describe('simulate: the faults happen and are handled as the contracts say', () 
       assert.equal(r.world.forge.tasks.get('EVR-1').status, 'merged');
       assert.ok(r.world.forge.prs.get('EVR-2').reviews.length <= 5);
     }
+  });
+
+  it('an evaluator\'s run is logged as the evaluator\'s verdict, never as the author advancing the task', () => {
+    const r = simulate(loadScenario(path.join(SCEN, 'evaluator-rejection.yaml')), { seed: 1, trace: false });
+    const evals = r.world.artifacts.runRecords.filter((x) => x.role === 'evaluator');
+    assert.ok(evals.length >= 2, 'the evaluator ran');
+    for (const x of evals) {
+      assert.ok(['verdict', 'failed'].includes(x.outcome), `${x.session_id}: ${x.outcome}`);
+      if (x.outcome === 'verdict') assert.equal(x.status_after, x.status_before, `${x.session_id} moved nothing`);
+    }
+    assert.ok(r.world.artifacts.runRecords.filter((x) => x.outcome === 'advanced').every((x) => x.role === 'author'), 'only authors advance');
   });
 
   it('every run-record, return, grant and task record the simulation writes validates', () => {

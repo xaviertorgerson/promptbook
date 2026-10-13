@@ -1,9 +1,9 @@
 # dana, on the same issue: "You may land reviewed settle-up PRs into integration/settle-up with a
 # merge commit, once an independent review passed the current head and the required checks are
 # green. Not main: I merge integration/settle-up into main myself." A separate grant from GRANT-1,
-# so either can be revoked alone. max_workers matches GRANT-1, so whichever grant the coordinator
-# checks the epic runs at most three workers. examples/tally/simulate.yaml replays this grant
-# verbatim; tests/example.test.mjs keeps the two equal.
+# so either can be revoked alone. It dispatches no work, so its max_workers (one merge at a time)
+# caps nothing GRANT-1 runs; the epic's three workers are GRANT-1's. examples/tally/simulate.yaml
+# replays both grants verbatim; tests/example.test.mjs keeps them equal.
 id: GRANT-2
 granted_by: dana
 granted_to: { role: orchestrator, runtime: multiplexer-coordinator }
@@ -21,7 +21,7 @@ actions:
     strategy: merge
     requires: [independent-review, required-checks, current-head]
 limits:
-  max_workers: 3
+  max_workers: 1
   budget: { max_usd: 5 }
   stop_when:
     - a merge conflict that is not mechanical

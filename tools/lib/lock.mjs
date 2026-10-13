@@ -19,6 +19,9 @@ import { registry as sharedRegistry } from './registry.mjs';
 // --check:  verify, change nothing. Drift (errors): the pinned commit is gone, its tree is not the
 //           recorded one, a tag now names another commit, a branch no longer contains the pin, the
 //           version disagrees with the tag. A branch that moved ahead is an available update (warning).
+//           A CI checkout (detached, or shallow) may hold no local branch: a branch ref also resolves
+//           through refs/remotes/origin/<ref>, and when it resolves nowhere there, the pin is
+//           verified by its commit and tree alone (a warning, ref-absent).
 
 export const GENERATOR = 'harness/lock@1.0.0';
 const KEY_ORDER = ['name', 'layer', 'kind', 'source', 'path', 'ref', 'commit', 'tree', 'version', 'autoUpdate', 'mirrored'];
@@ -86,10 +89,11 @@ class LocalSource {
     this.prefix = git(dir, ['rev-parse', '--show-prefix']).stdout;
   }
 
-  // ref -> { commit, kind: 'tag'|'branch'|'commit'|'other' }
+  // ref -> { commit, kind: 'tag'|'branch'|'commit'|'other' }. A CI checkout often has the branch
+  // only as origin's remote-tracking ref.
   resolve(ref) {
     if (SHA.test(ref)) return this.has(ref) ? { commit: ref, kind: 'commit' } : null;
-    for (const [full, kind] of [[`refs/tags/${ref}`, 'tag'], [`refs/heads/${ref}`, 'branch'], [`refs/remotes/${ref}`, 'branch'], [ref, 'other']]) {
+    for (const [full, kind] of [[`refs/tags/${ref}`, 'tag'], [`refs/heads/${ref}`, 'branch'], [`refs/remotes/origin/${ref}`, 'branch'], [`refs/remotes/${ref}`, 'branch'], [ref, 'other']]) {
       const r = git(this.dir, ['rev-parse', '--verify', '--quiet', `${full}^{commit}`], { allowFail: true });
       if (r.ok && r.stdout) return { commit: r.stdout, kind };
     }
@@ -104,8 +108,19 @@ class LocalSource {
     return treeOf(this.dir, commit, path.posix.join(this.prefix, sub ?? ''));
   }
 
+  // Containment needs history; a shallow clone cannot say.
   contains(ref, commit) {
+    if (this.checkout().shallow) return null;
     return git(this.dir, ['merge-base', '--is-ancestor', commit, ref], { allowFail: true }).ok;
+  }
+
+  // A CI checkout: shallow history, or a detached HEAD with no branch of its own.
+  checkout() {
+    this.state ??= {
+      shallow: git(this.dir, ['rev-parse', '--is-shallow-repository'], { allowFail: true }).stdout === 'true',
+      detached: !git(this.dir, ['symbolic-ref', '-q', 'HEAD'], { allowFail: true }).ok,
+    };
+    return this.state;
   }
 
   show(commit, file) {
@@ -176,6 +191,10 @@ class RemoteSource {
   // Containment needs history; a shallow cache cannot say, so the check reports the branch moving.
   contains() {
     return null;
+  }
+
+  checkout() {
+    return { shallow: false, detached: false };
   }
 
   show(commit, file) {
@@ -278,7 +297,10 @@ export function processLock(data, { mode = 'check', lockDir = '.', update = null
     }
 
     if (!src.has(target)) {
-      f('error', 'commit-exists', `${target.slice(0, 12)} is not in ${entry.source}${isRemote(entry.source) ? ' (the remote would not serve it)' : ''}: history was rewritten or the pin is wrong`);
+      const why = isRemote(entry.source) ? ' (the remote would not serve it): history was rewritten or the pin is wrong'
+        : src.checkout().shallow ? ', a shallow clone: fetch its full history (fetch-depth 0) to verify the pin'
+          : ': history was rewritten or the pin is wrong';
+      f('error', 'commit-exists', `${target.slice(0, 12)} is not in ${entry.source}${why}`);
       continue;
     }
     const tree = src.tree(target, entry.path);
@@ -291,10 +313,12 @@ export function processLock(data, { mode = 'check', lockDir = '.', update = null
         else if (now.kind === 'branch') {
           const contained = src.contains(now.commit, pinned);
           if (contained === false) f('error', 'pin-on-ref', `${entry.ref} no longer contains ${pinned.slice(0, 12)}: the branch was rewritten (force-push)`);
-          else f('warning', 'ref-advanced', `${entry.ref} moved to ${now.commit.slice(0, 12)}${contained === null ? ' (containment not checked on a shallow remote)' : ''}; \`harness lock --update ${entry.name}\` moves the pin`);
+          else f('warning', 'ref-advanced', `${entry.ref} moved to ${now.commit.slice(0, 12)}${contained === null ? ' (containment not checked: shallow history)' : ''}; \`harness lock --update ${entry.name}\` moves the pin`);
         }
       }
-      if (!now) f('error', 'ref-resolves', `ref "${entry.ref}" no longer resolves in ${entry.source}`);
+      const { shallow, detached } = src.checkout();
+      if (!now && (shallow || detached)) f('warning', 'ref-absent', `ref "${entry.ref}" not present in this ${shallow ? 'shallow' : 'detached'} checkout of ${entry.source}; verified by commit ${target.slice(0, 12)} and its tree`);
+      else if (!now) f('error', 'ref-resolves', `ref "${entry.ref}" no longer resolves in ${entry.source}`);
     }
     if (src.dirty(entry.path)) f('warning', 'source-clean', `${entry.source} has uncommitted changes under ${entry.path ?? '.'}; the pin covers committed content only`);
 
