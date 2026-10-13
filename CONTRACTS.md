@@ -300,11 +300,11 @@ Implemented in `tools/lib/parsers.mjs`; every parser keeps file line numbers for
 ```mermaid
 flowchart LR
   BRIEF["BRIEF<br/>docs/product/brief.md"] --> PER["PER-n<br/>personas"]
-  PER --> CUJ["CUJ-n<br/>specs/&lt;epic&gt;/cuj.md"]
+  PER --> CUJ["CUJ-n<br/>specs/{epic}/cuj.md"]
   CUJ --> REQ["REQ-n / NFR-n<br/>spec.md Requirements"]
-  CUJ -- "user-facing" --> UX["UX-n<br/>docs/ux/&lt;epic&gt;.md"]
+  CUJ -- "user-facing" --> UX["UX-n<br/>docs/ux/{epic}.md"]
   UX -. cites .-> REQ
-  REQ --> TASK["TASK<br/>tasks/&lt;ID&gt;.md<br/>requirements: [...]"]
+  REQ --> TASK["TASK<br/>tasks/{ID}.md<br/>requirements: [...]"]
   CUJ --> TASK
   TASK --> AC["AC-n<br/>Acceptance criteria"]
   AC --> TEST["test name<br/>contains AC-n"]
@@ -350,7 +350,7 @@ CUJ-2 of template-migration, which the spec's Tasks table attributes to TMIG-1 a
 sequenceDiagram
   autonumber
   participant H as Human (owner / engineer)
-  participant G as git: task file
+  participant G as git (task file)
   participant C as Coordinator (loop / CI / stagehand)
   participant A as Agent (engine)
   participant R as Runtime records
@@ -361,7 +361,7 @@ sequenceDiagram
   A-->>R: signals (Herdr state, A2A/MCP task state) — attention only
   A->>G: commits, draft PR, agent-log handoff, status → review
   A-->>C: return (summary, artifacts, criteria met/unmet, decisions needed)
-  C->>R: run-record line (outcome, subtype, cost); task-record reconciled
+  C->>R: run-record line (outcome, subtype, cost), task-record reconciled
   alt criteria met and gates green
     A->>G: status → human-review
     H->>G: approve PR (gate 2) — or a merge grant with independent review + checks

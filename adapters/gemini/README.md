@@ -35,11 +35,11 @@ non-interactive mode `ask_user` is treated as `deny`.
 | `tier: read-only` | `general.defaultApprovalMode: "plan"` | Strict read-only mode. [configuration][config] |
 | `tier: ask` | `general.defaultApprovalMode: "default"` | |
 | `tier: auto-edit` | `general.defaultApprovalMode: "auto_edit"` | |
-| `tier: autonomous` | no settings key: YOLO "can only be enabled from the command line"; the launcher passes it | Deny rules still apply under YOLO only if they are policy rules, so walls must compile. |
+| `tier: autonomous` | no settings key: YOLO "can only be enabled from the command line"; the launcher passes it | Whether an admin- or user-tier `deny` outranks YOLO's auto-approval is not stated on the page read *(unverified)*; until a probe shows it, the compiler refuses `autonomous` for Gemini unless `accept_gaps` names `{engine: gemini, field: tier}`. |
 | `tier: unattended` | launcher passes the non-interactive flags; `ask_user` becomes deny | |
-| `deny_read` | `[[rule]] toolName = ["read_file", "read_many_files", "grep", "glob"], argsPattern = "<regex of the glob>", decision = "deny"` | Tool names and argument shapes come from Gemini's tool reference and change across versions; **partial**, and `run_shell_command` reads (`cat .env`) are not covered without a sandbox. Error unless `accept_gaps` names `{engine: gemini, field: deny_read}` or the profile runs Gemini sandboxed without the files mounted. |
+| `deny_read` | `[[rule]] toolName = [<the file-reading tools>], argsPattern = "<regex of the glob>", decision = "deny"` | The tool names (`read_file`, `read_many_files`, the search and glob tools) are taken from the installed version's tool list at compile time *(not verified here)*; **partial**, and `run_shell_command` reads (`cat .env`) are not covered without a sandbox. Error unless `accept_gaps` names `{engine: gemini, field: deny_read}` or the profile runs Gemini sandboxed without the files mounted. |
 | `forbid: {command: [...]}` | `[[rule]] commandPrefix = "a b", decision = "deny", denyMessage = reason`, priority 900 | One rule per alternatives expansion. |
-| `forbid: {write: glob}` | `[[rule]] toolName = ["write_file", "replace"], argsPattern = "<regex>", decision = "deny"` | Same partial caveat as `deny_read`. |
+| `forbid: {write: glob}` | `[[rule]] toolName = [<the file-writing tools>], argsPattern = "<regex>", decision = "deny"` | Same partial caveat as `deny_read`. |
 | `forbid: {tool: web-fetch, domain}` | `[[rule]] toolName = "web_fetch", argsPattern = "<domain regex>", decision = "deny"` | |
 | `forbid: {tool: "mcp:server[:tool]"}` | `[[rule]] toolName = "mcp_<server>_*"` (or the tool), `decision = "deny"`; or `mcpServers.<s>.excludeTools` | Avoid underscores in server aliases (the engine splits on the first one). |
 | `ask` | `[[rule]] ... decision = "ask_user"` | Denied when non-interactive. |

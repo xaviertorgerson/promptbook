@@ -3,8 +3,8 @@
 Herdr is a terminal runtime, not an engine: it owns the panes agents run in, classifies each agent's
 state, and publishes events. It reads no harness contract. This adapter says which contracts a
 Herdr-based runtime (stagehand, Heeler) produces and consumes, and how Herdr's vocabulary maps onto
-them. Facts are from the Herdr source and docs at commit `241b99c` (2026-10) and stagehand at
-`48aff9a`.
+them. Facts are from the Herdr source and docs at commit `241b99c` (2026-10-13) and stagehand at
+`48aff9a` (2026-09-30).
 
 ## Signals → attention
 
