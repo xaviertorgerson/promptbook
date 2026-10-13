@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://harness.dev/schemas/evidence.schema.json",
+  "title": "Skill evidence",
+  "description": "Why a skill is the way it is, and how to tell whether it routes. Two artifacts: dated evidence entries in skills/<name>/evals/evidence.md, and routing cases, one JSON object per line, in skills/<name>/evals/routing.jsonl.",
+  "x-version": "1.0.0",
+  "x-artifacts": [
+    { "format": "markdown-entries", "parser": "evidence", "paths": ["skills/*/evals/evidence.md"], "pointer": "#/$defs/entry" },
+    { "format": "jsonl", "paths": ["skills/*/evals/routing.jsonl"], "pointer": "#/$defs/routingCase" }
+  ],
+  "$defs": {
+    "entry": {
+      "description": "One '## YYYY-MM-DD · title' entry with '- **Field:** value' bullets (CONTRACTS.md, Normalization).",
+      "type": "object",
+      "required": ["date", "title", "kind", "claim"],
+      "properties": {
+        "date": { "$ref": "common.schema.json#/$defs/date" },
+        "title": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+        "kind": {
+          "description": "measured: we ran it. observed: we saw it in real work. incident: it went wrong. audit: a review found it. vendor-reported: a vendor's own claim (flagged as such). literature: published research.",
+          "enum": ["measured", "observed", "incident", "audit", "vendor-reported", "literature"]
+        },
+        "source": {
+          "description": "A URL, a repository path, a commit, or a run reference.",
+          "$ref": "common.schema.json#/$defs/nonEmptyString"
+        },
+        "claim": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+        "result": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+        "engine": { "$ref": "common.schema.json#/$defs/slug" },
+        "model": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+        "skill_version": { "$ref": "common.schema.json#/$defs/semver" },
+        "revisit": {
+          "description": "When this evidence should be re-checked.",
+          "$ref": "common.schema.json#/$defs/nonEmptyString"
+        }
+      },
+      "patternProperties": { "^x-": {} },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "description": "Outside evidence carries a citable URL.",
+          "if": { "required": ["kind"], "properties": { "kind": { "enum": ["vendor-reported", "literature"] } } },
+          "then": { "required": ["source"], "properties": { "source": { "pattern": "^https?://" } } }
+        },
+        {
+          "description": "A measurement says where it can be reproduced from.",
+          "if": { "required": ["kind"], "properties": { "kind": { "const": "measured" } } },
+          "then": { "required": ["source"] }
+        }
+      ]
+    },
+    "routingCase": {
+      "description": "One prompt and whether this skill should load for it, given only the installed skills' names and descriptions.",
+      "type": "object",
+      "required": ["prompt", "expect"],
+      "properties": {
+        "prompt": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "expect": { "enum": ["trigger", "no-trigger"] },
+        "kind": {
+          "description": "near-miss: a prompt a neighbouring skill owns, the case that proves the boundary.",
+          "enum": ["positive", "near-miss", "negative"]
+        },
+        "route_to": {
+          "description": "For no-trigger: the skill that should load instead, or none.",
+          "type": "string",
+          "pattern": "^(?:none|[a-z0-9]+(?:-[a-z0-9]+)*)$"
+        },
+        "note": { "type": "string" }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "required": ["expect"], "properties": { "expect": { "const": "trigger" } } },
+          "then": { "properties": { "route_to": false, "kind": { "const": "positive" } } }
+        },
+        {
+          "if": { "required": ["kind"], "properties": { "kind": { "const": "near-miss" } } },
+          "then": { "required": ["route_to"] }
+        }
+      ]
+    }
+  }
+}

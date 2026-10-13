@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://harness.dev/schemas/task.schema.json",
+  "title": "Task",
+  "description": "One unit of work: specs/<epic>/tasks/<ID>.md. The frontmatter is the coordination substrate (board, loop, claiming); the body is what the coder builds against. A backward-compatible superset of agentic-template's task frontmatter: every field the template writes keeps its meaning, every harness field is optional.",
+  "x-version": "1.0.0",
+  "x-artifacts": [
+    {
+      "format": "frontmatter-markdown",
+      "paths": ["specs/*/tasks/*.md"],
+      "bind": { "epic": 1, "id": "$name" },
+      "body": "task"
+    }
+  ],
+  "x-sections": [
+    { "heading": "Context", "match": "^Context\\b" },
+    { "heading": "Acceptance criteria (EARS)", "match": "^Acceptance criteria\\b" },
+    { "heading": "Open questions", "match": "^Open questions\\b" },
+    { "heading": "Agent log (append-only, newest last)", "match": "^Agent log\\b" }
+  ],
+  "type": "object",
+  "required": ["id", "epic", "status", "priority", "cuj", "guiding_docs", "branch", "depends_on", "owner"],
+  "properties": {
+    "id": { "description": "Stable, unique, never reused. Must equal the file name.", "$ref": "common.schema.json#/$defs/taskId" },
+    "epic": { "description": "The epic folder under specs/.", "$ref": "common.schema.json#/$defs/slug" },
+    "parent": {
+      "description": "Parent task id when this is a subtask.",
+      "type": ["string", "null"],
+      "pattern": "^[A-Z][A-Z0-9]*-[0-9]+$"
+    },
+    "status": { "$ref": "common.schema.json#/$defs/taskStatus" },
+    "priority": { "$ref": "common.schema.json#/$defs/priority" },
+    "size": { "$ref": "common.schema.json#/$defs/size" },
+    "cuj": {
+      "description": "The journey(s) this task serves: one id (template form), a list (harness), or null.",
+      "anyOf": [
+        { "$ref": "common.schema.json#/$defs/cujRef" },
+        { "type": "array", "minItems": 1, "items": { "$ref": "common.schema.json#/$defs/cujRef" }, "uniqueItems": true },
+        { "type": "null" }
+      ]
+    },
+    "guiding_docs": {
+      "description": "Read-before-coding: the task's context contract.",
+      "type": "array",
+      "items": { "$ref": "common.schema.json#/$defs/docRef" }
+    },
+    "branch": {
+      "description": "The task's working branch; one worktree per task keys off it.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
+    },
+    "depends_on": {
+      "description": "Task ids that must be merged before this one is claimed.",
+      "type": "array",
+      "items": { "$ref": "common.schema.json#/$defs/taskId" },
+      "uniqueItems": true
+    },
+    "owner": {
+      "description": "null = an agent may claim the first pass; otherwise the human or agent holding it. The owner/status pair is the claim lock.",
+      "type": ["string", "null"],
+      "minLength": 1
+    },
+    "kickback_reason": {
+      "description": "Required by the interjection protocol when a task is moved to an earlier stage (or as the first agent-log line).",
+      "$ref": "common.schema.json#/$defs/nonEmptyString"
+    },
+    "requirements": {
+      "description": "Harness: the REQ/NFR ids of the epic this task implements. The trace check requires at least one at readiness.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "common.schema.json#/$defs/requirementRef" },
+      "uniqueItems": true
+    },
+    "touches": {
+      "description": "Harness: path globs the task expects to modify. Tasks whose touches overlap are one lane and run in sequence.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+      "uniqueItems": true
+    },
+    "inputs": {
+      "description": "Harness: what must exist before the task can start, beyond guiding_docs: a path, or a named secret, service, decision or dataset.",
+      "type": "array",
+      "items": {
+        "anyOf": [
+          { "$ref": "common.schema.json#/$defs/docRef" },
+          {
+            "type": "object",
+            "required": ["name", "kind"],
+            "properties": {
+              "name": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+              "kind": { "enum": ["file", "secret", "service", "decision", "data"] },
+              "ref": { "$ref": "common.schema.json#/$defs/docRef" },
+              "provided_by": { "$ref": "common.schema.json#/$defs/taskId" }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "risk": {
+      "description": "Harness: high or irreversible work is never run inside an unsupervised loop.",
+      "anyOf": [
+        { "enum": ["low", "medium", "high"] },
+        {
+          "type": "object",
+          "required": ["level"],
+          "properties": {
+            "level": { "enum": ["low", "medium", "high"] },
+            "irreversible": { "type": "boolean" },
+            "reasons": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/nonEmptyString" } }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "evaluator": {
+      "description": "Harness: what decides the criteria are met, in the order it runs.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["kind"],
+        "properties": {
+          "kind": { "enum": ["tests", "script", "agent-review", "human", "eval"] },
+          "ref": { "description": "A command, a path, or a role (code-owner).", "$ref": "common.schema.json#/$defs/nonEmptyString" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "budget": {
+      "description": "Harness: ceilings for the whole task across runs. A runner stops at the first one reached.",
+      "$ref": "common.schema.json#/$defs/budget"
+    },
+    "sessions": {
+      "description": "Harness: sessions that worked this task, appended by the agent in its handoff (the runner never writes the task file).",
+      "type": "array",
+      "items": { "$ref": "common.schema.json#/$defs/sessionRef" }
+    },
+    "mode": {
+      "description": "Harness: the methodology that selects skills for this task (playbook/methodology/modes.md). Not the runtime's engagement mode.",
+      "enum": ["spec-driven", "research-plan-implement", "ralph-loop", "icm-pipeline"]
+    }
+  },
+  "patternProperties": { "^x-": {} },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "description": "A claimed task has an owner: the owner/status pair is the lock.",
+      "if": { "required": ["status"], "properties": { "status": { "enum": ["in-progress", "review", "human-review", "merging"] } } },
+      "then": { "properties": { "owner": { "type": "string" } } }
+    }
+  ]
+}

@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://harness.dev/schemas/task-record.schema.json",
+  "title": "Task record",
+  "description": "A runtime's recovery note for one task: what a replacement coordinator needs to resume. One per task per runtime, kept outside the task file (e.g. .orchestrator/tasks/<id>.yaml). A superset of stagehand's task-record.yaml; attention is runtime state and never advances the task's workflow status.",
+  "x-version": "1.0.0",
+  "x-artifacts": [
+    { "format": "yaml", "paths": [".orchestrator/tasks/*.yaml", ".orchestrator/archive/*.yaml"] }
+  ],
+  "type": "object",
+  "required": ["task_id", "state"],
+  "properties": {
+    "task_id": {
+      "description": "The workflow task id when one exists (BILL-3); otherwise the runtime's stable id.",
+      "$ref": "common.schema.json#/$defs/nonEmptyString"
+    },
+    "runtime": {
+      "description": "Harness: which runtime keeps this record (stagehand, claude-loop, ci).",
+      "$ref": "common.schema.json#/$defs/slug"
+    },
+    "mode": {
+      "description": "Runtime engagement mode (stagehand). Not the task's methodology mode.",
+      "enum": ["development", "reviewer-only", "delegated-work", "workspace-only"]
+    },
+    "objective": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+    "intent_ref": {
+      "description": "Plan, PR, issue, task file or human request this work is authorized by.",
+      "$ref": "common.schema.json#/$defs/nonEmptyString"
+    },
+    "grant": {
+      "description": "Harness: the authority grant this record acts under, if any (grant.schema.json).",
+      "$ref": "common.schema.json#/$defs/grantId"
+    },
+    "repository": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "root": { "type": "string" },
+        "worktree": { "type": "string" },
+        "remote": { "type": "string" },
+        "base": { "type": "string" },
+        "base_commit": { "type": "string" },
+        "branch": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "development_target": {
+      "description": "Submodule work only; record each target separately for multi-repo work.",
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" },
+        "remote": { "type": "string" },
+        "base": { "type": "string" },
+        "base_commit": { "type": "string" },
+        "branch": { "type": "string" },
+        "containing_repository_pointer_update": { "enum": ["not-planned", "planned"] }
+      },
+      "additionalProperties": false
+    },
+    "workspace": {
+      "description": "The terminal runtime's workspace (a Herdr workspace in stagehand).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "agents": {
+      "description": "Role -> exact agent name; only roles actually created.",
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "role_sessions": {
+      "description": "Role -> pane, native session id, and model/effort when available.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "pane_id": { "type": "string" },
+          "session_id": { "type": "string" },
+          "engine": { "type": "string" },
+          "model": { "type": "string" },
+          "effort": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "wake": {
+      "type": "object",
+      "properties": {
+        "watches": {
+          "description": "Role -> persistent watch id.",
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "pull_requests": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "state": {
+      "type": "object",
+      "required": ["name", "summary"],
+      "properties": {
+        "name": { "$ref": "common.schema.json#/$defs/attention" },
+        "summary": {
+          "description": "A short status phrase, usually 3-5 words.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "next_role": {
+          "description": "Optional while working: who acts next.",
+          "type": ["string", "null"],
+          "enum": ["author", "reviewer", "worker", "workspace_agent", "orchestrator", null]
+        },
+        "next_action": {
+          "description": "The concrete next step. Required for needs-human, absent when complete.",
+          "$ref": "common.schema.json#/$defs/nonEmptyString"
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "required": ["name"], "properties": { "name": { "const": "needs-human" } } },
+          "then": { "required": ["next_action"] }
+        },
+        {
+          "if": { "required": ["name"], "properties": { "name": { "const": "complete" } } },
+          "then": { "properties": { "next_action": false, "next_role": false } }
+        }
+      ]
+    },
+    "signals": {
+      "description": "Harness: the last runtime signal per role, as observed (attention.yaml). Evidence for reconciliation, never a transition.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["source", "value", "observed_at"],
+        "properties": {
+          "source": { "enum": ["herdr", "a2a", "mcp-tasks", "claude-headless", "codex-exec", "ci", "other"] },
+          "value": { "type": "string", "minLength": 1 },
+          "observed_at": { "$ref": "common.schema.json#/$defs/dateTime" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "result": {
+      "description": "Latest result or verification reference.",
+      "$ref": "common.schema.json#/$defs/nonEmptyString"
+    },
+    "reviews": {
+      "description": "Review outcomes bound to the PR head they reviewed.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["pr", "head", "outcome"],
+        "properties": {
+          "pr": { "type": "string" },
+          "head": { "$ref": "common.schema.json#/$defs/gitSha" },
+          "outcome": { "enum": ["pass", "changes-requested", "comment"] },
+          "by": { "type": "string" },
+          "ref": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "decisions": {
+      "description": "Human decisions relevant to this task, each with its source and scope.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["decision", "source"],
+        "properties": {
+          "decision": { "type": "string", "minLength": 1 },
+          "source": { "type": "string", "minLength": 1 },
+          "scope": { "type": "string" },
+          "at": { "$ref": "common.schema.json#/$defs/dateTime" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "updated_at": { "$ref": "common.schema.json#/$defs/dateTime" }
+  },
+  "patternProperties": { "^x-": {} },
+  "additionalProperties": false
+}

@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://harness.dev/schemas/grant.schema.json",
+  "title": "Authority grant",
+  "description": "A human delegating named decisions to a coordinator for a named scope, within limits, until an expiry. Everything not granted stays human-owned (state-machines/authority.yaml). A grant never waives repository policy, protected branches, independent review or required checks.",
+  "x-version": "1.0.0",
+  "x-artifacts": [
+    { "format": "yaml", "paths": [".orchestrator/grants/*.yaml", "grants/*.yaml"] }
+  ],
+  "type": "object",
+  "required": ["id", "granted_by", "granted_to", "granted_at", "source", "scope", "actions", "limits", "expires_at"],
+  "properties": {
+    "id": { "$ref": "common.schema.json#/$defs/grantId" },
+    "granted_by": {
+      "description": "The human who holds the authority being delegated.",
+      "$ref": "common.schema.json#/$defs/handle"
+    },
+    "granted_to": {
+      "type": "object",
+      "required": ["role"],
+      "properties": {
+        "role": {
+          "description": "The coordinator role. Workers never hold a grant; a coordinator passes them only their bounded assignment.",
+          "enum": ["orchestrator", "merge", "planner"]
+        },
+        "agent": {
+          "description": "An exact agent identity, when the grant is for one session and not the role.",
+          "$ref": "common.schema.json#/$defs/handle"
+        },
+        "runtime": { "$ref": "common.schema.json#/$defs/slug" }
+      },
+      "additionalProperties": false
+    },
+    "granted_at": { "$ref": "common.schema.json#/$defs/dateTime" },
+    "source": {
+      "description": "Where the human said it: a commit, an issue comment, a transcript reference. A worker's claim of delegation is not a source.",
+      "$ref": "common.schema.json#/$defs/nonEmptyString"
+    },
+    "scope": {
+      "type": "object",
+      "required": ["objective", "repositories"],
+      "properties": {
+        "objective": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+        "repositories": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/repo" },
+          "uniqueItems": true
+        },
+        "epics": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/slug" }, "uniqueItems": true },
+        "tasks": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/taskId" }, "uniqueItems": true },
+        "requirements": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/docRef" } },
+        "non_goals": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/nonEmptyString" } }
+      },
+      "additionalProperties": false
+    },
+    "actions": {
+      "description": "The decisions delegated. Each is a separate grant: finalize does not imply merge, merge does not imply publish-review.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/action" }
+    },
+    "limits": {
+      "type": "object",
+      "required": ["max_workers", "budget"],
+      "properties": {
+        "max_workers": { "type": "integer", "minimum": 1, "maximum": 32 },
+        "budget": { "$ref": "common.schema.json#/$defs/budget" },
+        "stop_when": {
+          "description": "Conditions that end the delegation early (the agreed outcome, repeated non-progress, a consequential ambiguity).",
+          "type": "array",
+          "items": { "$ref": "common.schema.json#/$defs/nonEmptyString" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "expires_at": {
+      "description": "No grant is open-ended. Renewing is a new grant from the human, never a saved summary.",
+      "$ref": "common.schema.json#/$defs/dateTime"
+    },
+    "revocable": {
+      "description": "Always true: the human may narrow or revoke at any time.",
+      "const": true
+    },
+    "revoked_at": { "$ref": "common.schema.json#/$defs/dateTime" },
+    "revoked_by": { "$ref": "common.schema.json#/$defs/handle" },
+    "revocation_reason": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+    "narrowed": {
+      "description": "Narrowing history: each entry removes actions or scope; widening is a new grant.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["at", "by", "change"],
+        "properties": {
+          "at": { "$ref": "common.schema.json#/$defs/dateTime" },
+          "by": { "$ref": "common.schema.json#/$defs/handle" },
+          "change": { "$ref": "common.schema.json#/$defs/nonEmptyString" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "patternProperties": { "^x-": {} },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "description": "A revocation names who revoked it.",
+      "if": { "required": ["revoked_at"] },
+      "then": { "required": ["revoked_by"] }
+    },
+    {
+      "description": "Only a coordinator (orchestrator) or the merge role may hold merge authority.",
+      "if": { "required": ["actions"], "properties": { "actions": { "contains": { "type": "object", "required": ["action"], "properties": { "action": { "const": "merge" } } } } } },
+      "then": { "properties": { "granted_to": { "properties": { "role": { "enum": ["orchestrator", "merge"] } } } } }
+    }
+  ],
+  "$defs": {
+    "repo": {
+      "description": "owner/name on the forge, or a host-qualified host/owner/name.",
+      "type": "string",
+      "pattern": "^(?:[A-Za-z0-9.-]+/)?[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+    },
+    "simpleAction": {
+      "enum": ["select-tasks", "approve-plan", "dispose-findings", "finalize", "publish-review"]
+    },
+    "action": {
+      "type": ["string", "object"],
+      "if": { "type": "string" },
+      "then": { "$ref": "#/$defs/simpleAction" },
+      "else": {
+        "type": "object",
+        "required": ["action"],
+        "properties": { "action": { "enum": ["select-tasks", "approve-plan", "dispose-findings", "finalize", "publish-review", "merge"] } },
+        "allOf": [
+          {
+            "if": { "properties": { "action": { "const": "merge" } } },
+            "then": { "$ref": "#/$defs/mergeAction" },
+            "else": { "$ref": "#/$defs/parameterizedAction" }
+          }
+        ]
+      }
+    },
+    "parameterizedAction": {
+      "type": "object",
+      "properties": {
+        "action": { "$ref": "#/$defs/simpleAction" },
+        "policy": {
+          "description": "How the action is exercised, e.g. for dispose-findings: fix material in-scope findings, defer tangential ones.",
+          "$ref": "common.schema.json#/$defs/nonEmptyString"
+        }
+      },
+      "additionalProperties": false
+    },
+    "mergeAction": {
+      "description": "Merge authority names the repository, the target branch and the strategy, and still requires an independent review of the current head and the required checks.",
+      "type": "object",
+      "required": ["action", "repo", "target", "strategy", "requires"],
+      "properties": {
+        "action": { "const": "merge" },
+        "repo": { "$ref": "#/$defs/repo" },
+        "target": {
+          "description": "One exact branch; no wildcard.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
+        },
+        "strategy": { "enum": ["merge", "squash", "rebase"] },
+        "requires": {
+          "type": "array",
+          "items": { "enum": ["independent-review", "required-checks", "current-head", "human-approval"] },
+          "uniqueItems": true,
+          "allOf": [
+            { "contains": { "const": "independent-review" } },
+            { "contains": { "const": "required-checks" } }
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

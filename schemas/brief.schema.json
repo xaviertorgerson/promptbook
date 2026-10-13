@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://harness.dev/schemas/brief.schema.json",
+  "title": "Product brief",
+  "description": "The root of the trace graph: what the product is for, who it serves, and what it will not do. One per product.",
+  "x-version": "1.0.0",
+  "x-artifacts": [
+    { "format": "frontmatter-markdown", "paths": ["docs/product/brief.md"] }
+  ],
+  "x-sections": [
+    { "heading": "Problem", "match": "^Problem\\b" },
+    { "heading": "Users", "match": "^Users\\b" },
+    { "heading": "Outcomes", "match": "^Outcomes\\b" },
+    { "heading": "Non-goals", "match": "^Non-goals\\b" }
+  ],
+  "type": "object",
+  "required": ["id", "product", "owner", "status", "updated"],
+  "properties": {
+    "id": { "const": "BRIEF" },
+    "product": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+    "owner": { "$ref": "common.schema.json#/$defs/handle" },
+    "status": { "enum": ["draft", "approved", "superseded"] },
+    "updated": { "$ref": "common.schema.json#/$defs/date" },
+    "personas": {
+      "description": "The personas this brief commits to serving. Each must exist under docs/product/.",
+      "type": "array",
+      "items": { "$ref": "common.schema.json#/$defs/personaId" },
+      "uniqueItems": true
+    },
+    "links": {
+      "description": "Research, interviews, market notes the brief rests on.",
+      "type": "array",
+      "items": { "$ref": "common.schema.json#/$defs/docRef" }
+    }
+  },
+  "patternProperties": { "^x-": {} },
+  "additionalProperties": false
+}

@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://harness.dev/schemas/epic.schema.json",
+  "title": "Epic",
+  "description": "The frontmatter and required sections of specs/<epic>/spec.md: the planning-layer state machine. The same file carries the requirement contract in its Requirements tables.",
+  "x-version": "1.0.0",
+  "x-artifacts": [
+    { "format": "frontmatter-markdown", "paths": ["specs/*/spec.md"], "body": "epic" }
+  ],
+  "x-sections": [
+    { "heading": "Problem / motivation", "match": "^Problem\\b" },
+    { "heading": "Scope", "match": "^Scope\\b" },
+    { "heading": "Requirements", "match": "^Requirements\\b" },
+    { "heading": "Tasks", "match": "^Tasks\\b" },
+    { "heading": "Acceptance (epic Definition of Done)", "match": "^Acceptance\\b" }
+  ],
+  "type": "object",
+  "required": ["epic", "status", "priority", "size", "business_value", "initiative", "owner"],
+  "properties": {
+    "epic": { "$ref": "common.schema.json#/$defs/slug" },
+    "status": { "$ref": "common.schema.json#/$defs/epicStatus" },
+    "priority": { "$ref": "common.schema.json#/$defs/priority" },
+    "size": { "$ref": "common.schema.json#/$defs/size" },
+    "business_value": {
+      "anyOf": [
+        { "enum": ["low", "medium", "high"] },
+        { "type": "integer", "minimum": 1, "maximum": 5 }
+      ]
+    },
+    "initiative": {
+      "type": ["string", "null"],
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "owner": {
+      "description": "The product owner (a human). Null until claimed; required from approval on.",
+      "type": ["string", "null"],
+      "minLength": 1
+    }
+  },
+  "patternProperties": { "^x-": {} },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": { "required": ["status"], "properties": { "status": { "enum": ["approved", "in-progress", "done"] } } },
+      "then": { "properties": { "owner": { "type": "string" } } }
+    }
+  ]
+}

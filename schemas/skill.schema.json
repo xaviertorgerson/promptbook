@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://harness.dev/schemas/skill.schema.json",
+  "title": "Skill",
+  "description": "SKILL.md frontmatter of a portable (L3) skill: the Agent Skills core fields only (agentskills.io/specification, read 2026-10-13). Engine extensions (Claude Code's disable-model-invocation, context, hooks, paths, model; Codex's agents/openai.yaml sidecar) belong to adapters, never to an L3 skill. allowed-tools is rejected because its values are engine tool names.",
+  "x-version": "1.0.0",
+  "x-artifacts": [
+    {
+      "format": "frontmatter-markdown",
+      "paths": ["skills/*/SKILL.md", ".agents/skills/*/SKILL.md"],
+      "bind": { "name": 1 }
+    }
+  ],
+  "type": "object",
+  "required": ["name", "description"],
+  "properties": {
+    "name": {
+      "description": "1-64 chars, lowercase letters, digits and single hyphens, no leading or trailing hyphen; equals the directory name. Harness skills are gerund kebab-case (lint).",
+      "type": "string",
+      "maxLength": 64,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "description": {
+      "description": "1-1024 chars: what it does and when to use it. Harness convention: 'Use when ... Do not use for ...' (lint).",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024
+    },
+    "license": { "type": "string", "minLength": 1 },
+    "compatibility": { "type": "string", "minLength": 1, "maxLength": 500 },
+    "metadata": {
+      "description": "String-to-string map (the spec). The harness reads version, deprecated and layer.",
+      "type": "object",
+      "properties": {
+        "version": { "$ref": "common.schema.json#/$defs/semver" },
+        "deprecated": {
+          "description": "Present only when deprecated: the reason and the replacement skill.",
+          "type": "string",
+          "minLength": 1
+        },
+        "layer": { "enum": ["L1", "L2", "L3", "L4"] }
+      },
+      "additionalProperties": { "type": "string" }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://harness.dev/schemas/common.schema.json",
+  "title": "Shared definitions",
+  "description": "Ids, dates, references and status vocabularies every contract shares. Not an artifact itself.",
+  "x-version": "1.0.0",
+  "$defs": {
+    "nonEmptyString": { "type": "string", "minLength": 1 },
+    "slug": {
+      "description": "Lowercase kebab-case name (epic folder, runtime, engine, profile).",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "date": { "type": "string", "format": "date" },
+    "dateTime": { "type": "string", "format": "date-time" },
+    "semver": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+    },
+    "gitSha": { "type": "string", "pattern": "^[0-9a-f]{7,64}$" },
+    "handle": {
+      "description": "A person or agent identity as the project writes it (a GitHub handle, an agent name).",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "docRef": {
+      "description": "A repository path with an optional #anchor (DECISIONS.md#ADR-0019), or a URL.",
+      "type": "string",
+      "pattern": "^[^\\s]+$"
+    },
+    "taskId": {
+      "description": "<PREFIX>-<n>, stable and never reused (BILL-12, TMIG-1).",
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9]*-[0-9]+$"
+    },
+    "criterionId": {
+      "description": "AC-<n>, scoped to one task.",
+      "type": "string",
+      "pattern": "^AC-[1-9][0-9]*$"
+    },
+    "cujId": {
+      "description": "CUJ-<n>, scoped to one epic's cuj.md.",
+      "type": "string",
+      "pattern": "^CUJ-[1-9][0-9]*$"
+    },
+    "cujRef": {
+      "description": "CUJ-<n> in the citing artifact's own epic, or <epic>/CUJ-<n> across epics.",
+      "type": "string",
+      "pattern": "^(?:[a-z0-9]+(?:-[a-z0-9]+)*/)?CUJ-[1-9][0-9]*$"
+    },
+    "requirementId": {
+      "description": "REQ-<n> (functional) or NFR-<n> (non-functional), scoped to one epic's spec.md.",
+      "type": "string",
+      "pattern": "^(?:REQ|NFR)-[1-9][0-9]*$"
+    },
+    "requirementRef": {
+      "description": "A requirement id in the citing artifact's own epic, or <epic>/REQ-<n> across epics.",
+      "type": "string",
+      "pattern": "^(?:[a-z0-9]+(?:-[a-z0-9]+)*/)?(?:REQ|NFR)-[1-9][0-9]*$"
+    },
+    "qualifiedRequirementRef": {
+      "description": "<epic>/REQ-<n> or <epic>/NFR-<n>; used where the citing artifact belongs to no epic (an ADR).",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*/(?:REQ|NFR)-[1-9][0-9]*$"
+    },
+    "personaId": { "type": "string", "pattern": "^PER-[1-9][0-9]*$" },
+    "uxId": { "type": "string", "pattern": "^UX-[1-9][0-9]*$" },
+    "adrId": { "type": "string", "pattern": "^ADR-[0-9]{4}$" },
+    "grantId": { "type": "string", "pattern": "^GRANT-[1-9][0-9]*$" },
+    "taskStatus": {
+      "description": "Workflow status of a task; the kanban column. Mirrors state-machines/workflow.yaml (task machine).",
+      "enum": ["spec-draft", "ready", "in-progress", "review", "human-review", "merging", "merged", "blocked", "needs-input", "suspended"]
+    },
+    "epicStatus": {
+      "description": "Planning status of an epic (spec.md). Mirrors state-machines/workflow.yaml (epic machine).",
+      "enum": ["intake", "scoping", "draft", "approved", "in-progress", "done", "blocked"]
+    },
+    "attention": {
+      "description": "Runtime attention of a run or record. Never a workflow status (state-machines/attention.yaml).",
+      "enum": ["working", "needs-human", "complete"]
+    },
+    "priority": { "enum": ["P0", "P1", "P2", "P3"] },
+    "size": { "enum": ["XS", "S", "M", "L", "XL"] },
+    "layer": { "enum": ["L1", "L2", "L3", "L4"] },
+    "role": {
+      "description": "Workflow roles (state-machines/workflow.yaml). orchestrator acts only through a grant.",
+      "enum": ["owner", "engineer", "planner", "coder", "reviewer", "merge", "train", "orchestrator"]
+    },
+    "budget": {
+      "description": "Ceilings for one run or one task. A runner enforces them; they are never advisory.",
+      "type": "object",
+      "minProperties": 1,
+      "properties": {
+        "max_turns": { "type": "integer", "minimum": 1 },
+        "max_usd": { "type": "number", "exclusiveMinimum": 0 },
+        "max_minutes": { "type": "integer", "minimum": 1 },
+        "max_tokens": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "sessionRef": {
+      "description": "One agent session that worked a task, as the runtime names it.",
+      "type": "object",
+      "required": ["engine", "session_id"],
+      "properties": {
+        "engine": { "$ref": "#/$defs/slug" },
+        "session_id": { "$ref": "#/$defs/nonEmptyString" },
+        "actor": { "$ref": "#/$defs/handle" },
+        "role": { "$ref": "#/$defs/nonEmptyString" },
+        "started_at": { "$ref": "#/$defs/dateTime" },
+        "ended_at": { "$ref": "#/$defs/dateTime" },
+        "outcome": { "enum": ["advanced", "stalled", "failed", "abandoned"] },
+        "run": { "$ref": "#/$defs/docRef" }
+      },
+      "additionalProperties": false
+    },
+    "traceGap": {
+      "description": "One finding of the trace check (validate.mjs --trace) and of a readiness report.",
+      "type": "object",
+      "required": ["rule", "severity", "subject", "message"],
+      "properties": {
+        "rule": { "$ref": "#/$defs/slug" },
+        "severity": { "enum": ["error", "warning", "info"] },
+        "epic": { "$ref": "#/$defs/slug" },
+        "subject": { "$ref": "#/$defs/nonEmptyString" },
+        "message": { "$ref": "#/$defs/nonEmptyString" },
+        "file": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  }
+}
