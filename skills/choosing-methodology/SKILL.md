@@ -65,7 +65,9 @@ A mode change on a task already past `spec-draft` is a kick-back, never a silent
 3. Keep what was learned: the branch stays; the working notes keep the research and failed
    approaches; open PRs are left as drafts or closed by the human.
 4. Satisfy the new mode's entry guard before `ready` again (e.g. a reviewed research note and plan).
-5. Tasks not yet started just change `mode` while in `spec-draft`; merged tasks keep theirs.
+5. A `spec-draft` task just changes `mode`. A `ready` task has no transition back to `spec-draft`:
+   the owner or an engineer edits `mode` before anyone claims it (suspend it first if a claim is
+   imminent), and the new mode's claim guard applies. Merged tasks keep theirs.
 6. Changing the epic default changes nothing already in flight.
 
 ## Outputs
