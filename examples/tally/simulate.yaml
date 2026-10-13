@@ -10,9 +10,10 @@
 #                        recovers from notices and check-ins, never by guessing
 #   integration branch   tasks land on integration/settle-up under GRANT-2, which no merge queue
 #                        serves (queue_targets: main); dana merges the branch into main herself
-# Tasks, the grant and the policy are copies of the project's own files; tests/example.test.mjs
-# fails if they drift. The simulator holds one grant per runtime, so it carries GRANT-2 (the one
-# its invariants exercise); GRANT-1's budget is the runtime budget (supervisor.budget_usd).
+# Tasks, both grants and the policy are copies of the project's own files; tests/example.test.mjs
+# fails if they drift. The coordinator holds GRANT-1 (select, plan, findings: three workers, $30,
+# which is the runtime's cap and budget) and GRANT-2 (merge into integration/settle-up only: merge
+# authority comes from it alone, and its max_workers caps nothing it does not dispatch).
 name: tally-settle-up
 description: Tally's settle-up epic after the skeleton, under the walkthrough's faults.
 seed: 1
@@ -30,34 +31,59 @@ policy:
   ask:
     - { command: [psql] }
   budgets: { max_turns: 120, max_usd: 4 }
-supervisor: { max_workers: 3, budget_usd: 30 }
+supervisor: { max_workers: 3 }
 merge: { queue_targets: [main] }
 human: { name: dana, on_integration: merge }
-grant:
-  id: GRANT-2
-  granted_by: dana
-  granted_to: { role: orchestrator, runtime: multiplexer-coordinator }
-  granted_at: "2026-10-13T21:45:00Z"
-  source: "https://forge.example.com/tally/tally/issues/1#issuecomment-4"
-  scope:
-    objective: Integrate reviewed settle-up PRs on integration/settle-up
-    repositories: [tally/tally]
-    epics: [settle-up]
-    non_goals: [merging into main, any repository other than tally/tally]
-  actions:
-    - action: merge
-      repo: tally/tally
-      target: integration/settle-up
-      strategy: merge
-      requires: [independent-review, required-checks, current-head]
-  limits:
-    max_workers: 3
-    budget: { max_usd: 5 }
-    stop_when:
-      - a merge conflict that is not mechanical
-      - the checks on the merged result fail
-  expires_at: "2026-10-27T21:45:00Z"
-  revocable: true
+grants:
+  - id: GRANT-1
+    granted_by: dana
+    granted_to: { role: orchestrator, runtime: multiplexer-coordinator }
+    granted_at: "2026-10-13T21:40:00Z"
+    source: "https://forge.example.com/tally/tally/issues/1#issuecomment-3"
+    scope:
+      objective: Deliver SPLIT-2, SPLIT-3 and SPLIT-4 of settle-up against specs/settle-up/spec.md
+      repositories: [tally/tally]
+      epics: [settle-up]
+      tasks: [SPLIT-2, SPLIT-3, SPLIT-4]
+      requirements: [specs/settle-up/spec.md#requirements]
+      non_goals: [SPLIT-1 (high risk; dana runs it supervised), uneven splits, reminders, any interface beyond the spec's four endpoints]
+    actions:
+      - select-tasks
+      - approve-plan
+      - { action: dispose-findings, policy: "Fix material in-scope findings in the same PR; record tangential ones as follow-ups for the planner; never drop a correctness or security finding" }
+    limits:
+      max_workers: 3
+      budget: { max_usd: 30 }
+      stop_when:
+        - every task in scope is integrated on integration/settle-up
+        - two consecutive runs on one task make no progress
+        - a product decision the spec does not make
+    expires_at: "2026-10-27T21:40:00Z"
+    revocable: true
+  - id: GRANT-2
+    granted_by: dana
+    granted_to: { role: orchestrator, runtime: multiplexer-coordinator }
+    granted_at: "2026-10-13T21:45:00Z"
+    source: "https://forge.example.com/tally/tally/issues/1#issuecomment-4"
+    scope:
+      objective: Integrate reviewed settle-up PRs on integration/settle-up
+      repositories: [tally/tally]
+      epics: [settle-up]
+      non_goals: [merging into main, any repository other than tally/tally]
+    actions:
+      - action: merge
+        repo: tally/tally
+        target: integration/settle-up
+        strategy: merge
+        requires: [independent-review, required-checks, current-head]
+    limits:
+      max_workers: 1
+      budget: { max_usd: 5 }
+      stop_when:
+        - a merge conflict that is not mechanical
+        - the checks on the merged result fail
+    expires_at: "2026-10-27T21:45:00Z"
+    revocable: true
 faults:
   ask: { tasks: [SPLIT-4], command: [psql, app_feat_split_4_revoke_link] }
   evaluator_rejection: { tasks: { SPLIT-2: 1 } }

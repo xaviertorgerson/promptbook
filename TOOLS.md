@@ -72,12 +72,18 @@ epic's integration branch) admit a merge only with an approval of the head, and 
 signals (working, blocked, done, idle, unknown) are lossy and duplicable, with events-lost notices.
 
 A scenario names tasks (`depends_on`, `touches`, `size`, `risk`, `criteria`, `budget`, `lands_to`),
-the policy tier and its `forbid`/`ask`/`budgets`, an optional grant (validated against the grant
-contract), the supervisor's caps, the merge queue's `queue_targets` (default every branch), the
+the policy tier and its `forbid`/`ask`/`budgets`, its grants (`grant`, or `grants` for several,
+e.g. a work grant and a separate merge grant; each validated against the grant contract), the
+supervisor's caps, the merge queue's `queue_targets` (default every branch), the
 human's behaviour (`on_integration: merge|hold`), and faults: `concurrent_claims` (a rival runtime),
 `crash`, `lost_events`, `duplicate_wakes`, `unknown_signals`, `no_progress`, `budget_exhaustion`,
 `semantic_conflict`, `evaluator_rejection`, `grant_expiry`, `merge_without_grant`, `ask`, `wall`,
-`question`. Unknown keys are errors. `--project` reads `specs/<epic>/tasks/*.md` with the
+`question` (`grant_expiry.grant` names the one grant to expire; default every one). Unknown keys
+are errors. With several grants, each delegated action is exercised under the live grant that
+delegates it (merge authority comes from a merge grant only); the workers cap is the smallest
+`max_workers` among the live grants that dispatch work (`select-tasks`, `approve-plan`,
+`dispose-findings`, `finalize`), so a merge-only grant caps nothing it does not run; the runtime
+budget defaults to the tightest such grant's budget. `--project` reads `specs/<epic>/tasks/*.md` with the
 validator's loaders (`--config` adds actors and faults; `assume_approved: true` stands in for the
 spec gate).
 

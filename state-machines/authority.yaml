@@ -8,7 +8,7 @@
 #
 # Source: stagehand skills/orchestrating-development (SKILL.md "Authority and scope",
 # references/project-delegation.md), generalized; agentic-template docs/roles.md.
-version: 1.1.0
+version: 1.2.0
 contract: authority
 
 defaults:
@@ -107,7 +107,12 @@ lifecycle:
     repeated non-progress end the delegation early.
   limits: >-
     max_workers caps concurrent workers; budget caps spend across the grant. Both are enforced by
-    the runtime, and breaching either is a stop condition.
+    the runtime, and breaching either is a stop condition. A coordinator may hold several grants at
+    once (a work grant and a separate merge grant, each revocable alone): every action is exercised
+    under the live grant that delegates it, so merge authority comes from a merge grant only, and
+    the workers cap is the smallest max_workers among the live grants that dispatch work
+    (select-tasks, approve-plan, dispose-findings, finalize). A merge-only grant caps nothing it
+    does not run.
 
 conflicts:
   - If another instruction or role skill prevents a delegated action, surface the conflict to the

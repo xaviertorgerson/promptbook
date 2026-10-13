@@ -1,4 +1,4 @@
-import { grantHas, grantLiveAt, landingTarget } from './authority.mjs';
+import { grantFor, grantHas, grantLiveAt, landingTarget } from './authority.mjs';
 import { Heap, makeRng, round } from './util.mjs';
 
 // The simulated world: everything except the supervisor policy under test.
@@ -103,14 +103,16 @@ export class World {
     for (const name of names) {
       const prefix = name === 'main' ? 'sim' : 'rival';
       const factory = policies[name] ?? policies.main;
-      const grant = name === 'main' && sc.grant ? structuredClone(sc.grant) : null;
-      if (grant) this.artifacts.grants.push(structuredClone(grant));
+      // The main runtime holds every grant the scenario names (a work grant and a merge grant are
+      // separate records, revocable alone); a rival runtime holds none.
+      const grants = name === 'main' ? structuredClone(sc.grants) : [];
+      for (const g of grants) this.artifacts.grants.push(structuredClone(g));
       this.runtimes.set(name, {
         name,
         coder: `${prefix}-coder`,
         evaluator: `${prefix}-evaluator`,
         policy: factory({ runtime: name, sc }),
-        grant,
+        grants,
         records: new Map(),
         spend: { total: 0, perTask: new Map() },
         consumed: new Set(),
@@ -151,9 +153,10 @@ export class World {
       if (t.status === 'integrated') this.humanNotify({ kind: 'integration', task: t.id, ref: this.branchOf(t.id).name });
       if (t.status === 'human-review') this.humanNotify({ kind: 'review', task: t.id });
     }
-    if (this.sc.grant && this.sc.faults.grant_expiry) {
-      const at = (Date.parse(this.sc.grant.expires_at) - this.startMs) / 60000;
-      this.at(at, 'grant-expires', { actor: 'clock' }, () => this.effect({ grant: this.sc.grant.id, expired: true }));
+    const expiry = this.sc.faults.grant_expiry;
+    for (const g of expiry ? this.sc.grants.filter((x) => !expiry.grant || x.id === expiry.grant) : []) {
+      const at = (Date.parse(g.expires_at) - this.startMs) / 60000;
+      this.at(at, 'grant-expires', { actor: 'clock' }, () => this.effect({ grant: g.id, expired: true }));
     }
     const horizon = this.sc.horizon_minutes;
     while (this.heap.size) {
@@ -285,9 +288,9 @@ export class World {
       runs: sessions.filter((s) => s.state !== 'running' && s.state !== 'blocked' && !rt.consumed.has(s.id)),
       decisions: this.forge.decisions.map((d) => ({ ...d })),
       prompts: [...this.prompts.values()].filter((p) => this.sessions.get(p.session)?.runtime === rt.name).map((p) => ({ ...p })),
-      grant: rt.grant ? structuredClone(rt.grant) : null,
-      grantLive: grantLiveAt(rt.grant, ms),
-      grantHas: (action, task) => grantLiveAt(rt.grant, ms) && grantHas(rt.grant, action, this.sc, task),
+      grants: structuredClone(rt.grants),
+      grantsLive: structuredClone(rt.grants.filter((g) => grantLiveAt(g, ms))),
+      grantHas: (action, task) => rt.grants.some((g) => grantLiveAt(g, ms) && grantHas(g, action, this.sc, task)),
       spend: { total: rt.spend.total, perTask: Object.fromEntries(rt.spend.perTask), inflightCaps: sessions.filter((s) => s.state === 'running' || s.state === 'blocked').reduce((a, s) => a + (Number.isFinite(s.caps.max_usd) ? s.caps.max_usd : Infinity), 0) },
       records: Object.fromEntries([...rt.records].map(([k, v]) => [k, structuredClone(v)])),
       target: { version: this.forge.target.version, landed: [...this.forge.target.landed] },
@@ -880,9 +883,10 @@ export class World {
     if (rt.mergingTask || this.forge.tasks.get(task)?.status !== 'merging') return false;
     rt.mergingTask = task;
     const ms = this.startMs + this.t * 60000;
-    const live = grantLiveAt(rt.grant, ms);
-    const snapshot = rt.grant ? structuredClone(rt.grant) : null;
-    const grant = { grant: live ? rt.grant.id : null, grantSnapshot: snapshot, grantLive: live };
+    // Merge authority comes from a merge grant only, whatever else the runtime holds.
+    const g = grantFor(rt.grants, 'merge', this.sc, this.meta.get(task).spec, ms);
+    const live = grantLiveAt(g, ms);
+    const grant = { grant: live ? g.id : null, grantSnapshot: g ? structuredClone(g) : null, grantLive: live };
     const who = {
       actor: rt.name,
       role: 'orchestrator',
@@ -1013,7 +1017,7 @@ export class World {
   mergeGrantCovers(task) {
     const ms = this.startMs + this.t * 60000;
     const spec = this.meta.get(task).spec;
-    return [...this.runtimes.values()].some((rt) => grantLiveAt(rt.grant, ms) && grantHas(rt.grant, 'merge', this.sc, spec) && this.forge.tasks.get(task).owner === rt.coder);
+    return [...this.runtimes.values()].some((rt) => rt.grants.some((g) => grantLiveAt(g, ms) && grantHas(g, 'merge', this.sc, spec)) && this.forge.tasks.get(task).owner === rt.coder);
   }
 
   humanAct(item) {
@@ -1073,12 +1077,14 @@ export class World {
         return;
       case 'grant': {
         const rt = this.runtimes.get(item.runtime ?? 'main');
-        if (h.on_grant_expiry === 'renew' && rt.grant && !grantLiveAt(rt.grant, this.startMs + this.t * 60000)) {
-          const n = Number(rt.grant.id.split('-')[1]) + 1;
-          rt.grant = { ...structuredClone(rt.grant), id: `GRANT-${n}`, granted_at: this.iso(), expires_at: this.iso(this.t + h.renew_for_minutes), source: `sim: renewed by ${h.name} at ${this.iso()}` };
-          delete rt.grant.revoked_at;
-          this.artifacts.grants.push(structuredClone(rt.grant));
-          this.decide(item.task, 'grant', { renewed: rt.grant.id });
+        const i = rt.grants.findIndex((g) => g.id === item.task);
+        if (h.on_grant_expiry === 'renew' && i !== -1 && !grantLiveAt(rt.grants[i], this.startMs + this.t * 60000)) {
+          const n = Math.max(...this.artifacts.grants.map((g) => Number(g.id.split('-')[1]))) + 1;
+          const renewed = { ...structuredClone(rt.grants[i]), id: `GRANT-${n}`, granted_at: this.iso(), expires_at: this.iso(this.t + h.renew_for_minutes), source: `sim: renewed by ${h.name} at ${this.iso()}` };
+          delete renewed.revoked_at;
+          rt.grants[i] = renewed;
+          this.artifacts.grants.push(structuredClone(renewed));
+          this.decide(item.task, 'grant', { renewed: renewed.id });
         } else {
           for (const x of this.forge.tasks.values()) if (x.status === 'human-review') this.humanNotify({ kind: 'review', task: x.id, ref: 'grant-declined' });
           this.decide(item.task, 'grant', { renewed: null });
@@ -1105,7 +1111,9 @@ export class World {
   supervisorCommit(rt, taskId, c, note) {
     const t = this.forge.tasks.get(taskId);
     const ms = this.startMs + this.t * 60000;
-    const live = grantLiveAt(rt.grant, ms);
+    // The grant the transition's action is delegated by (finalize, merge), recorded with the commit.
+    const g = grantFor(rt.grants, this.m.transitions.get(c.transition)?.grant, this.sc, this.meta.get(taskId).spec, ms);
+    const live = grantLiveAt(g, ms);
     this.push({
       task: taskId,
       from: t.status,
@@ -1114,8 +1122,8 @@ export class World {
       actorKind: 'agent',
       role: 'orchestrator',
       runtime: rt.name,
-      grant: live ? rt.grant.id : null,
-      grantSnapshot: rt.grant ? structuredClone(rt.grant) : null,
+      grant: live ? g.id : null,
+      grantSnapshot: g ? structuredClone(g) : null,
       grantLive: live,
       trigger: note ? { kind: note.kind, value: note.value ?? note.what ?? null } : null,
       ...c,

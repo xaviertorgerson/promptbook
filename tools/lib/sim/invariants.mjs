@@ -1,5 +1,5 @@
 import { registry as sharedRegistry } from '../registry.mjs';
-import { grantHas, landingTarget } from './authority.mjs';
+import { grantHas, landingTarget, recordGrant, workerCap } from './authority.mjs';
 import { isHuman } from './machines.mjs';
 import { touchesOverlap } from './util.mjs';
 import { RUNTIME_SIGNALS, ruleMatches } from './world.mjs';
@@ -18,7 +18,7 @@ export const INVARIANTS = {
   'attention-consistent': 'Task records carry attention only (working, needs-human, complete); needs-human names the next action; complete names none and is recorded only once the evidence shows nothing is left for the human (attention.yaml: idle-is-not-complete).',
   'merge-requires-authority': 'A change lands on a branch (the protected target, or an epic\'s integration branch) only by the merge role, a human, or the orchestrator under a merge grant live when it decided for that exact branch; an agent lands only together with its land or integrate commit and after checks on the merged result of that head; with an approval of the landed head by a human or by the orchestrator under such a grant, an independent passing review of that head and green checks; never over a semantic conflict or red merged checks (authority.yaml merge; playbook: landing-changes).',
   'lanes-disjoint': 'Claimed tasks (in-progress through merging) never have overlapping touches: overlapping tasks are one lane and run in sequence (playbook: single-writer).',
-  'cap-workers': 'Live workers per runtime never exceed the supervisor\'s max_workers, nor a live grant\'s limits.max_workers (playbook: budgets-and-routing).',
+  'cap-workers': 'Live workers per runtime never exceed the supervisor\'s max_workers, nor the limits.max_workers of any live grant that delegates dispatch (select-tasks, approve-plan, dispose-findings, finalize); a merge-only grant caps nothing (playbook: budgets-and-routing).',
   'cap-depth': 'No helper is spawned below the delegation depth cap; helpers do not spawn helpers by default (playbook: topologies).',
   'cap-run': 'Every run is dispatched with a turn and a spend cap within the policy\'s budgets, and the runner stops it there (HAR-3).',
   'cap-spend': 'Spend per task stays within its budget (plus human raises) and the runtime\'s total within its budget or grant (playbook: budgets-and-routing).',
@@ -213,8 +213,7 @@ export class Checker {
     const ms = w.startMs + ev.at * 60000;
     for (const rt of w.runtimes.values()) {
       const live = [...w.sessions.values()].filter((s) => s.runtime === rt.name && (s.kind === 'author' || s.kind === 'evaluator') && (s.state === 'running' || s.state === 'blocked'));
-      const grantLive = rt.grant && Date.parse(rt.grant.granted_at) <= ms && ms < Date.parse(rt.grant.expires_at);
-      const cap = Math.min(sc.supervisor.max_workers, grantLive ? rt.grant.limits?.max_workers ?? Infinity : Infinity);
+      const cap = workerCap(rt.grants, ms, sc.supervisor.max_workers);
       if (live.length > cap) this.report(w, ev, 'cap-workers', null, `${rt.name}: ${live.length} live workers, cap ${cap}`, `workers-${rt.name}-${ev.index}`);
       const total = rt.spend.total;
       if (total > sc.supervisor.budget_usd + 1e-6) this.report(w, ev, 'cap-spend', null, `${rt.name} spent $${total.toFixed(2)} of a $${sc.supervisor.budget_usd} budget`, `spend-${rt.name}`);
@@ -317,7 +316,8 @@ export function exportTaskRecords(w) {
       const state = { name: r.attention, summary: r.summary || r.attention };
       if (r.attention !== 'complete' && r.next_action) state.next_action = r.next_action;
       const rec = { task_id: id, runtime: rt.name, objective: w.meta.get(id).spec.title, state, updated_at: r.updated_at };
-      if (rt.grant) rec.grant = rt.grant.id;
+      const g = recordGrant(rt.grants, w.sc, w.meta.get(id).spec);
+      if (g) rec.grant = g.id;
       const signals = Object.fromEntries(Object.entries(r.signals).map(([role, s]) => [role, s]));
       if (Object.keys(signals).length) rec.signals = signals;
       out.push(rec);

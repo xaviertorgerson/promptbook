@@ -130,7 +130,7 @@ The coordinator wakes on events and a cheap check-in timer, reads the task files
 | 20, 32: the unattended `psql` ask | `faults.ask` on SPLIT-4, policy tier `unattended` | `asks-surface-to-human`, `no-progress-stops`, `stalls-surface` |
 | 22, 24: the evaluator rejects the first head | `faults.evaluator_rejection: { SPLIT-2: 1 }` | `guards-hold` (independent-verification), `merge-requires-authority` |
 | 25: the lost wake | `faults.lost_events` (a tenth of the wakes, some with no notice) | `signals-never-advance-workflow`, `stalls-surface` |
-| 27, 32-35: the integration-branch flow | GRANT-2 verbatim; `merge.queue_targets: [main]`; `human.on_integration: merge` | `merge-requires-authority`, `transitions-allowed`, `human-gates-by-humans` |
+| 27, 32-35: the integration-branch flow | GRANT-1 and GRANT-2 verbatim (GRANT-1's three workers and $30 bound the run; merge authority comes from GRANT-2 alone); `merge.queue_targets: [main]`; `human.on_integration: merge` | `merge-requires-authority`, `transitions-allowed`, `human-gates-by-humans` |
 
 Every seed of the fifty integrates SPLIT-2..4 under GRANT-2 and ends with dana promoting all three,
 with zero violations; `tests/example.test.mjs` checks that each fault actually fired.

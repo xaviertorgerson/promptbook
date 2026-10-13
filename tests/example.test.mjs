@@ -11,6 +11,8 @@ import { readLock } from '../tools/lib/lock.mjs';
 import { registry } from '../tools/lib/registry.mjs';
 import { criteria as readCriteria } from '../tools/lib/ears.mjs';
 import { loadFrontmatterMarkdown } from '../tools/lib/loaders.mjs';
+import { workerCap } from '../tools/lib/sim/authority.mjs';
+import { exportTaskRecords } from '../tools/lib/sim/invariants.mjs';
 import { loadScenario } from '../tools/lib/sim/scenario.mjs';
 import { simulate } from '../tools/lib/sim/simulate.mjs';
 
@@ -94,13 +96,16 @@ describe('the worked example: Tally', () => {
       const integrated = commits.filter((c) => c.transition === 'integrate');
       assert.deepEqual(integrated.map((c) => c.task).sort(), ['SPLIT-2', 'SPLIT-3', 'SPLIT-4'], `seed ${seed}`);
       assert.ok(integrated.every((c) => c.role === 'orchestrator' && c.grant === 'GRANT-2'), `seed ${seed}: integrated under GRANT-2`);
+      const recs = exportTaskRecords(w).filter((x) => x.task_id !== 'SPLIT-1');
+      assert.ok(recs.length && recs.every((x) => x.grant === 'GRANT-1'), `seed ${seed}: the task records name GRANT-1, the grant that dispatched the work`);
       assert.deepEqual(commits.filter((c) => c.transition === 'promote' && c.by === 'dana').map((c) => c.task).sort(), ['SPLIT-2', 'SPLIT-3', 'SPLIT-4'], `seed ${seed}: dana merged the branch`);
     }
   });
 
-  it('the scenario is a copy of the project: its tasks, GRANT-2, and the operator\'s command rules and caps', () => {
+  it('the scenario is a copy of the project: its tasks, both grants, and the operator\'s command rules and caps', () => {
     const sc = yaml('simulate.yaml');
-    assert.deepEqual(sc.grant, yaml('.orchestrator/grants/GRANT-2.yaml'));
+    const grantFiles = fs.readdirSync(path.join(EX, '.orchestrator/grants')).sort().map((f) => yaml(`.orchestrator/grants/${f}`));
+    assert.deepEqual(sc.grants, grantFiles);
     assert.deepEqual(sc.tasks.map((t) => t.id).sort(), Object.keys(taskFiles).sort());
     for (const t of sc.tasks) {
       const { data: f, criteria } = taskFiles[t.id];
@@ -115,7 +120,13 @@ describe('the worked example: Tally', () => {
     assert.equal(sc.policy.tier, policy.profiles.ci.tier);
     const { max_turns, max_usd } = policy.budgets.unattended;
     assert.deepEqual(sc.policy.budgets, { max_turns, max_usd });
-    assert.equal(sc.supervisor.budget_usd, yaml('.orchestrator/grants/GRANT-1.yaml').limits.budget.max_usd);
+    // The runtime's budget and workers cap are GRANT-1's, the grant that dispatches the work;
+    // GRANT-2 delegates merge alone, so its max_workers (one merge at a time) caps no dispatch.
+    const [g1, g2] = grantFiles;
+    const norm = loadScenario(path.join(EX, 'simulate.yaml'));
+    assert.equal(norm.supervisor.budget_usd, g1.limits.budget.max_usd);
+    assert.equal(workerCap(norm.grants, Date.parse(sc.start), norm.supervisor.max_workers), g1.limits.max_workers);
+    assert.equal(g2.limits.max_workers, 1);
   });
 
   it('the compiled policy is the compiler\'s output: every profile × engine recompiles to the committed files', () => {

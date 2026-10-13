@@ -4,9 +4,11 @@ import { parse } from 'yaml';
 import { criteria as readCriteria } from '../ears.mjs';
 import { findFiles } from '../glob.mjs';
 import { loadFrontmatterMarkdown, readText } from '../loaders.mjs';
+import { DISPATCH_ACTIONS } from './authority.mjs';
 
 // A simulation scenario: the tasks, the actors and their latencies, the L1 policy tier the runtime
-// runs under, an optional grant, and the faults to inject. Every key has a default, so a scenario
+// runs under, its grants (grant: one, or grants: a list, e.g. a work grant and a merge grant), and
+// the faults to inject. Every key has a default, so a scenario
 // names only what it is about. Unknown keys are errors (a typo must not silently do nothing).
 
 export const DEFAULTS = {
@@ -22,6 +24,7 @@ export const DEFAULTS = {
   policy: { tier: 'autonomous', forbid: [], ask: [], budgets: { max_turns: 200, max_usd: 5 } },
   supervisor: { max_workers: 3, max_depth: 1, no_progress_runs: 1, max_review_rounds: 3, max_ci_rounds: 3, max_crash_restarts: 2, checkin_minutes: 60, budget_usd: null },
   grant: null,
+  grants: [],
   human: {
     name: 'owner',
     review_minutes: [30, 240],
@@ -64,7 +67,7 @@ export const FAULTS = {
   budget_exhaustion: { tasks: [], factor: 8 },
   semantic_conflict: { pairs: [], rate: 0 },
   evaluator_rejection: { tasks: {} },
-  grant_expiry: { at_minutes: 240 },
+  grant_expiry: { at_minutes: 240, grant: null },
   merge_without_grant: { tasks: [] },
   ask: { tasks: [], command: ['psql'] },
   wall: { tasks: [], command: ['git', 'push', '--force'] },
@@ -163,12 +166,26 @@ export function normalize(raw, { source = 'scenario' } = {}) {
   if (sc.merge.queue_targets !== null && !(Array.isArray(sc.merge.queue_targets) && sc.merge.queue_targets.every((x) => typeof x === 'string'))) errors.push('merge.queue_targets: null (every branch) or a list of branch names');
   if (!['merge', 'hold'].includes(sc.human.on_integration)) errors.push('human.on_integration: merge or hold');
   for (const [k, r] of [['work.fix_minutes', sc.work.fix_minutes], ['checks.minutes', sc.checks.minutes], ['evaluator.minutes', sc.evaluator.minutes], ['merge.minutes', sc.merge.minutes], ['human.review_minutes', sc.human.review_minutes], ['human.answer_minutes', sc.human.answer_minutes]]) range(r, k, errors);
-  if (sc.grant) {
-    sc.grant = structuredClone(sc.grant);
-    for (const k of ['granted_at', 'expires_at', 'revoked_at']) if (sc.grant[k] !== undefined) sc.grant[k] = resolveTime(sc.grant[k], startMs);
-    if (sc.faults.grant_expiry) sc.grant.expires_at = resolveTime(sc.faults.grant_expiry.at_minutes, startMs);
-  } else if (sc.faults.grant_expiry) errors.push('faults.grant_expiry: the scenario has no grant to expire');
-  sc.supervisor.budget_usd ??= sc.grant?.limits?.budget?.max_usd ?? 100;
+  // grant: X is grants: [X]. Grant ids are unique; grant_expiry expires the one it names, or all.
+  if (sc.grant && sc.grants.length) errors.push('grant and grants: name one grant, or a list of them, not both');
+  sc.grants = structuredClone(sc.grant ? [sc.grant] : sc.grants ?? []);
+  delete sc.grant;
+  if (!Array.isArray(sc.grants)) errors.push('grants: a list of grants');
+  const grantIds = new Set();
+  for (const g of Array.isArray(sc.grants) ? sc.grants : []) {
+    if (grantIds.has(g?.id)) errors.push(`grants: ${g.id} repeats`);
+    grantIds.add(g?.id);
+    for (const k of ['granted_at', 'expires_at', 'revoked_at']) if (g?.[k] !== undefined) g[k] = resolveTime(g[k], startMs);
+  }
+  const expiry = sc.faults.grant_expiry;
+  if (expiry) {
+    if (!sc.grants.length) errors.push('faults.grant_expiry: the scenario has no grant to expire');
+    else if (expiry.grant && !grantIds.has(expiry.grant)) errors.push(`faults.grant_expiry.grant: no grant ${expiry.grant}`);
+    for (const g of sc.grants) if (!expiry.grant || g.id === expiry.grant) g.expires_at = resolveTime(expiry.at_minutes, startMs);
+  }
+  // The runtime's budget: the tightest of the grants that dispatch work (a merge grant spends nothing).
+  const dispatchBudgets = (Array.isArray(sc.grants) ? sc.grants : []).filter((g) => g?.actions?.some((a) => DISPATCH_ACTIONS.includes(typeof a === 'string' ? a : a.action))).map((g) => g.limits?.budget?.max_usd).filter((x) => x !== undefined);
+  sc.supervisor.budget_usd ??= dispatchBudgets.length ? Math.min(...dispatchBudgets) : 100;
   if (errors.length) throw new Error(`${source}:\n  ${errors.join('\n  ')}`);
   sc.source = source;
   return sc;

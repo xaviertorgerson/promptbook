@@ -264,7 +264,11 @@ deleted, so the audit trail stays), its *dates* (`pending` before `granted_at`, 
 `revoked_by` and `revocation_reason`; it wins over expiry), its *narrowing* (`narrowed[]`, append-only;
 widening is a new grant), and its *recorded uses* (every task record, run record and orchestrator
 commit that names its id). A coordinator derives the state before each delegated action
-(`authority.yaml` lifecycle.validity); the simulator's `grantState()` is the reference. **Swap story.** Lets a
+(`authority.yaml` lifecycle.validity); the simulator's `grantState()` is the reference. A coordinator
+may hold several grants (a work grant and a merge grant, revocable alone): each action is exercised
+under the grant that delegates it, and the workers cap is the smallest `max_workers` among the live
+grants that dispatch work, so a merge-only grant's `max_workers` bounds its merges, not the epic's
+workers (`authority.yaml` 1.2.0 lifecycle.limits). **Swap story.** Lets a
 coordinator (stagehand, a CI orchestrator, a future agent) stand in for named human decisions with an
 auditable, expiring record instead of a remembered chat line. **Compat.** stagehand's
 project-delegation grants map field by field ([adapters/herdr](adapters/herdr/README.md)); the

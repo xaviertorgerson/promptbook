@@ -10,7 +10,7 @@ Run immediately before the action, every time. The first "no" decides.
 | 4 | Does its current `actions` list this action? | `actions` (strings or objects) | ask |
 | 5 | Does `scope` cover the subject? | `repositories` contains the PR's or task's repository; if `epics`/`tasks`/`requirements` are listed, the subject is among them; not in `non_goals` | ask |
 | 6 | (merge) Do the parameters match? | the merge action's `repo` = the PR's repository; `target` = the PR's base branch, exactly; `strategy` = the strategy you will use; `requires`: an independent reviewer passed this exact head, required checks are green on it, the head did not change since, and a human approval exists if listed | ask, or wait for the missing evidence |
-| 7 | Are the limits intact? | live workers < `limits.max_workers`; Σ run records `total_cost_usd` with `grant: GRANT-n` < `limits.budget.max_usd`; no `limits.stop_when` met | stop delegated work; needs-human |
+| 7 | Are the limits intact? | live workers < `limits.max_workers` (to start a worker: of every live grant that dispatches work; a merge-only grant's bounds merges); Σ run records `total_cost_usd` with `grant: GRANT-n` < `limits.budget.max_usd`; no `limits.stop_when` met | stop delegated work; needs-human |
 | 8 | Act and record | task record `decisions += {decision, source: GRANT-n, scope, at}`; run record `grant: GRANT-n` | — |
 
 ## Worked checks
