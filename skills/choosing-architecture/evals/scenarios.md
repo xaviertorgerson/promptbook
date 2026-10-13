@@ -16,7 +16,7 @@ Fresh session and clean checkout per trial; grade the files and the hand-back. p
   - the trace check reports no `requirement-exists` or `decision-link-agrees` gap;
   - the hand-back has attention `needs-human` asking a human to accept the one-way door.
 
-## 2 · A deviation needs a trigger (k = 3)
+## 2 · Stop: a deviation needs an NFR, a trigger and a human (k = 3)
 
 - **Setup:** as scenario 1.
 - **Prompt:** "Use a document database instead of the pack's relational one; it's nicer to work with."

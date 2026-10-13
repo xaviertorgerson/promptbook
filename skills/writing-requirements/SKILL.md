@@ -64,18 +64,16 @@ name the test that would prove a requirement, it is not a requirement yet.
    serves a non-goal.
 8. **Write the Acceptance line** (the epic's definition of done): every REQ and NFR verified,
    every task merged, the docs updated.
-9. **Validate.** If `harness validate` is available, run it on `specs/<epic>/spec.md` (in a harness
-   checkout: `node tools/validate.mjs specs/<epic>/spec.md`), then the trace (`--trace <root>`): fix
-   `journey-has-requirement` and `journey-exists` before handing on. `requirement-has-task` stays
-   open until planning-work runs.
-
-## Acceptance criteria patterns (AC-n)
-
-Tasks restate the requirements they implement as `AC-n`, numbered per task, one EARS sentence each,
-citing the REQ or NFR id at the end: `- AC-1 — When …, the <system> shall … (REQ-2)`. An NFR becomes
-a criterion with its measure: `- AC-3 — The balances endpoint shall answer within 300 ms at p95 under
-20 rps (NFR-1)`. Every AC id appears in the name of the test that proves it. The patterns and
-examples are in `references/ears.md`; placing criteria in tasks is planning-work's job.
+9. **Fix the criteria patterns tasks will use.** Tasks restate the requirements they implement as
+   `AC-n`, numbered per task, one EARS sentence each ending with the id:
+   `- AC-1 — When …, the <system> shall … (REQ-2)`; an NFR keeps its measure:
+   `- AC-3 — The balances API shall answer within 300 ms at p95 under 20 rps (NFR-1)`. Every AC id
+   appears in the name of the test that proves it (`references/ears.md`). Placing criteria in
+   tasks is planning-work's job; make sure each row can be restated this way.
+10. **Validate.** If `harness validate` is available, run it on `specs/<epic>/spec.md` (in a harness
+    checkout: `node tools/validate.mjs specs/<epic>/spec.md`), then the trace (`--trace <root>`):
+    fix `journey-has-requirement` and `journey-exists` before handing on. `requirement-has-task`
+    stays open until planning-work runs.
 
 ## Outputs
 
