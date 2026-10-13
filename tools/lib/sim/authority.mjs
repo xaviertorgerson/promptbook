@@ -1,8 +1,18 @@
 // Authority facts shared by the world, the supervisor and the invariants (state-machines/authority.yaml).
 
+// A grant's lifecycle state at a moment (epoch ms). Derived, never stored: the grant contract has no
+// status field (CONTRACTS.md, grant lifecycle). pending: before granted_at; live; expired: at or past
+// expires_at; revoked: at or past revoked_at (revocation wins over expiry, since it names a person).
+export function grantState(g, ms) {
+  if (!g) return null;
+  if (g.revoked_at && Date.parse(g.revoked_at) <= ms) return 'revoked';
+  if (ms < Date.parse(g.granted_at)) return 'pending';
+  if (ms >= Date.parse(g.expires_at)) return 'expired';
+  return 'live';
+}
+
 export function grantLiveAt(g, ms) {
-  if (!g) return false;
-  return Date.parse(g.granted_at) <= ms && ms < Date.parse(g.expires_at) && !(g.revoked_at && Date.parse(g.revoked_at) <= ms);
+  return grantState(g, ms) === 'live';
 }
 
 const actionName = (a) => (typeof a === 'string' ? a : a.action);

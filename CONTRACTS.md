@@ -222,7 +222,15 @@ repositories, epics, tasks, requirements, non_goals}`, `actions[]`, `limits{max_
 stop_when}`, `expires_at`, `revocable: true`, `revoked_at/by/reason`, `narrowed[]`. Actions:
 `select-tasks`, `approve-plan`, `dispose-findings` (with a `policy`), `finalize`, `publish-review`,
 and `merge{repo, target, strategy, requires}` where `requires` must include `independent-review` and
-`required-checks`; only an orchestrator or the merge role may hold merge. **Swap story.** Lets a
+`required-checks`; only an orchestrator or the merge role may hold merge. **Lifecycle (derived; no
+status field).** A grant's state is read from the record, never stored in it: *where* it is (the
+project's `.orchestrator/grants/GRANT-n.yaml`; it applies to that project only and is never moved or
+deleted, so the audit trail stays), its *dates* (`pending` before `granted_at`, `live` until
+`expires_at`, exclusive, then `expired`), its *revocation* (`revoked` from `revoked_at`, with
+`revoked_by` and `revocation_reason`; it wins over expiry), its *narrowing* (`narrowed[]`, append-only;
+widening is a new grant), and its *recorded uses* (every task record, run record and orchestrator
+commit that names its id). A coordinator derives the state before each delegated action
+(`authority.yaml` lifecycle.validity); the simulator's `grantState()` is the reference. **Swap story.** Lets a
 coordinator (stagehand, a CI orchestrator, a future agent) stand in for named human decisions with an
 auditable, expiring record instead of a remembered chat line. **Compat.** stagehand's
 project-delegation grants map field by field ([adapters/herdr](adapters/herdr/README.md)); the

@@ -6,11 +6,13 @@ import path from 'node:path';
 import { after, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
+import { grantState } from '../tools/lib/sim/authority.mjs';
 import { Checker, INVARIANTS } from '../tools/lib/sim/invariants.mjs';
 import { MUTATIONS, orchestrating } from '../tools/lib/sim/policies.mjs';
 import { loadScenario, normalize, scenarioFromProject } from '../tools/lib/sim/scenario.mjs';
 import { machines, simulate, writeOutputs } from '../tools/lib/sim/simulate.mjs';
 import { globsOverlap, makeRng } from '../tools/lib/sim/util.mjs';
+import { registry as reg } from '../tools/lib/registry.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SCEN = path.join(ROOT, 'fixtures/scenarios');
@@ -249,6 +251,19 @@ describe('simulate: determinism, inputs and outputs', () => {
     assert.ok(!globsOverlap('src/web/**', 'src/api/**'));
     assert.ok(!globsOverlap('docs/**', 'src/**'));
     assert.ok(!globsOverlap('src/a.ts', 'src/b.ts'));
+  });
+
+  it('a grant\'s lifecycle is derived from its dates and revocation, never stored', () => {
+    const g = parse(fs.readFileSync(path.join(ROOT, 'fixtures/valid/grant/revoked-narrowed.yaml'), 'utf8'));
+    const at = (iso) => grantState(g, Date.parse(iso));
+    assert.equal(at('2026-09-30T00:00:00Z'), 'pending');
+    assert.equal(at('2026-10-02T00:00:00Z'), 'live');
+    assert.equal(at('2026-10-05T00:00:00Z'), 'revoked');
+    assert.equal(at('2026-10-09T00:00:00Z'), 'revoked', 'a revocation is what the record says, even after expiry');
+    const unrevoked = { ...g, revoked_at: undefined };
+    assert.equal(grantState(unrevoked, Date.parse('2026-10-09T00:00:00Z')), 'expired');
+    assert.equal(grantState(unrevoked, Date.parse('2026-10-08T08:00:00Z')), 'expired', 'expires_at is exclusive');
+    assert.ok(!('status' in reg().schema('grant').properties), 'the contract has no stored status');
   });
 
   it('the invariants read the state machines: roles, gates and claimed statuses come from the YAML', () => {
