@@ -416,6 +416,42 @@ describe('trace graph', () => {
     assert.equal(trace(path.join(FIX, 'trace/complete')).epics[0].task_modes['INV-1'], 'spec-driven', 'no mode anywhere: spec-driven');
   });
 
+  describe('criteria in tests: a bare AC-n several tasks share counts for none of them', () => {
+    // INV-1 (AC-1, AC-2, in review) and INV-2 (AC-1 only, in review) share AC-1; only INV-1 has AC-2.
+    const inv2 = taskText('INV-2', { status: 'review', owner: 'coder-agent' }, { criteria: '- AC-1 — When an owner lists invoices, the API shall return them newest first.' });
+    const run = (tests) => trace(project('complete', { 'specs/invoicing/tasks/INV-2.md': inv2, 'tests/invoicing.test.ts': tests }));
+    const ev = (r) => Object.fromEntries(r.epics[0].criteria_evidence.map((x) => [`${x.task} ${x.criterion}`, x.evidence]));
+    const by = (r, rule) => r.gaps.filter((g) => g.rule === rule).map((g) => g.subject).sort();
+
+    it('a bare AC-1 is ambiguous: neither task is covered, and the warning names both', () => {
+      const r = run("it('AC-1 returns the PDF', () => {});\nit('INV-1 AC-2 returns 404 for another tenant', () => {});\n");
+      assert.deepEqual(r.epics[0].coverage.criteria, { covered: 1, total: 3 });
+      assert.deepEqual(ev(r), { 'INV-1 AC-1': 'ambiguous', 'INV-1 AC-2': 'qualified', 'INV-2 AC-1': 'ambiguous' });
+      const amb = r.gaps.filter((g) => g.rule === 'ambiguous-criterion-id');
+      assert.equal(amb.length, 1);
+      assert.equal(amb[0].severity, 'warning');
+      assert.match(amb[0].message, /INV-1, INV-2/);
+      assert.equal(amb[0].file, 'tests/invoicing.test.ts');
+      assert.deepEqual(by(r, 'criterion-named-in-test'), ['INV-1 AC-1', 'INV-2 AC-1']);
+      assert.equal(r.epics[0].verdict, 'not-ready');
+    });
+
+    it('a qualified "<TASK> AC-n" counts for that task only', () => {
+      const r = run("it('INV-1 AC-1 returns the PDF', () => {});\nit('INV-1 AC-2 returns 404', () => {});\n");
+      assert.deepEqual(ev(r), { 'INV-1 AC-1': 'qualified', 'INV-1 AC-2': 'qualified', 'INV-2 AC-1': 'none' });
+      assert.deepEqual(by(r, 'criterion-named-in-test'), ['INV-2 AC-1']);
+      assert.deepEqual(by(r, 'ambiguous-criterion-id'), [], 'a qualified name is never ambiguous');
+    });
+
+    it('a bare id counts when exactly one task of the epic has it', () => {
+      const r = run("it('INV-1 AC-1 returns the PDF', () => {});\nit('INV-2 AC-1 lists newest first', () => {});\nit('AC-2 returns 404', () => {});\n");
+      assert.deepEqual(ev(r), { 'INV-1 AC-1': 'qualified', 'INV-1 AC-2': 'bare', 'INV-2 AC-1': 'qualified' });
+      assert.deepEqual(r.epics[0].coverage.criteria, { covered: 3, total: 3 });
+      assert.deepEqual(by(r, 'criterion-named-in-test'), []);
+      assert.deepEqual(by(r, 'ambiguous-criterion-id'), []);
+    });
+  });
+
   describe('plan shape', () => {
     const adr = '\n## ADR-0002: Invoices are stored as rendered PDFs\n**Status:** Proposed\n**Date:** 2026-10-12\n**Decision:** Store the rendered PDF.\n**Why:** The rendered file is the legal artifact.\n**Door:** one-way\n**Reversed when:** a regulator requires structured invoices.\n**Consequences:** Re-rendering is not a feature.\n';
     const plan = (status, { skeletonRoot = false } = {}) => project('complete', {

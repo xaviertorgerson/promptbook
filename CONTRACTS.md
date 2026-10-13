@@ -398,7 +398,8 @@ flowchart LR
 | `artifact-valid` | every artifact it read passes its contract | error |
 | `*-exists` (persona, journey, requirement, decision, task, guiding-doc) | every id or path cited resolves | error |
 | `dependencies-acyclic` | `depends_on` has no cycle | error |
-| `criterion-named-in-test` | a task in review or later has every AC id in a test name (`--tests` globs; default the ears-coverage globs plus Go, Python, JUnit/Kotlin, Rust and Ruby test files) | error, blocks readiness |
+| `criterion-named-in-test` | a task in review or later has every AC id in a test name (`--tests` globs; default the ears-coverage globs plus Go, Python, JUnit/Kotlin, Rust and Ruby test files): a name that carries a task id counts for that task only; a bare `AC-n` counts only when one task of the epic has that id | error, blocks readiness |
+| `ambiguous-criterion-id` | a test name carries a bare `AC-n` that several tasks of the epic share: it counts for none of them; the warning names them | warning |
 | `task-cites-requirement` | every task cites ≥1 REQ/NFR (`requirements:`); an id named only in prose is a warning with the fix | see below |
 | `journey-has-task`, `requirement-has-task` | no orphan journey or requirement | see below |
 | `journey-has-requirement` | each journey is served by a requirement (CUJ column, or a task that cites both) | see below |
@@ -408,7 +409,7 @@ flowchart LR
 | `one-way-door-decided` | no ADR the epic cites (header, ADR column, `satisfies`, a task's guiding doc) is a one-way door still proposed | see below; blocks readiness |
 | `ready-task-unblocked` | a `ready` task has no unchecked Open question that says it blocks | error (warning in legacy adoption); blocks readiness |
 | `task-size-fits` | no task is `XL`: an error from `ready` on, a warning before | see below |
-| `persona-has-journey`, `persona-in-brief`, `nfr-has-decision`, `task-index-agrees`, `cites-current-decision`, `criterion-evidence-unambiguous`, `decision-link-agrees`, `tests-exist` | consistency | warning |
+| `persona-has-journey`, `persona-in-brief`, `nfr-has-decision`, `task-index-agrees`, `cites-current-decision`, `decision-link-agrees`, `tests-exist` | consistency | warning |
 | `task-mode-overrides-epic` | a task's `mode` differs from its epic's | info |
 
 **Severity policy.** A broken reference or an invalid artifact is always an error. A *missing* link
@@ -431,6 +432,16 @@ backticked function names; Rust `fn` names; Ruby `it`/`describe`/`context`/`spec
 name). An id matches in any case with a hyphen, an underscore or nothing between prefix and number
 (`AC-2`, `ac_2`, `AC2`, `bill_7_ac_2`), or in CamelCase after a lower-case letter or digit
 (`TestBILL7AC2`), never inside a longer id (`AC-21`, `FAC2`).
+
+**Which task a name evidences.** A name that carries a task id (`INV-1 AC-2 returns 404`,
+`test_inv_1_ac_2`) is qualified and counts for the tasks it names, never another. A name with a bare
+`AC-n` counts for the one task of its epic that has an `AC-n`; when several do, it is ambiguous and
+counts for none of them (`ambiguous-criterion-id`), so coverage can no longer read complete while a
+task's own criterion is untested. Ids are matched per name, not per enclosing `describe`: a bare
+`it('AC-2 …')` inside `describe('INV-1 …')` is bare. The epic's coverage ratio counts covered
+criteria, and `--json` lists each criterion's evidence (`epics[].criteria_evidence`: qualified,
+bare, ambiguous or none). A bare id unique in its epic still counts when another epic has the same
+id, so a project with several epics should qualify every name.
 
 On `wt-stack-drift` (two epics, no product docs, no tests) the check reports legacy adoption, 0
 errors, and 32 warnings: tasks that cite no requirement (with the exact `requirements: [REQ-2]` fix

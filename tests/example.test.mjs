@@ -6,10 +6,10 @@ import path from 'node:path';
 import { after, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
-import { findFiles, walk } from '../tools/lib/glob.mjs';
+import { walk } from '../tools/lib/glob.mjs';
 import { readLock } from '../tools/lib/lock.mjs';
 import { registry } from '../tools/lib/registry.mjs';
-import { criteria as readCriteria, DEFAULT_TEST_GLOBS, namedIn, testNames } from '../tools/lib/ears.mjs';
+import { criteria as readCriteria } from '../tools/lib/ears.mjs';
 import { loadFrontmatterMarkdown } from '../tools/lib/loaders.mjs';
 import { loadScenario } from '../tools/lib/sim/scenario.mjs';
 import { simulate } from '../tools/lib/sim/simulate.mjs';
@@ -63,12 +63,11 @@ describe('the worked example: Tally', () => {
     const [e] = t.epics;
     assert.equal(e.verdict, 'ready');
     for (const [k, c] of Object.entries(e.coverage)) assert.equal(c.covered, c.total, k);
-    // The coverage count accepts a bare AC-n named for another task; the example names each test
-    // "<TASK> AC-n", so hold it to that whatever the task's status.
-    const names = findFiles(EX, DEFAULT_TEST_GLOBS).flatMap((f) => testNames(fs.readFileSync(f, 'utf8'), { file: f }));
-    for (const [id, { criteria }] of Object.entries(taskFiles)) {
-      for (const ac of criteria) assert.ok(names.some((n) => namedIn([n], id) && namedIn([n], ac)), `no test name carries "${id} ${ac}"`);
-    }
+    // Coverage counts a bare AC-n only when one task of the epic has it; the example names each
+    // test "<TASK> AC-n" anyway, so hold every criterion, whatever its task's status, to that.
+    const key = (x) => `${x.task} ${x.criterion}`;
+    const want = Object.entries(taskFiles).flatMap(([task, { criteria }]) => criteria.map((criterion) => ({ task, criterion, evidence: 'qualified' })));
+    assert.deepEqual(e.criteria_evidence.toSorted((a, b) => key(a).localeCompare(key(b))), want.toSorted((a, b) => key(a).localeCompare(key(b))));
   });
 
   it('simulates the queue as it stands, 50 seeds, with no invariant violated', () => {

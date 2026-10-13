@@ -30,8 +30,8 @@ requirement, requirement → journey, UX, ADR satisfies) is a warning even on an
 | `dependencies-acyclic` | `depends_on` has no cycle | error | — |
 | `task-serves-journey` | a task's `cuj` is not null | warning | — |
 | `task-cites-requirement` | a task lists ≥1 REQ/NFR in `requirements` (an id only in prose is a warning with the fix) | missing-link (harness) | yes |
-| `criterion-named-in-test` | a task in review or later has every AC id in a test name | error | yes |
-| `criterion-evidence-unambiguous` | an AC id shared by several tasks is named with its task id in the test | warning | — |
+| `criterion-named-in-test` | a task in review or later has every AC id in a test name: `<TASK> AC-n`, or a bare `AC-n` when no other task of the epic has that id | error | yes |
+| `ambiguous-criterion-id` | a test name carries a bare AC id several tasks of the epic share; it counts for none of them | warning | — |
 | `tests-exist` | some test file exists (else criterion coverage is not checked) | warning | — |
 | `task-index-agrees` | the spec's Tasks table and the task files agree (ids and CUJs) | warning | — |
 | `journey-has-task` | every journey is served by a task's `cuj` | missing-link | yes |
@@ -50,7 +50,8 @@ warning in legacy adoption.
 
 **Coverage** (the report's four ratios): journeys served by a task / all journeys; requirements
 implemented by a task / all requirements; tasks citing a requirement / all tasks; criteria named in a
-test / all criteria.
+test / all criteria (a criterion counts when a test name carries its task id and its AC id, or its AC
+id alone when no other task of the epic has that id).
 
 ## B · Plan checks (not in the trace)
 

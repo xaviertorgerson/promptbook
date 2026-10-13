@@ -105,6 +105,12 @@ export function namedIn(names, id) {
   return names.some((n) => res.some((re) => re.test(n)));
 }
 
+// The indexes of the names that carry an id, as namedIn reads one name.
+export function namingIndexes(names, id) {
+  const res = idPatterns(id);
+  return names.flatMap((n, i) => (res.some((re) => re.test(n)) ? [i] : []));
+}
+
 export const DEFAULT_TEST_GLOBS = [
   '**/*.spec.ts', '**/*.spec.tsx', '**/*.test.ts', '**/*.test.tsx', '**/*.spec.js', '**/*.test.js', '**/*.spec.mjs', '**/*.test.mjs', '**/*.e2e-spec.ts', 'e2e/**/*.ts', 'tests/**/*.ts',
   '**/*_test.go', '**/test_*.py', '**/*_test.py', '**/*Test.java', '**/*Tests.java', '**/*Test.kt', '**/*Tests.kt', 'tests/**/*.rs', 'src/**/*.rs', '**/*_spec.rb', '**/*_test.rb', '**/test_*.rb',
