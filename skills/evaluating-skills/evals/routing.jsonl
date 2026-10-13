@@ -1,0 +1,13 @@
+{"prompt":"Write routing evals for the landing-changes skill.","expect":"trigger","kind":"positive"}
+{"prompt":"I tweaked the description of writing-tests. Does it still trigger on the right prompts?","expect":"trigger","kind":"positive","note":"after a description change"}
+{"prompt":"Add near-miss cases so verifying-work stops catching security review prompts.","expect":"trigger","kind":"positive"}
+{"prompt":"Run the skill evals on the cheap model and tell me which cases fail.","expect":"trigger","kind":"positive"}
+{"prompt":"What k should I use for pass^k on a scenario where the agent might push to main?","expect":"trigger","kind":"positive","note":"symptom-first"}
+{"prompt":"Log an evidence entry for the misroute we saw yesterday in the debugging skill.","expect":"trigger","kind":"positive"}
+{"prompt":"Write a brand new skill for rotating API keys.","expect":"no-trigger","kind":"near-miss","route_to":"building-skills"}
+{"prompt":"Our project skill for flaky tests has fired well for months; move it up into the shared pack.","expect":"no-trigger","kind":"near-miss","route_to":"promoting-learnings"}
+{"prompt":"A new model shipped. Sweep effort levels and see which rules and subagents we can drop.","expect":"no-trigger","kind":"near-miss","route_to":"reviewing-harness"}
+{"prompt":"Go through last week's run records and propose fixes to our skills from the failures.","expect":"no-trigger","kind":"near-miss","route_to":"reflecting-on-runs"}
+{"prompt":"Add tests for AC-2 of BILL-7.","expect":"no-trigger","kind":"near-miss","route_to":"writing-tests","note":"shares the word tests"}
+{"prompt":"Convert this CSV of invoices to JSON.","expect":"no-trigger","kind":"negative","route_to":"none"}
+{"prompt":"What's the capital of Portugal?","expect":"no-trigger","kind":"negative","route_to":"none"}
