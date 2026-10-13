@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { after, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { isGerundName, jaccard, lintSkills, markdownLinks, parseScenarios, triggerTokens } from '../tools/lib/lint-skills.mjs';
+import { isGerundName, jaccard, lintSkills, markdownLinks, parseScenarios, scenarioMissing, triggerTokens } from '../tools/lib/lint-skills.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FIX = path.join(ROOT, 'fixtures/lint');
@@ -103,6 +103,13 @@ describe('lint-skills', () => {
     assert.equal(jaccard(new Set(['a', 'b']), new Set(['b', 'c'])), 1 / 3);
     assert.deepEqual(markdownLinks('see [x](../a.md) and `[y](../b.md)`\n```\n[z](../c.md)\n```\n[ref]: ../d.md').map((l) => l.target), ['../a.md', '../d.md']);
     assert.equal(parseScenarios('# S\n\n## One\n- **Setup:** x\n\n## Two\nSetup: y\n').length, 2);
+    // The forms the catalog's skills use: k in the heading, a lettered or parenthesized label, labels
+    // sharing a line, a setup and k stated once in the preamble.
+    const missing = (text) => scenarioMissing(parseScenarios(text)[0]);
+    assert.deepEqual(missing('# S\n\n## A (k = 3)\n- **Setup (M):** x\n- **Prompt:** y\n- **Pass:** z\n'), []);
+    assert.deepEqual(missing('# S\n\n## A (k = 3)\n- **Setup:** x\n- **Prompt A:** y **Pass:** z\n'), []);
+    assert.deepEqual(missing('# S\nFixtures: shared. pass^k with k = 3.\n\n## A\n- **Prompt:** y\n- **Pass when:**\n  - z\n'), []);
+    assert.deepEqual(missing('# S\n\n## A (k = 3)\n- **Setup:** x\n- **Pass:** z\n'), ['prompt']);
   });
 });
 

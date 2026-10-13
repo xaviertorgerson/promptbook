@@ -101,14 +101,18 @@ export function markdownLinks(text) {
 const isExternal = (t) => /^[a-z][a-z0-9+.-]*:/i.test(t) || t.startsWith('#') || t.startsWith('//');
 
 // Scenarios in scenarios.md: one per "## " heading, or per "### " heading when the file groups them.
-// Each names a setup, a prompt, pass criteria and k (for pass^k) as labels at the start of a line,
-// bold or not, bulleted or not ("- **Setup:** …", "Fixture: …"); common synonyms are accepted.
-const label = (words) => new RegExp(`^\\s*(?:[-*+]\\s+)?(?:\\*\\*|__)?(?:${words})(?:\\s*\\([^)]*\\))?\\s*(?::\\s*(?:\\*\\*|__)|(?:\\*\\*|__)\\s*:|:)`, 'im');
+// Each names a setup, a prompt, pass criteria and k (for pass^k): labels at the start of a line, bold
+// or not, bulleted or not, with an optional parenthetical or variant letter ("- **Setup (M):** …",
+// "**Prompt A:** …", "Fixture: …"); a bold label may follow another on one line. k may sit in the
+// heading ("(k = 3)"). A setup or k stated once in the file's preamble ("Fixtures: …",
+// "k = 3 for every scenario") covers every scenario.
+const label = (words) => new RegExp(`(?:^\\s*(?:[-*+]\\s+)?(?:\\*\\*|__)?(?:${words})(?:\\s+[A-Z0-9])?(?:\\s*\\([^)]*\\))?\\s*(?::|\\.\\s*(?:\\*\\*|__)|(?:\\*\\*|__)\\s*:?)|\\*\\*(?:${words})(?:\\s+[A-Z0-9])?(?:\\s*\\([^)]*\\))?:\\*\\*)`, 'im');
+const K = /(?:^\s*(?:[-*+]\s+)?(?:\*\*|__)?(?:k|pass\^k|trials)(?:\*\*|__)?\s*(?::|=)\s*(?:\*\*|__)?\s*\d|\bpass\^\d|\bpass\^k\s*(?:=|:|\(k\s*=)\s*\d|\bk\s*(?:=|≥|>=)\s*\d)/im;
 const SCENARIO_FIELDS = [
-  { id: 'setup', re: label('setup|set-up|fixture|given|context|state') },
-  { id: 'prompt', re: label('prompt|user prompt|input|request|user says|trigger') },
-  { id: 'pass criteria', re: label('pass criteria|pass|passes when|assertions?|expected|expect|then|success') },
-  { id: 'k', re: /(?:^\s*(?:[-*+]\s+)?(?:\*\*|__)?(?:k|pass\^k|trials)(?:\*\*|__)?\s*(?::|=)\s*(?:\*\*|__)?\s*\d|\bpass\^\d|\bpass\^k\s*(?:=|:|\(k\s*=)\s*\d|\bk\s*(?:=|≥|>=)\s*\d)/im },
+  { id: 'setup', re: label('setup|set-up|fixtures?|given|context|state'), shared: label('setup|set-up|fixtures?|given|context') },
+  { id: 'prompt', re: label('prompt|user prompt|input|request|user says|trigger|event|wake') },
+  { id: 'pass criteria', re: label('pass criteria|pass when|pass|passes when|assertions?|expected|expect|then|success') },
+  { id: 'k', re: K, shared: K, title: true },
 ];
 const STOP_CONDITION = /needs-human|hand(?:s|ed)?(?: it)?(?: back| off)? to (?:a|the) human|stop condition|stops? and (?:asks?|escalates?)|escalat|human decision|must not (?:proceed|continue)/i;
 
@@ -117,11 +121,14 @@ export function parseScenarios(text) {
   const hs = headings(lines, fenceMask(lines)).filter((h) => h.level === 2 || h.level === 3);
   const level = hs.some((h) => h.level === 3) ? 3 : 2;
   const chosen = hs.filter((h) => h.level === level && !/^scenarios?\b/i.test(h.text));
+  const preamble = lines.slice(0, chosen[0]?.index ?? lines.length).join('\n');
   return chosen.map((h) => {
     const next = hs.find((n) => n.index > h.index && n.level <= level);
-    return { title: h.text, line: h.index + 1, body: lines.slice(h.index + 1, next ? next.index : lines.length).join('\n') };
+    return { title: h.text, line: h.index + 1, body: lines.slice(h.index + 1, next ? next.index : lines.length).join('\n'), preamble };
   });
 }
+
+export const scenarioMissing = (sc) => SCENARIO_FIELDS.filter((x) => !x.re.test(sc.body) && !(x.title && x.re.test(sc.title)) && !(x.shared && x.shared.test(sc.preamble))).map((x) => x.id);
 
 function loadFrontmatter(file) {
   const text = readText(file);
@@ -260,7 +267,7 @@ export function lintSkills(targets, opts = {}) {
       const list = parseScenarios(readText(scenarios));
       if (list.length < limits.scenarios && !s.deprecated) f('error', 'scenarios-count', scenarios, null, `${list.length} scenario(s) (need ≥ ${limits.scenarios}, each a "## " or "### " heading)`);
       for (const sc of list) {
-        const missing = SCENARIO_FIELDS.filter((x) => !x.re.test(sc.body)).map((x) => x.id);
+        const missing = scenarioMissing(sc);
         if (missing.length) f('error', 'scenario-format', scenarios, sc.line, `"${sc.title}" lacks ${missing.join(', ')} (setup · prompt · pass criteria · k for pass^k)`);
       }
       if (list.length && !s.deprecated && !list.some((sc) => STOP_CONDITION.test(`${sc.title}\n${sc.body}`))) {
