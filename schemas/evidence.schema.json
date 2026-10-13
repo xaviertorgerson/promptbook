@@ -2,11 +2,12 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://harness.dev/schemas/evidence.schema.json",
   "title": "Skill evidence",
-  "description": "Why a skill is the way it is, and how to tell whether it routes. Two artifacts: dated evidence entries in skills/<name>/evals/evidence.md, and routing cases, one JSON object per line, in skills/<name>/evals/routing.jsonl.",
-  "x-version": "1.1.0",
+  "description": "Why a skill is the way it is, and how to tell whether it routes. Three artifacts: dated evidence entries in skills/<name>/evals/evidence.md; routing cases, one JSON object per line, in skills/<name>/evals/routing.jsonl; and routing results, one line per case and run, written by harness eval-routing --out (routing-results*.jsonl), the measured source an evidence entry cites.",
+  "x-version": "1.2.0",
   "x-artifacts": [
     { "format": "markdown-entries", "parser": "evidence", "paths": ["skills/*/evals/evidence.md"], "pointer": "#/$defs/entry" },
-    { "format": "jsonl", "paths": ["skills/*/evals/routing.jsonl"], "pointer": "#/$defs/routingCase" }
+    { "format": "jsonl", "paths": ["skills/*/evals/routing.jsonl"], "pointer": "#/$defs/routingCase" },
+    { "format": "jsonl", "paths": ["routing-results*.jsonl"], "pointer": "#/$defs/routingResult" }
   ],
   "$defs": {
     "entry": {
@@ -56,6 +57,38 @@
           "then": { "required": ["source"] }
         }
       ]
+    },
+    "routingResult": {
+      "description": "One routing case run k times through one model (harness eval-routing --runner ... --runs k --out): every trial's answer and the verdict. pass is pass^k: every trial passed.",
+      "type": "object",
+      "required": ["skill", "case", "prompt", "expect", "model", "runs", "answers", "passes", "pass"],
+      "properties": {
+        "skill": { "$ref": "common.schema.json#/$defs/slug" },
+        "case": {
+          "description": "<skill>:<line> of the case in that skill's routing.jsonl.",
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*:[1-9][0-9]*$"
+        },
+        "prompt": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "expect": { "enum": ["trigger", "no-trigger"] },
+        "kind": { "enum": ["positive", "near-miss", "negative", null] },
+        "route_to": { "type": ["string", "null"], "pattern": "^(?:none|[a-z0-9]+(?:-[a-z0-9]+)*)$" },
+        "model": { "description": "The model, or the runner command when no model was named.", "$ref": "common.schema.json#/$defs/nonEmptyString" },
+        "runs": { "type": "integer", "minimum": 1 },
+        "answers": {
+          "description": "Per trial, the skill names the router chose (empty: none).",
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/slug" }, "uniqueItems": true }
+        },
+        "passes": { "type": "integer", "minimum": 0 },
+        "pass": { "type": "boolean" },
+        "errors": { "type": "array", "items": { "type": "string" } },
+        "at": { "$ref": "common.schema.json#/$defs/dateTime" },
+        "skill_version": { "$ref": "common.schema.json#/$defs/semver" }
+      },
+      "additionalProperties": false,
+      "x-checks": ["routing-result-consistent"]
     },
     "routingCase": {
       "description": "One prompt and whether this skill should load for it, given only the installed skills' names and descriptions.",

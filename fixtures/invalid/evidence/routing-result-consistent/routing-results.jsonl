@@ -1,0 +1,1 @@
+{"skill":"writing-requirements","case":"writing-requirements:7","prompt":"Cover AC-3 with a test.","expect":"no-trigger","kind":"near-miss","route_to":"writing-tests","model":"cheap-model-2026-09","runs":3,"answers":[["writing-tests"],["writing-requirements"],["writing-tests"]],"passes":2,"pass":true,"at":"2026-10-13T12:00:00Z"}

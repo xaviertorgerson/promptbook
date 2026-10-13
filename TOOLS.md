@@ -152,5 +152,8 @@ prompt, and sends nothing. `--runner "<cmd>"` sends each case's prompt on stdin 
 prints text (a cheap-model CLI), takes the skill names on its last line, and judges: a trigger case
 needs its skill; a no-trigger case needs it absent and, for an installed `route_to`, the neighbour
 named. The router sees only installed, non-deprecated skills' names and descriptions, as an engine's
-loader would. It reports failures and per-skill precision and recall. Ported from agentic-template's
+loader would. It reports failures and per-skill precision and recall. `--runs <k>` asks k times per
+case and passes a case only when all k pass (pass^k); `--model <label>` names the model; `--out
+<routing-results….jsonl>` writes one result per case in the evidence contract's `routingResult`
+shape, which `harness validate` checks and an evidence entry cites as its measured source. Ported from agentic-template's
 `scripts/skill-evals.mjs`. Tests use `fixtures/eval-routing/fake-router.mjs`; no test calls a model.

@@ -107,6 +107,17 @@ CHECKS['lock-kinds'] = ({ data }) => (Array.isArray(data?.entries) ? data.entrie
   return [];
 });
 
+// A routing result's counts agree: one answer per run, passes within runs, pass exactly when every
+// run passed (pass^k).
+CHECKS['routing-result-consistent'] = ({ data }) => {
+  const out = [];
+  if (!data || !Array.isArray(data.answers)) return out;
+  if (data.answers.length !== data.runs) out.push({ rule: 'routing-result-consistent', pointer: '/answers', message: `${data.answers.length} answer(s) for ${data.runs} run(s)` });
+  if (data.passes > data.runs) out.push({ rule: 'routing-result-consistent', pointer: '/passes', message: `${data.passes} passes out of ${data.runs} run(s)` });
+  if (typeof data.pass === 'boolean' && data.pass !== (data.passes === data.runs)) out.push({ rule: 'routing-result-consistent', pointer: '/pass', message: `pass is ${data.pass} with ${data.passes}/${data.runs} runs passing (pass means every run passed)` });
+  return out;
+};
+
 // Required level-2 headings (x-sections). Matched against the heading text with the schema's regex.
 export function checkSections(sections, body, bodyLine) {
   const lines = splitLines(stripComments(body));

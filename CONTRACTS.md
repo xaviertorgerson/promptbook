@@ -291,12 +291,17 @@ skills add `origin:` and live in `.claude/skills/`, which the L3 path deliberate
 ### evidence
 
 **Purpose.** Why a skill is the way it is and whether it routes. **Schema** `evidence.schema.json`
-1.1.0 with two shapes: `#/$defs/entry` for `evals/evidence.md` entries (`## YYYY-MM-DD · title`, or
-`## YYYY-MM · title` when the source gives only a month; any other level-2 heading in the file is an
-error, `entry-heading`, so no evidence is silently dropped; with `**Kind:**` measured | observed | incident | audit | vendor-reported | literature, `**Source:**`,
-`**Claim:**`, optional result, engine, model, skill_version, revisit; vendor-reported and literature
-must cite a URL, measured must cite a source), and `#/$defs/routingCase` for `evals/routing.jsonl`
-lines (`prompt`, `expect` trigger | no-trigger, `kind` positive | near-miss | negative, `route_to`).
+1.2.0 with three shapes: `#/$defs/entry` for `evals/evidence.md` entries (`## YYYY-MM-DD · title`,
+or `## YYYY-MM · title` when the source gives only a month; any other level-2 heading in the file is
+an error, `entry-heading`, so no evidence is silently dropped; with `**Kind:**` measured | observed |
+incident | audit | vendor-reported | literature, `**Source:**`, `**Claim:**`, optional result,
+engine, model, skill_version, revisit; vendor-reported and literature must cite a URL, measured must
+cite a source); `#/$defs/routingCase` for `evals/routing.jsonl` lines (`prompt`, `expect` trigger |
+no-trigger, `kind` positive | near-miss | negative, `route_to`); and `#/$defs/routingResult` for the
+lines `harness eval-routing --out` writes (`routing-results*.jsonl`: `skill`, `case` `<skill>:<line>`,
+`prompt`, `expect`, `kind`, `route_to`, `model`, `runs`, `answers[]` per run, `passes`, `pass` —
+pass^k, every run — `errors`, `at`, `skill_version`; counts must agree), the measured source an
+evidence entry cites.
 **Compat.** agentic-template keeps both in one `evals.md` (a routing table and an Evidence list); a
 converter is a later tool.
 
