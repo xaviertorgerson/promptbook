@@ -195,7 +195,9 @@ A superset of stagehand's `assets/task-record.yaml`, which validates unchanged; 
 **Purpose.** A subagent's hand-back: a bounded summary (8,000 characters, about 2k tokens), the
 artifact paths it wrote, its attention, the decisions it needs, and each acceptance criterion met
 or unmet with a reason. needs-human requires at least one question; complete requires no unmet
-criterion. **Schema** `return.schema.json` 1.0.0. **Swap story.** Any engine's structured output
+criterion. **Schema** `return.schema.json` 1.1.0; `task` is the workflow id (`<PREFIX>-<n>`) when
+the work has one, otherwise the runtime's stable id, as `task-record.task_id` accepts (a review of
+an outside PR, a delegated job). **Swap story.** Any engine's structured output
 (`claude -p --json-schema`, a Codex output schema) or a JSON file; the dispatcher reads paths, not a
 transcript. **Compat.** stagehand deliberately uses no worker JSON (it reads the pane); the return
 is optional there.
