@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://harness.dev/schemas/reflection-report.schema.json",
+  "title": "Reflection report",
+  "description": "What the reflecting-on-runs skill proposes from one window of run records, verdicts and review threads: a list of deltas, each one operation on one item in one file, with the evidence behind it and its status. A curator applies accepted deltas; the reflector never edits a file wholesale.",
+  "x-version": "1.0.0",
+  "x-artifacts": [
+    { "format": "frontmatter-markdown", "paths": ["reflections/*.md"] }
+  ],
+  "type": "object",
+  "required": ["window", "deltas"],
+  "properties": {
+    "window": {
+      "type": "object",
+      "required": ["from", "to"],
+      "properties": {
+        "from": { "$ref": "common.schema.json#/$defs/date" },
+        "to": { "$ref": "common.schema.json#/$defs/date" }
+      },
+      "additionalProperties": false
+    },
+    "inputs": {
+      "description": "What was read in the window.",
+      "type": "object",
+      "properties": {
+        "run_records": { "type": "integer", "minimum": 0 },
+        "verdicts": { "type": "integer", "minimum": 0 },
+        "reviews": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "deltas": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/delta" }
+    }
+  },
+  "patternProperties": { "^x-": {} },
+  "additionalProperties": false,
+  "$defs": {
+    "delta": {
+      "type": "object",
+      "required": ["target", "op", "class", "evidence", "status"],
+      "properties": {
+        "target": { "description": "The one file the delta changes (repository path).", "$ref": "common.schema.json#/$defs/docRef" },
+        "op": { "enum": ["add", "modify", "remove"] },
+        "anchor": { "description": "The section heading and the line it changes, or the line after which it adds.", "type": "string" },
+        "before": { "description": "The exact current text (modify, remove).", "type": "string", "minLength": 1 },
+        "after": { "description": "The exact new text (add, modify).", "type": "string", "minLength": 1 },
+        "class": { "description": "The failure class it generalizes, in one line.", "$ref": "common.schema.json#/$defs/nonEmptyString" },
+        "evidence": {
+          "x-rule": "delta-cites-evidence",
+          "description": "Run ids, verdict paths, review links, commits; at least one human-authored or deterministic.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "common.schema.json#/$defs/nonEmptyString" }
+        },
+        "recurrence": { "type": "integer", "minimum": 1 },
+        "eval": { "description": "The routing case, scenario or test that fails if the lesson regresses.", "type": "string" },
+        "risk": { "enum": ["low", "medium", "high"] },
+        "status": { "enum": ["proposed", "accepted", "rejected"] },
+        "reason": { "description": "Why it was rejected (the guard that rejected it, or the human's reason).", "type": "string", "minLength": 1 },
+        "pr": { "$ref": "common.schema.json#/$defs/docRef" }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "x-rule": "delta-op-has-text",
+          "description": "add carries after; modify carries before and after; remove carries before.",
+          "if": { "required": ["op"], "properties": { "op": { "const": "modify" } } },
+          "then": { "required": ["before", "after"] },
+          "else": {
+            "if": { "required": ["op"], "properties": { "op": { "const": "add" } } },
+            "then": { "required": ["after"] },
+            "else": { "required": ["before"] }
+          }
+        },
+        {
+          "x-rule": "rejected-delta-says-why",
+          "if": { "required": ["status"], "properties": { "status": { "const": "rejected" } } },
+          "then": { "required": ["reason"] }
+        }
+      ]
+    }
+  }
+}

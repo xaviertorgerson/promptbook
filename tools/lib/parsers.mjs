@@ -347,6 +347,65 @@ export function parseEvidence(text) {
   return { records, errors };
 }
 
+// ---------------------------------------------------------------------------------------------- //
+// harness-reviews/<date>-<label>.md -> harness-review (the reviewing-harness skill's record)
+
+const REVIEW_FIELDS = { trigger: 'trigger', reviewed: 'reviewed', suite: 'suite', trials: 'trials', 'spend cap spent': 'spend', spend: 'spend', noise: 'noise' };
+const REVIEW_SECTIONS = [
+  ['baseline', /^baseline\b/], ['effort-sweep', /^effort sweep\b/], ['full-harness', /^full harness\b/], ['ablations', /^ablations?\b/],
+  ['decisions', /^decisions\b/], ['playbook', /^playbook\b/], ['questions', /^questions\b/],
+];
+
+export function parseHarnessReview(text) {
+  const { lines } = prepare(text);
+  const mask = fenceMask(lines);
+  const hs = headings(lines, mask);
+  const h1 = hs.find((h) => h.level === 1);
+  const m = h1?.text.match(/^Harness review\s*[—–-]\s*([0-9]{4}-[0-9]{2}-[0-9]{2})\s*[—–-]\s*(.+)$/i);
+  if (!m) return { records: [], errors: [{ keyword: 'entries', pointer: '', message: 'no "# Harness review — YYYY-MM-DD — <model or quarter>" title', line: h1 ? h1.index + 1 : 1 }] };
+  const data = { date: m[1], label: clean(m[2]) };
+  const fieldLines = { date: h1.index + 1, label: h1.index + 1 };
+  const firstH2 = hs.find((h) => h.level === 2)?.index ?? lines.length;
+  for (const f of fieldBullets(lines.slice(h1.index + 1, firstH2), mask.slice(h1.index + 1, firstH2))) {
+    const key = REVIEW_FIELDS[normLabel(f.label)];
+    if (!key) continue;
+    data[key] = f.value;
+    fieldLines[key] = h1.index + 2 + f.index;
+  }
+  data.sections = [];
+  for (const h of hs.filter((x) => x.level === 2)) {
+    const id = REVIEW_SECTIONS.find(([, re]) => re.test(normLabel(h.text)))?.[0];
+    if (id && !data.sections.includes(id)) data.sections.push(id);
+  }
+  const abl = section(lines, /^Ablations?\b/i);
+  if (abl) {
+    data.ablations = [];
+    for (const t of tables(abl.lines, abl.mask)) {
+      const hi = t.headers.map((x) => normLabel(clean(x)));
+      const ci = hi.indexOf('component');
+      const di = hi.indexOf('decision');
+      if (ci === -1) continue;
+      for (const row of t.rows) {
+        const component = clean(row.cells[ci] ?? '');
+        if (!component || isPlaceholder(component)) continue;
+        data.ablations.push({ component, decision: clean(row.cells[di] ?? '') || null });
+        fieldLines.ablations ??= abl.start + row.index + 1;
+      }
+    }
+  }
+  const dec = section(lines, /^Decisions\b/i);
+  if (dec) {
+    data.decisions = [];
+    dec.lines.forEach((l, i) => {
+      const b = !dec.mask[i] && l.match(/^\s*[-*]\s+([^:]+?):\s*(.+)$/);
+      if (!b || isPlaceholder(b[2])) return;
+      data.decisions.push({ kind: normLabel(b[1]).replace(/\s+/g, '-'), text: clean(b[2]) });
+      fieldLines.decisions ??= dec.start + i + 1;
+    });
+  }
+  return { records: [{ data, pointer: '', line: h1.index + 1, lineOf: (ptr) => fieldLines[ptr.split('/')[1]] ?? h1.index + 1, warnings: [], stub: false }], errors: [] };
+}
+
 export const PARSERS = {
   journeys: parseJourneys,
   requirements: parseRequirements,
@@ -354,6 +413,7 @@ export const PARSERS = {
   personas: parsePersonas,
   'ux-flows': parseUxFlows,
   evidence: parseEvidence,
+  'harness-review': parseHarnessReview,
 };
 
 export { fenceMask };

@@ -56,7 +56,9 @@ node tools/validate.mjs --list                  # contracts, versions, artifact 
 | [policy](#policy) | `agent-policy.yaml` (L1 dotfiles) | YAML | operator | policy compiler → engine settings |
 | [toolkit-lock](#toolkit-lock) | `toolkit.lock` (L1 and L2) | YAML | lock tool | sync, CI |
 | [skill](#skill) | `skills/<name>/SKILL.md` (L3, L4) | frontmatter-md | skill author | every engine's skill loader |
-| [evidence](#evidence) | `skills/<name>/evals/{evidence.md,routing.jsonl}` | entries / JSONL | skill author, eval runs | skill reviews, routing evals |
+| [evidence](#evidence) | `skills/<name>/evals/{evidence.md,routing.jsonl}`, `routing-results*.jsonl` | entries / JSONL | skill author, eval runs | skill reviews, routing evals |
+| [harness-review](#harness-review) | `harness-reviews/<date>-<label>.md` | Markdown record | the reviewing-harness skill | humans, the next review |
+| [reflection-report](#reflection-report) | `reflections/*.md` | frontmatter-md | the reflecting-on-runs skill | a curator, humans |
 
 `common` holds the shared definitions and is not an artifact.
 
@@ -304,6 +306,28 @@ pass^k, every run — `errors`, `at`, `skill_version`; counts must agree), the m
 evidence entry cites.
 **Compat.** agentic-template keeps both in one `evals.md` (a routing table and an Evidence list); a
 converter is a later tool.
+
+### harness-review
+
+**Purpose.** The record a harness review leaves (after a model release, or quarterly): what was
+reviewed with which suite, the baseline, one ablation per component and the decision each supports.
+**Schema** `harness-review.schema.json` 1.0.0, read from the reviewing-harness skill's Markdown as
+written: the title `# Harness review — YYYY-MM-DD — <model or quarter>` gives `date` and `label`; the
+header bullets `**Trigger:**`, `**Reviewed:**`, `**Suite:**`, `**Trials:**` (required), `**Spend cap /
+spent:**` and `**Noise …:**` give `trigger`, `reviewed`, `suite`, `trials`, `spend`, `noise`; the
+level-2 sections must include Baseline, Ablations, Decisions and Playbook (`review-has-sections`);
+each Ablations row names its component and a decision; Decisions bullets (`- Removed: …`) become
+`decisions[]`. **Compat.** New.
+
+### reflection-report
+
+**Purpose.** What one reflection proposes from a window of runs, verdicts and reviews: deltas, each
+one operation on one item in one file, never a wholesale rewrite. **Schema**
+`reflection-report.schema.json` 1.0.0 (frontmatter): `window{from,to}`, `inputs{run_records,
+verdicts, reviews}`, `deltas[]` of `{target, op (add | modify | remove), anchor, before, after, class,
+evidence[] (≥1), recurrence, eval, risk, status (proposed | accepted | rejected), reason, pr}`. Rules:
+add carries `after`, modify `before` and `after`, remove `before` (`delta-op-has-text`); a rejected
+delta says why. **Compat.** New.
 
 ---
 

@@ -54,8 +54,10 @@ Three roles, kept separate:
 
 ## Contracts used
 
-`evidence` (input and output), `run-record` (failure signals), `skill`, `task` (a delta PR is a task
-with `risk` set by its target).
+`reflection-report` (`reflections/*.md`: the window, its inputs, and each delta's target, op
+add/modify/remove with its before and after text, evidence, status proposed/accepted/rejected with a
+reason), `evidence` (input and output), `run-record` (failure signals), `skill`, `task` (a delta PR
+is a task with `risk` set by its target).
 
 ## Anti-patterns
 
