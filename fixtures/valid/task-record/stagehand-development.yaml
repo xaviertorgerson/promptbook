@@ -1,0 +1,31 @@
+# stagehand's assets/task-record.yaml with every field filled; the harness reads it unchanged.
+task_id: "billing-rerate"
+mode: "development"
+objective: "Re-rating a period never double-bills"
+intent_ref: "https://github.com/acme/billing/issues/212"
+repository:
+  name: "billing"
+  root: "/home/dev/src/billing"
+  worktree: "/home/dev/src/billing-wt/billing-rerate"
+  remote: "origin"
+  base: "main"
+  base_commit: "4f1c2d9"
+  branch: "feat/bill-3-idempotent-rerate"
+workspace:
+  id: "w4"
+  label: "billing rerate"
+agents:
+  author: "billing-author"
+  reviewer: "billing-reviewer"
+role_sessions:
+  author: { pane_id: "w4:p1", session_id: "0b5d…a1", model: "opus", effort: "high" }
+  reviewer: { pane_id: "w4:p2", session_id: "7c2e…f3" }
+wake:
+  watches:
+    author: "watch-11"
+    reviewer: "watch-12"
+pull_requests: ["https://github.com/acme/billing/pull/233"]
+state:
+  name: "needs-human"
+  summary: "Awaiting finalization approval"
+  next_action: "Authorize the reviewer to finalize PR #233"

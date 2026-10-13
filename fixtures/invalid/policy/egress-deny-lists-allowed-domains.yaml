@@ -1,0 +1,6 @@
+policy_version: 1
+profiles:
+  personal: { tier: ask }
+deny_read: ["**/.env"]
+forbid: []
+egress: { default: deny }

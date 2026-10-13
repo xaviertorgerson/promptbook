@@ -1,0 +1,29 @@
+# A human delegates the rating-engine epic to the orchestrator for two weeks: it may pick and
+# sequence tasks, approve plans, decide findings and finalize, and merge to main by squash —
+# still behind an independent review and the required checks.
+id: GRANT-3
+granted_by: maria
+granted_to: { role: orchestrator, runtime: stagehand }
+granted_at: "2026-10-12T08:00:00Z"
+source: "https://github.com/acme/billing/issues/200#issuecomment-1"
+scope:
+  objective: Deliver the rating-engine epic to done
+  repositories: [acme/billing]
+  epics: [rating-engine]
+  non_goals: [invoicing, tax]
+actions:
+  - select-tasks
+  - approve-plan
+  - { action: dispose-findings, policy: "Fix material in-scope findings; file tangential ones as follow-ups" }
+  - finalize
+  - action: merge
+    repo: acme/billing
+    target: main
+    strategy: squash
+    requires: [independent-review, required-checks, current-head]
+limits:
+  max_workers: 3
+  budget: { max_usd: 60 }
+  stop_when: [the epic acceptance is met, two consecutive runs make no progress]
+expires_at: "2026-10-26T08:00:00Z"
+revocable: true

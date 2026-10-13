@@ -1,0 +1,4 @@
+task_id: billing-rerate
+state:
+  name: needs-human
+  summary: Blocked on a permission prompt

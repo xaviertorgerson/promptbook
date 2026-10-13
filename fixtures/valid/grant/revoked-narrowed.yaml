@@ -1,0 +1,15 @@
+id: GRANT-4
+granted_by: maria
+granted_to: { role: planner }
+granted_at: "2026-10-01T08:00:00Z"
+source: commit 4f1c2d9 (specs/invoicing/spec.md)
+scope: { objective: Plan the invoicing epic, repositories: [acme/billing], epics: [invoicing] }
+actions: [select-tasks]
+limits: { max_workers: 1, budget: { max_usd: 5 } }
+expires_at: "2026-10-08T08:00:00Z"
+revocable: true
+narrowed:
+  - { at: "2026-10-03T10:00:00Z", by: maria, change: removed approve-plan }
+revoked_at: "2026-10-04T09:00:00Z"
+revoked_by: maria
+revocation_reason: The epic was re-scoped.

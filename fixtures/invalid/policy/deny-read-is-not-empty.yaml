@@ -1,0 +1,5 @@
+policy_version: 1
+profiles:
+  personal: { tier: autonomous }
+deny_read: []
+forbid: []

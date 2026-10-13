@@ -1,0 +1,5 @@
+# A runtime record that copied the workflow status into attention: signals and status are separate.
+task_id: BILL-3
+state:
+  name: human-review
+  summary: PR ready

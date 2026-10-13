@@ -1,0 +1,19 @@
+task_id: BILL-7
+runtime: claude-loop
+objective: Re-rate a prorated period without double-billing
+intent_ref: specs/rating-engine/tasks/BILL-7.md
+grant: GRANT-3
+repository: { name: acme/billing, worktree: .claude/worktrees/BILL-7, base: main, branch: feat/bill-7-rerate-proration }
+agents: { author: coder-agent-2 }
+state:
+  name: working
+  summary: Iterating on review comments
+  next_role: author
+  next_action: Address the reviewer's two inline comments
+signals:
+  author: { source: claude-headless, value: success, observed_at: "2026-10-12T09:41:00Z" }
+reviews:
+  - { pr: "https://github.com/acme/billing/pull/240", head: 9e3b1a7, outcome: changes-requested, by: billing-reviewer }
+decisions:
+  - { decision: "A withdrawn plan change rates on the original plan", source: "specs/rating-engine/tasks/BILL-7.md (Open questions)", scope: BILL-7, at: "2026-10-11T16:00:00Z" }
+updated_at: "2026-10-12T09:45:00Z"
