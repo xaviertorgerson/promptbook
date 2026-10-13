@@ -67,7 +67,7 @@ simulation of the workflow for testing a binding.
 | `skills/` | portable skills (gerund names, core frontmatter only) with `evals/` |
 | `tools/` | `validate` (and `trace`), `simulate`, `compile-policy`, `lock`, `lint-skills`, `eval-routing`, `import-evals` (Node 22; [TOOLS.md](TOOLS.md)) |
 | `tests/`, `fixtures/` | `node --test` suites and valid/invalid examples per contract |
-| `examples/` | a worked product run through every contract |
+| [`examples/`](examples/tally/WALKTHROUGH.md) | a worked product run through every contract: Tally, from brief to the human merging its integration branch |
 | `CHANGELOG.md` | every change, marked additive, behavioral or breaking |
 
 ## Status
