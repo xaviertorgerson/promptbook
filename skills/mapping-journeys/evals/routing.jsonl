@@ -1,0 +1,11 @@
+{"prompt":"Map the critical user journeys for the organiser and the housemate personas.","expect":"trigger","kind":"positive"}
+{"prompt":"Add a feature: owners can pause their subscription for up to three months.","expect":"trigger","kind":"positive"}
+{"prompt":"I want customers to be able to export their invoices. What must work end to end?","expect":"trigger","kind":"positive"}
+{"prompt":"Write the CUJs for the invoicing epic, including what must never happen.","expect":"trigger","kind":"positive"}
+{"prompt":"Which critical journeys does switching the login to magic links touch?","expect":"trigger","kind":"positive"}
+{"prompt":"Turn CUJ-1 and CUJ-2 into EARS requirements and measurable NFRs.","expect":"no-trigger","kind":"near-miss","route_to":"writing-requirements"}
+{"prompt":"Design the screens for CUJ-1, with empty, loading, error and success states.","expect":"no-trigger","kind":"near-miss","route_to":"designing-flows"}
+{"prompt":"Should we build a referral program at all? Frame it for a go or kill decision.","expect":"no-trigger","kind":"near-miss","route_to":"framing-products"}
+{"prompt":"Write the personas from the interview notes.","expect":"no-trigger","kind":"near-miss","route_to":"defining-personas"}
+{"prompt":"Rename the variable tmp to totalCents in the rating module.","expect":"no-trigger","kind":"negative","route_to":"none"}
+{"prompt":"What's the time complexity of this sort?","expect":"no-trigger","kind":"negative","route_to":"none"}
