@@ -95,9 +95,11 @@ agentic-template's `cuj.md` unchanged (both epics validate as-is). New optional 
 
 **Purpose.** One checkable behaviour (functional, REQ) or one measurable quality (non-functional,
 NFR) of an epic; tasks implement requirements and ADRs satisfy them. **Schema**
-`requirement.schema.json` 1.0.0: `id`, `source_id`, `epic`, `kind`, `statement`, `ears` (set by the
+`requirement.schema.json` 1.1.0: `id`, `source_id`, `epic`, `kind`, `statement`, `ears` (set by the
 parser), `module`, `verified_by`, `cujs[]`, `adrs[]`; an NFR also requires `category` (performance,
-security, …) and `measure`. **Swap story.** A requirements tool can export the same rows; tasks cite
+reliability, availability, security, privacy, accessibility, usability, operability, observability,
+cost, compliance, compatibility, maintainability, portability, scalability; the playbook's list is
+held to it by a test) and `measure`. **Swap story.** A requirements tool can export the same rows; tasks cite
 ids, not text. **Compat.** Describes agentic-template's `| # | Requirement | Module | Verified by |`
 table; legacy `R<n>` ids normalize to `REQ-<n>` (Normalization).
 

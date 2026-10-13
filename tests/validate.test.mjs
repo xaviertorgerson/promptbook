@@ -90,6 +90,14 @@ describe('fixtures', () => {
   }
 });
 
+describe('requirement categories', () => {
+  it('the playbook names exactly the NFR categories the requirement contract accepts', () => {
+    const page = fs.readFileSync(path.join(ROOT, 'playbook/planning/journeys-and-requirements.md'), 'utf8').replace(/\s+/g, ' ');
+    const listed = page.match(/names a category and a measurable threshold: ([a-z, ]+)\./)[1].split(/,\s*/);
+    assert.deepEqual([...listed].sort(), [...reg.schema('requirement').properties.category.enum].sort());
+  });
+});
+
 describe('toolkit-lock', () => {
   const lock = parse(fs.readFileSync(path.join(FIX, 'valid/toolkit-lock/skill-libraries/toolkit.lock'), 'utf8'));
   const v = (data) => { const fn = reg.validator('toolkit-lock'); return fn(data) ? [] : fn.errors; };
