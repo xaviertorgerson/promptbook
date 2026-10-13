@@ -8,9 +8,9 @@
     { "format": "frontmatter-markdown", "paths": ["specs/*/readiness.md"], "bind": { "epic": 1 } }
   ],
   "x-sections": [
-    { "heading": "Verdict", "match": "^Verdict\\b" },
-    { "heading": "Coverage", "match": "^Coverage\\b" },
-    { "heading": "Gaps", "match": "^Gaps\\b" }
+    { "id": "verdict", "heading": "Verdict", "match": "^Verdict\\b" },
+    { "id": "coverage", "heading": "Coverage", "match": "^Coverage\\b" },
+    { "id": "gaps", "heading": "Gaps", "match": "^Gaps\\b" }
   ],
   "type": "object",
   "required": ["epic", "generated_at", "generator", "adoption", "epic_status", "verdict", "counts", "coverage", "gaps"],
@@ -59,12 +59,22 @@
   "additionalProperties": false,
   "allOf": [
     {
-      "description": "A ready verdict has no error-severity gap.",
+      "x-rule": "ready-has-no-blocking-gap",
+      "description": "A ready verdict has no error and no gap that blocks readiness.",
       "if": { "required": ["verdict"], "properties": { "verdict": { "const": "ready" } } },
       "then": {
         "properties": {
           "counts": { "properties": { "error": { "const": 0 } } },
-          "gaps": { "not": { "contains": { "properties": { "severity": { "const": "error" } } } } }
+          "gaps": {
+            "not": {
+              "contains": {
+                "anyOf": [
+                  { "required": ["severity"], "properties": { "severity": { "const": "error" } } },
+                  { "required": ["blocks_readiness"], "properties": { "blocks_readiness": { "const": true } } }
+                ]
+              }
+            }
+          }
         }
       }
     }

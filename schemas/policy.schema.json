@@ -5,7 +5,7 @@
   "description": "The L1 operator policy (agent-policy.yaml): autonomy tier per machine profile, what is never read, never done, asked about, or pre-approved, network egress, and run ceilings. Engine-neutral; compiled per engine by the adapters (adapters/*/README.md). Walls are denies (forbid, deny_read); ask is a human checkpoint and protects nothing unattended (ADR-0021).",
   "x-version": "1.0.0",
   "x-artifacts": [
-    { "format": "yaml", "paths": ["agent-policy.yaml", "**/agent-policy.yaml"] }
+    { "format": "yaml", "paths": ["agent-policy.yaml"] }
   ],
   "type": "object",
   "required": ["policy_version", "profiles", "deny_read", "forbid"],
@@ -20,6 +20,7 @@
       "additionalProperties": { "$ref": "#/$defs/profile" }
     },
     "deny_read": {
+      "x-rule": "deny-read-is-not-empty",
       "description": "Path globs no agent may read (secrets, credentials). A wall: compiled to a deny on every engine or the compile fails.",
       "type": "array",
       "minItems": 1,
@@ -51,7 +52,7 @@
       },
       "additionalProperties": false,
       "if": { "properties": { "default": { "const": "deny" } } },
-      "then": { "required": ["allow_domains"] }
+      "then": { "x-rule": "egress-deny-lists-allowed-domains", "required": ["allow_domains"] }
     },
     "sandbox": {
       "type": "object",
@@ -92,8 +93,10 @@
   },
   "patternProperties": { "^x-": {} },
   "additionalProperties": false,
+  "x-checks": ["policy-shadowing"],
   "allOf": [
     {
+      "x-rule": "unattended-has-budget",
       "description": "Some profile is unattended -> budgets.unattended is required (an unattended run has a ceiling).",
       "if": {
         "required": ["profiles"],
@@ -167,6 +170,7 @@
         }
       },
       "additionalProperties": false,
+      "x-rules": { "oneOf": "one-matcher-per-rule" },
       "oneOf": [
         { "required": ["command"] },
         { "required": ["write"] },

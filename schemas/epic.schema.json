@@ -5,14 +5,14 @@
   "description": "The frontmatter and required sections of specs/<epic>/spec.md: the planning-layer state machine. The same file carries the requirement contract in its Requirements tables.",
   "x-version": "1.0.0",
   "x-artifacts": [
-    { "format": "frontmatter-markdown", "paths": ["specs/*/spec.md"], "body": "epic" }
+    { "format": "frontmatter-markdown", "paths": ["specs/*/spec.md"], "bind": { "epic": 1 } }
   ],
   "x-sections": [
-    { "heading": "Problem / motivation", "match": "^Problem\\b" },
-    { "heading": "Scope", "match": "^Scope\\b" },
-    { "heading": "Requirements", "match": "^Requirements\\b" },
-    { "heading": "Tasks", "match": "^Tasks\\b" },
-    { "heading": "Acceptance (epic Definition of Done)", "match": "^Acceptance\\b" }
+    { "id": "problem", "heading": "Problem / motivation", "match": "^Problem\\b" },
+    { "id": "scope", "heading": "Scope", "match": "^Scope\\b" },
+    { "id": "requirements", "heading": "Requirements", "match": "^Requirements\\b" },
+    { "id": "tasks", "heading": "Tasks", "match": "^Tasks\\b" },
+    { "id": "acceptance", "heading": "Acceptance (epic Definition of Done)", "match": "^Acceptance\\b" }
   ],
   "type": "object",
   "required": ["epic", "status", "priority", "size", "business_value", "initiative", "owner"],
@@ -41,6 +41,8 @@
   "additionalProperties": false,
   "allOf": [
     {
+      "x-rule": "approved-epic-has-owner",
+      "description": "From approval on, the epic has a human product owner.",
       "if": { "required": ["status"], "properties": { "status": { "enum": ["approved", "in-progress", "done"] } } },
       "then": { "properties": { "owner": { "type": "string" } } }
     }

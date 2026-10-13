@@ -8,15 +8,14 @@
     {
       "format": "frontmatter-markdown",
       "paths": ["specs/*/tasks/*.md"],
-      "bind": { "epic": 1, "id": "$name" },
-      "body": "task"
+      "bind": { "epic": 1, "id": "$name" }
     }
   ],
   "x-sections": [
-    { "heading": "Context", "match": "^Context\\b" },
-    { "heading": "Acceptance criteria (EARS)", "match": "^Acceptance criteria\\b" },
-    { "heading": "Open questions", "match": "^Open questions\\b" },
-    { "heading": "Agent log (append-only, newest last)", "match": "^Agent log\\b" }
+    { "id": "context", "heading": "Context", "match": "^Context\\b" },
+    { "id": "acceptance-criteria", "heading": "Acceptance criteria (EARS)", "match": "^Acceptance criteria\\b" },
+    { "id": "open-questions", "heading": "Open questions", "match": "^Open questions\\b" },
+    { "id": "agent-log", "heading": "Agent log (append-only, newest last)", "match": "^Agent log\\b" }
   ],
   "type": "object",
   "required": ["id", "epic", "status", "priority", "cuj", "guiding_docs", "branch", "depends_on", "owner"],
@@ -144,8 +143,11 @@
   },
   "patternProperties": { "^x-": {} },
   "additionalProperties": false,
+  "x-rules": { "additionalProperties": "unknown-field" },
+  "x-checks": ["criteria", "no-self-dependency", "title-heading"],
   "allOf": [
     {
+      "x-rule": "claimed-task-has-owner",
       "description": "A claimed task has an owner: the owner/status pair is the lock.",
       "if": { "required": ["status"], "properties": { "status": { "enum": ["in-progress", "review", "human-review", "merging"] } } },
       "then": { "properties": { "owner": { "type": "string" } } }

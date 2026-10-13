@@ -122,10 +122,15 @@
       "properties": {
         "rule": { "$ref": "#/$defs/slug" },
         "severity": { "enum": ["error", "warning", "info"] },
+        "blocks_readiness": {
+          "description": "true when the epic cannot be ready while this gap exists, whatever its severity today.",
+          "type": "boolean"
+        },
         "epic": { "$ref": "#/$defs/slug" },
         "subject": { "$ref": "#/$defs/nonEmptyString" },
         "message": { "$ref": "#/$defs/nonEmptyString" },
-        "file": { "type": "string" }
+        "file": { "type": "string" },
+        "line": { "type": ["integer", "null"], "minimum": 1 }
       },
       "additionalProperties": false
     }

@@ -5,7 +5,7 @@
   "description": "One row of a requirements table under '## Requirements' in specs/<epic>/spec.md, normalized: a legacy 'R<n>' id becomes REQ-<n>, columns map by header (CONTRACTS.md, Normalization).",
   "x-version": "1.0.0",
   "x-artifacts": [
-    { "format": "markdown-entries", "parser": "requirements", "paths": ["specs/*/spec.md"] }
+    { "format": "markdown-entries", "parser": "requirements", "paths": ["specs/*/spec.md"], "bind": { "epic": 1 } }
   ],
   "type": "object",
   "required": ["id", "epic", "kind", "statement"],
@@ -58,6 +58,8 @@
   "additionalProperties": false,
   "allOf": [
     {
+      "x-rule": "nfr-has-category-and-measure",
+      "description": "A non-functional requirement names its category and a measurable target; a REQ is functional.",
       "if": { "required": ["id"], "properties": { "id": { "pattern": "^NFR-" } } },
       "then": { "required": ["category", "measure"], "properties": { "kind": { "const": "non-functional" } } },
       "else": { "properties": { "kind": { "const": "functional" } } }

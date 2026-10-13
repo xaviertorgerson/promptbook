@@ -43,5 +43,6 @@
       "additionalProperties": { "type": "string" }
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "x-rules": { "additionalProperties": "agentskills-core-fields-only" }
 }

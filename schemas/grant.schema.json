@@ -79,6 +79,7 @@
       "$ref": "common.schema.json#/$defs/dateTime"
     },
     "revocable": {
+      "x-rule": "grant-is-revocable",
       "description": "Always true: the human may narrow or revoke at any time.",
       "const": true
     },
@@ -102,13 +103,16 @@
   },
   "patternProperties": { "^x-": {} },
   "additionalProperties": false,
+  "x-checks": ["grant-dates"],
   "allOf": [
     {
+      "x-rule": "revocation-names-revoker",
       "description": "A revocation names who revoked it.",
       "if": { "required": ["revoked_at"] },
       "then": { "required": ["revoked_by"] }
     },
     {
+      "x-rule": "merge-held-by-coordinator",
       "description": "Only a coordinator (orchestrator) or the merge role may hold merge authority.",
       "if": { "required": ["actions"], "properties": { "actions": { "contains": { "type": "object", "required": ["action"], "properties": { "action": { "const": "merge" } } } } } },
       "then": { "properties": { "granted_to": { "properties": { "role": { "enum": ["orchestrator", "merge"] } } } } }
@@ -153,6 +157,7 @@
     },
     "mergeAction": {
       "description": "Merge authority names the repository, the target branch and the strategy, and still requires an independent review of the current head and the required checks.",
+      "x-rule": "merge-names-repo-target-strategy",
       "type": "object",
       "required": ["action", "repo", "target", "strategy", "requires"],
       "properties": {
@@ -165,6 +170,7 @@
         },
         "strategy": { "enum": ["merge", "squash", "rebase"] },
         "requires": {
+          "x-rule": "merge-requires-review-and-checks",
           "type": "array",
           "items": { "enum": ["independent-review", "required-checks", "current-head", "human-approval"] },
           "uniqueItems": true,

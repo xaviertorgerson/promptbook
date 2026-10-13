@@ -22,6 +22,7 @@
       "minItems": 1,
       "items": { "$ref": "#/$defs/entry" },
       "x-unique-by": "name",
+      "x-rules": { "x-unique-by": "duplicate-name", "contains": "exactly-one-harness" },
       "contains": {
         "description": "Exactly one pinned harness.",
         "type": "object",

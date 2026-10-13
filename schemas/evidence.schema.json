@@ -38,11 +38,13 @@
       "additionalProperties": false,
       "allOf": [
         {
+          "x-rule": "outside-evidence-cites-url",
           "description": "Outside evidence carries a citable URL.",
           "if": { "required": ["kind"], "properties": { "kind": { "enum": ["vendor-reported", "literature"] } } },
           "then": { "required": ["source"], "properties": { "source": { "pattern": "^https?://" } } }
         },
         {
+          "x-rule": "measurement-cites-source",
           "description": "A measurement says where it can be reproduced from.",
           "if": { "required": ["kind"], "properties": { "kind": { "const": "measured" } } },
           "then": { "required": ["source"] }
@@ -70,10 +72,12 @@
       "additionalProperties": false,
       "allOf": [
         {
+          "x-rule": "trigger-case-is-positive",
           "if": { "required": ["expect"], "properties": { "expect": { "const": "trigger" } } },
           "then": { "properties": { "route_to": false, "kind": { "const": "positive" } } }
         },
         {
+          "x-rule": "near-miss-names-route",
           "if": { "required": ["kind"], "properties": { "kind": { "const": "near-miss" } } },
           "then": { "required": ["route_to"] }
         }

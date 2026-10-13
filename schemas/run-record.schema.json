@@ -51,19 +51,20 @@
   },
   "patternProperties": { "^x-": {} },
   "additionalProperties": false,
+  "x-checks": ["ended-after-started"],
   "allOf": [
     {
-      "description": "Only advanced and stalled runs have no reason; a failure always says why.",
-      "if": { "required": ["outcome"], "properties": { "outcome": { "const": "failed" } } },
-      "then": { "properties": { "reason": { "type": "string" } } }
+      "x-rule": "failure-says-why",
+      "description": "A failed or stalled run carries its reason; an advanced one has none.",
+      "if": { "required": ["outcome"], "properties": { "outcome": { "enum": ["failed", "stalled"] } } },
+      "then": { "properties": { "reason": { "type": "string" } } },
+      "else": { "properties": { "reason": { "type": "null" } } }
     },
     {
-      "if": { "required": ["outcome"], "properties": { "outcome": { "const": "stalled" } } },
-      "then": { "properties": { "reason": { "type": "string" } } }
-    },
-    {
+      "x-rule": "advanced-means-moved",
+      "description": "advanced means the dispatched task left ready and in-progress (scripts/loop.mjs stall()).",
       "if": { "required": ["outcome"], "properties": { "outcome": { "const": "advanced" } } },
-      "then": { "properties": { "reason": { "type": "null" } } }
+      "then": { "properties": { "status_after": { "not": { "enum": ["ready", "in-progress", null] } } } }
     }
   ]
 }

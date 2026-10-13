@@ -105,7 +105,7 @@
       "type": "object",
       "required": ["name", "summary"],
       "properties": {
-        "name": { "$ref": "common.schema.json#/$defs/attention" },
+        "name": { "x-rule": "attention-not-workflow-status", "$ref": "common.schema.json#/$defs/attention" },
         "summary": {
           "description": "A short status phrase, usually 3-5 words.",
           "type": "string",
@@ -125,10 +125,12 @@
       "additionalProperties": false,
       "allOf": [
         {
+          "x-rule": "needs-human-names-next-action",
           "if": { "required": ["name"], "properties": { "name": { "const": "needs-human" } } },
           "then": { "required": ["next_action"] }
         },
         {
+          "x-rule": "complete-has-no-next-step",
           "if": { "required": ["name"], "properties": { "name": { "const": "complete" } } },
           "then": { "properties": { "next_action": false, "next_role": false } }
         }

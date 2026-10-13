@@ -8,10 +8,10 @@
     { "format": "frontmatter-markdown", "paths": ["docs/product/brief.md"] }
   ],
   "x-sections": [
-    { "heading": "Problem", "match": "^Problem\\b" },
-    { "heading": "Users", "match": "^Users\\b" },
-    { "heading": "Outcomes", "match": "^Outcomes\\b" },
-    { "heading": "Non-goals", "match": "^Non-goals\\b" }
+    { "id": "problem", "heading": "Problem", "match": "^Problem\\b" },
+    { "id": "users", "heading": "Users", "match": "^Users\\b" },
+    { "id": "outcomes", "heading": "Outcomes", "match": "^Outcomes\\b" },
+    { "id": "non-goals", "heading": "Non-goals", "match": "^Non-goals\\b" }
   ],
   "type": "object",
   "required": ["id", "product", "owner", "status", "updated"],

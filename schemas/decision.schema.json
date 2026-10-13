@@ -57,6 +57,11 @@
       "items": { "$ref": "common.schema.json#/$defs/qualifiedRequirementRef" },
       "uniqueItems": true
     },
+    "extra": {
+      "description": "'**Label:**' lines the parser does not map, keyed by label.",
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
     "placeholders": {
       "description": "Fields the parser found holding a template token (TODO(domain), <…>). Reported as warnings, not errors.",
       "type": "array",
@@ -67,6 +72,7 @@
   "additionalProperties": false,
   "allOf": [
     {
+      "x-rule": "decision-is-dated",
       "description": "A date is required unless the template still holds its placeholder (TODO(domain)), which bootstrap fills.",
       "anyOf": [
         { "required": ["date"] },
@@ -74,11 +80,13 @@
       ]
     },
     {
+      "x-rule": "superseded-names-successor",
       "description": "A superseded decision names its successor.",
       "if": { "required": ["status"], "properties": { "status": { "const": "superseded" } } },
       "then": { "required": ["superseded_by"], "properties": { "superseded_by": { "minItems": 1 } } }
     },
     {
+      "x-rule": "one-way-door-names-reversal-trigger",
       "description": "A one-way door still names what would reopen it.",
       "if": { "required": ["door"], "properties": { "door": { "const": "one-way" } } },
       "then": { "required": ["reversal_trigger"] }

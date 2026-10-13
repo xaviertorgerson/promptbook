@@ -14,6 +14,7 @@
     "role": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
     "summary": {
       "description": "What was done and found. About 2,000 tokens at most; 8,000 characters is the enforced ceiling.",
+      "x-rule": "summary-within-budget",
       "type": "string",
       "minLength": 1,
       "maxLength": 8000
@@ -93,11 +94,13 @@
   "additionalProperties": false,
   "allOf": [
     {
-      "description": "needs-human comes with at least one question; the other attentions carry none for a human.",
+      "x-rule": "needs-human-asks-a-question",
+      "description": "needs-human comes with at least one question.",
       "if": { "required": ["attention"], "properties": { "attention": { "const": "needs-human" } } },
       "then": { "properties": { "decisions_needed": { "minItems": 1 } } }
     },
     {
+      "x-rule": "complete-meets-every-criterion",
       "description": "complete means every criterion met.",
       "if": { "required": ["attention", "criteria"], "properties": { "attention": { "const": "complete" } } },
       "then": { "properties": { "criteria": { "properties": { "unmet": { "maxItems": 0 } } } } }
