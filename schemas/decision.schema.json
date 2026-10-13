@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://harness.dev/schemas/decision.schema.json",
+  "title": "Decision (ADR)",
+  "description": "One '## ADR-NNNN: title' entry of DECISIONS.md, normalized from its '**Field:** value' lines (CONTRACTS.md, Normalization). Immutable once accepted; corrected by a superseding ADR.",
+  "x-version": "1.0.0",
+  "x-artifacts": [
+    { "format": "markdown-entries", "parser": "decisions", "paths": ["DECISIONS.md", "docs/adr/*.md"] }
+  ],
+  "type": "object",
+  "required": ["id", "title", "status", "status_text", "decision", "why", "consequences"],
+  "properties": {
+    "id": { "$ref": "common.schema.json#/$defs/adrId" },
+    "title": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+    "status": {
+      "description": "The first word of the Status line, lowercased.",
+      "enum": ["proposed", "accepted", "superseded", "deprecated", "rejected"]
+    },
+    "status_text": { "description": "The Status line as written.", "$ref": "common.schema.json#/$defs/nonEmptyString" },
+    "superseded_by": {
+      "description": "ADR ids named after 'superseded' in the Status line (whole or in part).",
+      "type": "array",
+      "items": { "$ref": "common.schema.json#/$defs/adrId" },
+      "uniqueItems": true
+    },
+    "refined_by": {
+      "type": "array",
+      "items": { "$ref": "common.schema.json#/$defs/adrId" },
+      "uniqueItems": true
+    },
+    "date": { "$ref": "common.schema.json#/$defs/date" },
+    "supersedes": { "description": "The Supersedes line as written.", "$ref": "common.schema.json#/$defs/nonEmptyString" },
+    "supersedes_ids": {
+      "type": "array",
+      "items": { "$ref": "common.schema.json#/$defs/adrId" },
+      "uniqueItems": true
+    },
+    "decision": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+    "why": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+    "consequences": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+    "options": {
+      "description": "'**Options considered:**' bullets: the alternatives, each with why it lost.",
+      "type": "array",
+      "items": { "$ref": "common.schema.json#/$defs/nonEmptyString" }
+    },
+    "door": {
+      "description": "'**Door:** one-way|two-way'. A one-way door needs a reversal trigger anyway: what would make it worth the cost.",
+      "enum": ["one-way", "two-way"]
+    },
+    "reversal_trigger": {
+      "description": "The '**Reversed when:**' line: the measurable condition that reopens the decision.",
+      "$ref": "common.schema.json#/$defs/nonEmptyString"
+    },
+    "satisfies": {
+      "description": "'**Satisfies:** epic/NFR-1, epic/REQ-3' — the requirements this decision exists for.",
+      "type": "array",
+      "items": { "$ref": "common.schema.json#/$defs/qualifiedRequirementRef" },
+      "uniqueItems": true
+    },
+    "extra": {
+      "description": "'**Label:**' lines the parser does not map, keyed by label.",
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "placeholders": {
+      "description": "Fields the parser found holding a template token (TODO(domain), <…>). Reported as warnings, not errors.",
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "patternProperties": { "^x-": {} },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "x-rule": "decision-is-dated",
+      "description": "A date is required unless the template still holds its placeholder (TODO(domain)), which bootstrap fills.",
+      "anyOf": [
+        { "required": ["date"] },
+        { "required": ["placeholders"], "properties": { "placeholders": { "contains": { "const": "date" } } } }
+      ]
+    },
+    {
+      "x-rule": "superseded-names-successor",
+      "description": "A superseded decision names its successor.",
+      "if": { "required": ["status"], "properties": { "status": { "const": "superseded" } } },
+      "then": { "required": ["superseded_by"], "properties": { "superseded_by": { "minItems": 1 } } }
+    },
+    {
+      "x-rule": "one-way-door-names-reversal-trigger",
+      "description": "A one-way door still names what would reopen it.",
+      "if": { "required": ["door"], "properties": { "door": { "const": "one-way" } } },
+      "then": { "required": ["reversal_trigger"] }
+    }
+  ]
+}

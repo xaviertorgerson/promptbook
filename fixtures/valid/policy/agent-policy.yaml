@@ -1,0 +1,39 @@
+# The dotfiles' Claude settings (home/dot_claude/settings.json.tmpl, 2026-10-13) restated as an
+# engine-neutral policy, plus the unattended tier ADR-0021 requires.
+policy_version: 1
+owner: xaviertorgerson
+profiles:
+  personal: { tier: autonomous, engines: [claude, codex, gemini], description: "laptop; bypass default, walls hold" }
+  work: { tier: auto-edit, engines: [claude, codex] }
+  ci: { tier: unattended, engines: [claude], description: "loop.mjs and agent workflows: dontAsk + allowlist" }
+deny_read:
+  - "**/.env"
+  - "**/.env.local"
+  - "**/.env.*.local"
+  - "**/.env.production"
+  - "**/secrets/**"
+  - "~/.ssh/**"
+forbid:
+  - { command: [rm, -rf, /], reason: never wipe the root }
+  - { command: [git, push, [--force, -f]], reason: no force-push of shared branches (hard rule 3) }
+  - { command: [terraform, apply], reason: infrastructure changes go through review }
+ask:
+  - { command: [psql], reason: a database shell is a human checkpoint }
+allow:
+  - { command: [pnpm] }
+  - { command: [npx] }
+  - { command: [git, [status, log, diff, show, branch, add, commit, fetch, pull]], examples: [git status, git log --oneline] }
+  - { command: [gh] }
+  - { command: [make] }
+  - { command: [docker] }
+  - { write: "**" }
+  - { tool: web-fetch, domain: "**.github.com" }
+egress:
+  default: deny
+  allow_domains: ["**.github.com", registry.npmjs.org, "**.anthropic.com"]
+sandbox: { enabled: true, fail_if_unavailable: true }
+budgets:
+  unattended: { max_turns: 200, max_usd: 5 }
+  autonomous: { max_usd: 20 }
+accept_gaps:
+  - { engine: gemini, field: deny_read, reason: "Gemini CLI has no read-deny for its file tools; this profile runs Gemini only in a container without the secret files mounted" }

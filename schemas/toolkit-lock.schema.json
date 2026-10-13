@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://harness.dev/schemas/toolkit-lock.schema.json",
+  "title": "Toolkit lock",
+  "description": "toolkit.lock (YAML) in an L2 project, or in L1 dotfiles: the exact harness (L3) and implementation packs (L4) this project runs, pinned by commit and tree hash. Dependencies point one way: everything pins one L3.",
+  "x-version": "1.0.0",
+  "x-artifacts": [
+    { "format": "yaml", "paths": ["toolkit.lock"] }
+  ],
+  "type": "object",
+  "required": ["lock_version", "entries"],
+  "properties": {
+    "lock_version": { "const": 1 },
+    "generated_at": { "$ref": "common.schema.json#/$defs/dateTime" },
+    "generated_by": {
+      "description": "Tool and version that wrote the lock, e.g. harness/lock@1.0.0.",
+      "type": "string",
+      "pattern": "^[a-z0-9-]+/[a-z0-9-]+@[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/entry" },
+      "x-unique-by": "name",
+      "x-rules": { "x-unique-by": "duplicate-name", "contains": "exactly-one-harness" },
+      "contains": {
+        "description": "Exactly one pinned harness.",
+        "type": "object",
+        "required": ["layer"],
+        "properties": { "layer": { "const": "L3" } }
+      },
+      "minContains": 1,
+      "maxContains": 1
+    }
+  },
+  "patternProperties": { "^x-": {} },
+  "additionalProperties": false,
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "required": ["name", "layer", "source", "ref", "commit", "tree", "version", "autoUpdate"],
+      "properties": {
+        "name": { "$ref": "common.schema.json#/$defs/slug" },
+        "layer": { "enum": ["L3", "L4"] },
+        "kind": {
+          "description": "What an L4 entry implements.",
+          "enum": ["harness", "engine-binding", "stack-pack", "runtime", "domain-pack"]
+        },
+        "source": {
+          "description": "A git URL or a local path.",
+          "type": "string",
+          "pattern": "^(?:https://|ssh://|git@|file:|\\.{1,2}/|/)[^\\s]+$"
+        },
+        "path": {
+          "description": "Subdirectory inside the source, for a pack that lives in a larger repository.",
+          "type": "string",
+          "pattern": "^[^\\s/][^\\s]*$"
+        },
+        "ref": {
+          "description": "The tag or branch the commit was resolved from.",
+          "$ref": "common.schema.json#/$defs/nonEmptyString"
+        },
+        "commit": {
+          "description": "Full commit id (SHA-1 or SHA-256).",
+          "type": "string",
+          "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+        },
+        "tree": {
+          "description": "Git tree id of the pinned content (of path, when set). Detects a rewritten tag or a force-pushed mirror.",
+          "type": "string",
+          "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+        },
+        "version": { "$ref": "common.schema.json#/$defs/semver" },
+        "autoUpdate": {
+          "description": "How far an updater may move this pin without a human: off, or within patch / minor / major. A mirrored vendor pack is off.",
+          "enum": ["off", "patch", "minor", "major"]
+        },
+        "mirrored": {
+          "description": "The source is a mirror of an upstream; the upstream it tracks.",
+          "type": "string",
+          "pattern": "^https://[^\\s]+$"
+        }
+      },
+      "patternProperties": { "^x-": {} },
+      "additionalProperties": false
+    }
+  }
+}

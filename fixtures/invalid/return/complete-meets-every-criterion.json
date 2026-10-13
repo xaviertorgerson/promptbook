@@ -1,0 +1,7 @@
+{
+  "summary": "Done, mostly.",
+  "attention": "complete",
+  "artifacts": [],
+  "decisions_needed": [],
+  "criteria": { "met": ["AC-1"], "unmet": [{ "id": "AC-2", "reason": "ran out of turns" }] }
+}

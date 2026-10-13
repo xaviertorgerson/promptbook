@@ -1,0 +1,19 @@
+{
+  "name": "harness",
+  "version": "0.1.0",
+  "description": "Portable skills for planning, building and shipping with human gates: requirements, journeys, task decomposition, landing changes, evals.",
+  "author": { "name": "Xavier Torgerson", "url": "https://github.com/xaviertorgerson" },
+  "homepage": "https://github.com/xaviertorgerson/harness",
+  "repository": "https://github.com/xaviertorgerson/harness",
+  "license": "MIT",
+  "keywords": ["agents", "planning", "contracts", "skills"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Harness",
+    "shortDescription": "Plan, build and ship with human gates",
+    "longDescription": "Engine-neutral skills that turn a brief into journeys, requirements and EARS tasks, land changes under explicit grants, and keep evidence for every practice.",
+    "developerName": "Xavier Torgerson",
+    "category": "Developer Tool",
+    "websiteURL": "https://github.com/xaviertorgerson/harness"
+  }
+}

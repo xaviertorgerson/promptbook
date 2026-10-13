@@ -1,0 +1,10 @@
+id: GRANT-9
+granted_by: maria
+granted_to: { role: orchestrator }
+granted_at: "2026-10-12T08:00:00Z"
+source: chat transcript 2026-10-12
+scope: { objective: Ship BILL-7, repositories: [acme/billing] }
+actions: [finalize]
+limits: { max_workers: 1, budget: { max_usd: 10 } }
+expires_at: "2026-10-11T08:00:00Z"
+revocable: true

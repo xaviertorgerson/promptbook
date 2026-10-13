@@ -1,0 +1,11 @@
+{
+  "task": "BILL-4",
+  "role": "coder",
+  "summary": "Split the period at the change date. Proration basis is undecided in the spec; implemented neither.",
+  "attention": "needs-human",
+  "artifacts": [{ "path": "apps/api/src/core/rating/split.ts", "kind": "code" }],
+  "decisions_needed": [
+    { "question": "Prorate by calendar days or billing days?", "options": ["calendar days", "billing days"], "recommendation": "calendar days", "blocking": true, "for": "human" }
+  ],
+  "criteria": { "met": ["AC-1"], "unmet": [{ "id": "AC-2", "reason": "blocked on the proration basis" }] }
+}

@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://harness.dev/schemas/ux-flow.schema.json",
+  "title": "UX flow",
+  "description": "One flow ('## UX-n · title') of docs/ux/<epic>.md: the screens of a user-facing journey and its four states, designed before code.",
+  "x-version": "1.0.0",
+  "x-artifacts": [
+    { "format": "markdown-entries", "parser": "ux-flows", "paths": ["docs/ux/*.md"], "bind": { "epic": 1 } }
+  ],
+  "type": "object",
+  "required": ["id", "title", "epic", "cujs", "steps", "states", "prototype"],
+  "properties": {
+    "id": { "$ref": "common.schema.json#/$defs/uxId" },
+    "title": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+    "epic": { "$ref": "common.schema.json#/$defs/slug" },
+    "cujs": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "common.schema.json#/$defs/cujRef" },
+      "uniqueItems": true
+    },
+    "requirements": {
+      "type": "array",
+      "items": { "$ref": "common.schema.json#/$defs/requirementRef" },
+      "uniqueItems": true
+    },
+    "steps": {
+      "description": "Screens or steps in order.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "common.schema.json#/$defs/nonEmptyString" }
+    },
+    "states": {
+      "description": "What the user sees in each state. All four are designed, not left to the implementer.",
+      "x-rule": "four-states-designed",
+      "type": "object",
+      "required": ["empty", "loading", "error", "success"],
+      "properties": {
+        "empty": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+        "loading": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+        "error": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+        "success": { "$ref": "common.schema.json#/$defs/nonEmptyString" }
+      },
+      "additionalProperties": { "$ref": "common.schema.json#/$defs/nonEmptyString" }
+    },
+    "prototype": {
+      "description": "Link to the clickable prototype or design file (a URL or a repository path). Inherited from the file's frontmatter when the flow does not set one.",
+      "$ref": "common.schema.json#/$defs/docRef"
+    },
+    "accessibility": { "$ref": "common.schema.json#/$defs/nonEmptyString" }
+  },
+  "patternProperties": { "^x-": {} },
+  "additionalProperties": false
+}

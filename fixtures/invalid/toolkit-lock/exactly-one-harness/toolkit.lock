@@ -1,0 +1,5 @@
+# Two harness pins: a project would run two sets of contracts.
+lock_version: 1
+entries:
+  - { name: harness, layer: L3, source: "https://github.com/x/harness", ref: v1.0.0, commit: 3c9d2f0a6b1e4d5c7f8a9b0c1d2e3f4a5b6c7d8e, tree: 9f8e7d6c5b4a39281706f5e4d3c2b1a098765432, version: 1.0.0, autoUpdate: minor }
+  - { name: harness-next, layer: L3, source: "https://github.com/x/harness", ref: v2.0.0-rc.1, commit: 4c9d2f0a6b1e4d5c7f8a9b0c1d2e3f4a5b6c7d8e, tree: 8f8e7d6c5b4a39281706f5e4d3c2b1a098765432, version: 2.0.0-rc.1, autoUpdate: "off" }

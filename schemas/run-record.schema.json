@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://harness.dev/schemas/run-record.schema.json",
+  "title": "Run record",
+  "description": "One JSON line per agent run, appended by the runner (never the agent). Exactly the line agentic-template's scripts/loop.mjs writes to .agent/loop-runs.jsonl; harness fields are optional additions.",
+  "x-version": "1.0.0",
+  "x-artifacts": [
+    { "format": "jsonl", "paths": [".agent/loop-runs.jsonl", ".agent/runs/*.jsonl"] }
+  ],
+  "type": "object",
+  "required": ["task", "session_id", "started_at", "ended_at", "exit", "outcome", "reason", "subtype", "num_turns", "total_cost_usd", "status_after"],
+  "properties": {
+    "task": { "$ref": "common.schema.json#/$defs/taskId" },
+    "session_id": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+    "started_at": { "$ref": "common.schema.json#/$defs/dateTime" },
+    "ended_at": { "$ref": "common.schema.json#/$defs/dateTime" },
+    "exit": {
+      "description": "Process exit code, or the signal name when the process was killed by one.",
+      "type": ["integer", "string"],
+      "pattern": "^SIG[A-Z0-9]+$"
+    },
+    "outcome": {
+      "description": "advanced: the dispatched task left ready/in-progress. stalled: it did not, or another task was claimed. failed: non-zero exit, error result, or no parseable result.",
+      "enum": ["advanced", "stalled", "failed"]
+    },
+    "reason": { "type": ["string", "null"], "minLength": 1 },
+    "subtype": {
+      "description": "The engine's result subtype (Claude Code: success, error_max_turns, error_max_budget_usd, error_during_execution, error_max_structured_output_retries), or null when no result was parsed. Mapped to attention in state-machines/attention.yaml.",
+      "type": ["string", "null"],
+      "minLength": 1
+    },
+    "num_turns": { "type": ["integer", "null"], "minimum": 0 },
+    "total_cost_usd": { "type": ["number", "null"], "minimum": 0 },
+    "status_after": {
+      "description": "The task's workflow status read back from the task file after the run, or null if the file was gone.",
+      "anyOf": [{ "$ref": "common.schema.json#/$defs/taskStatus" }, { "type": "null" }]
+    },
+    "engine": { "description": "Harness: claude, codex, gemini, ...", "$ref": "common.schema.json#/$defs/slug" },
+    "runtime": { "description": "Harness: the runner that wrote the line (claude-loop, ci, stagehand).", "$ref": "common.schema.json#/$defs/slug" },
+    "model": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+    "status_before": { "$ref": "common.schema.json#/$defs/taskStatus" },
+    "permission_mode": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+    "permission_denials": {
+      "description": "Harness: count of denied tool calls; non-zero means a question for a human (ADR-0021).",
+      "type": "integer",
+      "minimum": 0
+    },
+    "attention": { "$ref": "common.schema.json#/$defs/attention" },
+    "budget": { "$ref": "common.schema.json#/$defs/budget" },
+    "grant": { "$ref": "common.schema.json#/$defs/grantId" }
+  },
+  "patternProperties": { "^x-": {} },
+  "additionalProperties": false,
+  "x-checks": ["ended-after-started"],
+  "allOf": [
+    {
+      "x-rule": "failure-says-why",
+      "description": "A failed or stalled run carries its reason; an advanced one has none.",
+      "if": { "required": ["outcome"], "properties": { "outcome": { "enum": ["failed", "stalled"] } } },
+      "then": { "properties": { "reason": { "type": "string" } } },
+      "else": { "properties": { "reason": { "type": "null" } } }
+    },
+    {
+      "x-rule": "advanced-means-moved",
+      "description": "advanced means the dispatched task left ready and in-progress (scripts/loop.mjs stall()).",
+      "if": { "required": ["outcome"], "properties": { "outcome": { "const": "advanced" } } },
+      "then": { "properties": { "status_after": { "not": { "enum": ["ready", "in-progress", null] } } } }
+    }
+  ]
+}

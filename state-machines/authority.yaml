@@ -1,0 +1,107 @@
+# Authority: which decisions a human may delegate, and the shape of the delegation.
+#
+# Default: every decision below is human-owned. A grant (schemas/grant.schema.json) delegates named
+# actions to a coordinator for a named scope, within limits, until an expiry. A grant never waives
+# repository instructions, sandbox or permission policy, protected-branch rules, independent review,
+# or required checks. Unspecified authority stays with the human; ambiguous authority is asked
+# about, never inferred from a large request or renewed from a saved summary.
+#
+# Source: stagehand skills/orchestrating-development (SKILL.md "Authority and scope",
+# references/project-delegation.md), generalized; agentic-template docs/roles.md.
+version: 1.0.0
+contract: authority
+
+defaults:
+  owner: human
+  holders: [owner, engineer]
+  rule: >-
+    Without a live grant naming the action and covering the scope, the coordinator asks the human.
+    Direct human instructions to a worker are authority within their stated scope; record them in
+    the task record's decisions with their source.
+
+never_grantable:
+  - id: spec-approval
+    why: The plan is the human's; workflow.yaml gate spec-approval.
+  - id: production-release
+    why: >-
+      Customers see it. Turning the gate into automatic checks is a human config change in the
+      forge (an environment's reviewers), not a delegation.
+  - id: answer-permission-prompt
+    why: Approving a tool call the policy asks about is the checkpoint itself.
+  - id: change-policy
+    why: Walls (deny rules, hooks, branch protection) are changed by a human commit, reviewed.
+  - id: force-push-shared
+    why: Destroys others' history.
+  - id: destructive-data
+    why: Dropping databases, deleting volumes, wiping backups (agentic-template hard rule 3).
+  - id: widen-grant
+    why: Widening is a new grant from the human; a coordinator may only narrow its own.
+
+grantable:
+  select-tasks:
+    means: Choose, sequence and start tasks within the scope without asking per task.
+    workflow: [task.claim]
+    does_not_cover: Adding work outside the scope or its requirements; optional follow-on projects.
+  approve-plan:
+    means: Approve a worker's implementation plan within the agreed intent.
+    workflow: []
+    does_not_cover: Changing acceptance criteria or scope (that is a respec, owned by the human).
+  dispose-findings:
+    means: Decide which review findings the author fixes now and which become follow-ups.
+    parameters: [policy]
+    does_not_cover: Dropping a material in-scope finding, or skipping the re-review after fixes.
+  finalize:
+    means: Mark a PR ready for review once the current head passed an independent review.
+    workflow: [task.mark-pr-ready]
+    does_not_cover: Merging. Finalization grants no merge authority.
+  publish-review:
+    means: Publish a review on someone else's PR (external review) for the exact head reviewed.
+    workflow: []
+    does_not_cover: Publishing for a changed head without re-review.
+  merge:
+    means: Land a PR on a protected branch through the forge, in place of the human approval.
+    workflow: [task.approve-pr]
+    parameters: [repo, target, strategy, requires]
+    scope_rule: >-
+      One repository, one exact target branch, one strategy. No wildcard target. A grant for
+      main does not cover release/*.
+    always_requires: [independent-review, required-checks]
+    also_checks: >-
+      The actual base and head at merge time; record the result. Only the coordinator exercises it,
+      through the forge's PR merge, never a direct push; workers never hold it. The forge's branch
+      protection still applies: if it requires a human code-owner approval, the grant cannot satisfy
+      it and the coordinator asks.
+    granted_last: true
+    why_last: >-
+      agentic-template ADR-0002 delegates the merge gate last, if ever. The grant exists so a
+      project that chooses to can do it safely, scoped and revocable.
+
+lifecycle:
+  issue:
+    by: The human who holds the authority (owner or engineer), never an agent.
+    source: >-
+      Recorded with where the human said it (a commit, an issue comment, a transcript reference).
+      A worker's claim of delegation is not a source.
+  validity: >-
+    A grant is live when granted_at <= now < expires_at and revoked_at is absent. A coordinator
+    checks liveness before every delegated action, not once at start.
+  expiry: >-
+    Required on every grant. On expiry, actions in flight finish their current step and stop; the
+    coordinator records needs-human with a renewal request.
+  narrowing: >-
+    The human (or the coordinator, of its own grant) may remove actions or scope at any time;
+    append to narrowed. Widening is a new grant.
+  revocation: >-
+    Always possible (revocable is always true). Set revoked_at, revoked_by and a reason. Revocation
+    takes effect at the coordinator's next check; work already landed stays landed.
+  stop_conditions: >-
+    The agreed outcome reached, the budget boundary, a revoked grant, a consequential ambiguity, or
+    repeated non-progress end the delegation early.
+  limits: >-
+    max_workers caps concurrent workers; budget caps spend across the grant. Both are enforced by
+    the runtime, and breaching either is a stop condition.
+
+conflicts:
+  - If another instruction or role skill prevents a delegated action, surface the conflict to the
+    human rather than hiding it in a worker prompt.
+  - Policy denies (agent-policy.yaml, project walls) beat any grant.

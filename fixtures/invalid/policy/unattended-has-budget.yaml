@@ -1,0 +1,5 @@
+policy_version: 1
+profiles:
+  ci: { tier: unattended, engines: [claude] }
+deny_read: ["**/.env"]
+forbid: []

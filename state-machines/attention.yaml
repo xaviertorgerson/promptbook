@@ -1,0 +1,134 @@
+# Attention: what a runtime signal means for the human, and only that.
+#
+# Attention is the runtime's view of one task or one run: working (an agent has work underway,
+# including waits on another agent), needs-human (a specific human action is required, named in
+# next_action), complete (nothing further is needed from the human in this workflow). It lives in
+# task-record.state.name, run-record.attention and return.attention. It never lives in a task
+# file, and it never moves a workflow status (workflow.yaml).
+#
+# The table maps each runtime's signal to a suggested attention. A coordinator reconciles the
+# suggestion against evidence (the agent's latest answer, git, the PR, the task file) before it
+# records anything; a signal alone is a hint. Stagehand states the rule as: a wake is a hint, not
+# an event ledger.
+version: 1.0.0
+contract: attention
+
+states:
+  working:     { color: yellow, means: "Agents have work underway, including handoffs or waits on another agent or task." }
+  needs-human: { color: red,    means: "A specific human action is required to continue; the record names it in next_action." }
+  complete:    { color: green,  means: "Finished; nothing further is needed from the human within this workflow (a PR ready for review qualifies)." }
+
+rules:
+  - id: signals-never-advance-workflow
+    text: >-
+      No signal in this file changes a task's, epic's or release's status. Status moves only by a
+      commit from an authorized role (workflow.yaml). A signal may change attention, and only after
+      reconciliation.
+  - id: reconcile-before-recording
+    text: >-
+      On any signal, read the agent's latest answer and the relevant artifacts, then record the
+      reconciled attention and next action. Do not dispatch again, interrupt, or seek renewed
+      approval merely because a signal arrived.
+  - id: idle-is-not-complete
+    text: >-
+      An agent that went idle or done has stopped talking; it has not necessarily finished. complete
+      is recorded only when the evidence shows the request is finished.
+  - id: blocked-is-not-approval
+    text: >-
+      A blocked or input-required signal prompts inspection of the actual question or permission.
+      Never answer a permission prompt or send approval keys on the human's behalf.
+  - id: coalesced-and-lossy
+    text: >-
+      Signals coalesce and can be lost (Herdr's event history is not durable). Duplicates and stale
+      signals must not repeat work, publication or finalization. On a lost-events notice, rebuild
+      from a snapshot and the durable records.
+  - id: unknown-means-inspect
+    text: >-
+      An unknown or uncertain state means the runtime lost certainty, not that the agent stopped.
+      Inspect; do not interrupt or redispatch on unknown alone.
+  - id: human-input-outranks-signals
+    text: >-
+      Human text that arrives with or after a signal has authority over conflicting stale
+      observations.
+
+# reconcile: what the coordinator does before recording the suggested attention.
+#   inspect      read the latest answer and artifacts, then decide
+#   record       the evidence is the signal itself (a terminal failure, a human action needed)
+#   ignore       no change; reconcile later
+sources:
+  herdr:
+    what: Herdr agent status on a pane, pushed as the pane.agent_status_changed event (field agent_status).
+    ref: https://github.com/herdrdev/herdr (src/api/schema/common.rs AgentStatus; docs concepts.mdx, socket-api.mdx)
+    event: pane.agent_status_changed
+    signals:
+      working: { attention: working,     reconcile: ignore,  note: "Reconcile with what is known; do not redispatch." }
+      blocked: { attention: needs-human, reconcile: inspect, note: "Needs input, approval or a decision. Find the actual prompt; never answer it." }
+      done:    { attention: null,        reconcile: inspect, note: "Finished and unseen. Read the answer: complete, working (handoff to another role) or needs-human." }
+      idle:    { attention: null,        reconcile: inspect, note: "Finished or waiting and seen. Same as done for reconciliation; viewing done turns it idle, which is not new work." }
+      unknown: { attention: null,        reconcile: inspect, note: "Herdr cannot classify the screen. Not a stop." }
+    other_events:
+      events_lost: "Resubscribe and reconcile from session.snapshot plus the task records."
+
+  a2a:
+    what: A2A protocol v1.0 TaskState on a remote agent's Task.
+    ref: https://a2a-protocol.org/latest/specification/ (section 4.1.3)
+    signals:
+      TASK_STATE_UNSPECIFIED:    { attention: null,        reconcile: inspect }
+      TASK_STATE_SUBMITTED:      { attention: working,     reconcile: ignore }
+      TASK_STATE_WORKING:        { attention: working,     reconcile: ignore }
+      TASK_STATE_INPUT_REQUIRED: { attention: needs-human, reconcile: inspect, note: "Interrupted. The remote agent asks for input; a human or the grant holder answers, never a guess." }
+      TASK_STATE_AUTH_REQUIRED:  { attention: needs-human, reconcile: record,  note: "Interrupted. Credentials are a human action, always." }
+      TASK_STATE_COMPLETED:      { attention: null,        reconcile: inspect, note: "Terminal for the remote task only. Read its artifacts; the local task's status is unchanged." }
+      TASK_STATE_FAILED:         { attention: needs-human, reconcile: inspect, note: "Terminal. Decide retry, re-plan or park." }
+      TASK_STATE_CANCELED:       { attention: null,        reconcile: inspect, note: "Terminal. Who canceled it decides what attention follows." }
+      TASK_STATE_REJECTED:       { attention: needs-human, reconcile: record,  note: "Terminal. The remote agent declined the work." }
+
+  mcp-tasks:
+    what: MCP Tasks status (experimental in spec 2025-11-25, SEP-1686; an extension in 2026-07-28 with tasks/get, tasks/update, tasks/cancel).
+    ref: https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/schema/2025-11-25/schema.ts (TaskStatus)
+    signals:
+      working:        { attention: working,     reconcile: ignore }
+      input_required: { attention: needs-human, reconcile: inspect, note: "Waiting for elicitation or sampling. A human answers unless a grant covers it." }
+      completed:      { attention: null,        reconcile: inspect, note: "The tool call finished; it is one step of the run, not the task." }
+      failed:         { attention: null,        reconcile: inspect, note: "Includes tool results with isError. The agent may recover on its own; inspect before raising." }
+      cancelled:      { attention: null,        reconcile: inspect }
+
+  claude-headless:
+    what: Claude Code result message subtype from `claude -p --output-format json` (or the Agent SDK ResultMessage); also run-record.subtype.
+    ref: https://code.claude.com/docs/en/agent-sdk/agent-loop (Handle the result); https://code.claude.com/docs/en/headless
+    signals:
+      success:                             { attention: null,        reconcile: inspect, note: "The session ended normally. complete only if the task advanced and permission_denials is empty; a denial is a question for a human (ADR-0021)." }
+      error_max_turns:                     { attention: needs-human, reconcile: record,  note: "Ceiling reached. Re-plan or raise the budget; never retry blindly." }
+      error_max_budget_usd:                { attention: needs-human, reconcile: record,  note: "Budget ceiling reached." }
+      error_during_execution:              { attention: needs-human, reconcile: inspect, note: "Crash or cancel; cost fields may be zero." }
+      error_max_structured_output_retries: { attention: needs-human, reconcile: record,  note: "No valid structured return; treat the return as missing." }
+    derived:
+      permission_denials_nonempty: { attention: needs-human, reconcile: record, note: "Under dontAsk an ask is a denial; each denial is a question for a human." }
+      no_result:                   { attention: needs-human, reconcile: record, note: "No parseable JSON result (run-record reason 'no JSON result')." }
+
+  loop-outcome:
+    what: The runner's own verdict on one run (run-record.outcome), judged from the task files.
+    ref: agentic-template scripts/loop.mjs
+    signals:
+      advanced: { attention: null,        reconcile: inspect, note: "The task left ready/in-progress. Its status says what comes next; the human gate is a status, not attention." }
+      stalled:  { attention: needs-human, reconcile: record,  note: "The task did not move, or another task was claimed. The loop stops so a human can look." }
+      failed:   { attention: needs-human, reconcile: record }
+
+  ci:
+    what: A CI job or check-run result on a commit (GitHub check runs; Forgejo Actions reports the same names).
+    ref: https://docs.github.com/en/rest/checks/runs
+    status:
+      queued:      { attention: working, reconcile: ignore }
+      in_progress: { attention: working, reconcile: ignore }
+      waiting:     { attention: working, reconcile: ignore, note: "Waiting on an environment approval is a human gate, owned by workflow.yaml, not by attention." }
+      requested:   { attention: working, reconcile: ignore }
+      pending:     { attention: working, reconcile: ignore }
+    conclusion:
+      success:         { attention: null,        reconcile: inspect, note: "Evidence for a guard (checks-green). The actor still makes the transition commit." }
+      neutral:         { attention: null,        reconcile: inspect }
+      skipped:         { attention: null,        reconcile: inspect, note: "A skipped required check is not a pass." }
+      failure:         { attention: working,     reconcile: inspect, note: "The coder iterates; needs-human only when the inner loop's ceiling is reached." }
+      timed_out:       { attention: working,     reconcile: inspect }
+      cancelled:       { attention: null,        reconcile: inspect }
+      action_required: { attention: needs-human, reconcile: record }
+      stale:           { attention: null,        reconcile: inspect, note: "The forge marked it stale; rerun." }

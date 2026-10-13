@@ -1,0 +1,18 @@
+{
+  "task": "BILL-7",
+  "role": "coder",
+  "summary": "Implemented atomic re-rating for prorated periods: both segments' line items are replaced in one transaction keyed by (account_id, period, rate_version). Added three tests named for AC-1..AC-3. Lint, typecheck and the rating suite pass.",
+  "attention": "complete",
+  "artifacts": [
+    { "path": "apps/api/src/core/rating/rerate.ts", "kind": "code" },
+    { "path": "apps/api/src/core/rating/rerate.spec.ts", "kind": "test", "note": "BILL-7 AC-1..AC-3" },
+    { "path": "https://github.com/acme/billing/pull/240", "kind": "pr" }
+  ],
+  "decisions_needed": [],
+  "criteria": { "met": ["AC-1", "AC-2", "AC-3"], "unmet": [] },
+  "verification": [
+    { "command": "pnpm vitest run apps/api/src/core/rating", "result": "pass" },
+    { "command": "node scripts/ears-coverage.mjs specs/rating-engine/tasks/BILL-7.md", "result": "pass" }
+  ],
+  "session": { "engine": "claude", "session_id": "3f0c6c1e-6d1f-4b55-9c49-1f1f6b7b0c11", "role": "coder" }
+}

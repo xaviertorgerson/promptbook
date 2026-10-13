@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://harness.dev/schemas/journey.schema.json",
+  "title": "Critical user journey",
+  "description": "One CUJ entry of specs/<epic>/cuj.md, normalized from its '## CUJ-n · title' heading and '- **Field:** value' bullets (CONTRACTS.md, Normalization).",
+  "x-version": "1.0.0",
+  "x-artifacts": [
+    { "format": "markdown-entries", "parser": "journeys", "paths": ["specs/*/cuj.md"], "bind": { "epic": 1 } }
+  ],
+  "type": "object",
+  "required": ["id", "title", "epic", "actor", "goal", "trigger", "success", "unwanted"],
+  "properties": {
+    "id": { "$ref": "common.schema.json#/$defs/cujId" },
+    "title": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+    "epic": { "$ref": "common.schema.json#/$defs/slug" },
+    "actor": {
+      "description": "Who or what system takes the journey. Free text; personas carries the trace link.",
+      "$ref": "common.schema.json#/$defs/nonEmptyString"
+    },
+    "personas": {
+      "description": "Personas this journey serves ('- **Personas:** PER-1'). Required by the trace check once docs/product exists.",
+      "type": "array",
+      "items": { "$ref": "common.schema.json#/$defs/personaId" },
+      "uniqueItems": true
+    },
+    "user_facing": {
+      "description": "'- **User-facing:** yes|no'. A user-facing journey needs a UX flow before readiness.",
+      "type": "boolean"
+    },
+    "goal": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+    "trigger": { "description": "Maps to an EARS event-driven criterion.", "$ref": "common.schema.json#/$defs/nonEmptyString" },
+    "steps": {
+      "type": "array",
+      "items": { "$ref": "common.schema.json#/$defs/nonEmptyString" }
+    },
+    "success": { "description": "The observable outcome. Maps to a state-driven or ubiquitous criterion.", "$ref": "common.schema.json#/$defs/nonEmptyString" },
+    "unwanted": { "description": "What must not happen. Maps to an unwanted-behaviour criterion.", "$ref": "common.schema.json#/$defs/nonEmptyString" },
+    "extra": {
+      "description": "'**Field:**' bullets the parser does not map, keyed by label.",
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    }
+  },
+  "patternProperties": { "^x-": {} },
+  "additionalProperties": false
+}

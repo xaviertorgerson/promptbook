@@ -1,0 +1,184 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://harness.dev/schemas/policy.schema.json",
+  "title": "Agent policy",
+  "description": "The L1 operator policy (agent-policy.yaml): autonomy tier per machine profile, what is never read, never done, asked about, or pre-approved, network egress, and run ceilings. Engine-neutral; compiled per engine by the adapters (adapters/*/README.md). Walls are denies (forbid, deny_read); ask is a human checkpoint and protects nothing unattended (ADR-0021).",
+  "x-version": "1.0.0",
+  "x-artifacts": [
+    { "format": "yaml", "paths": ["agent-policy.yaml", ".chezmoidata/agent-policy.yaml"] }
+  ],
+  "type": "object",
+  "required": ["policy_version", "profiles", "deny_read", "forbid"],
+  "properties": {
+    "policy_version": { "const": 1 },
+    "owner": { "$ref": "common.schema.json#/$defs/handle" },
+    "profiles": {
+      "description": "Machine profile name (the dotfiles' .profile) -> its autonomy tier.",
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "$ref": "common.schema.json#/$defs/slug" },
+      "additionalProperties": { "$ref": "#/$defs/profile" }
+    },
+    "deny_read": {
+      "x-rule": "deny-read-is-not-empty",
+      "description": "Path globs no agent may read (secrets, credentials). A wall: compiled to a deny on every engine or the compile fails.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/pathGlob" },
+      "uniqueItems": true
+    },
+    "forbid": {
+      "description": "Walls: actions denied in every mode, on every profile.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/rule" }
+    },
+    "ask": {
+      "description": "Human checkpoints: prompt a person at a terminal. Unattended they are denials; never count them as protection.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/rule" }
+    },
+    "allow": {
+      "description": "Pre-approvals: run without asking. Never loosens a forbid or deny_read (deny wins on every engine).",
+      "type": "array",
+      "items": { "$ref": "#/$defs/rule" }
+    },
+    "egress": {
+      "type": "object",
+      "required": ["default"],
+      "properties": {
+        "default": { "enum": ["deny", "allow"] },
+        "allow_domains": { "type": "array", "items": { "$ref": "#/$defs/domain" }, "uniqueItems": true },
+        "deny_domains": { "type": "array", "items": { "$ref": "#/$defs/domain" }, "uniqueItems": true }
+      },
+      "additionalProperties": false,
+      "if": { "properties": { "default": { "const": "deny" } } },
+      "then": { "x-rule": "egress-deny-lists-allowed-domains", "required": ["allow_domains"] }
+    },
+    "sandbox": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "fail_if_unavailable": {
+          "description": "Refuse to run rather than run unsandboxed.",
+          "type": "boolean"
+        },
+        "writable_roots": {
+          "description": "Directories beyond the workspace that sandboxed commands may write.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/pathGlob" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "budgets": {
+      "description": "Run ceilings by tier. An unattended tier must have one.",
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/tier" },
+      "additionalProperties": { "$ref": "common.schema.json#/$defs/budget" }
+    },
+    "accept_gaps": {
+      "description": "Degradations the operator accepts on purpose: an engine that cannot represent a field. Without an entry the compiler fails closed.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["engine", "field", "reason"],
+        "properties": {
+          "engine": { "enum": ["claude", "codex", "gemini"] },
+          "field": { "enum": ["deny_read", "forbid", "ask", "allow", "egress", "sandbox", "budgets", "tier"] },
+          "reason": { "$ref": "common.schema.json#/$defs/nonEmptyString" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "patternProperties": { "^x-": {} },
+  "additionalProperties": false,
+  "x-checks": ["policy-shadowing"],
+  "allOf": [
+    {
+      "x-rule": "unattended-has-budget",
+      "description": "Some profile is unattended -> budgets.unattended is required (an unattended run has a ceiling).",
+      "if": {
+        "required": ["profiles"],
+        "properties": { "profiles": { "not": { "additionalProperties": { "not": { "properties": { "tier": { "const": "unattended" } } } } } } }
+      },
+      "then": { "required": ["budgets"], "properties": { "budgets": { "required": ["unattended"] } } }
+    }
+  ],
+  "$defs": {
+    "tier": {
+      "description": "How often an agent asks. read-only: never writes. ask: asks before edits and commands. auto-edit: edits in the workspace without asking, asks for commands. autonomous: does not ask, walls hold (interactive operator present). unattended: headless, never asks, asks become denials, the allowlist is the boundary.",
+      "enum": ["read-only", "ask", "auto-edit", "autonomous", "unattended"]
+    },
+    "profile": {
+      "type": "object",
+      "required": ["tier"],
+      "properties": {
+        "tier": { "$ref": "#/$defs/tier" },
+        "engines": {
+          "description": "Engines installed on this profile; the compiler emits only these.",
+          "type": "array",
+          "items": { "enum": ["claude", "codex", "gemini"] },
+          "uniqueItems": true
+        },
+        "description": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "pathGlob": {
+      "description": "A path glob: relative to each workspace root (**/.env), home-relative (~/.ssh/**) or absolute (//etc/** is not used; write /etc/**).",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\s]+$"
+    },
+    "domain": {
+      "description": "A host, *.host for subdomains only, or **.host for the apex and subdomains.",
+      "type": "string",
+      "pattern": "^(?:\\*\\*?\\.)?[A-Za-z0-9-]+(?:\\.[A-Za-z0-9-]+)+$"
+    },
+    "argvToken": {
+      "description": "One literal argv token, or alternatives at that position.",
+      "anyOf": [
+        { "type": "string", "minLength": 1 },
+        { "type": "array", "minItems": 2, "items": { "type": "string", "minLength": 1 }, "uniqueItems": true }
+      ]
+    },
+    "rule": {
+      "description": "Exactly one matcher: command (an argv prefix, matched token by token), write (a path glob for file writes and edits), or tool (an abstract tool).",
+      "type": "object",
+      "properties": {
+        "command": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/argvToken" }
+        },
+        "write": { "$ref": "#/$defs/pathGlob" },
+        "tool": {
+          "description": "web-fetch, web-search, or mcp:<server>[:<tool>].",
+          "type": "string",
+          "pattern": "^(?:web-fetch|web-search|mcp:[a-z0-9][a-z0-9-]*(?::[A-Za-z0-9_-]+)?)$"
+        },
+        "domain": {
+          "description": "With tool: web-fetch only, the domain the rule covers.",
+          "$ref": "#/$defs/domain"
+        },
+        "reason": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+        "examples": {
+          "description": "Commands the rule must match; compiled to Codex match = [...] and checked by tests.",
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false,
+      "x-rules": { "oneOf": "one-matcher-per-rule" },
+      "oneOf": [
+        { "required": ["command"] },
+        { "required": ["write"] },
+        { "required": ["tool"] }
+      ],
+      "dependentSchemas": {
+        "domain": { "required": ["tool"], "properties": { "tool": { "const": "web-fetch" } } }
+      }
+    }
+  }
+}

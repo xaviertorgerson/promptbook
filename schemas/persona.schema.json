@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://harness.dev/schemas/persona.schema.json",
+  "title": "Persona",
+  "description": "A user the brief serves. Journeys cite personas as their actor; a persona no journey cites is an orphan.",
+  "x-version": "1.0.0",
+  "x-artifacts": [
+    { "format": "markdown-entries", "parser": "personas", "paths": ["docs/product/personas.md"] },
+    { "format": "frontmatter-markdown", "paths": ["docs/product/personas/*.md"] }
+  ],
+  "type": "object",
+  "required": ["id", "name", "role", "goals"],
+  "properties": {
+    "id": { "$ref": "common.schema.json#/$defs/personaId" },
+    "name": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+    "role": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+    "goals": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "common.schema.json#/$defs/nonEmptyString" }
+    },
+    "pains": {
+      "type": "array",
+      "items": { "$ref": "common.schema.json#/$defs/nonEmptyString" }
+    },
+    "context": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+    "quote": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+    "evidence": {
+      "description": "Where this persona comes from: interviews, analytics, support tickets.",
+      "type": "array",
+      "items": { "$ref": "common.schema.json#/$defs/docRef" }
+    }
+  },
+  "patternProperties": { "^x-": {} },
+  "additionalProperties": false
+}

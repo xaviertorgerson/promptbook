@@ -1,0 +1,33 @@
+lock_version: 1
+generated_at: "2026-10-13T12:00:00Z"
+generated_by: harness/lock@1.0.0
+entries:
+  - name: harness
+    layer: L3
+    kind: harness
+    source: https://github.com/xaviertorgerson/harness
+    ref: v1.0.0
+    commit: 3c9d2f0a6b1e4d5c7f8a9b0c1d2e3f4a5b6c7d8e
+    tree: 9f8e7d6c5b4a39281706f5e4d3c2b1a098765432
+    version: 1.0.0
+    autoUpdate: minor
+  - name: agentic-core
+    layer: L4
+    kind: engine-binding
+    source: https://github.com/xaviertorgerson/agentic-template
+    path: .claude
+    ref: template/v1.3.0
+    commit: 1eecf8a0000000000000000000000000000000aa
+    tree: 0a1b2c3d4e5f60718293a4b5c6d7e8f901234567
+    version: 1.3.0
+    autoUpdate: patch
+  - name: sentry-skills
+    layer: L4
+    kind: domain-pack
+    source: https://github.com/xaviertorgerson/mirror-sentry-for-ai
+    mirrored: https://github.com/getsentry/sentry-for-ai
+    ref: main
+    commit: abcdefabcdefabcdefabcdefabcdefabcdefabcd
+    tree: dcbadcbadcbadcbadcbadcbadcbadcbadcbadcba
+    version: 0.4.2
+    autoUpdate: "off"

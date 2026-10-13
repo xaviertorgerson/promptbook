@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://harness.dev/schemas/requirement.schema.json",
+  "title": "Requirement",
+  "description": "One row of a requirements table under '## Requirements' in specs/<epic>/spec.md, normalized: a legacy 'R<n>' id becomes REQ-<n>, columns map by header (CONTRACTS.md, Normalization).",
+  "x-version": "1.0.0",
+  "x-artifacts": [
+    { "format": "markdown-entries", "parser": "requirements", "paths": ["specs/*/spec.md"], "bind": { "epic": 1 } }
+  ],
+  "type": "object",
+  "required": ["id", "epic", "kind", "statement"],
+  "properties": {
+    "id": { "$ref": "common.schema.json#/$defs/requirementId" },
+    "source_id": {
+      "description": "The id as written in the table (R1, REQ-1, NFR-1).",
+      "type": "string",
+      "pattern": "^(?:R|REQ-|NFR-?)[1-9][0-9]*$"
+    },
+    "epic": { "$ref": "common.schema.json#/$defs/slug" },
+    "kind": { "enum": ["functional", "non-functional"] },
+    "statement": {
+      "description": "One checkable behaviour. New functional rows should be EARS; legacy rows are accepted as written.",
+      "$ref": "common.schema.json#/$defs/nonEmptyString"
+    },
+    "ears": {
+      "description": "Set by the parser: the EARS pattern the statement matches, or null.",
+      "enum": ["ubiquitous", "event", "state", "unwanted", "optional", null]
+    },
+    "category": {
+      "description": "Non-functional category.",
+      "enum": ["performance", "reliability", "availability", "security", "privacy", "accessibility", "usability", "operability", "observability", "cost", "compliance", "maintainability", "portability", "scalability"]
+    },
+    "measure": {
+      "description": "The measurable target of a non-functional requirement ('p95 < 200 ms at 50 rps').",
+      "$ref": "common.schema.json#/$defs/nonEmptyString"
+    },
+    "module": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+    "verified_by": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+    "cujs": {
+      "description": "Journeys this requirement serves (a 'CUJ' column).",
+      "type": "array",
+      "items": { "$ref": "common.schema.json#/$defs/cujRef" },
+      "uniqueItems": true
+    },
+    "adrs": {
+      "description": "Decisions that satisfy this requirement (an 'ADR' column).",
+      "type": "array",
+      "items": { "$ref": "common.schema.json#/$defs/adrId" },
+      "uniqueItems": true
+    },
+    "extra": {
+      "description": "Columns the parser does not map, keyed by header text.",
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    }
+  },
+  "patternProperties": { "^x-": {} },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "x-rule": "nfr-has-category-and-measure",
+      "description": "A non-functional requirement names its category and a measurable target; a REQ is functional.",
+      "if": { "required": ["id"], "properties": { "id": { "pattern": "^NFR-" } } },
+      "then": { "required": ["category", "measure"], "properties": { "kind": { "const": "non-functional" } } },
+      "else": { "properties": { "kind": { "const": "functional" } } }
+    }
+  ]
+}
