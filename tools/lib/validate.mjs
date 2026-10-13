@@ -21,31 +21,56 @@ export function fixtureCase(file) {
   return m ? m[2].replace(/\.[^.]+$/, '') : null;
 }
 
+// A template kept beside its examples (adr.template.md, grant.template.yaml) holds placeholders on
+// purpose: no contract is inferred for it; --contract still validates it.
+export const isTemplate = (file) => /\.template\.[^./]+$/i.test(path.basename(file));
+
+// The artifact a filename suffix names (x-artifacts[].suffixes: *.grant.yaml, *.task.md, …), for an
+// example that lives outside the project layout (a skill's references/). Among a contract's
+// artifacts that share the suffix, one with frontmatter reads a file that has it. A binding to the
+// first path segment (an epic) comes from the name before the suffix (rating-engine.cuj.md) and only
+// for entry files, which carry no frontmatter to compare it with.
+function suffixHit(name, arts, file, base) {
+  const matches = arts.filter((a) => a.suffixes?.some((x) => base.toLowerCase().endsWith(x)) && accepts(a.format, file));
+  if (!matches.length) return null;
+  let art = matches[0];
+  if (matches.length > 1) {
+    let fm = false;
+    try { fm = /^---[ \t]*\r?\n/.test(readText(file)); } catch { /* unreadable: the first shape reports it */ }
+    art = matches.find((a) => (a.format === 'frontmatter-markdown') === fm) ?? art;
+  }
+  const suffix = art.suffixes.find((x) => base.toLowerCase().endsWith(x));
+  const prefix = base.slice(0, base.length - suffix.length);
+  const captures = art.format === 'markdown-entries' && Object.values(art.bind ?? {}).includes(1) && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(prefix) ? [prefix] : [];
+  return { contract: name, artifact: art, captures, matched: null, suffix };
+}
+
 // [{ contract, artifact, captures, matched }] for every contract whose artifact paths match the file
-// (a spec.md is both an epic and a set of requirements). With an explicit contract, that one only.
+// (a spec.md is both an epic and a set of requirements); when no path matches, for every contract
+// whose filename suffix does. With an explicit contract, that one only.
 export function inferContracts(file, { contract, registry = sharedRegistry() } = {}) {
   const posix = toPosix(path.resolve(file));
+  if (!contract && isTemplate(file)) return [];
   const fixture = posix.match(FIXTURE)?.[1];
   const names = contract ? [contract] : fixture && registry.has(fixture) ? [fixture] : registry.contracts();
-  const out = [];
-  for (const name of names) {
-    const arts = registry.artifacts(name);
-    let hit = null;
-    for (const art of arts) {
+  const base = path.basename(file);
+  const byPath = (name) => {
+    for (const art of registry.artifacts(name)) {
       if (!accepts(art.format, file)) continue;
       for (const glob of art.paths) {
         const m = matchSuffix(posix, glob);
-        if (m) { hit = { contract: name, artifact: art, captures: m.captures, matched: m.matched }; break; }
+        if (m) return { contract: name, artifact: art, captures: m.captures, matched: m.matched };
       }
-      if (hit) break;
     }
-    // An explicit or fixture-named contract falls back to the first artifact shape that reads the
-    // file's extension, without path bindings.
-    if (!hit && (contract || fixture)) {
-      const art = arts.find((a) => accepts(a.format, file));
-      if (art) hit = { contract: name, artifact: art, captures: [], matched: null };
-    }
-    if (hit) out.push(hit);
+    return null;
+  };
+  let out = names.map(byPath).filter(Boolean);
+  if (!out.length) out = names.map((name) => suffixHit(name, registry.artifacts(name), file, base)).filter(Boolean);
+  // An explicit or fixture-named contract falls back to the first artifact shape that reads the
+  // file's extension, without path bindings.
+  if (!out.length && (contract || fixture)) {
+    const art = registry.artifacts(names[0]).find((a) => accepts(a.format, file));
+    if (art) out = [{ contract: names[0], artifact: art, captures: [], matched: null }];
   }
   return out;
 }
@@ -157,7 +182,7 @@ export function validateAs(file, hit, { registry = sharedRegistry(), text = read
     loaded = LOADERS[art.format](text);
   }
   const LOAD_RULES = { parse: 'parse-error', unique: 'duplicate-id', entries: 'no-entries', section: 'no-entries' };
-  for (const e of loaded.errors) findings.push({ severity: 'error', rule: LOAD_RULES[e.keyword] ?? e.keyword, pointer: e.pointer || '/', message: e.message, line: e.line });
+  for (const e of loaded.errors) findings.push({ severity: e.severity ?? 'error', rule: LOAD_RULES[e.keyword] ?? e.keyword, pointer: e.pointer || '/', message: e.message, line: e.line });
   for (const record of loaded.records) {
     for (const w of record.warnings ?? []) findings.push({ severity: 'warning', rule: 'template-placeholder', pointer: record.pointer || '/', message: w, line: record.line });
     if (record.stub) continue;

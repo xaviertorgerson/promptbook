@@ -7,5 +7,7 @@
       "reason": "WebFetch under bypass reaches unlisted domains; the devbox's network ACL is the egress boundary"
     }
   ],
-  "notes": []
+  "notes": [
+    "bypass tier devbox requires: prod-unreachable-from-this-host, non-root-container (the launcher checks each before starting; the policy cannot)"
+  ]
 }

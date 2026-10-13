@@ -29,7 +29,8 @@ its unwanted outcome an unwanted-behavior one. If you cannot name the test that 
 requirement, it is not a requirement yet.
 
 **Non-functional requirements.** Each `NFR-n` names a category and a measurable threshold:
-performance, availability, security, privacy, accessibility, cost, operability, compatibility. "Fast"
+performance, reliability, availability, security, privacy, accessibility, usability, operability,
+observability, cost, compliance, compatibility, maintainability, portability, scalability. "Fast"
 is not an NFR; "p95 under 300 ms at 50 rps" is. NFRs drive the architecture options
 ([architecture-and-stack](architecture-and-stack.md)).
 

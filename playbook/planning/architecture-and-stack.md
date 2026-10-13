@@ -50,9 +50,10 @@ Stacks chosen per project fragment the toolkit, so no skill, gate or lesson tran
 
 ## Contracts used
 
-`decision` (ADR with options, door, reversal trigger, satisfies), `requirement` (NFR categories),
-`toolkit-lock` (the pinned pack). Trace: every ADR links the NFR/REQ it satisfies, and every
-one-way NFR has an ADR (validator).
+`decision` (ADR with options, door, reversal trigger, satisfies; a Why line or the Nygard form's
+Context), `requirement` (NFR categories), `toolkit-lock` (the pinned pack). Trace: every ADR links
+the NFR/REQ it satisfies, every one-way NFR has an ADR, and a one-way door the epic cites is
+decided, not still proposed, before the epic is ready (validator).
 
 ## Anti-patterns
 

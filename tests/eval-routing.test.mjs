@@ -1,15 +1,19 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
-import { describe, it } from 'node:test';
+import { after, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { buildPrompt, evaluate, judge, loadSkills, parseAnswer, runner } from '../tools/lib/eval-routing.mjs';
+import { buildPrompt, evaluate, judge, loadSkills, parseAnswer, routingResults, runner } from '../tools/lib/eval-routing.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SKILLS = path.join(ROOT, 'fixtures/lint/good/skills');
 const FAKE = `"${process.execPath}" "${path.join(ROOT, 'fixtures/eval-routing/fake-router.mjs')}"`;
 const fake = (mode) => runner(mode ? `FAKE_ROUTER_MODE=${mode} ${FAKE}` : FAKE);
 const cli = (...a) => spawnSync(process.execPath, [path.join(ROOT, 'tools/eval-routing.mjs'), ...a], { encoding: 'utf8', cwd: ROOT });
+const TMP = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'harness-evals-'));
+after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 describe('eval-routing', () => {
   const skills = loadSkills([SKILLS]);
@@ -99,7 +103,33 @@ describe('eval-routing CLI', () => {
     assert.match(bad.stdout, /^FAIL checking-widgets:\d+ "Draft a spec for a new widget\." → expected not checking-widgets; drafting-widgets, got /m);
   });
 
+  it('--runs k asks k times and passes a case only when all k pass; --out writes routing results the evidence contract accepts', () => {
+    const out = path.join(TMP, 'routing-results.jsonl');
+    const r = cli('fixtures/lint/good/skills', '--runner', FAKE, '--runs', '3', '--model', 'fake-cheap', '--out', out);
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.match(r.stdout, /30\/30 case\(s\) pass all 3 runs \(pass\^3\)/);
+    const lines = fs.readFileSync(out, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+    assert.equal(lines.length, 30);
+    assert.ok(lines.every((l) => l.runs === 3 && l.answers.length === 3 && l.model === 'fake-cheap' && l.pass));
+    const v = spawnSync(process.execPath, [path.join(ROOT, 'tools/validate.mjs'), out], { encoding: 'utf8' });
+    assert.equal(v.status, 0, v.stdout);
+    assert.match(v.stdout, /evidence@\d+\.\d+\.\d+ ×30/);
+  });
+
+  it('a case that passes only some of its runs fails (pass^k)', () => {
+    let n = 0;
+    const flaky = (prompt) => { n += 1; return n % 3 === 0 ? 'none' : runner(FAKE)(prompt); };
+    const r = evaluate(loadSkills([SKILLS]), { ask: flaky, dryRun: false, runs: 3, only: 'drafting-widgets' });
+    const trigger = r.cases.find((c) => c.expect === 'trigger');
+    assert.equal(trigger.passes, 2);
+    assert.equal(trigger.pass, false);
+    const lines = routingResults(r, { model: 'flaky' });
+    assert.ok(lines.every((l) => l.answers.length === 3));
+  });
+
   it('usage errors exit 2', () => {
+    assert.equal(cli('fixtures/lint/good/skills', '--out', path.join(TMP, 'x.jsonl')).status, 2, '--out without --runner');
+    assert.equal(cli('fixtures/lint/good/skills', '--runner', FAKE, '--runs', '0').status, 2);
     assert.equal(cli('no/such/dir').status, 2);
     assert.equal(cli('fixtures/lint/good/skills', '--skill', 'nobody').status, 2);
     assert.equal(cli('fixtures/lint/good/skills', '--runner').status, 2);

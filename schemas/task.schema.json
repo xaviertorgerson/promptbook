@@ -3,11 +3,11 @@
   "$id": "https://harness.dev/schemas/task.schema.json",
   "title": "Task",
   "description": "One unit of work: specs/<epic>/tasks/<ID>.md. The frontmatter is the coordination substrate (board, loop, claiming); the body is what the coder builds against. A backward-compatible superset of agentic-template's task frontmatter: every field the template writes keeps its meaning, every harness field is optional.",
-  "x-version": "1.0.0",
+  "x-version": "1.3.0",
   "x-artifacts": [
     {
       "format": "frontmatter-markdown",
-      "paths": ["specs/*/tasks/*.md"],
+      "paths": ["specs/*/tasks/*.md"], "suffixes": [".task.md"],
       "bind": { "epic": 1, "id": "$name" }
     }
   ],
@@ -48,8 +48,13 @@
       "type": "string",
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
     },
+    "lands_to": {
+      "description": "Harness: the branch the task's PR targets when it is not the protected branch: its epic's integration branch (integration/<epic>, tier 2). The task then goes merging -> integrated, and merged when a human merges that branch. Absent: the protected branch.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
+    },
     "depends_on": {
-      "description": "Task ids that must be merged before this one is claimed.",
+      "description": "Task ids that must be merged before this one is claimed; a dependency in the same epic may instead be integrated (workflow guard deps-merged).",
       "type": "array",
       "items": { "$ref": "common.schema.json#/$defs/taskId" },
       "uniqueItems": true
@@ -137,8 +142,8 @@
       "items": { "$ref": "common.schema.json#/$defs/sessionRef" }
     },
     "mode": {
-      "description": "Harness: the methodology that selects skills for this task (playbook/methodology/modes.md). Not the runtime's engagement mode.",
-      "enum": ["spec-driven", "research-plan-implement", "ralph-loop", "icm-pipeline"]
+      "description": "Harness: the methodology that selects skills for this task (playbook/methodology/modes.md); overrides the epic's mode. Absent: the epic's mode, else spec-driven. Not the runtime's engagement mode.",
+      "$ref": "common.schema.json#/$defs/mode"
     }
   },
   "patternProperties": { "^x-": {} },

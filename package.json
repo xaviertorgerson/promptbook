@@ -19,6 +19,7 @@
     "compile-policy": "node tools/compile-policy.mjs",
     "lock": "node tools/lock.mjs",
     "eval-routing": "node tools/eval-routing.mjs",
+    "import-evals": "node tools/import-evals.mjs",
     "test": "node --test \"tests/**/*.test.mjs\""
   },
   "dependencies": {

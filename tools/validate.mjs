@@ -12,6 +12,8 @@ const USAGE = `Validate harness artifacts against their contracts.
   node tools/validate.mjs --contract task <file>...  validate as one contract
   node tools/validate.mjs --trace <project-root>     check the trace graph (BRIEF -> ... -> tests)
       [--tests "<glob>"]...                          test files to read names from (repeatable)
+      [--test-pattern "<regex>"]...                  another way a test is named: group 1 (or the
+                                                     match) of each match is a name (repeatable)
       [--readiness <dir>]                            write <dir>/<epic>/readiness.md per epic
       [--strict]                                     warnings fail too
   node tools/validate.mjs --list                     list contracts, versions and artifact paths
@@ -22,7 +24,7 @@ Exit 0 when nothing fails, 1 when something fails, 2 on a usage error.`;
 const args = process.argv.slice(2);
 const flag = (n) => args.includes(n);
 const values = (n) => args.flatMap((a, i) => (args[i - 1] === n ? [a] : []));
-const VALUED = new Set(['--contract', '--trace', '--tests', '--readiness']);
+const VALUED = new Set(['--contract', '--trace', '--tests', '--test-pattern', '--readiness']);
 const positional = args.filter((a, i) => !a.startsWith('--') && !VALUED.has(args[i - 1]));
 
 function fail(msg) {
@@ -48,7 +50,7 @@ if (flag('--help') || flag('-h')) { console.log(USAGE); process.exit(0); }
 if (flag('--list')) {
   const r = registry();
   for (const c of r.contracts()) {
-    console.log(`${c.padEnd(18)} ${r.version(c).padEnd(7)} ${r.artifacts(c).map((a) => `${a.paths.join(' ')} (${a.format})`).join('; ')}`);
+    console.log(`${c.padEnd(18)} ${r.version(c).padEnd(7)} ${r.artifacts(c).map((a) => `${a.paths.join(' ')}${a.suffixes ? ` *${a.suffixes.join(' *')}` : ''} (${a.format})`).join('; ')}`);
   }
   process.exit(0);
 }
@@ -57,7 +59,9 @@ if (flag('--trace')) {
   const [root] = values('--trace');
   if (!root || !fs.existsSync(root)) fail(`--trace needs an existing project root (got ${root ?? 'nothing'})`);
   const tests = values('--tests');
-  const result = trace(root, tests.length ? { testGlobs: tests } : {});
+  const patterns = values('--test-pattern');
+  for (const p of patterns) { try { new RegExp(p); } catch (e) { fail(`--test-pattern ${p}: ${e.message}`); } }
+  const result = trace(root, { ...(tests.length ? { testGlobs: tests } : {}), testPatterns: patterns });
   const strict = flag('--strict');
   const failed = result.counts.error > 0 || (strict && result.counts.warning > 0);
   const [out] = values('--readiness');
@@ -78,7 +82,7 @@ if (flag('--trace')) {
   if (global.length) { console.log('project'); global.forEach(show); }
   for (const e of result.epics) {
     const c = e.coverage;
-    console.log(`epic ${e.epic} [${e.epic_status}] — ${e.verdict.toUpperCase()}: ${e.counts.error} error(s), ${e.counts.warning} warning(s); journeys ${c.journeys.covered}/${c.journeys.total}, requirements ${c.requirements.covered}/${c.requirements.total}, tasks citing a requirement ${c.tasks.covered}/${c.tasks.total}, criteria in tests ${c.criteria.covered}/${c.criteria.total}`);
+    console.log(`epic ${e.epic} [${e.epic_status}, ${e.mode}] — ${e.verdict.toUpperCase()}: ${e.counts.error} error(s), ${e.counts.warning} warning(s); journeys ${c.journeys.covered}/${c.journeys.total}, requirements ${c.requirements.covered}/${c.requirements.total}, tasks citing a requirement ${c.tasks.covered}/${c.tasks.total}, criteria in tests ${c.criteria.covered}/${c.criteria.total}`);
     e.gaps.forEach(show);
   }
   console.log(`${failed ? 'FAIL' : 'PASS'} trace: ${result.counts.error} error(s), ${result.counts.warning} warning(s), ${result.counts.info} info${strict ? ' (strict)' : ''}`);

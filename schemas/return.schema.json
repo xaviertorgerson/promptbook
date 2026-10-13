@@ -3,14 +3,17 @@
   "$id": "https://harness.dev/schemas/return.schema.json",
   "title": "Return",
   "description": "A subagent's hand-back to the agent that dispatched it: a bounded summary, the artifacts it wrote, what it needs decided, and how it did against the criteria. Passed as a JSON object (e.g. a structured-output schema or a JSON file the dispatcher reads).",
-  "x-version": "1.0.0",
+  "x-version": "1.2.0",
   "x-artifacts": [
-    { "format": "json", "paths": [".agent/returns/*.json"] }
+    { "format": "json", "paths": [".agent/returns/*.json"], "suffixes": [".return.json"] }
   ],
   "type": "object",
   "required": ["summary", "attention", "artifacts", "decisions_needed"],
   "properties": {
-    "task": { "$ref": "common.schema.json#/$defs/taskId" },
+    "task": {
+      "description": "The workflow task id (<PREFIX>-<n>, the documented form) when the work has one; otherwise the runtime's stable id, as task-record.task_id accepts.",
+      "$ref": "common.schema.json#/$defs/nonEmptyString"
+    },
     "role": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
     "summary": {
       "description": "What was done and found. About 2,000 tokens at most; 8,000 characters is the enforced ceiling.",

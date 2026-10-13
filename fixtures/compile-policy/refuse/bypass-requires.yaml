@@ -1,0 +1,10 @@
+# A bypass tier with the policy's own isolation but no named precondition: the compiler cannot see a
+# network ACL or a container, so it refuses rather than assume one (HAR-4).
+policy_version: 1
+profiles:
+  devbox: { tier: autonomous, engines: [claude] }
+deny_read: ["**/.env"]
+forbid:
+  - { command: [git, push, [--force, -f]] }
+egress: { default: deny, allow_domains: ["**.github.com"] }
+sandbox: { enabled: true, fail_if_unavailable: true }

@@ -2,7 +2,8 @@
 import fs from 'node:fs';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
-import { buildPrompt, evaluate, loadSkills, runner } from './lib/eval-routing.mjs';
+import path from 'node:path';
+import { buildPrompt, evaluate, loadSkills, routingResults, runner } from './lib/eval-routing.mjs';
 
 const USAGE = `Routing evals: does each skill's description route its routing.jsonl prompts?
 
@@ -12,6 +13,10 @@ const USAGE = `Routing evals: does each skill's description route its routing.js
                                                         prompt on stdin and prints the skill name(s)
       --skill <name>       only that skill's cases
       --limit <n>          at most n cases
+      --runs <k>           ask k times per case; a case passes only when all k pass (pass^k; default 1)
+      --model <label>      the model the runner calls, recorded in --out (default: the runner command)
+      --out <file.jsonl>   write one routing result per case (evidence contract, routingResult);
+                           name it routing-results*.jsonl so harness validate knows it
       --print-prompts      print every router prompt (dry run)
       --timeout <s>        per call (default 120)
       --json               machine-readable
@@ -24,7 +29,7 @@ Exit 0 all pass (or dry run), 1 a case failed, 2 usage error.`;
 const pct = (x) => (x === null ? '  —  ' : `${(x * 100).toFixed(0).padStart(3)}%`);
 
 export function main(argv = process.argv.slice(2)) {
-  const VALUED = new Set(['--runner', '--skill', '--limit', '--timeout']);
+  const VALUED = new Set(['--runner', '--skill', '--limit', '--timeout', '--runs', '--model', '--out']);
   const value = (n) => { const i = argv.indexOf(n); return i === -1 ? undefined : argv[i + 1]; };
   if (argv.includes('--help') || argv.includes('-h')) { console.log(USAGE); return 0; }
   const usage = (m) => { console.error(`eval-routing: ${m}\n\n${USAGE}`); return 2; };
@@ -37,11 +42,21 @@ export function main(argv = process.argv.slice(2)) {
   const limit = value('--limit') ? Number(value('--limit')) : Infinity;
   if (!(limit > 0)) return usage('--limit takes a positive number');
   const timeout = Number(value('--timeout') ?? 120) * 1000;
+  const runs = Number(value('--runs') ?? 1);
+  if (!(Number.isInteger(runs) && runs >= 1)) return usage('--runs takes a whole number of at least 1');
+  const out = value('--out');
+  if (argv.includes('--out') && !out) return usage('--out needs a file');
+  if (out && dryRun) return usage('--out needs --runner: a dry run has no results');
 
   const skills = loadSkills(targets);
   const only = value('--skill');
   if (only && !skills.some((s) => s.name === only)) return usage(`no skill named ${only}`);
-  const result = evaluate(skills, { ask: dryRun ? null : runner(command, { timeout }), dryRun, only, limit });
+  const result = evaluate(skills, { ask: dryRun ? null : runner(command, { timeout }), dryRun, only, limit, runs });
+  if (out) {
+    const lines = routingResults(result, { model: value('--model') ?? command, versions: Object.fromEntries(skills.filter((s) => s.version).map((s) => [s.name, s.version])) });
+    fs.mkdirSync(path.dirname(path.resolve(out)), { recursive: true });
+    fs.writeFileSync(out, `${lines.map((l) => JSON.stringify(l)).join('\n')}\n`);
+  }
 
   if (argv.includes('--json')) {
     console.log(JSON.stringify({ ...result, cases: result.cases.map(({ routerPrompt, ...c }) => (argv.includes('--print-prompts') ? { ...c, routerPrompt } : c)) }, null, 2));
@@ -64,7 +79,7 @@ export function main(argv = process.argv.slice(2)) {
   console.log(`\n${'skill'.padEnd(28)} precision recall   tp  fp  fn`);
   for (const [name, m] of Object.entries(result.perSkill)) console.log(`${name.padEnd(28)} ${pct(m.precision)}     ${pct(m.recall)}  ${String(m.tp).padStart(3)} ${String(m.fp).padStart(3)} ${String(m.fn).padStart(3)}`);
   const t = result.totals;
-  console.log(`\neval-routing: ${t.passed}/${t.run} case(s) pass (runner: ${command}).`);
+  console.log(`\neval-routing: ${t.passed}/${t.run} case(s) pass${runs > 1 ? ` all ${runs} runs (pass^${runs})` : ''} (runner: ${command}).${out ? ` Results: ${out}` : ''}`);
   return t.failed ? 1 : 0;
 }
 

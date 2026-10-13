@@ -3,12 +3,12 @@
   "$id": "https://harness.dev/schemas/decision.schema.json",
   "title": "Decision (ADR)",
   "description": "One '## ADR-NNNN: title' entry of DECISIONS.md, normalized from its '**Field:** value' lines (CONTRACTS.md, Normalization). Immutable once accepted; corrected by a superseding ADR.",
-  "x-version": "1.0.0",
+  "x-version": "1.2.0",
   "x-artifacts": [
-    { "format": "markdown-entries", "parser": "decisions", "paths": ["DECISIONS.md", "docs/adr/*.md"] }
+    { "format": "markdown-entries", "parser": "decisions", "paths": ["DECISIONS.md", "docs/adr/*.md"], "suffixes": [".adr.md"] }
   ],
   "type": "object",
-  "required": ["id", "title", "status", "status_text", "decision", "why", "consequences"],
+  "required": ["id", "title", "status", "status_text", "decision", "consequences"],
   "properties": {
     "id": { "$ref": "common.schema.json#/$defs/adrId" },
     "title": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
@@ -37,6 +37,10 @@
     },
     "decision": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
     "why": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+    "context": {
+      "description": "'**Context:**' — the forces at play (the Nygard form). Stands in for why when an ADR has no Why line.",
+      "$ref": "common.schema.json#/$defs/nonEmptyString"
+    },
     "consequences": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
     "options": {
       "description": "'**Options considered:**' bullets: the alternatives, each with why it lost.",
@@ -71,6 +75,11 @@
   "patternProperties": { "^x-": {} },
   "additionalProperties": false,
   "allOf": [
+    {
+      "x-rule": "missing-why",
+      "description": "An ADR says why: a Why line, or a Context line (the Nygard form).",
+      "anyOf": [{ "required": ["why"] }, { "required": ["context"] }]
+    },
     {
       "x-rule": "decision-is-dated",
       "description": "A date is required unless the template still holds its placeholder (TODO(domain)), which bootstrap fills.",

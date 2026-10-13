@@ -1,0 +1,45 @@
+# One harness and two portable skill libraries at L3, beside an L4 runtime. An untagged library is
+# pinned at a commit and versioned 0.0.0+<sha> (semver build metadata).
+lock_version: 1
+generated_at: "2026-10-13T14:00:00Z"
+generated_by: harness/lock@1.0.0
+entries:
+  - name: harness
+    layer: L3
+    kind: harness
+    source: https://forge.example.com/you/harness
+    ref: v0.2.0
+    commit: 4bdc7555aaf11dd12921cc2f03c9074487f70442
+    tree: dd1c9874e70a6b5daa2cd2fc614cc4833ccfaa14
+    version: 0.2.0
+    autoUpdate: minor
+  - name: reviewing-code
+    layer: L3
+    kind: skill-library
+    source: https://github.com/QuentinTorg/skilldex
+    path: skills/reviewing-code
+    ref: main
+    commit: fc572b66df2f565da2bd728e9fca7f88be475e31
+    tree: 5cf21df236473d5de166bdf5fa6cebf3c8445a15
+    version: 0.0.0+fc572b6
+    autoUpdate: "off"
+  - name: preparing-pull-requests
+    layer: L3
+    kind: skill-library
+    source: https://github.com/QuentinTorg/skilldex
+    path: skills/preparing-pull-requests
+    ref: main
+    commit: fc572b66df2f565da2bd728e9fca7f88be475e31
+    tree: 6df21df236473d5de166bdf5fa6cebf3c8445a16
+    version: 0.0.0+fc572b6
+    autoUpdate: "off"
+  - name: cli-runtime
+    layer: L4
+    kind: runtime
+    source: https://forge.example.com/you/project-template
+    path: runtimes/cli
+    ref: core/v1.0.0
+    commit: 1eecf8a0c3b2d4e5f60718293a4b5c6d7e8f9012
+    tree: 5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f80
+    version: 1.0.0
+    autoUpdate: patch

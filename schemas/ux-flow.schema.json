@@ -3,9 +3,9 @@
   "$id": "https://harness.dev/schemas/ux-flow.schema.json",
   "title": "UX flow",
   "description": "One flow ('## UX-n · title') of docs/ux/<epic>.md: the screens of a user-facing journey and its four states, designed before code.",
-  "x-version": "1.0.0",
+  "x-version": "1.1.0",
   "x-artifacts": [
-    { "format": "markdown-entries", "parser": "ux-flows", "paths": ["docs/ux/*.md"], "bind": { "epic": 1 } }
+    { "format": "markdown-entries", "parser": "ux-flows", "paths": ["docs/ux/*.md"], "suffixes": [".ux.md"], "bind": { "epic": 1 } }
   ],
   "type": "object",
   "required": ["id", "title", "epic", "cujs", "steps", "states", "prototype"],

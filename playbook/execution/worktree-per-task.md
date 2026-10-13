@@ -42,7 +42,9 @@ pushed.
 ## Contracts used
 
 `task` (`branch`, `touches`), `task-record` (repository root, worktree, base commit, branch,
-workspace id), `state-machines/attention.yaml` (cleanup does not change attention).
+workspace id; `resources`: the derived database, port block, caches and service prefixes, the cleanup
+`audit`, and `worktree_removed_at`, which requires an audit that passed),
+`state-machines/attention.yaml` (cleanup does not change attention).
 
 ## Anti-patterns
 

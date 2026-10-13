@@ -1,0 +1,21 @@
+# A devbox whose bypass tier is isolated by its container rather than the engine's sandbox: the
+# sandbox gap is accepted by name, and the preconditions the policy cannot enforce are named.
+policy_version: 1
+owner: you
+profiles:
+  devbox:
+    tier: autonomous
+    engines: [claude]
+    description: "bypass inside a rootless container; production unreachable by the tailnet ACL"
+    requires: [prod-unreachable-from-this-host, non-root-container]
+deny_read: ["**/.env", "~/.ssh/**"]
+forbid:
+  - { command: [git, push, [--force, -f]], reason: no force-push of shared branches }
+egress:
+  default: deny
+  allow_domains: ["**.github.com", registry.npmjs.org]
+budgets:
+  autonomous: { max_usd: 20 }
+accept_gaps:
+  - { engine: claude, field: sandbox, reason: "the devbox runs agents in a rootless container that refuses to start unconfined" }
+  - { engine: claude, field: egress, reason: "WebFetch under bypass reaches unlisted domains; the tailnet ACL keeps production unreachable" }

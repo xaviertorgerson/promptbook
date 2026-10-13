@@ -3,9 +3,9 @@
   "$id": "https://harness.dev/schemas/brief.schema.json",
   "title": "Product brief",
   "description": "The root of the trace graph: what the product is for, who it serves, and what it will not do. One per product.",
-  "x-version": "1.0.0",
+  "x-version": "1.1.0",
   "x-artifacts": [
-    { "format": "frontmatter-markdown", "paths": ["docs/product/brief.md"] }
+    { "format": "frontmatter-markdown", "paths": ["docs/product/brief.md"], "suffixes": [".brief.md"] }
   ],
   "x-sections": [
     { "id": "problem", "heading": "Problem", "match": "^Problem\\b" },

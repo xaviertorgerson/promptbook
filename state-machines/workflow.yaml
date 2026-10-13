@@ -7,7 +7,7 @@
 #
 # Source: agentic-template docs/workflow.md, docs/roles.md and docs/interjection.md (2026-10-13),
 # generalized. Authority for the orchestrator role, and every `grant:` below, is authority.yaml.
-version: 1.0.0
+version: 1.2.0
 contract: workflow
 
 rules:
@@ -32,6 +32,12 @@ rules:
     text: >-
       A move to an earlier stage carries kickback_reason in the frontmatter or as the first new
       agent-log line.
+  - id: landing-target
+    text: >-
+      A task lands on the protected branch unless its lands_to names its epic's integration branch.
+      There it is integrated (tier 2) and reaches merged only when a human merges that branch into
+      the protected branch (tier 3). A dependent in the same epic builds on the integration branch,
+      so an integrated dependency satisfies it; a dependent in another epic waits for merged.
   - id: side-states-resume-to-prior
     text: >-
       blocked, needs-input and suspended resume to the stage they were entered from ($prior), read
@@ -43,6 +49,7 @@ roles:
   planner:      { kind: agent }
   coder:        { kind: agent }
   reviewer:     { kind: agent, note: "Inline comments only; never approves, never pushes." }
+  evaluator:    { kind: agent, note: "Judges the current head against the task's criteria in a clean context and records a verdict (pass or fail); never edits, never approves, never commits a status (playbook: verification)." }
   merge:        { kind: agent, note: "The only automated role that lands on the protected branch, and only after pr-approval." }
   train:        { kind: automation, note: "Promotes one built artifact through the stages; never retries a red hop." }
   orchestrator: { kind: agent, note: "A coordinator. Holds nothing by default; acts only through a grant (authority.yaml)." }
@@ -77,7 +84,7 @@ guards:
   criteria-ears:            { checks: "Every acceptance criterion is AC-n and matches an EARS pattern (ears-lint)." }
   no-blocking-question:     { checks: "No unchecked Open question is marked blocking." }
   requirements-cited:       { checks: "The task cites at least one REQ/NFR of its epic (trace check; warning in legacy adoption)." }
-  deps-merged:              { checks: "Every depends_on task is merged." }
+  deps-merged:              { checks: "Every depends_on task is merged, or integrated and in the dependent's own epic (it builds on that epic's integration branch)." }
   owner-free:               { checks: "owner is null, or the claimant is a human taking over." }
   draft-pr-open:            { checks: "A draft PR exists for the task branch." }
   criteria-named-in-tests:  { checks: "Every AC id appears in a test name (ears-coverage)." }
@@ -85,6 +92,10 @@ guards:
   criteria-met:             { checks: "The coder's last return reports every criterion met (return.criteria.unmet empty)." }
   pr-ready:                 { checks: "The PR is marked ready for review." }
   independent-review:       { checks: "A reviewer that did not author the change reviewed the current head and passed it." }
+  independent-verification: { checks: "When the task's risk is medium or high: an evaluator that did not author the change recorded a passing verdict on the criteria for the current head (playbook: verification). Low risk: holds." }
+  lands-on-protected:       { checks: "The task has no lands_to (or it names the protected branch): the change lands on the protected branch." }
+  lands-on-integration:     { checks: "The task's lands_to names its epic's integration branch, and the change lands there." }
+  integration-landed:       { checks: "The integration branch holding the change landed on the protected branch: a human merged it." }
   mechanical-only:          { checks: "Every conflict is mechanical (lockfiles, generated files, one-sided hunks)." }
   merged-checks-green:      { checks: "The full checks passed on the merged result, not only on the PR head." }
   dependency-cleared:       { checks: "The external dependency named when parking is resolved." }
@@ -106,7 +117,8 @@ machines:
       in-progress:  { holder: coder,    means: "Claimed (owner set); a branch and worktree exist; first pass underway." }
       review:       { holder: coder,    means: "Draft PR open; checks and the reviewer run; the coder iterates." }
       human-review: { holder: engineer, means: "The PR is ready; the human approval gate." }
-      merging:      { holder: merge,    means: "Approved; the merge agent is landing it. Transient." }
+      merging:      { holder: merge,    means: "Approved; the merge agent (or the orchestrator under a merge grant) is landing it. Transient." }
+      integrated:   { holder: null,     means: "Landed on its epic's integration branch (lands_to); not yet on the protected branch. A human's merge of that branch makes it merged." }
       merged:       { holder: null,     means: "Landed on the protected branch. Terminal." }
       blocked:      { holder: null,     means: "An external dependency stops it." }
       needs-input:  { holder: owner,    means: "A decision is required and must not be guessed." }
@@ -117,16 +129,23 @@ machines:
       - { id: claim,             from: ready,        to: in-progress,  by: [coder, engineer, owner], grant: select-tasks, guards: [deps-merged, owner-free], sets: [owner],
           note: "Dispatching the highest-priority ready task is mechanical, not select-tasks: the owner ordered the work at spec-approval. A coordinator choosing, reordering or adding work needs the grant." }
       - { id: open-draft,        from: in-progress,  to: review,       by: [coder, engineer], guards: [draft-pr-open] }
-      - { id: mark-pr-ready,     from: review,       to: human-review, by: [coder, engineer], grant: finalize, guards: [checks-green, criteria-met, criteria-named-in-tests, pr-ready],
-          note: "In agentic-template the coder does this when the deterministic gates pass; a runtime whose default is human finalization (stagehand) needs the finalize grant." }
+      - { id: mark-pr-ready,     from: review,       to: human-review, by: [coder, engineer], grant: finalize, guards: [checks-green, criteria-met, criteria-named-in-tests, pr-ready, independent-verification],
+          note: "In agentic-template the coder does this when the deterministic gates pass; a runtime whose default is human finalization (stagehand) needs the finalize grant. Risk medium and up waits for the evaluator's pass on the current head." }
       - { id: iterate,           from: review,       to: in-progress,  by: [coder, engineer] }
       - { id: approve-pr,        from: human-review, to: merging,      by: [owner, engineer], gate: pr-approval, grant: merge, guards: [checks-green],
           grant_guards: [independent-review, checks-green] }
-      - { id: land,              from: merging,      to: merged,       by: [merge], guards: [mechanical-only, merged-checks-green] }
-      - { id: return-to-human,   from: merging,      to: human-review, by: [merge], reason: true,
-          note: "A semantic conflict or red checks on the merged result; the merge agent never resolves those." }
+      - { id: land,              from: merging,      to: merged,       by: [merge], grant: merge, guards: [lands-on-protected, mechanical-only, merged-checks-green],
+          note: "The merge role after the approval; or the orchestrator under a live merge grant whose repo, target and strategy match (a runtime with no separate merge role)." }
+      - { id: integrate,         from: merging,      to: integrated,   by: [merge], grant: merge, guards: [lands-on-integration, mechanical-only, merged-checks-green],
+          note: "Tier 2: into the epic's integration branch, by the merge role or the orchestrator under a live merge grant whose target is that branch." }
+      - { id: return-to-human,   from: merging,      to: human-review, by: [merge], grant: merge, reason: true,
+          note: "A semantic conflict or red checks on the merged result; whoever lands never resolves those." }
+      - { id: promote,           from: integrated,   to: merged,       by: [owner, engineer], guards: [integration-landed],
+          note: "Tier 3: a human merged the integration branch into the protected branch; each task it carried is recorded merged. Never grantable." }
+      - { id: reopen,            from: integrated,   to: in-progress,  by: [owner, engineer], reason: true, kickback: true,
+          note: "A later integration broke it; the owner keeps the task and its author fixes it on a new PR to the integration branch." }
       - { id: redo,              from: human-review, to: ready,        by: [owner, engineer], reason: true, kickback: true }
-      - { id: respec,            from: [human-review, review], to: spec-draft, by: [owner, engineer], reason: true, kickback: true }
+      - { id: respec,            from: [human-review, review, integrated], to: spec-draft, by: [owner, engineer], reason: true, kickback: true }
       - { id: respec-surfaced,   from: review,       to: spec-draft,   by: [coder], reason: true, kickback: true,
           note: "The coder found the spec wrong; it parks the task for the planner rather than coding around it." }
       - { id: block,             from: [ready, in-progress, review, human-review], to: blocked,     by: [coder, planner, engineer, owner], reason: true }

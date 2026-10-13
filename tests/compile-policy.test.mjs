@@ -70,6 +70,7 @@ describe('compile-policy contract', () => {
 
   const refusals = {
     'bypass-preconditions': { profile: 'laptop', engine: 'claude', match: /sandbox\.enabled: true, sandbox\.fail_if_unavailable: true, egress\.default: deny/ },
+    'bypass-requires': { profile: 'devbox', engine: 'claude', match: /names no preconditions; set requires: \[prod-unreachable-from-this-host/ },
     unrepresentable: { profile: 'laptop', engine: 'codex', match: /codex cannot represent forbid/ },
     'never-disable-hooks': { profile: 'laptop', engine: 'claude', match: /never disables hooks/ },
     'example-matches': { profile: 'laptop', engine: 'codex', match: /does not match/ },
@@ -85,6 +86,19 @@ describe('compile-policy contract', () => {
       assert.match(e.message, c.match);
     });
   }
+
+  it('a bypass tier isolated outside the policy compiles once the gap is accepted by name; requires reaches the launcher', () => {
+    const p = load(path.join(ROOT, 'fixtures/valid/policy/bypass-container.yaml'));
+    const r = compilePolicy(p, { profile: 'devbox', engine: 'claude' });
+    assert.equal(r.ok, true, JSON.stringify(r.errors));
+    assert.ok(r.accepted.some((a) => a.field === 'sandbox' && /rootless container/.test(a.reason)));
+    assert.deepEqual(JSON.parse(r.files.find((f) => f.path === 'runner.json').content).requires, ['prod-unreachable-from-this-host', 'non-root-container']);
+    assert.ok(r.notes.some((n) => /requires: prod-unreachable-from-this-host, non-root-container/.test(n)));
+    const unaccepted = compilePolicy({ ...p, accept_gaps: p.accept_gaps.filter((g) => g.field !== 'sandbox') }, { profile: 'devbox', engine: 'claude' });
+    assert.ok(unaccepted.errors.some((e) => e.rule === 'bypass-preconditions'), 'without the accepted gap the sandbox is required');
+    const unnamed = compilePolicy({ ...p, profiles: { devbox: { ...p.profiles.devbox, requires: undefined } } }, { profile: 'devbox', engine: 'claude' });
+    assert.ok(unnamed.errors.some((e) => e.rule === 'bypass-requires'), 'requires is never waived');
+  });
 
   it('fails closed on an unrepresentable deny until accept_gaps names it, and prints the stanza', () => {
     for (const engine of ['codex', 'gemini']) {

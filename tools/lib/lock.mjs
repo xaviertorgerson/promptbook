@@ -23,7 +23,7 @@ import { registry as sharedRegistry } from './registry.mjs';
 export const GENERATOR = 'harness/lock@1.0.0';
 const KEY_ORDER = ['name', 'layer', 'kind', 'source', 'path', 'ref', 'commit', 'tree', 'version', 'autoUpdate', 'mirrored'];
 const SHA = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
-const TAG_VERSION = /(?:^|[/-])v?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$/;
+const TAG_VERSION = /(?:^|[/-])v?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)$/;
 
 export const isRemote = (source) => /^(?:https:\/\/|ssh:\/\/|git@|file:)/.test(source);
 
@@ -42,7 +42,9 @@ export function versionFromRef(ref) {
   return ref.match(TAG_VERSION)?.[1] ?? null;
 }
 
-const semver = (v) => v.match(/^(\d+)\.(\d+)\.(\d+)(?:-(.*))?$/)?.slice(1).map((x, i) => (i < 3 ? Number(x) : x ?? null));
+// [major, minor, patch, prerelease|null]; build metadata (+sha) is accepted and, as semver says,
+// ignored for precedence.
+const semver = (v) => v.match(/^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/)?.slice(1).map((x, i) => (i < 3 ? Number(x) : x ?? null));
 
 function compareSemver(a, b) {
   const x = semver(a);

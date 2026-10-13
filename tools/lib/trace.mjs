@@ -1,9 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { criteria, DEFAULT_TEST_GLOBS, namedIn, testNames } from './ears.mjs';
-import { findFiles, toPosix } from './glob.mjs';
+import { findFiles, globsOverlap, toPosix } from './glob.mjs';
 import { loadFrontmatterMarkdown, readText } from './loaders.mjs';
 import { parseDecisions, parseEpicAdrs, parseJourneys, parsePersonas, parseRequirements, parseTaskIndex, parseUxFlows } from './parsers.mjs';
+import { fenceMask, headings, section, splitLines, stripComments } from './markdown.mjs';
 import { registry as sharedRegistry } from './registry.mjs';
 import { inferContracts, validateAs } from './validate.mjs';
 
@@ -23,9 +24,13 @@ import { inferContracts, validateAs } from './validate.mjs';
 // project from before the product docs). blocks_readiness marks gaps that keep an epic from ready.
 
 export const TRACE_VERSION = '1.0.0';
+export const DEFAULT_MODE = 'spec-driven';
+
+// A task's methodology: its own mode, else its epic's, else spec-driven (common.schema.json mode).
+export const effectiveMode = (task, epic) => task?.mode ?? epic?.mode ?? DEFAULT_MODE;
 const CLAIMED_EPIC = new Set(['approved', 'in-progress', 'done']);
-const CLAIMED_TASK = new Set(['ready', 'in-progress', 'review', 'human-review', 'merging', 'merged']);
-const EVIDENCED_TASK = new Set(['review', 'human-review', 'merging', 'merged']);
+const CLAIMED_TASK = new Set(['ready', 'in-progress', 'review', 'human-review', 'merging', 'integrated', 'merged']);
+const EVIDENCED_TASK = new Set(['review', 'human-review', 'merging', 'integrated', 'merged']);
 // Requirement ids named in a task's prose. REQ-n and NFR-n anywhere; the legacy R<n> only as "(R2)"
 // or "requirement R2", because a bare R2 is as likely to be Cloudflare R2 as requirement 2.
 const REQ_TOKEN = /\b(?:REQ|NFR)-[1-9][0-9]*\b|\(R[1-9][0-9]*\)|\brequirements? R[1-9][0-9]*\b/gi;
@@ -35,12 +40,33 @@ const normReq = (tok) => {
 };
 
 const rel = (root, f) => toPosix(path.relative(root, f));
+
+// A task file's "# ID · title" text, or ''.
+function titleOf(text) {
+  const lines = splitLines(stripComments(text));
+  return headings(lines, fenceMask(lines)).find((h) => h.level === 1)?.text ?? '';
+}
+
+// Unchecked Open questions that say they block ("**Blocks readiness**", "(blocking)", "Blocks AC-2").
+export function blockingQuestions(text) {
+  const lines = splitLines(stripComments(text));
+  const sec = section(lines, /^Open questions\b/i);
+  if (!sec) return [];
+  return sec.lines.flatMap((l, i) => {
+    const m = !sec.mask[i] && l.match(/^\s*[-*]\s+\[ \]\s+(.*)$/);
+    return m && /\bblock(?:s|ing|ed)?\b/i.test(m[1]) ? [{ text: m[1].trim(), line: sec.start + i + 1 }] : [];
+  });
+}
+
+// The walking skeleton (playbook: walking-skeleton): marked x-skeleton: true, tagged x-tags:
+// [skeleton], or titled "Walking skeleton".
+const isSkeleton = (t) => t['x-skeleton'] === true || [].concat(t['x-tags'] ?? []).some((x) => /^(?:walking-)?skeleton$/i.test(x)) || /\bwalking skeleton\b/i.test(t.title ?? '');
 const exists = (p) => { try { fs.accessSync(p); return true; } catch { return false; } };
 
 // Resolve "<epic>/X-n" or "X-n" (in the citing epic) to "<epic>/X-n".
 const qualify = (ref, epic) => (ref.includes('/') ? ref : `${epic}/${ref}`);
 
-function loadProject(root, { testGlobs = DEFAULT_TEST_GLOBS, registry = sharedRegistry() } = {}) {
+function loadProject(root, { testGlobs = DEFAULT_TEST_GLOBS, testPatterns = [], registry = sharedRegistry() } = {}) {
   const p = {
     root,
     brief: null,
@@ -101,7 +127,7 @@ function loadProject(root, { testGlobs = DEFAULT_TEST_GLOBS, registry = sharedRe
       const crit = criteria(text).items.filter((c) => c.id && !c.placeholder);
       const prose = text.replace(/^---[\s\S]*?\n---/, '');
       const mentioned = [...new Set((prose.match(REQ_TOKEN) ?? []).map(normReq))];
-      e.tasks.set(data.id, { ...data, file: rel(root, file), criteria: crit, mentioned });
+      e.tasks.set(data.id, { ...data, file: rel(root, file), criteria: crit, mentioned, title: titleOf(text), blocking: blockingQuestions(text) });
     }
     const ux = path.join(root, 'docs/ux', `${slug}.md`);
     if (exists(ux)) {
@@ -119,7 +145,7 @@ function loadProject(root, { testGlobs = DEFAULT_TEST_GLOBS, registry = sharedRe
   }
 
   p.testFiles = findFiles(root, testGlobs);
-  for (const f of p.testFiles) p.names.push(...testNames(readText(f)));
+  for (const f of p.testFiles) p.names.push(...testNames(readText(f), { file: f, patterns: testPatterns }));
   p.testGlobs = testGlobs;
   return p;
 }
@@ -243,7 +269,7 @@ export function trace(root, opts = {}) {
       for (const c of t.criteria) {
         cov.criteria.total += 1;
         if (!testsPresent) continue;
-        const qualified = p.names.some((n) => n.includes(t.id) && namedIn([n], c.id));
+        const qualified = p.names.some((n) => namedIn([n], t.id) && namedIn([n], c.id));
         const bare = qualified || namedIn(p.names, c.id);
         if (bare) cov.criteria.covered += 1;
         if (!EVIDENCED_TASK.has(t.status)) continue;
@@ -269,6 +295,52 @@ export function trace(root, opts = {}) {
       onPath.pop();
     };
     for (const id of e.tasks.keys()) visit(id);
+
+    // The plan's shape (playbook: walking-skeleton, single-writer, plan-readiness). Missing order is
+    // a warning until the epic claims readiness; harness-introduced, so a warning in legacy adoption.
+    const ancestors = new Map();
+    const ancestorsOf = (id, stack = new Set()) => {
+      if (ancestors.has(id)) return ancestors.get(id);
+      const out = new Set();
+      if (stack.has(id)) return out;
+      stack.add(id);
+      for (const d of allTasks.get(id)?.depends_on ?? []) { out.add(d); for (const x of ancestorsOf(d, stack)) out.add(x); }
+      stack.delete(id);
+      ancestors.set(id, out);
+      return out;
+    };
+    const ordered = (a, b) => ancestorsOf(a).has(b) || ancestorsOf(b).has(a);
+    const open = [...e.tasks.values()].filter((t) => !['merged', 'integrated'].includes(t.status));
+    for (let i = 0; i < open.length; i += 1) {
+      for (let j = i + 1; j < open.length; j += 1) {
+        const [a, b] = [open[i], open[j]];
+        if (!a.touches?.length || !b.touches?.length || ordered(a.id, b.id)) continue;
+        const shared = a.touches.flatMap((x) => b.touches.filter((y) => globsOverlap(x, y)).map((y) => (x === y ? x : `${x} ~ ${y}`)));
+        if (shared.length) egap({ rule: 'overlapping-tasks-ordered', severity: missing({ harness: true, claims: epicClaims }), subject: `${a.id} ${b.id}`, message: `${a.id} and ${b.id} can run in parallel but both touch ${shared.join(', ')}; one must depend on the other (one lane, one writer)`, file: b.file, line: null, blocks_readiness: true });
+      }
+    }
+    const skeletons = [...e.tasks.values()].filter(isSkeleton);
+    if (skeletons.length > 1) egap({ rule: 'skeleton-is-root', severity: missing({ harness: true, claims: epicClaims }), subject: skeletons.map((t) => t.id).join(' '), message: `${skeletons.length} tasks are marked as the walking skeleton; an epic has one`, file: skeletons[1].file, line: null, blocks_readiness: true });
+    for (const sk of skeletons.slice(0, 1)) {
+      const upstream = [...ancestorsOf(sk.id)].filter((d) => e.tasks.has(d));
+      if (upstream.length) egap({ rule: 'skeleton-is-root', severity: missing({ harness: true, claims: epicClaims }), subject: sk.id, message: `the walking skeleton ${sk.id} depends on ${upstream.join(', ')}; it is the root of the epic's graph`, file: sk.file, line: null, blocks_readiness: true });
+      const loose = [...e.tasks.values()].filter((t) => t.id !== sk.id && !ancestorsOf(t.id).has(sk.id)).map((t) => t.id);
+      if (loose.length) egap({ rule: 'skeleton-is-root', severity: missing({ harness: true, claims: epicClaims }), subject: sk.id, message: `${loose.join(', ')} ${loose.length > 1 ? 'do' : 'does'} not depend on the walking skeleton ${sk.id}; nothing else runs before the skeleton lands`, file: sk.file, line: null, blocks_readiness: true });
+    }
+    // One-way doors the epic relies on are decided before it is ready.
+    const cited = new Set([...e.adrs.ids, ...[...e.requirements.values()].flatMap((r) => r.adrs ?? [])]);
+    for (const d of p.decisions.values()) if ((d.satisfies ?? []).some((r) => r.startsWith(`${e.slug}/`))) cited.add(d.id);
+    for (const t of e.tasks.values()) for (const doc of t.guiding_docs ?? []) { const a = doc.split('#')[1]; if (a && /^ADR-[0-9]{4}$/.test(a)) cited.add(a); }
+    for (const id of [...cited].sort()) {
+      const d = p.decisions.get(id);
+      if (d?.door === 'one-way' && d.status === 'proposed') egap({ rule: 'one-way-door-decided', severity: missing({ harness: true, claims: epicClaims }), subject: id, message: `${id} (${d.title}) is a one-way door still proposed; decide it before the epic is ready`, file: d.file, line: d.line, blocks_readiness: true });
+    }
+    // A ready task has no open blocking question and fits in one pass (not XL).
+    for (const t of e.tasks.values()) {
+      const tClaims = CLAIMED_TASK.has(t.status);
+      if (t.status === 'ready') for (const q of t.blocking) egap({ rule: 'ready-task-unblocked', severity: missing({ harness: true, claims: true }), subject: t.id, message: `${t.id} is ready with an open blocking question: "${q.text.slice(0, 100)}"; answer it or move the task to needs-input`, file: t.file, line: q.line, blocks_readiness: true });
+      if (t.size === 'XL') egap({ rule: 'task-size-fits', severity: missing({ harness: true, claims: tClaims }), subject: t.id, message: `${t.id} is XL; split it before it is ready (an XL task does not fit one reviewed pass)`, file: t.file, line: null, blocks_readiness: tClaims });
+    }
 
     // The spec's Tasks index against the task files.
     const indexed = new Map(e.index.map((r) => [r.id, r]));
@@ -339,11 +411,19 @@ export function trace(root, opts = {}) {
     }
     for (const u of e.ux.values()) if (!(u.cujs ?? []).length) egap({ rule: 'ux-flow-serves-journey', severity: 'warning', subject: u.id, message: `${u.id} designs no journey`, file: e.files.ux, line: u.line });
 
+    // Modes: the epic's mode is the default; a task's own mode overrides it (playbook: modes).
+    const mode = e.spec?.mode ?? DEFAULT_MODE;
+    const taskModes = {};
+    for (const t of e.tasks.values()) {
+      taskModes[t.id] = effectiveMode(t, e.spec);
+      if (t.mode && e.spec?.mode && t.mode !== e.spec.mode) egap({ rule: 'task-mode-overrides-epic', severity: 'info', subject: t.id, message: `${t.id} runs ${t.mode}; the epic's default is ${e.spec.mode}`, file: t.file, line: null });
+    }
+
     const mine = gaps.slice(before);
     const counts = { error: 0, warning: 0, info: 0 };
     for (const g of mine) counts[g.severity] += 1;
     const verdict = counts.error === 0 && !mine.some((g) => g.blocks_readiness) ? 'ready' : 'not-ready';
-    epics.push({ epic: e.slug, epic_status: e.status ?? 'intake', verdict, counts, coverage: cov, gaps: mine });
+    epics.push({ epic: e.slug, epic_status: e.status ?? 'intake', mode, task_modes: taskModes, verdict, counts, coverage: cov, gaps: mine });
   }
 
   const counts = { error: 0, warning: 0, info: 0 };

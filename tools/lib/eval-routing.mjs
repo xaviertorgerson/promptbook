@@ -30,7 +30,7 @@ export function loadSkills(dirs) {
           try { return [{ ...JSON.parse(l), line: i + 1 }]; } catch { return [{ invalid: true, line: i + 1 }]; }
         })
         : [];
-      skills.push({ name, dir, description: typeof data.description === 'string' ? data.description.replace(/\s+/g, ' ').trim() : '', deprecated: data.metadata?.deprecated ?? null, cases });
+      skills.push({ name, dir, description: typeof data.description === 'string' ? data.description.replace(/\s+/g, ' ').trim() : '', deprecated: data.metadata?.deprecated ?? null, version: data.metadata?.version ?? null, cases });
     }
   }
   return skills;
@@ -79,9 +79,10 @@ export function runner(command, { timeout = 120000 } = {}) {
   };
 }
 
-// Run every case (or only the named skill's) through ask(prompt) -> text. dryRun: build the prompts,
-// call nothing. Returns { cases, perSkill, totals }.
-export function evaluate(skills, { ask, dryRun = true, only = null, limit = Infinity } = {}) {
+// Run every case (or only the named skill's) through ask(prompt) -> text, `runs` times each.
+// dryRun: build the prompts, call nothing. A case passes when every run passes (pass^k); picked is
+// the first run's answer. Returns { cases, perSkill, totals }.
+export function evaluate(skills, { ask, dryRun = true, only = null, limit = Infinity, runs = 1 } = {}) {
   const names = skills.filter((s) => !s.deprecated).map((s) => s.name);
   const installed = new Set(names);
   const cases = [];
@@ -89,18 +90,24 @@ export function evaluate(skills, { ask, dryRun = true, only = null, limit = Infi
     if (only && s.name !== only) continue;
     for (const c of s.cases) {
       if (cases.length >= limit) break;
-      if (c.invalid) { cases.push({ skill: s.name, line: c.line, error: 'not valid JSON (harness validate reports it)', pass: false }); continue; }
+      if (c.invalid) { cases.push({ skill: s.name, line: c.line, error: 'not valid JSON (harness validate reports it)', pass: false, answers: [], passes: 0, runs: 0 }); continue; }
       const k = { ...c, route_to_installed: installed.has(c.route_to) };
       const prompt = buildPrompt(skills, c.prompt);
       if (dryRun) { cases.push({ skill: s.name, line: c.line, prompt: c.prompt, expect: c.expect, kind: c.kind ?? null, route_to: c.route_to ?? null, routerPrompt: prompt, picked: null, pass: null }); continue; }
-      let picked;
-      let error = null;
-      try { picked = parseAnswer(ask(prompt), names); } catch (e) { error = e.message; picked = []; }
-      cases.push({ skill: s.name, line: c.line, prompt: c.prompt, expect: c.expect, kind: c.kind ?? null, route_to: c.route_to ?? null, picked, error, pass: error ? false : judge(k, s.name, picked) });
+      const answers = [];
+      const errors = [];
+      let passes = 0;
+      for (let i = 0; i < runs; i += 1) {
+        let picked;
+        try { picked = parseAnswer(ask(prompt), names); } catch (e) { errors.push(e.message); picked = []; answers.push(picked); continue; }
+        answers.push(picked);
+        if (judge(k, s.name, picked)) passes += 1;
+      }
+      cases.push({ skill: s.name, line: c.line, prompt: c.prompt, expect: c.expect, kind: c.kind ?? null, route_to: c.route_to ?? null, picked: answers[0], answers, passes, runs, error: errors[0] ?? null, errors, pass: passes === runs });
     }
   }
 
-  // Precision and recall per skill, over every judged case: the skill was expected when the case is
+  // Precision and recall per skill, over every judged run: the skill was expected when the case is
   // its own trigger case or another skill's near-miss routed to it; it was picked when named.
   const perSkill = {};
   const judged = cases.filter((c) => c.picked);
@@ -108,14 +115,37 @@ export function evaluate(skills, { ask, dryRun = true, only = null, limit = Infi
     let tp = 0; let fp = 0; let fn = 0;
     for (const c of judged) {
       const expected = (c.skill === name && c.expect === 'trigger') || (c.skill !== name && c.route_to === name);
-      const picked = c.picked.includes(name);
-      if (picked && expected) tp += 1;
-      else if (picked) fp += 1;
-      else if (expected) fn += 1;
+      for (const answer of c.answers ?? [c.picked]) {
+        const picked = answer.includes(name);
+        if (picked && expected) tp += 1;
+        else if (picked) fp += 1;
+        else if (expected) fn += 1;
+      }
     }
     perSkill[name] = { tp, fp, fn, precision: tp + fp ? tp / (tp + fp) : null, recall: tp + fn ? tp / (tp + fn) : null };
   }
   const run = cases.filter((c) => c.pass !== null);
   const totals = { cases: cases.length, run: run.length, passed: run.filter((c) => c.pass).length, failed: run.filter((c) => !c.pass).length, skills: names.length };
   return { cases, perSkill, totals, dryRun };
+}
+
+// The run as routing results (evidence contract, #/$defs/routingResult): one object per case, for
+// --out. model names what answered (the runner command when no model was given).
+export function routingResults(result, { model, at = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'), versions = {} } = {}) {
+  return result.cases.filter((c) => c.pass !== null && c.prompt !== undefined).map((c) => ({
+    skill: c.skill,
+    case: `${c.skill}:${c.line}`,
+    prompt: c.prompt,
+    expect: c.expect,
+    kind: c.kind,
+    route_to: c.route_to,
+    model,
+    runs: c.runs,
+    answers: c.answers,
+    passes: c.passes,
+    pass: c.pass,
+    ...(c.errors?.length ? { errors: c.errors } : {}),
+    at,
+    ...(versions[c.skill] ? { skill_version: versions[c.skill] } : {}),
+  }));
 }

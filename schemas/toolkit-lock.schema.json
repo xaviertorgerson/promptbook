@@ -2,10 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://harness.dev/schemas/toolkit-lock.schema.json",
   "title": "Toolkit lock",
-  "description": "toolkit.lock (YAML) in an L2 project, or in L1 dotfiles: the exact harness (L3) and implementation packs (L4) this project runs, pinned by commit and tree hash. Dependencies point one way: everything pins one L3.",
-  "x-version": "1.0.0",
+  "description": "toolkit.lock (YAML) in an L2 project, or in L1 dotfiles: the exact harness (L3), the portable skill libraries it runs beside (L3), and the implementation packs (L4) this project runs, pinned by commit and tree hash. Dependencies point one way: everything pins one harness.",
+  "x-version": "1.2.0",
   "x-artifacts": [
-    { "format": "yaml", "paths": ["toolkit.lock"] }
+    { "format": "yaml", "paths": ["toolkit.lock"], "suffixes": [".toolkit.lock"] }
   ],
   "type": "object",
   "required": ["lock_version", "entries"],
@@ -24,10 +24,11 @@
       "x-unique-by": "name",
       "x-rules": { "x-unique-by": "duplicate-name", "contains": "exactly-one-harness" },
       "contains": {
-        "description": "Exactly one pinned harness.",
+        "description": "Exactly one pinned harness: the L3 entry that is not a skill library (kind harness, or no kind).",
         "type": "object",
         "required": ["layer"],
-        "properties": { "layer": { "const": "L3" } }
+        "properties": { "layer": { "const": "L3" } },
+        "not": { "required": ["kind"], "properties": { "kind": { "const": "skill-library" } } }
       },
       "minContains": 1,
       "maxContains": 1
@@ -35,6 +36,7 @@
   },
   "patternProperties": { "^x-": {} },
   "additionalProperties": false,
+  "x-checks": ["lock-kinds"],
   "$defs": {
     "entry": {
       "type": "object",
@@ -43,8 +45,8 @@
         "name": { "$ref": "common.schema.json#/$defs/slug" },
         "layer": { "enum": ["L3", "L4"] },
         "kind": {
-          "description": "What an L4 entry implements.",
-          "enum": ["harness", "engine-binding", "stack-pack", "runtime", "domain-pack"]
+          "description": "What the entry is. L3: harness (exactly one; an L3 entry with no kind is the harness) or skill-library (any number of portable skill sets, e.g. Skilldex). L4: engine-binding, stack-pack, runtime, domain-pack.",
+          "enum": ["harness", "skill-library", "engine-binding", "stack-pack", "runtime", "domain-pack"]
         },
         "source": {
           "description": "A git URL or a local path.",
@@ -70,7 +72,10 @@
           "type": "string",
           "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
         },
-        "version": { "$ref": "common.schema.json#/$defs/semver" },
+        "version": {
+          "description": "Semver; build metadata pins an untagged source to its commit (0.0.0+fc572b6).",
+          "$ref": "common.schema.json#/$defs/semver"
+        },
         "autoUpdate": {
           "description": "How far an updater may move this pin without a human: off, or within patch / minor / major. A mirrored vendor pack is off.",
           "enum": ["off", "patch", "minor", "major"]

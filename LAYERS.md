@@ -162,7 +162,7 @@ machinery) and **agentic-saas** (the mandate's stack). Its CLI loop and forge-ev
 | `.claude/rules/stack.md`, `angular.md`, `contracts.md`, `drizzle.md`, `nestjs.md`, `testing.md` | move | agentic-saas; delivered as nested `apps/*/AGENTS.md` with `CLAUDE.md` shims for portability |
 | `.claude/hooks/pre-tool-safety.mjs`, `guard-secrets.mjs`, `post-edit-check.mjs`, `verify-done.mjs` | move to core | L2 walls delivered by agentic-core; ask tier documented as convenience (ADR-0021); add a deny for Bash redirects into protected paths; port to `.codex/hooks.json` |
 | `.claude/settings.json` | stay | L2 walls and project wiring |
-| `specs/`, `_TASK-TEMPLATE.md`, `_SPEC-TEMPLATE.md`, `_CUJ-TEMPLATE.md` | stay | L2 queue; task frontmatter validated by L3 `task` (a superset: adds `touches`, `risk`, `inputs`, `evaluator`, `budget`, `sessions`, `mode`, a Working notes section) |
+| `specs/`, `_TASK-TEMPLATE.md`, `_SPEC-TEMPLATE.md`, `_CUJ-TEMPLATE.md` | stay | L2 queue; task frontmatter validated by L3 `task` (a superset: adds `requirements`, `touches`, `risk`, `inputs`, `evaluator`, `budget`, `sessions`, `mode`, `lands_to`, a Working notes section); the epic's `spec.md` may set the default `mode` |
 | `docs/workflow.md`, `roles.md`, `interjection.md`, `concurrency.md`, `observability.md`, `ears.md` | move to core | implementations of L3 state machines and contracts; link the playbook instead of restating it |
 | `CONTRIBUTING-agents.md`, `LOOPING.md` | move | the claude-cli runtime's docs; generic doctrine now lives in the playbook |
 | `docs/mandate.md`, `operating-guide.md`, `ci-cd.md`, `app-classes.md`, `data-views.md`, design and readiness templates | move | agentic-saas |
@@ -173,7 +173,7 @@ machinery) and **agentic-saas** (the mandate's stack). Its CLI loop and forge-ev
 | `scripts/board.mjs`, `next.mjs`, `check.mjs`, `protected-paths.mjs`, `secret-scan.mjs`, `conflict-classify.mjs`, `runlog.mjs`, `release.mjs`, `sync-template.mjs`, `decision-drift.mjs` (on `fix/stack-drift`) | move to core | stack-neutral gates |
 | `scripts/ears-lint.mjs`, `ears-coverage.mjs` | to core now | superseded by `tools/validate.mjs` once it runs the same checks; delete then |
 | `scripts/deploy-check.mjs`, `ci-config.mjs`, `launch-check.mjs`, `dev-server.mjs`, `drift-check.mjs` | move | agentic-saas |
-| `scripts/skill-evals.mjs` | move | claude-cli runtime (it shells the CLI); the eval file format is L3 `evidence` |
+| `scripts/skill-evals.mjs` | move | claude-cli runtime (it shells the CLI); the eval file format is L3 `evidence`; each skill's `evals.md` converts with `harness import-evals` |
 | `.github/workflows/agent-coder.yml`, `agent-merge.yml`, `agent-planner.yml`, `agent-reviewer.yml`, `nightly.yml` | move | claude-cli runtime; pin `--permission-mode dontAsk`, allowlist and caps |
 | `app-ci.yml`, `train.yml`, `preview.yml`, `probe.yml`, `canary-watch.yml`, `backup-check.yml`, `restore-drill.yml`, `scrub.yml` | move | agentic-saas |
 | `template-check.yml`, `template-sync.yml`, `skill-evals.yml` | move | core (turn skill evals on) |
@@ -238,7 +238,7 @@ explicit models (no `inherit` for cost-sensitive roles):
 
 | Today | Move | Target |
 |---|---|---|
-| `preparing-pull-requests`, `reviewing-code`, `resolving-findings`, `writing-specifications`, `building-skills` | pin | `toolkit.lock` entries by commit and tree hash (L3-class: portable, engine-neutral); fanned out by L1; the harness does not vendor them |
+| `preparing-pull-requests`, `reviewing-code`, `resolving-findings`, `writing-specifications`, `building-skills` | pin | `toolkit.lock` entries `layer: L3, kind: skill-library` by commit and tree hash, versioned `0.0.0+<sha>` while untagged; fanned out by L1; the harness does not vendor them |
 | no versions, manifest or lock | none needed | the lock entry is the version; deprecations follow Skilldex's own retire-outright practice |
 | `.gemini/skills/*`, `epiphany_knowledge/` | not consumed | Skilldex's own authoring workspace |
 | `skills/.specs/` | stay upstream | design specs, not packaged |

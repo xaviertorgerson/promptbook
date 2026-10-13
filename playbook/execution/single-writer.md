@@ -42,8 +42,9 @@ every merge into a negotiation, and the human reviews a diff no one author under
 
 ## Contracts used
 
-`task` (`owner`, `touches`, `depends_on`), `return` (readers hand back findings, not edits),
-`grant` (who may assign work), `state-machines/workflow.yaml` (claim = `ready` → `in-progress`).
+`task` (`owner`, `touches`, `depends_on`; the trace check's `overlapping-tasks-ordered` wants two
+tasks that touch the same files ordered), `return` (readers hand back findings, not edits), `grant`
+(who may assign work), `state-machines/workflow.yaml` (claim = `ready` → `in-progress`).
 
 ## Anti-patterns
 

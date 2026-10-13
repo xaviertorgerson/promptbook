@@ -4,6 +4,10 @@
   "engine": "gemini",
   "profile": "devbox",
   "tier": "autonomous",
+  "requires": [
+    "prod-unreachable-from-this-host",
+    "non-root-container"
+  ],
   "args": [
     "--approval-mode=yolo"
   ],

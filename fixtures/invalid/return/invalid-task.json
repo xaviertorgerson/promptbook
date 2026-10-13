@@ -1,0 +1,13 @@
+{
+  "task": "",
+  "role": "reviewer",
+  "summary": "Reviewed acme/billing#240 at 9e3b1a7 for an external owner; two material findings, both with a failing test.",
+  "attention": "complete",
+  "artifacts": [
+    {
+      "path": ".agent/reviews/pr-240-9e3b1a7.md",
+      "kind": "report"
+    }
+  ],
+  "decisions_needed": []
+}

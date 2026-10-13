@@ -1,5 +1,5 @@
 import { registry as sharedRegistry } from '../registry.mjs';
-import { grantHas } from './authority.mjs';
+import { grantHas, landingTarget } from './authority.mjs';
 import { isHuman } from './machines.mjs';
 import { touchesOverlap } from './util.mjs';
 import { RUNTIME_SIGNALS, ruleMatches } from './world.mjs';
@@ -12,11 +12,11 @@ import { RUNTIME_SIGNALS, ruleMatches } from './world.mjs';
 export const INVARIANTS = {
   'one-owner-per-claimed-task': 'A claimed task has exactly one owner, set by a compare-and-swap claim; one author session at a time works it, and only its owner commits to it (workflow: claim-is-compare-and-swap; playbook: single-writer).',
   'transitions-allowed': 'Every status change is a transition in workflow.yaml, from its from-state, by a role its `by` lists (or the orchestrator under a live grant naming the transition\'s `grant`), with a reason where it needs one; human roles are humans; owner changes only by a claim or a human (workflow: transitions-are-commits).',
-  'guards-hold': 'Every guard of the transition holds on the evidence when it is applied (deps-merged, owner-free, draft-pr-open, checks-green, criteria-met, criteria-named-in-tests, pr-ready, independent-review, mechanical-only, merged-checks-green, question-answered); a grant adds its grant_guards (workflow guards; authority: finalize, merge).',
+  'guards-hold': 'Every guard of the transition holds on the evidence when it is applied (deps-merged, with an integrated dependency counting only in the same epic; owner-free, draft-pr-open, checks-green, criteria-met, criteria-named-in-tests, pr-ready, independent-review, independent-verification for risk medium and up, lands-on-protected, lands-on-integration, mechanical-only, merged-checks-green, integration-landed, question-answered); a grant adds its grant_guards (workflow guards; authority: finalize, merge).',
   'human-gates-by-humans': 'A gate transition (workflow.yaml gates) is made by a human approver, or, where the gate is grantable, by the orchestrator under a live grant of that action (authority.yaml).',
   'signals-never-advance-workflow': 'A commit decided on a runtime signal (agent state, CI result, events-lost notice) is still one the evidence and the actor\'s authority justify on their own; a wake is a hint (attention.yaml: signals-never-advance-workflow).',
   'attention-consistent': 'Task records carry attention only (working, needs-human, complete); needs-human names the next action; complete names none and is recorded only once the evidence shows nothing is left for the human (attention.yaml: idle-is-not-complete).',
-  'merge-requires-authority': 'A change lands on the protected target only by the merge role or a human, with an approval of the landed head by a human or by the orchestrator under a grant live when it decided, matching repo, target and strategy, with an independent passing review of that head and green checks, and never over a semantic conflict or red merged checks (authority.yaml merge; playbook: landing-changes).',
+  'merge-requires-authority': 'A change lands on a branch (the protected target, or an epic\'s integration branch) only by the merge role, a human, or the orchestrator under a merge grant live when it decided for that exact branch; an agent lands only together with its land or integrate commit and after checks on the merged result of that head; with an approval of the landed head by a human or by the orchestrator under such a grant, an independent passing review of that head and green checks; never over a semantic conflict or red merged checks (authority.yaml merge; playbook: landing-changes).',
   'lanes-disjoint': 'Claimed tasks (in-progress through merging) never have overlapping touches: overlapping tasks are one lane and run in sequence (playbook: single-writer).',
   'cap-workers': 'Live workers per runtime never exceed the supervisor\'s max_workers, nor a live grant\'s limits.max_workers (playbook: budgets-and-routing).',
   'cap-depth': 'No helper is spawned below the delegation depth cap; helpers do not spawn helpers by default (playbook: topologies).',
@@ -33,7 +33,8 @@ export const INVARIANTS = {
 // Guards the simulator does not model (planning-time and release guards): never failed here.
 const UNMODELED = new Set(['epic-approved', 'criteria-ears', 'no-blocking-question', 'requirements-cited', 'dependency-cleared', 'all-tasks-merged', 'acceptance-met', 'stage-checks-green']);
 const PARKED = new Set(['suspended', 'spec-draft', 'needs-input', 'blocked']);
-const DONE_FOR_HUMAN = new Set(['human-review', 'merging', 'merged']);
+const DONE_FOR_HUMAN = new Set(['human-review', 'merging', 'integrated', 'merged']);
+const RISKY = new Set(['medium', 'high']);
 
 export class Checker {
   constructor({ machines, registry = sharedRegistry(), only = null } = {}) {
@@ -64,7 +65,10 @@ export class Checker {
     const head = pr?.head;
     const review = pr ? [...pr.reviews].reverse().find((r) => r.head === head) : null;
     switch (guard) {
-      case 'deps-merged': return m.spec.depends_on.every((d) => w.forge.tasks.get(d)?.status === 'merged');
+      case 'deps-merged': return m.spec.depends_on.every((d) => {
+        const st = w.forge.tasks.get(d)?.status;
+        return st === 'merged' || (st === 'integrated' && w.meta.get(d).spec.epic === m.spec.epic);
+      });
       case 'owner-free': return before.owner === null || c.actorKind === 'human';
       case 'draft-pr-open': return Boolean(pr);
       case 'checks-green': return pr?.checks.get(head) === 'green';
@@ -72,6 +76,14 @@ export class Checker {
       case 'criteria-named-in-tests': return Boolean(pr) && m.spec.criteria.every((ac) => pr.coverage.get(head)?.has(ac));
       case 'pr-ready': return Boolean(pr?.ready);
       case 'independent-review': return review?.verdict === 'pass' && review.by !== pr.author;
+      case 'independent-verification': {
+        if (!RISKY.has(m.spec.risk.level) && !m.spec.risk.irreversible) return true;
+        const verdict = pr ? [...pr.reviews].reverse().find((r) => r.head === head && r.role === 'evaluator') : null;
+        return verdict?.verdict === 'pass' && verdict.by !== pr.author;
+      }
+      case 'lands-on-protected': return landingTarget(w.sc, m.spec) === w.sc.target;
+      case 'lands-on-integration': return landingTarget(w.sc, m.spec) !== w.sc.target;
+      case 'integration-landed': return w.forge.target.landed.includes(c.task);
       case 'mechanical-only': return w.merge.state.get(c.task)?.conflict !== 'semantic';
       case 'merged-checks-green': return w.merge.state.get(c.task)?.mergedChecks === 'green';
       case 'question-answered': return m.questionAnswered || w.forge.decisions.some((d) => d.task === c.task && d.kind === 'question');
@@ -132,7 +144,7 @@ export class Checker {
         this.report(w, ev, 'one-owner-per-claimed-task', c.task, `${c.id}: ${c.actor} committed ${c.transition} to a task owned by ${before.owner}`);
       }
       if (c.actorKind === 'human') this.lastDecisionAt.set(c.task, ev.at);
-      if (after.status === 'merged') {
+      if (after.status === 'merged' || after.status === 'integrated') {
         const pr = w.forge.prs.get(c.task);
         const missing = w.meta.get(c.task).spec.criteria.filter((ac) => !pr?.coverage.get(pr.head)?.has(ac));
         if (missing.length) this.report(w, ev, 'merged-criteria-covered', c.task, `${c.task} merged with no test naming ${missing.join(', ')}`);
@@ -144,7 +156,20 @@ export class Checker {
       const why = [];
       const pr = w.forge.prs.get(l.task);
       const spec = w.meta.get(l.task).spec;
-      if (!(l.role === 'merge' || isHuman(m, l.role))) why.push(`landed by ${l.by} (${l.role}${l.injected ? ', an agent attempting its own merge' : ''})`);
+      const human = isHuman(m, l.role) && l.actorKind === 'human';
+      const grantCovers = (g) => grantHas(g, 'merge', sc, spec);
+      if (l.role === 'orchestrator') {
+        if (!l.grantSnapshot) why.push(`landed by ${l.by} (orchestrator) with no grant`);
+        else if (!l.grantLive) why.push(`landed by ${l.by} under ${l.grantSnapshot.id}, which was not live when it decided`);
+        else if (!grantCovers(l.grantSnapshot)) why.push(`landed by ${l.by} under ${l.grantSnapshot.id}, which does not delegate merge for ${sc.repo} → ${l.target} by ${sc.strategy}`);
+      } else if (!(l.role === 'merge' || human)) why.push(`landed by ${l.by} (${l.role}${l.injected ? ', an agent attempting its own merge' : ''})`);
+      // An agent lands with its status commit and only after the checks on the merged result of that
+      // head; a human's merge is recorded by a commit that follows (promote).
+      if (!human) {
+        if (!ev.commits.some((e) => e.commit.task === l.task && ['land', 'integrate'].includes(e.commit.transition))) why.push('landed without its land or integrate commit');
+        if (!l.mergeState || l.mergeState.head !== l.head) why.push('no checks on the merged result of the landed head');
+        else if (l.mergeState.conflict === 'semantic' || l.mergeState.mergedChecks !== 'green') why.push(`landed over ${l.mergeState.conflict === 'semantic' ? 'a semantic conflict' : 'red checks on the merged result'}`);
+      }
       const a = l.approval;
       if (!a || a.head !== l.head) why.push('no approval of the landed head');
       else if (a.actorKind !== 'human') {
@@ -152,7 +177,7 @@ export class Checker {
         if (a.role !== 'orchestrator' || !g) why.push(`approved by ${a.by} (${a.role}) with no grant`);
         else {
           if (!a.grantLive) why.push(`approved under ${g.id}, which was not live when it decided`);
-          if (!grantHas(g, 'merge', sc, spec)) why.push(`${g.id} does not delegate merge for ${sc.repo} → ${sc.target} by ${sc.strategy}`);
+          if (!grantCovers(g)) why.push(`${g.id} does not delegate merge for ${sc.repo} → ${landingTarget(sc, spec)} by ${sc.strategy}`);
           // authority.yaml grantable.merge.always_requires, whatever the grant itself lists.
           const review = [...pr.reviews].reverse().find((r) => r.head === l.head);
           const evidence = { 'independent-review': review?.verdict === 'pass' && review.by !== pr.author, 'required-checks': pr.checks.get(l.head) === 'green' };
@@ -160,10 +185,9 @@ export class Checker {
         }
       }
       if (pr?.checks.get(l.head) !== 'green') why.push('checks are not green on the landed head');
-      if (l.role === 'merge' && l.mergeState && (l.mergeState.conflict === 'semantic' || l.mergeState.mergedChecks !== 'green')) why.push(`merge queue landed over ${l.mergeState.conflict === 'semantic' ? 'a semantic conflict' : 'red checks on the merged result'}`);
-      if (why.length) this.report(w, ev, 'merge-requires-authority', l.task, `${l.task}@${l.head}: ${why.join('; ')}`);
+      if (why.length) this.report(w, ev, 'merge-requires-authority', l.task, `${l.task}@${l.head} → ${l.target}: ${why.join('; ')}`);
       const missing = spec.criteria.filter((ac) => !l.coverage.includes(ac));
-      if (missing.length) this.report(w, ev, 'merged-criteria-covered', l.task, `${l.task}@${l.head} landed with no test naming ${missing.join(', ')}`, `land-${l.task}-${l.head}`);
+      if (missing.length) this.report(w, ev, 'merged-criteria-covered', l.task, `${l.task}@${l.head} landed with no test naming ${missing.join(', ')}`, `land-${l.task}-${l.head}-${l.target}`);
     }
 
     // Claimed tasks: one owner, one writer, disjoint lanes.

@@ -6,11 +6,13 @@ import path from 'node:path';
 import { after, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
+import { grantState } from '../tools/lib/sim/authority.mjs';
 import { Checker, INVARIANTS } from '../tools/lib/sim/invariants.mjs';
 import { MUTATIONS, orchestrating } from '../tools/lib/sim/policies.mjs';
 import { loadScenario, normalize, scenarioFromProject } from '../tools/lib/sim/scenario.mjs';
 import { machines, simulate, writeOutputs } from '../tools/lib/sim/simulate.mjs';
 import { globsOverlap, makeRng } from '../tools/lib/sim/util.mjs';
+import { registry as reg } from '../tools/lib/registry.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SCEN = path.join(ROOT, 'fixtures/scenarios');
@@ -32,7 +34,7 @@ const firstViolation = (runs) => runs.flatMap((r) => r.violations)[0];
 describe('simulate: every scenario holds every invariant under the correct supervisor', () => {
   const files = fs.readdirSync(SCEN).filter((f) => f.endsWith('.yaml')).sort();
   it('has the scenarios the contracts need', () => {
-    for (const n of ['happy-path', 'parallel-overlap', 'crash-lost-events', 'merge-without-grant', 'budget-exhaustion', 'unattended-ask', 'evaluator-rejection', 'grant-expiry', 'wall-bypass']) assert.ok(files.includes(`${n}.yaml`), n);
+    for (const n of ['happy-path', 'parallel-overlap', 'crash-lost-events', 'merge-without-grant', 'budget-exhaustion', 'unattended-ask', 'evaluator-rejection', 'grant-expiry', 'wall-bypass', 'integration-branch']) assert.ok(files.includes(`${n}.yaml`), n);
   });
   for (const f of files) {
     it(`${f} × ${SEEDS} seeds: zero violations`, () => {
@@ -127,6 +129,30 @@ describe('simulate: the faults happen and are handled as the contracts say', () 
     for (const r of returned) assert.ok(r.trace.flatMap((l) => l.commits ?? []).filter((c) => c.transition === 'return-to-human').every((c) => c.role === 'merge'));
   });
 
+  it('an epic lands on its integration branch under the grant; the human merges the branch; another epic waits for merged', () => {
+    const runs = runAll(loadScenario(path.join(SCEN, 'integration-branch.yaml')), 10, { trace: true });
+    let builtOnIntegrated = 0;
+    for (const r of runs) {
+      const commits = r.trace.flatMap((l) => (l.commits ?? []).map((c) => ({ ...c, t: l.t })));
+      const first = (task, transition) => commits.find((c) => c.task === task && c.transition === transition);
+      for (const id of ['RAT-1', 'RAT-2', 'RAT-3']) {
+        const integrate = first(id, 'integrate');
+        assert.ok(integrate && integrate.role === 'orchestrator' && integrate.grant === 'GRANT-1', `${id} integrated by the orchestrator under GRANT-1`);
+        assert.ok(!first(id, 'land'), `${id} never lands on main directly`);
+        const promote = first(id, 'promote');
+        assert.ok(promote && promote.role === 'owner' && promote.t > integrate.t, `${id} promoted by the human after it integrated`);
+      }
+      for (const id of ['INV-1', 'INV-2']) assert.equal(first(id, 'land').role, 'merge', `${id} lands on main through the merge queue`);
+      assert.ok(first('INV-1', 'claim').t >= first('RAT-1', 'promote').t, 'INV-1 (another epic) waits for RAT-1 to be merged');
+      assert.ok(first('RAT-2', 'claim').t >= first('RAT-1', 'integrate').t, 'RAT-2 waits for RAT-1 to be integrated');
+      if (first('RAT-2', 'claim').t < first('RAT-1', 'promote').t) builtOnIntegrated += 1;
+      const landed = r.trace.flatMap((l) => l.effects ?? []).filter((e) => e.land === 'integrated');
+      assert.ok(landed.every((e) => e.target === 'integration/rating'));
+      assert.equal(r.summary.merged, 5);
+    }
+    assert.ok(builtOnIntegrated > 0, 'in some seed RAT-2 builds on RAT-1 while RAT-1 is only integrated');
+  });
+
   it('a review loop that never converges goes to the human after the round limit', () => {
     const runs = runAll(loadScenario(path.join(SCEN, 'evaluator-rejection.yaml')), 10);
     for (const r of runs) {
@@ -171,6 +197,9 @@ const MUTANTS = [
   { break: 'status-as-attention', scenario: 'happy-path', caught: ['attention-consistent'] },
   { break: 'wake-ledger', scenario: 'crash-lost-events', caught: ['stalls-surface'], seeds: 20 },
   { break: 'land-directly', scenario: 'grant-expiry', caught: ['merge-requires-authority'] },
+  { break: 'cross-epic-integrated', scenario: 'integration-branch', caught: ['guards-hold'], message: /INV-1|claim: guard deps-merged/ },
+  { break: 'finalize-unverified', scenario: 'integration-branch', caught: ['guards-hold'], message: /mark-pr-ready: guard independent-verification does not hold$/ },
+  { break: 'land-without-grant', scenario: 'integration-branch', over: { merge: { queue_targets: [] } }, caught: ['transitions-allowed', 'merge-requires-authority'], message: /orchestrator/ },
   { world: { engine: 'bypass-skips-walls' }, label: 'engine binding: bypass skips walls (disableAllHooks)', scenario: 'wall-bypass', caught: ['walls-block'] },
   { world: { cas: false }, label: 'forge without compare-and-swap', scenario: 'parallel-overlap', caught: ['one-owner-per-claimed-task'] },
   { world: { mergeBot: 'resolve-semantic' }, label: 'merge queue resolves semantic conflicts', scenario: 'grant-expiry', caught: ['guards-hold', 'merge-requires-authority'] },
@@ -189,7 +218,7 @@ describe('simulate: mutation tests — every broken supervisor is caught by a na
       const runs = runAll(sc, x.seeds ?? MUTANT_SEEDS, { policy: orchestrating({ break: x.break ? [x.break] : [] }), ...(x.world ?? {}) });
       const hits = {};
       for (const v of runs.flatMap((r) => r.violations)) hits[v.invariant] = (hits[v.invariant] ?? 0) + 1;
-      const caughtSeeds = runs.filter((r) => r.violations.some((v) => x.caught.includes(v.invariant))).length;
+      const caughtSeeds = runs.filter((r) => r.violations.some((v) => x.caught.includes(v.invariant) && (!x.message || x.message.test(v.message)))).length;
       t.diagnostic(`${label}: caught in ${caughtSeeds}/${runs.length} seeds; ${JSON.stringify(hits)}`);
       assert.ok(caughtSeeds > 0, `not caught: ${JSON.stringify(hits)}`);
     });
@@ -249,6 +278,19 @@ describe('simulate: determinism, inputs and outputs', () => {
     assert.ok(!globsOverlap('src/web/**', 'src/api/**'));
     assert.ok(!globsOverlap('docs/**', 'src/**'));
     assert.ok(!globsOverlap('src/a.ts', 'src/b.ts'));
+  });
+
+  it('a grant\'s lifecycle is derived from its dates and revocation, never stored', () => {
+    const g = parse(fs.readFileSync(path.join(ROOT, 'fixtures/valid/grant/revoked-narrowed.yaml'), 'utf8'));
+    const at = (iso) => grantState(g, Date.parse(iso));
+    assert.equal(at('2026-09-30T00:00:00Z'), 'pending');
+    assert.equal(at('2026-10-02T00:00:00Z'), 'live');
+    assert.equal(at('2026-10-05T00:00:00Z'), 'revoked');
+    assert.equal(at('2026-10-09T00:00:00Z'), 'revoked', 'a revocation is what the record says, even after expiry');
+    const unrevoked = { ...g, revoked_at: undefined };
+    assert.equal(grantState(unrevoked, Date.parse('2026-10-09T00:00:00Z')), 'expired');
+    assert.equal(grantState(unrevoked, Date.parse('2026-10-08T08:00:00Z')), 'expired', 'expires_at is exclusive');
+    assert.ok(!('status' in reg().schema('grant').properties), 'the contract has no stored status');
   });
 
   it('the invariants read the state machines: roles, gates and claimed statuses come from the YAML', () => {

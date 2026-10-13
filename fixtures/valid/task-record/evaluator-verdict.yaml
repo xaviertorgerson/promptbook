@@ -1,0 +1,14 @@
+# A coordinator's record after the evaluator failed the current head on a criterion and the author
+# fixed it: one verdict per head, each bound to the head it judged.
+task_id: BILL-8
+runtime: ci
+objective: Credit a refunded period on the next invoice
+state:
+  name: working
+  summary: Re-evaluating the fixed head
+  next_role: evaluator
+reviews:
+  - { pr: "https://forge.example.com/acme/billing/pulls/251", head: 2b7c9d1, outcome: fail, role: evaluator, by: evaluator-agent, ref: .agent/verdicts/BILL-8-2b7c9d1.json }
+  - { pr: "https://forge.example.com/acme/billing/pulls/251", head: 2b7c9d1, outcome: comment, role: reviewer, by: billing-reviewer }
+  - { pr: "https://forge.example.com/acme/billing/pulls/251", head: 8f0a3e6, outcome: pass, role: evaluator, by: evaluator-agent, ref: .agent/verdicts/BILL-8-8f0a3e6.json }
+updated_at: "2026-10-13T12:10:00Z"

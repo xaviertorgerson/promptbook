@@ -14,12 +14,18 @@ harness <command> [args]          # package.json bin: tools/cli.mjs; or pnpm <co
   compile-policy  agent-policy.yaml into one engine's settings      tools/compile-policy.mjs
   lock            pin or verify toolkit.lock                        tools/lock.mjs
   eval-routing    routing evals through a model command             tools/eval-routing.mjs
+  import-evals    an agentic-template evals.md into the eval files  tools/import-evals.mjs
 ```
 
 ## validate, trace
 
-The contract validator and the trace graph; see [CONTRACTS.md](CONTRACTS.md). `harness trace <root>`
-is `validate --trace <root>`.
+The contract validator and the trace graph; see [CONTRACTS.md](CONTRACTS.md). A file's contract comes
+from its path in the project layout, else from its name's suffix (`*.grant.yaml`, `*.task.md`, …;
+`*.template.*` is skipped), so `harness validate skills` checks every renamed example too.
+`harness trace <root>`
+is `validate --trace <root>`; `--tests <glob>` picks the test files, `--test-pattern <regex>` adds a
+way to read test names beyond the built-in JS/TS, Go, Python, JUnit/Kotlin, Rust and Ruby readers
+(fixtures: `fixtures/test-names/`).
 
 ## lint
 
@@ -31,6 +37,10 @@ authoring rules. Errors name a stable rule; `--strict` fails on warnings too.
 | the skill contract (`agentskills-core-fields-only`, `name-matches-path`, …) | frontmatter via the validator |
 | `name-is-gerund` | the first word ends in -ing: `writing-requirements` |
 | `description-use-when`, `description-do-not-use-for` | a "Use when …" trigger and a "Do not use for … (neighbour)" clause; warnings if out of order or naming no neighbour |
+| `description-length` | a description over 400 characters fails, over 300 warns: every description stays loaded in every session |
+| `description-budget` (warning) | the scanned set's descriptions together exceed 8000 characters (one engine keeps skill metadata within 2% of context or 8000 characters); the longest are named |
+| `deprecated-description` | a skill with `metadata.deprecated` is exempt from "Use when": its description starts with "Deprecated:" and names the replacement skill |
+| `parse-error` | the frontmatter is YAML; when a plain value holds ": " (the usual cause), the error says to quote it |
 | `body-length` | warn over 200 body lines, fail over 300 |
 | `engine-neutral` | no engine, runtime, forge or stack name in the description or body; `references/engine-notes.md` is exempt. The deny-list (Claude Code, Claude, Codex, Gemini, Antigravity, Herdr, Heeler, stagehand, OpenAI, Anthropic, Copilot, GitHub, GitLab, Forgejo, Cloudflare, Coolify, Hetzner, Angular, NestJS, Drizzle, pnpm) is replaced with `--deny-terms`, narrowed with `--allow-terms`; URLs are ignored |
 | `links-stay-in-skill` | no relative link leaves the skill folder (a skill installs alone) |
@@ -38,6 +48,7 @@ authoring rules. Errors name a stable rule; `--strict` fails on warnings too.
 | `route-to-known`, `route-to-self` | a `route_to` names a scanned skill, a sibling of a linted skill, a pinned Skilldex skill (`reviewing-code`, `preparing-pull-requests`, `resolving-findings`, `writing-specifications`, `building-skills`), `--known`, or `none` |
 | `scenarios-count`, `scenario-format`, `scenario-stop-condition` | ≥ 3 scenarios in `scenarios.md`, each with setup, prompt, pass criteria and k; one should hand to a human |
 | `evidence-count` and the evidence contract's rules | ≥ 1 dated entry; literature and vendor-reported cite a URL |
+| `imported-needs-review` | nothing `import-evals` could not fill is left: a routing case noted `needs route_to`, a scenario line marked `TODO(import)` |
 | `deprecated-never-triggers` | a skill with `metadata.deprecated` keeps only no-trigger cases |
 | `description-overlap` (warning) | two descriptions' trigger phrases (the "Use when" clause, stop words removed) share more than 0.3 Jaccard; the pair and the shared words are named. agentic-template's 19 skills peak at 0.17 |
 
@@ -50,14 +61,17 @@ in `fixtures/lint/broken/<rule>/`.
 deterministic discrete-event model of the runtime contracts and checks 18 invariants after every
 event. The world: a supervisor policy (the `orchestrating-work` protocol as code), author and
 evaluator sessions with read-only helpers, CI, a merge queue that classifies conflicts and re-runs
-checks on the merged result, a scripted human with latencies, a forge whose pushes are
-compare-and-swap on the task file and whose branch protection needs an approval of the head, and a
-runtime whose signals (working, blocked, done, idle, unknown) are lossy and duplicable, with
-events-lost notices.
+checks on the merged result (for the branches it serves), the orchestrator's own merge under a
+merge grant for a branch no queue serves, a scripted human with latencies who also merges an
+integration branch into the target once nothing on it is in flight (`promote`), a forge whose
+pushes are compare-and-swap on the task file and whose branches (the protected target and each
+epic's integration branch) admit a merge only with an approval of the head, and a runtime whose
+signals (working, blocked, done, idle, unknown) are lossy and duplicable, with events-lost notices.
 
-A scenario names tasks (`depends_on`, `touches`, `size`, `risk`, `criteria`, `budget`), the policy
-tier and its `forbid`/`ask`/`budgets`, an optional grant (validated against the grant contract), the
-supervisor's caps, the human's behaviour, and faults: `concurrent_claims` (a rival runtime),
+A scenario names tasks (`depends_on`, `touches`, `size`, `risk`, `criteria`, `budget`, `lands_to`),
+the policy tier and its `forbid`/`ask`/`budgets`, an optional grant (validated against the grant
+contract), the supervisor's caps, the merge queue's `queue_targets` (default every branch), the
+human's behaviour (`on_integration: merge|hold`), and faults: `concurrent_claims` (a rival runtime),
 `crash`, `lost_events`, `duplicate_wakes`, `unknown_signals`, `no_progress`, `budget_exhaustion`,
 `semantic_conflict`, `evaluator_rejection`, `grant_expiry`, `merge_without_grant`, `ask`, `wall`,
 `question`. Unknown keys are errors. `--project` reads `specs/<epic>/tasks/*.md` with the
@@ -68,11 +82,11 @@ spec gate).
 |---|---|
 | `one-owner-per-claimed-task` | a claimed task has one owner from a CAS claim; one author session holds it; only the owner commits |
 | `transitions-allowed` | every status change is a `workflow.yaml` transition from its from-state by a listed role, or the orchestrator under a live grant of its `grant`; reasons where needed; humans are humans |
-| `guards-hold` | the transition's guards hold on the evidence (deps merged, checks green, criteria met and named in tests, independent review, mechanical-only, merged checks green, question answered); a grant adds its grant guards |
+| `guards-hold` | the transition's guards hold on the evidence (deps merged, an integrated dependency counting only in the same epic; checks green, criteria met and named in tests, independent review, independent verification by the evaluator for risk medium and up, lands on the protected or the integration branch as `lands_to` says, mechanical-only, merged checks green, integration landed, question answered); a grant adds its grant guards |
 | `human-gates-by-humans` | gates are passed by a human approver, or by the orchestrator under a live grant where the gate is grantable |
 | `signals-never-advance-workflow` | a commit decided on a runtime signal is one the evidence and authority justify on their own |
 | `attention-consistent` | records carry attention only; needs-human names the next action; complete only when the human has nothing left |
-| `merge-requires-authority` | a change lands only by the merge role or a human, with an approval of that head by a human or a grant live when decided (repo, target, strategy), plus `authority.yaml`'s `always_requires`, and never over a semantic conflict or red merged checks |
+| `merge-requires-authority` | a change lands on a branch only by the merge role, a human, or the orchestrator under a merge grant live when it decided for that exact branch; an agent lands only with its `land`/`integrate` commit and after checks on the merged result of that head; with an approval of that head by a human or such a grant, plus `authority.yaml`'s `always_requires`, and never over a semantic conflict or red merged checks |
 | `lanes-disjoint` | claimed tasks never have overlapping `touches` |
 | `cap-workers`, `cap-depth`, `cap-run`, `cap-spend` | workers, delegation depth, per-run turns and spend, per-task and runtime budgets |
 | `no-progress-stops` | after a stalled run or a ceiling, no rerun until a human decides |
@@ -83,17 +97,24 @@ spec gate).
 | `contracts-valid` | every run-record, return, grant and task record produced validates |
 
 Transition tables, roles, gates, guards, side states, the merge requirements and the claimed statuses
-are read from `state-machines/*.yaml` and the task schema. `--break <mutation>` swaps in one of 16
+are read from `state-machines/*.yaml` and the task schema. `--break <mutation>` swaps in one of 19
 deliberately broken supervisors (`--list` names them); the tests run each, plus four broken world
 bindings (bypass that skips walls, a forge without CAS, a merge queue that resolves semantic
-conflicts, no branch protection), and require the named invariant to catch it.
+conflicts, no branch protection), and require the named invariant to catch it. Among them:
+`cross-epic-integrated` (a dependent in another epic treats an integrated dependency as merged:
+`guards-hold`, deps-merged), `finalize-unverified` (a risk-medium PR marked ready with no evaluator
+verdict: `guards-hold`, independent-verification) and `land-without-grant` (the orchestrator lands a
+change no merge grant of its covers: `transitions-allowed`, `merge-requires-authority`).
 
 Output: `.sim-out/<scenario>-seed<n>.jsonl` (one event per line: time, actor, task, the commits it
 applied, effects, violations), `.summary.json` (merged, parked, needs-human, spend, makespan,
 throughput, violations with seed and event index), `.run-records.jsonl` and `.task-records.json` in
 their contracts' shapes. A violation prints a `reproduce:` command. Scenarios:
 `fixtures/scenarios/{happy-path, parallel-overlap, crash-lost-events, merge-without-grant,
-budget-exhaustion, unattended-ask, evaluator-rejection, grant-expiry, wall-bypass}.yaml`.
+budget-exhaustion, unattended-ask, evaluator-rejection, grant-expiry, wall-bypass,
+integration-branch}.yaml`; `integration-branch` is tier 2 and 3: the orchestrator lands an epic's
+tasks on `integration/<epic>` under its merge grant, a same-epic dependent builds on an integrated
+task, a dependent in another epic waits for merged, and the human merges the branch to main.
 
 ## compile-policy
 
@@ -108,9 +129,11 @@ validates the policy, then emits one profile's settings, following `adapters/<en
 
 Fail closed: a deny-side field an engine cannot represent is an error that prints the `accept_gaps`
 stanza that would accept it; an unrepresentable ask or allow is dropped with a warning; on any error
-nothing is written. Refused outright: the bypass tier (`autonomous`) without `sandbox.enabled`,
-`sandbox.fail_if_unavailable` and `egress.default: deny` (HAR-4); an unattended tier without turn and
-spend caps (HAR-3); any `x-` extension that disables hooks (HAR-2); an `examples` entry its rule does
+nothing is written. Refused outright: the bypass tier (`autonomous`) without a `requires` list naming
+its outside preconditions, or without `sandbox.enabled`, `sandbox.fail_if_unavailable` and
+`egress.default: deny` unless the missing field's gap is accepted by name (`accept_gaps` sandbox or
+egress, with a reason) (HAR-4); `requires` goes into `runner.json` and the notes for the launcher;
+an unattended tier without turn and spend caps (HAR-3); any `x-` extension that disables hooks (HAR-2); an `examples` entry its rule does
 not match. No output may carry `disableAllHooks`, `hooksConfig.enabled: false`, `disableYoloMode`,
 `tools.exclude`, a full-access mode, or a bypass key outside the bypass tier (checked on every
 compile). Unattended, an `ask` compiles to a denial. `--diff <settings.json|settings.json.tmpl>`
@@ -138,5 +161,21 @@ prompt, and sends nothing. `--runner "<cmd>"` sends each case's prompt on stdin 
 prints text (a cheap-model CLI), takes the skill names on its last line, and judges: a trigger case
 needs its skill; a no-trigger case needs it absent and, for an installed `route_to`, the neighbour
 named. The router sees only installed, non-deprecated skills' names and descriptions, as an engine's
-loader would. It reports failures and per-skill precision and recall. Ported from agentic-template's
+loader would. It reports failures and per-skill precision and recall. `--runs <k>` asks k times per
+case and passes a case only when all k pass (pass^k); `--model <label>` names the model; `--out
+<routing-results….jsonl>` writes one result per case in the evidence contract's `routingResult`
+shape, which `harness validate` checks and an evidence entry cites as its measured source. Ported from agentic-template's
 `scripts/skill-evals.mjs`. Tests use `fixtures/eval-routing/fake-router.mjs`; no test calls a model.
+
+## import-evals
+
+`harness import-evals <evals.md> --out <skill>/evals [--skill <name>] [--rename old=new,...] [--k n]
+[--force] [--dry-run]` converts an agentic-template `evals.md` (a "Trigger routing" table, "Scenarios"
+with Fixture/Assertions, an "Evidence" list) into `routing.jsonl`, `scenarios.md` and `evidence.md`
+in the evidence contract's shapes. A trigger row is a positive case; a no-trigger row that names a
+skill is a near-miss routed to it (after `--rename`); any other no-trigger row is a negative case
+with `note: "needs route_to: <what the source said>"`. Scenarios keep their fixture and assertions
+and get a `TODO(import)` prompt (the source has none); evidence keeps its date (day or month) and
+text, kind audit or observed, citing the source file. Lint fails both markers
+(`imported-needs-review`) until a human resolves them. It refuses to overwrite without `--force`.
+Fixtures: two real evals.md files under `fixtures/import-evals/`.

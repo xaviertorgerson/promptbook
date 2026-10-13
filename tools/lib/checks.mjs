@@ -4,7 +4,7 @@ import { headings, splitLines, stripComments, fenceMask } from './markdown.mjs';
 // Named checks a schema lists under x-checks: rules JSON Schema cannot express because they read the
 // Markdown body or compare two fields. Each returns findings { rule, pointer, message, line, severity }.
 
-const CLAIMED = new Set(['ready', 'in-progress', 'review', 'human-review', 'merging', 'merged']);
+const CLAIMED = new Set(['ready', 'in-progress', 'review', 'human-review', 'merging', 'integrated', 'merged']);
 
 export const CHECKS = {
   // The acceptance criteria: ids present, canonical, unique, and EARS-shaped (agentic-template ears-lint
@@ -89,6 +89,33 @@ export const CHECKS = {
     }
     return out;
   },
+};
+
+// The bypass tier is safe only under preconditions the policy cannot enforce (HAR-4); a profile in
+// it that names none compiles nowhere (compile-policy fails closed), so say so at validation time.
+CHECKS['bypass-names-preconditions'] = ({ data }) => Object.entries(data?.profiles ?? {})
+  .filter(([, p]) => p?.tier === 'autonomous' && !p.requires?.length)
+  .map(([name]) => ({ severity: 'warning', rule: 'bypass-names-preconditions', pointer: `/profiles/${name}`, message: `profile "${name}" is the bypass tier and names no requires (e.g. [prod-unreachable-from-this-host]); compile-policy refuses it` }));
+
+// toolkit.lock kinds and layers agree: harness and skill-library are L3 kinds, the others L4 ones.
+// A warning: the schema accepted any kind on any layer before skill-library existed.
+const L3_KINDS = new Set(['harness', 'skill-library']);
+CHECKS['lock-kinds'] = ({ data }) => (Array.isArray(data?.entries) ? data.entries : []).flatMap((e, i) => {
+  if (!e?.kind || !e.layer) return [];
+  if (e.layer === 'L3' && !L3_KINDS.has(e.kind)) return [{ severity: 'warning', rule: 'kind-matches-layer', pointer: `/entries/${i}/kind`, message: `${e.name}: an L3 entry is the harness or a skill-library, not ${e.kind}` }];
+  if (e.layer === 'L4' && L3_KINDS.has(e.kind)) return [{ severity: 'warning', rule: 'kind-matches-layer', pointer: `/entries/${i}/kind`, message: `${e.name}: ${e.kind} is an L3 kind; an L4 entry is an engine-binding, stack-pack, runtime or domain-pack` }];
+  return [];
+});
+
+// A routing result's counts agree: one answer per run, passes within runs, pass exactly when every
+// run passed (pass^k).
+CHECKS['routing-result-consistent'] = ({ data }) => {
+  const out = [];
+  if (!data || !Array.isArray(data.answers)) return out;
+  if (data.answers.length !== data.runs) out.push({ rule: 'routing-result-consistent', pointer: '/answers', message: `${data.answers.length} answer(s) for ${data.runs} run(s)` });
+  if (data.passes > data.runs) out.push({ rule: 'routing-result-consistent', pointer: '/passes', message: `${data.passes} passes out of ${data.runs} run(s)` });
+  if (typeof data.pass === 'boolean' && data.pass !== (data.passes === data.runs)) out.push({ rule: 'routing-result-consistent', pointer: '/pass', message: `pass is ${data.pass} with ${data.passes}/${data.runs} runs passing (pass means every run passed)` });
+  return out;
 };
 
 // Required level-2 headings (x-sections). Matched against the heading text with the schema's regex.
