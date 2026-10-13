@@ -57,6 +57,12 @@ export const CHECKS = {
     return [];
   },
 
+  // An evaluator's verdict and a reader's read commit no status: the task keeps the one it had.
+  'run-kept-status'({ data }) {
+    if (!['verdict', 'read'].includes(data?.outcome) || data.status_before === undefined || data.status_after === data.status_before) return [];
+    return [{ severity: 'warning', rule: 'run-kept-status', pointer: '/status_after', message: `a ${data.outcome} run left the task ${data.status_after}, not ${data.status_before}: a ${data.role ?? 'run'} commits no status; was this run the author's?` }];
+  },
+
   'grant-dates'({ data }) {
     const out = [];
     const t = (k) => (data?.[k] ? Date.parse(data[k]) : NaN);

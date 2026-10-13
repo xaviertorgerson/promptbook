@@ -285,6 +285,29 @@ describe('a project\'s own skills: evals under a dot-folder', () => {
   });
 });
 
+describe('run-record: who ran it', () => {
+  const outcomes = reg.schema('run-record').properties.outcome.enum;
+
+  it('every outcome agentic-template\'s loop writes (fix/agent-run-caps, dontAsk) is one the contract accepts', (t) => {
+    const src = spawnSync('git', ['-c', 'safe.directory=*', '-C', TEMPLATE, 'show', 'fix/agent-run-caps:scripts/loop.mjs'], { encoding: 'utf8' });
+    if (src.status !== 0) return t.skip(`no fix/agent-run-caps in ${TEMPLATE}`);
+    const expr = src.stdout.match(/\boutcome: ([^\n]*?),\s*\n/)[1];
+    const written = [...expr.matchAll(/'([a-z-]+)'/g)].map((m) => m[1]);
+    assert.deepEqual(written.sort(), ['advanced', 'failed', 'needs-human', 'stalled']);
+    for (const o of written) assert.ok(outcomes.includes(o), o);
+    assert.match(src.stdout, /permission_denials: denials/, 'it writes the denial lines the contract accepts');
+  });
+
+  it('a verdict or read that left the task in another status is a warning: it was probably the author\'s', () => {
+    const file = path.join(TMP, 'moved.run-record.jsonl');
+    const line = fs.readFileSync(path.join(FIX, 'valid/run-record/roles.jsonl'), 'utf8').split('\n')[0];
+    fs.writeFileSync(file, `${line.replace('"status_after":"review"', '"status_after":"human-review"')}\n`);
+    const r = validateFile(file);
+    assert.equal(r.status, 'PASS');
+    assert.deepEqual(r.results[0].findings.map((f) => [f.severity, f.rule]), [['warning', 'run-kept-status']]);
+  });
+});
+
 describe('task schema compatibility', () => {
   const real = (root) => (fs.existsSync(path.join(root, 'specs')) ? walk(path.join(root, 'specs')).filter((f) => /\/tasks\/[^_][^/]*\.md$/.test(f)) : []);
 

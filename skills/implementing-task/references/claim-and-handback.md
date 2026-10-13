@@ -72,7 +72,7 @@ sessions:
     role: coder
     started_at: 2026-10-13T09:00:00Z
     ended_at: 2026-10-13T09:41:00Z
-    outcome: advanced           # advanced | stalled | failed | abandoned
+    outcome: advanced           # advanced | stalled | failed | abandoned | needs-human (verdict, read: an evaluator's or reader's session)
     run: .agent/loop-runs.jsonl # where the runner's run-record line is
 ```
 

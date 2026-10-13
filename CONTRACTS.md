@@ -227,13 +227,25 @@ is optional there.
 ### run-record
 
 **Purpose.** One JSON line per agent run, appended by the runner. **Schema** `run-record.schema.json`
-1.1.0: exactly `scripts/loop.mjs`'s line — `task`, `session_id`, `started_at`, `ended_at`, `exit`
-(code or signal), `outcome` (advanced | stalled | failed), `reason`, `subtype`, `num_turns`,
-`total_cost_usd`, `status_after` — with null where loop.mjs writes null. Harness optional fields:
-`engine`, `runtime`, `model`, `status_before`, `permission_mode`, `permission_denials`, `attention`,
-`budget`, `grant`. Rules: failed and stalled carry a reason, advanced does not; advanced means the
-task left ready/in-progress; ended ≥ started. **Compat.** Lines from loop.mjs's own test runs are the
-fixture `fixtures/valid/run-record/loop-mjs-outcomes.jsonl`.
+1.2.0: exactly `scripts/loop.mjs`'s line — `task`, `session_id`, `started_at`, `ended_at`, `exit`
+(code or signal), `outcome`, `reason`, `subtype`, `num_turns`, `total_cost_usd`, `status_after` —
+with null where loop.mjs writes null. `outcome` is advanced | stalled | failed | needs-human (the
+loop's since it pins dontAsk: a denied call left the task where it was) for an author's run, and
+verdict (an evaluator judged the criteria) or read (a reader or helper answered a question) for a
+run that is not the author's. Harness optional fields: `engine`, `runtime`, `role` (author |
+evaluator | reader | planner | orchestrator | merge | other; absent, the author), `model`,
+`status_before`, `permission_mode`, `permission_denials` (a count, or one line per denied call as
+the dontAsk loop writes them), `attention`, `budget`, `grant`. Rules: failed, stalled and
+needs-human carry a reason, advanced, verdict and read do not; advanced means the task left
+ready/in-progress; a verdict is an evaluator's (`verdict-by-evaluator`), a read a reader's
+(`read-by-reader`); a verdict or read that left the status other than it found it is a warning
+(`run-kept-status`); ended ≥ started. 1.2.0 added `role`, the three outcomes and denial lines, so an
+evaluator's or reader's run is logged as what it was instead of an author's "advanced".
+**Compat.** Lines from loop.mjs's own test runs are the fixture
+`fixtures/valid/run-record/loop-mjs-outcomes.jsonl`; the dontAsk loop's lines (agentic-template
+`fix/agent-run-caps`: `needs-human`, `permission_denials` as lines), produced with a fake engine, are
+`loop-mjs-dontask.jsonl`, and a test holds the loop's outcome literals to the enum. A task's
+`sessions[]` entry (`common` `sessionRef`, 1.4.0) takes the same outcomes.
 
 ### grant
 
@@ -503,7 +515,7 @@ the current head. The simulator enforces all of it (TOOLS.md).
 | agentic-template `specs/rating-engine/tasks/*.md` (4) and wt-stack-drift `specs/template-migration/tasks/*.md` (6) | task | all 10 validate unchanged |
 | both epics' `spec.md` and `cuj.md` | epic, requirement, journey | validate unchanged (12 `R<n>` rows normalized) |
 | `DECISIONS.md` (18 ADRs) | decision | validates; ADR-0001's `TODO(domain)` date is a warning |
-| `scripts/loop.mjs` run lines | run-record | validate unchanged |
+| `scripts/loop.mjs` run lines (and the dontAsk loop's on `fix/agent-run-caps`) | run-record | validate unchanged |
 | stagehand `assets/task-record.yaml` (filled) | task-record | validates unchanged |
 | stagehand project delegation | grant | expressible; the grant adds an expiry |
 | Herdr `AgentStatus`, A2A 1.0 `TaskState`, MCP Tasks `TaskStatus`, Claude result subtypes, GitHub check runs | attention.yaml | every value mapped; none to a workflow status |

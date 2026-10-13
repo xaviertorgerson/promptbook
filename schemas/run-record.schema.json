@@ -2,8 +2,8 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://harness.dev/schemas/run-record.schema.json",
   "title": "Run record",
-  "description": "One JSON line per agent run, appended by the runner (never the agent). Exactly the line agentic-template's scripts/loop.mjs writes to .agent/loop-runs.jsonl; harness fields are optional additions.",
-  "x-version": "1.1.0",
+  "description": "One JSON line per agent run, appended by the runner (never the agent). Exactly the line agentic-template's scripts/loop.mjs writes to .agent/loop-runs.jsonl; harness fields are optional additions. A run is an author's unless role says otherwise: an evaluator's run ends in a verdict and a reader's in a read, neither of which moves the task.",
+  "x-version": "1.2.0",
   "x-artifacts": [
     { "format": "jsonl", "paths": [".agent/loop-runs.jsonl", ".agent/runs/*.jsonl"], "suffixes": [".run-record.jsonl"] }
   ],
@@ -20,8 +20,12 @@
       "pattern": "^SIG[A-Z0-9]+$"
     },
     "outcome": {
-      "description": "advanced: the dispatched task left ready/in-progress. stalled: it did not, or another task was claimed. failed: non-zero exit, error result, or no parseable result.",
-      "enum": ["advanced", "stalled", "failed"]
+      "description": "advanced: the dispatched task left ready/in-progress. stalled: it did not, or another task was claimed. failed: non-zero exit, error result, or no parseable result. needs-human: it did not advance after a denied tool call (scripts/loop.mjs since it pins dontAsk). verdict: an evaluator's run that judged the task's criteria. read: a reader's or helper's run that answered a question. Neither verdict nor read moves the task; the status it was in is the status it keeps.",
+      "enum": ["advanced", "stalled", "failed", "needs-human", "verdict", "read"]
+    },
+    "role": {
+      "description": "Harness: the session's part in the task. Absent: the author (the loop's coder run). evaluator and reader runs end in verdict and read.",
+      "enum": ["author", "evaluator", "reader", "planner", "orchestrator", "merge", "other"]
     },
     "reason": { "type": ["string", "null"], "minLength": 1 },
     "subtype": {
@@ -41,9 +45,11 @@
     "status_before": { "$ref": "common.schema.json#/$defs/taskStatus" },
     "permission_mode": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
     "permission_denials": {
-      "description": "Harness: count of denied tool calls; non-zero means a question for a human (ADR-0021).",
-      "type": "integer",
-      "minimum": 0
+      "description": "Denied tool calls: a count, or one line per call (tool: what it was pointed at), as scripts/loop.mjs writes since it pins dontAsk. Non-empty means a question for a human (ADR-0021).",
+      "anyOf": [
+        { "type": "integer", "minimum": 0 },
+        { "type": "array", "items": { "$ref": "common.schema.json#/$defs/nonEmptyString" } }
+      ]
     },
     "attention": { "$ref": "common.schema.json#/$defs/attention" },
     "budget": { "$ref": "common.schema.json#/$defs/budget" },
@@ -51,14 +57,26 @@
   },
   "patternProperties": { "^x-": {} },
   "additionalProperties": false,
-  "x-checks": ["ended-after-started"],
+  "x-checks": ["ended-after-started", "run-kept-status"],
   "allOf": [
     {
       "x-rule": "failure-says-why",
-      "description": "A failed or stalled run carries its reason; an advanced one has none.",
-      "if": { "required": ["outcome"], "properties": { "outcome": { "enum": ["failed", "stalled"] } } },
+      "description": "A failed, stalled or needs-human run carries its reason; an advanced, verdict or read run has none.",
+      "if": { "required": ["outcome"], "properties": { "outcome": { "enum": ["failed", "stalled", "needs-human"] } } },
       "then": { "properties": { "reason": { "type": "string" } } },
       "else": { "properties": { "reason": { "type": "null" } } }
+    },
+    {
+      "x-rule": "verdict-by-evaluator",
+      "description": "A verdict is an evaluator's run.",
+      "if": { "required": ["outcome"], "properties": { "outcome": { "const": "verdict" } } },
+      "then": { "required": ["role"], "properties": { "role": { "const": "evaluator" } } }
+    },
+    {
+      "x-rule": "read-by-reader",
+      "description": "A read is a reader's or helper's run.",
+      "if": { "required": ["outcome"], "properties": { "outcome": { "const": "read" } } },
+      "then": { "required": ["role"], "properties": { "role": { "const": "reader" } } }
     },
     {
       "x-rule": "advanced-means-moved",

@@ -10,7 +10,7 @@
 # suggestion against evidence (the agent's latest answer, git, the PR, the task file) before it
 # records anything; a signal alone is a hint. Stagehand states the rule as: a wake is a hint, not
 # an event ledger.
-version: 1.1.0
+version: 1.2.0
 contract: attention
 
 states:
@@ -113,6 +113,9 @@ sources:
       advanced: { attention: null,        reconcile: inspect, note: "The task left ready/in-progress. Its status says what comes next; the human gate is a status, not attention." }
       stalled:  { attention: needs-human, reconcile: record,  note: "The task did not move, or another task was claimed. The loop stops so a human can look." }
       failed:   { attention: needs-human, reconcile: record }
+      needs-human: { attention: needs-human, reconcile: record, note: "A denied tool call left the task where it was (dontAsk): grant the tool or answer the checkpoint." }
+      verdict:  { attention: null,        reconcile: inspect, note: "An evaluator judged the criteria. The verdict is evidence for a guard (independent-verification); it moves nothing." }
+      read:     { attention: null,        reconcile: ignore,  note: "A reader or helper answered a question for another session; the task's own record is unchanged." }
 
   ci:
     what: A CI job or check-run result on a commit (GitHub check runs; Forgejo Actions reports the same names).
