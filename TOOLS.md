@@ -2,7 +2,8 @@
 
 Node 22, ESM, no dependencies beyond the validator's (`ajv`, `ajv-formats`, `yaml`). Every tool is
 one script under `tools/` with its library under `tools/lib/`, prints its own usage with `--help`,
-and exits 0 on success, 1 when a check fails, 2 on a usage error. `node --test tests` runs them all.
+and exits 0 on success, 1 when a check fails, 2 on a usage error. `pnpm test` (`node --test "tests/**/*.test.mjs"`)
+runs them all; Node 22 does not accept a bare directory there.
 
 ```
 harness <command> [args]          # package.json bin: tools/cli.mjs; or pnpm <command> / node tools/<tool>.mjs
