@@ -157,7 +157,7 @@ export function validateAs(file, hit, { registry = sharedRegistry(), text = read
     loaded = LOADERS[art.format](text);
   }
   const LOAD_RULES = { parse: 'parse-error', unique: 'duplicate-id', entries: 'no-entries', section: 'no-entries' };
-  for (const e of loaded.errors) findings.push({ severity: 'error', rule: LOAD_RULES[e.keyword] ?? e.keyword, pointer: e.pointer || '/', message: e.message, line: e.line });
+  for (const e of loaded.errors) findings.push({ severity: e.severity ?? 'error', rule: LOAD_RULES[e.keyword] ?? e.keyword, pointer: e.pointer || '/', message: e.message, line: e.line });
   for (const record of loaded.records) {
     for (const w of record.warnings ?? []) findings.push({ severity: 'warning', rule: 'template-placeholder', pointer: record.pointer || '/', message: w, line: record.line });
     if (record.stub) continue;

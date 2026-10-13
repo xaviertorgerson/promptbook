@@ -150,7 +150,12 @@ export function parseRequirements(text, ctx = {}) {
     if (seen.has(r.data.id)) errors.push({ keyword: 'unique', pointer: `/${r.data.id}`, message: `${r.data.id} is defined twice (lines ${seen.get(r.data.id)} and ${r.line})`, line: r.line });
     else seen.set(r.data.id, r.line);
   }
-  if (!records.length && !errors.length) errors.push({ keyword: 'entries', pointer: '', message: 'the Requirements section has no table with an id column and a requirement column', line: sec.start });
+  // An epic still at intake or scoping is a stub: an empty or placeholder-only table is its to-do
+  // list (a warning), not a broken spec.
+  if (!records.length && !errors.length) {
+    const stub = ['intake', 'scoping'].includes(front.status);
+    errors.push({ keyword: 'entries', ...(stub ? { severity: 'warning' } : {}), pointer: '', message: `the Requirements section has no requirement row yet (a table with an id column and a requirement column, rows not placeholders)${stub ? `; fine while the epic is ${front.status}, required from draft on` : ''}`, line: sec.start });
+  }
   return { records, errors };
 }
 

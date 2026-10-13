@@ -315,7 +315,8 @@ Implemented in `tools/lib/parsers.mjs`; every parser keeps file line numbers for
   → module, `Verified by`/`Test` → verified_by, `Category`, `Measure`/`Target`, `CUJ`, `ADR`), other
   columns go to `extra`. Ids: `R<n>` → `REQ-<n>` (kept in `source_id`), `REQ-n`, `NFR-n`; an NFR row
   is non-functional. Rows whose statement is a placeholder (`…`, `<…>`) are skipped; a duplicate id
-  after normalization is an error.
+  after normalization is an error. A section with no real row is an error (`no-entries`) from
+  `draft` on, and a warning while the epic is `intake` or `scoping` (a stub spec).
 - **Decisions** (`DECISIONS.md`). Each `## ADR-NNNN: title` starts an entry; each line starting
   `**Label:**` starts a field that runs to the next such line (multi-line values and inner bold text
   are kept). `status` is the first word of the Status line; ADR ids after "superseded" in it become
