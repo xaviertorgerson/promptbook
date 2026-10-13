@@ -221,6 +221,33 @@ describe('contract by filename suffix (examples outside the project layout)', ()
   });
 });
 
+describe('a project\'s _-prefixed templates (agentic-template\'s docs/ux/_UX-TEMPLATE.md)', () => {
+  const dir = path.join(TMP, 'templates');
+  const ux = '---\nepic: my-epic\n---\n\n# UX — <epic name>\n\n## UX-1 · <the journey>\n- **CUJs:** CUJ-1\n- **Steps:**\n  1. **<Screen>** → <action>\n';
+  const files = {
+    'docs/ux/_UX-TEMPLATE.md': ux,
+    'docs/product/_BRIEF-TEMPLATE.md': '---\nid: BRIEF\nproduct: <name>\n---\n',
+    'specs/invoicing/tasks/_TASK-TEMPLATE.md': '---\nid: <PREFIX>-<n>\nepic: <epic>\n---\n',
+    'specs/_drafts/spec.md': '---\nepic: _drafts\nstatus: intake\n---\n',
+    '.orchestrator/grants/_GRANT-TEMPLATE.yaml': 'id: GRANT-<n>\n',
+  };
+  for (const [rel, text] of Object.entries(files)) {
+    fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
+    fs.writeFileSync(path.join(dir, rel), text);
+  }
+
+  it('gets no contract from its path, so a directory walk skips it', () => {
+    for (const rel of Object.keys(files)) assert.equal(validateFile(path.join(dir, rel)).status, 'SKIP', rel);
+    assert.deepEqual(validatePath(dir), []);
+  });
+
+  it('--contract still validates it', () => {
+    const r = validateFile(path.join(dir, 'docs/ux/_UX-TEMPLATE.md'), { contract: 'ux-flow' });
+    assert.equal(r.status, 'FAIL', 'its placeholders are not a flow');
+    assert.equal(validateFile(path.join(dir, '.orchestrator/grants/_GRANT-TEMPLATE.yaml'), { contract: 'grant' }).status, 'FAIL');
+  });
+});
+
 describe('task schema compatibility', () => {
   const real = (root) => (fs.existsSync(path.join(root, 'specs')) ? walk(path.join(root, 'specs')).filter((f) => /\/tasks\/[^_][^/]*\.md$/.test(f)) : []);
 

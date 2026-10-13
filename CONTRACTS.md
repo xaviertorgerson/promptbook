@@ -28,8 +28,10 @@ node tools/validate.mjs --list                  # contracts, versions, artifact 
   `*.adr.md`, `*.ux.md`, `*.spec.md` (epic and requirements), `*.cuj.md`, `*.readiness.md`,
   `*.harness-review.md`, `*.reflection.md`. A suffix applies only when no path does; it binds no
   frontmatter field, and an entry file (`<epic>.cuj.md`, `<epic>.ux.md`) takes its epic from the name
-  before the suffix. A `*.template.*` file holds placeholders on purpose and gets no inferred
-  contract (`--contract` still validates it).
+  before the suffix. A `*.template.*` file, or one whose name starts with `_` (agentic-template's
+  `docs/ux/_UX-TEMPLATE.md`, `specs/<epic>/tasks/_TASK-TEMPLATE.md`), holds placeholders on purpose
+  and gets no inferred contract, nor does a file under a `_`-prefixed folder a path glob captures
+  (`specs/_drafts/spec.md`), as the trace skips them; `--contract` still validates it.
 - **Rules have names.** Conditional rules carry `x-rule`; errors report that name, a JSON pointer,
   and a file line. Rules JSON Schema cannot express are named checks listed in `x-checks`
   (`tools/lib/checks.mjs`). Unknown fields are errors, except `x-*` keys, which are free for local

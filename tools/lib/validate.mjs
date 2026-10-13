@@ -21,9 +21,10 @@ export function fixtureCase(file) {
   return m ? m[2].replace(/\.[^.]+$/, '') : null;
 }
 
-// A template kept beside its examples (adr.template.md, grant.template.yaml) holds placeholders on
-// purpose: no contract is inferred for it; --contract still validates it.
-export const isTemplate = (file) => /\.template\.[^./]+$/i.test(path.basename(file));
+// A template kept beside its examples (adr.template.md, grant.template.yaml, or a project's
+// _UX-TEMPLATE.md, which the trace skips like a _-prefixed task) holds placeholders on purpose: no
+// contract is inferred for it; --contract still validates it.
+export const isTemplate = (file) => /\.template\.[^./]+$/i.test(path.basename(file)) || path.basename(file).startsWith('_');
 
 // The artifact a filename suffix names (x-artifacts[].suffixes: *.grant.yaml, *.task.md, …), for an
 // example that lives outside the project layout (a skill's references/). Among a contract's
@@ -59,6 +60,9 @@ export function inferContracts(file, { contract, registry = sharedRegistry() } =
       if (!accepts(art.format, file)) continue;
       for (const glob of art.paths) {
         const m = matchSuffix(posix, glob);
+        // A _-prefixed folder in a captured segment (specs/_drafts/spec.md) is out of the layout,
+        // as the trace reads it.
+        if (m && !contract && m.captures.some((c) => c.startsWith('_'))) continue;
         if (m) return { contract: name, artifact: art, captures: m.captures, matched: m.matched };
       }
     }
