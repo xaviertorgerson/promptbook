@@ -19,7 +19,9 @@ harness <command> [args]          # package.json bin: tools/cli.mjs; or pnpm <co
 ## validate, trace
 
 The contract validator and the trace graph; see [CONTRACTS.md](CONTRACTS.md). `harness trace <root>`
-is `validate --trace <root>`.
+is `validate --trace <root>`; `--tests <glob>` picks the test files, `--test-pattern <regex>` adds a
+way to read test names beyond the built-in JS/TS, Go, Python, JUnit/Kotlin, Rust and Ruby readers
+(fixtures: `fixtures/test-names/`).
 
 ## lint
 

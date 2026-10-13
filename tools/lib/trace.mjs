@@ -44,7 +44,7 @@ const exists = (p) => { try { fs.accessSync(p); return true; } catch { return fa
 // Resolve "<epic>/X-n" or "X-n" (in the citing epic) to "<epic>/X-n".
 const qualify = (ref, epic) => (ref.includes('/') ? ref : `${epic}/${ref}`);
 
-function loadProject(root, { testGlobs = DEFAULT_TEST_GLOBS, registry = sharedRegistry() } = {}) {
+function loadProject(root, { testGlobs = DEFAULT_TEST_GLOBS, testPatterns = [], registry = sharedRegistry() } = {}) {
   const p = {
     root,
     brief: null,
@@ -123,7 +123,7 @@ function loadProject(root, { testGlobs = DEFAULT_TEST_GLOBS, registry = sharedRe
   }
 
   p.testFiles = findFiles(root, testGlobs);
-  for (const f of p.testFiles) p.names.push(...testNames(readText(f)));
+  for (const f of p.testFiles) p.names.push(...testNames(readText(f), { file: f, patterns: testPatterns }));
   p.testGlobs = testGlobs;
   return p;
 }
@@ -247,7 +247,7 @@ export function trace(root, opts = {}) {
       for (const c of t.criteria) {
         cov.criteria.total += 1;
         if (!testsPresent) continue;
-        const qualified = p.names.some((n) => n.includes(t.id) && namedIn([n], c.id));
+        const qualified = p.names.some((n) => namedIn([n], t.id) && namedIn([n], c.id));
         const bare = qualified || namedIn(p.names, c.id);
         if (bare) cov.criteria.covered += 1;
         if (!EVIDENCED_TASK.has(t.status)) continue;

@@ -356,7 +356,7 @@ flowchart LR
 | `artifact-valid` | every artifact it read passes its contract | error |
 | `*-exists` (persona, journey, requirement, decision, task, guiding-doc) | every id or path cited resolves | error |
 | `dependencies-acyclic` | `depends_on` has no cycle | error |
-| `criterion-named-in-test` | a task in review or later has every AC id in a test name (`--tests` globs; default the ears-coverage globs) | error, blocks readiness |
+| `criterion-named-in-test` | a task in review or later has every AC id in a test name (`--tests` globs; default the ears-coverage globs plus Go, Python, JUnit/Kotlin, Rust and Ruby test files) | error, blocks readiness |
 | `task-cites-requirement` | every task cites ≥1 REQ/NFR (`requirements:`); an id named only in prose is a warning with the fix | see below |
 | `journey-has-task`, `requirement-has-task` | no orphan journey or requirement | see below |
 | `journey-has-requirement` | each journey is served by a requirement (CUJ column, or a task that cites both) | see below |
@@ -374,6 +374,15 @@ warning even on an approved epic, so adopting the harness never turns a green bu
 keep an epic from `ready` are marked `blocks_readiness` in either mode. With no test files at all,
 criterion coverage is a single `tests-exist` warning, as `ears-coverage.mjs` does in status mode.
 `--strict` makes warnings fail; `--readiness <dir>` writes each epic's `readiness.md`.
+
+**Test names.** A file's extension picks how its test names are read: JS/TS the first string of
+`it`/`test`/`describe` (ears-coverage's extractor); Go `t.Run("…")` and `func TestXxx`; Python
+`def test_…`, pytest `ids=[…]` and `pytest.param(…, id="…")`; JUnit 5 `@DisplayName("…")`; Kotlin
+backticked function names; Rust `fn` names; Ruby `it`/`describe`/`context`/`specify`/`test "…"`.
+`--test-pattern <regex>` (repeatable) adds a reader for anything else (group 1, or the match, is a
+name). An id matches in any case with a hyphen, an underscore or nothing between prefix and number
+(`AC-2`, `ac_2`, `AC2`, `bill_7_ac_2`), or in CamelCase after a lower-case letter or digit
+(`TestBILL7AC2`), never inside a longer id (`AC-21`, `FAC2`).
 
 On `wt-stack-drift` (two epics, no product docs, no tests) the check reports legacy adoption, 0
 errors, and 32 warnings: tasks that cite no requirement (with the exact `requirements: [REQ-2]` fix

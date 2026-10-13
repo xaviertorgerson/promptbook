@@ -12,6 +12,8 @@ const USAGE = `Validate harness artifacts against their contracts.
   node tools/validate.mjs --contract task <file>...  validate as one contract
   node tools/validate.mjs --trace <project-root>     check the trace graph (BRIEF -> ... -> tests)
       [--tests "<glob>"]...                          test files to read names from (repeatable)
+      [--test-pattern "<regex>"]...                  another way a test is named: group 1 (or the
+                                                     match) of each match is a name (repeatable)
       [--readiness <dir>]                            write <dir>/<epic>/readiness.md per epic
       [--strict]                                     warnings fail too
   node tools/validate.mjs --list                     list contracts, versions and artifact paths
@@ -22,7 +24,7 @@ Exit 0 when nothing fails, 1 when something fails, 2 on a usage error.`;
 const args = process.argv.slice(2);
 const flag = (n) => args.includes(n);
 const values = (n) => args.flatMap((a, i) => (args[i - 1] === n ? [a] : []));
-const VALUED = new Set(['--contract', '--trace', '--tests', '--readiness']);
+const VALUED = new Set(['--contract', '--trace', '--tests', '--test-pattern', '--readiness']);
 const positional = args.filter((a, i) => !a.startsWith('--') && !VALUED.has(args[i - 1]));
 
 function fail(msg) {
@@ -57,7 +59,9 @@ if (flag('--trace')) {
   const [root] = values('--trace');
   if (!root || !fs.existsSync(root)) fail(`--trace needs an existing project root (got ${root ?? 'nothing'})`);
   const tests = values('--tests');
-  const result = trace(root, tests.length ? { testGlobs: tests } : {});
+  const patterns = values('--test-pattern');
+  for (const p of patterns) { try { new RegExp(p); } catch (e) { fail(`--test-pattern ${p}: ${e.message}`); } }
+  const result = trace(root, { ...(tests.length ? { testGlobs: tests } : {}), testPatterns: patterns });
   const strict = flag('--strict');
   const failed = result.counts.error > 0 || (strict && result.counts.warning > 0);
   const [out] = values('--readiness');

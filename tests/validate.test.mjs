@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
 import { walk } from '../tools/lib/glob.mjs';
 import { registry } from '../tools/lib/registry.mjs';
+import { namedIn, testNames } from '../tools/lib/ears.mjs';
 import { trace } from '../tools/lib/trace.mjs';
 import { fixtureCase, validateFile } from '../tools/lib/validate.mjs';
 
@@ -88,6 +89,47 @@ describe('fixtures', () => {
       }
     });
   }
+});
+
+describe('test names across languages', () => {
+  const dir = path.join(FIX, 'test-names');
+  for (const f of fs.readdirSync(dir).filter((x) => !x.endsWith('.feature'))) {
+    it(`${f}: every criterion of BILL-6 is named, qualified by the task id`, () => {
+      const names = testNames(fs.readFileSync(path.join(dir, f), 'utf8'), { file: f });
+      for (const ac of ['AC-1', 'AC-2', 'AC-3']) {
+        assert.ok(names.some((n) => namedIn([n], 'BILL-6') && namedIn([n], ac)), `${ac} in ${JSON.stringify(names)}`);
+      }
+      assert.ok(!namedIn(names, 'AC-4') && !namedIn(names, 'BILL-60'), 'no other id');
+    });
+  }
+
+  it('--test-pattern names tests in a format no extractor knows (a Gherkin scenario)', () => {
+    const text = fs.readFileSync(path.join(dir, 'rating.feature'), 'utf8');
+    assert.ok(!namedIn(testNames(text, { file: 'rating.feature' }), 'AC-1'));
+    const names = testNames(text, { file: 'rating.feature', patterns: ['^\\s*Scenario:\\s*(.+)$'] });
+    for (const ac of ['AC-1', 'AC-2', 'AC-3']) assert.ok(namedIn(names, ac), ac);
+  });
+
+  it('an id matches in its written forms, never inside a longer one', () => {
+    for (const n of ['AC-2 rounds', 'test_ac_2_rounds', 'ac2', 'TestBILL7AC2Rounds', 'it AC_2']) assert.ok(namedIn([n], 'AC-2'), n);
+    for (const n of ['AC-21', 'FAC2', 'mac2', 'BAC-2', 'ac-2-1'.replace('-1', '1')]) assert.ok(!namedIn([n], 'AC-2'), n);
+  });
+
+  it('the trace reads a Python project\'s tests by default and --test-pattern from the CLI', () => {
+    const dir2 = project('complete', {
+      'tests/invoicing.test.ts': '',
+      'tests/test_invoicing.py': 'def test_inv_1_ac_1_returns_the_pdf():\n    pass\n\ndef test_inv_1_ac_2_returns_404_for_another_tenant():\n    pass\n',
+    });
+    const r = trace(dir2);
+    assert.deepEqual(r.epics[0].coverage.criteria, { covered: 2, total: 2 });
+    assert.equal(r.counts.error, 0, JSON.stringify(r.gaps));
+    const dir3 = project('complete', { 'tests/invoicing.test.ts': '', 'tests/invoicing.feature': 'Scenario: INV-1 AC-1 returns the PDF\nScenario: INV-1 AC-2 returns 404\n' });
+    const cli = (...a) => spawnSync(process.execPath, [path.join(ROOT, 'tools/validate.mjs'), ...a], { encoding: 'utf8' });
+    assert.equal(cli('--trace', dir3, '--tests', 'tests/*.feature').status, 1, 'no extractor reads .feature');
+    const ok = cli('--trace', dir3, '--tests', 'tests/*.feature', '--test-pattern', '^Scenario: (.+)$');
+    assert.equal(ok.status, 0, ok.stdout);
+    assert.equal(cli('--trace', dir3, '--test-pattern', '(').status, 2, 'a bad regex is a usage error');
+  });
 });
 
 describe('requirement categories', () => {
