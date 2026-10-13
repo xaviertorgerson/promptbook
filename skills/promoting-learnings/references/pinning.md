@@ -6,7 +6,7 @@ the personal layer's data file, conforming to the `toolkit-lock` contract:
 ```yaml
 lock_version: 1
 entries:
-  - name: harness             # exactly one L3 entry
+  - name: harness             # exactly one harness; other L3 entries are skill libraries
     layer: L3
     kind: harness
     source: https://example.org/you/harness
@@ -15,6 +15,15 @@ entries:
     tree: <40-hex git tree id of the pinned content>
     version: 0.3.0
     autoUpdate: minor         # off | patch | minor | major
+  - name: portable-skills     # a third-party skill library pinned beside the harness
+    layer: L3
+    kind: skill-library
+    source: https://example.org/vendor/portable-skills
+    ref: main
+    commit: <40-hex>
+    tree: <40-hex>
+    version: 0.0.0+<short commit>   # untagged: semver build metadata carries the commit
+    autoUpdate: "off"
   - name: vendor-skills
     layer: L4
     kind: domain-pack

@@ -1,6 +1,6 @@
 ---
 name: writing-tests
-description: Use when writing tests is the job — "add tests for X", "write a test for Y", "cover AC-3 with a test", "which criteria have no test yet", "this fix needs a regression test", "what should I fake or mock". Decides what to test (criteria first, then boundaries, failure paths, permissions, regressions), how to structure it, what to fake, and names each test with its criterion id (AC-n). Do not use for diagnosing why a test fails or is flaky (debugging-failures), asking why agents keep breaking a testing rule (reflecting-on-runs), implementing a whole task end to end (implementing-task), or judging whether a finished change meets its criteria (verifying-work).
+description: Use when writing tests is the job — "add tests for X", "cover AC-3 with a test", which acceptance criteria have no test yet, a regression test for a fix, what to fake or mock; tests named by AC id. Do not use for a failing test (debugging-failures).
 license: MIT
 compatibility: Any agent runtime that reads Agent Skills; any language and test runner. The criterion-coverage check needs Node 22 when the harness tools are present.
 metadata:
@@ -13,6 +13,13 @@ metadata:
 Tests are the verification gate that makes shipping and unattended loops safe, and the evidence a
 reviewer reads. Each acceptance criterion is proven by a test whose name carries its id. Tests are
 never deleted, skipped or weakened to get a green build.
+
+Typical asks: "add tests for X", "write a test for Y", "cover AC-3 with a test", "which criteria
+have no test yet", "this fix needs a regression test", "what should I fake or mock".
+
+Hand off instead: diagnosing why a test fails or is flaky (debugging-failures); asking why agents
+keep breaking a testing rule (reflecting-on-runs); implementing a whole task end to end
+(implementing-task); judging whether a finished change meets its criteria (verifying-work).
 
 ## Inputs
 

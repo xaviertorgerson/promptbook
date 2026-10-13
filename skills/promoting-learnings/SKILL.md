@@ -1,6 +1,6 @@
 ---
 name: promoting-learnings
-description: Use when a skill, rule, hook or verified learning should move to a wider scope, be renamed, or be retired — "promote this skill", "make this generic", "kick this up to the pack", "the next project should have this", "install it on all my machines", "deprecate X in favor of Y", "retire this skill", "rename this skill", "bump the harness or a pack pin in toolkit.lock" — or when an epic closes and its learnings must be harvested. Do not use for turning failed runs or accepted review findings into skill or rule fixes (reflecting-on-runs), writing or running a skill's evals (evaluating-skills), authoring a new skill (building-skills), or first bringing a repository or machine onto the harness (adopting-harness).
+description: Use when a skill, rule or learning moves to a wider scope or is retired, or an epic's learnings are harvested — a project skill to the shared pack or all machines, "kick this up", rename, deprecate a skill another replaced, bump a toolkit.lock pin. Do not use for new skills (building-skills).
 license: MIT
 compatibility: Any agent runtime that reads Agent Skills and works in git with pull requests. Lock and validation checks need Node 22 when the harness tools are present.
 metadata:
@@ -13,6 +13,15 @@ metadata:
 Good procedures are invented in one project and stay trapped there; promoted carelessly, a project
 quirk becomes everyone's rule. Move a learning up one stage at a time, through explicit gates, under
 a new name, pinned; and retire what it replaces so nothing lingers and keeps triggering.
+
+Typical asks: "promote this skill", "make this generic", "kick this up to the pack", "the next
+project should have this", "install it on all my machines", "deprecate X in favor of Y", "retire
+this skill", "rename this skill", "bump the harness or a pack pin in toolkit.lock", or an epic
+closing with learnings to harvest.
+
+Hand off instead: turning failed runs or accepted review findings into fixes (reflecting-on-runs);
+writing or running a skill's evals (evaluating-skills); authoring a new skill (building-skills);
+first bringing a repository or machine onto the harness (adopting-harness).
 
 ## Inputs
 

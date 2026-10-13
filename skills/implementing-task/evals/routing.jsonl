@@ -9,5 +9,7 @@
 {"prompt":"Set up a worktree for BILL-9 with its own database and ports.","expect":"no-trigger","kind":"near-miss","route_to":"managing-worktrees"}
 {"prompt":"Add a test that proves AC-3 of BILL-4.","expect":"no-trigger","kind":"near-miss","route_to":"writing-tests"}
 {"prompt":"Turn this idea for prorated invoices into tasks.","expect":"no-trigger","kind":"near-miss","route_to":"planning-work"}
+{"prompt":"This test is flaky, fix it.","expect":"no-trigger","kind":"near-miss","route_to":"debugging-failures","note":"a flaky test is a diagnosis, not a task (measured overlap)"}
+{"prompt":"Cover AC-3 with a test.","expect":"no-trigger","kind":"near-miss","route_to":"writing-tests","note":"a test-only ask is writing-tests (measured overlap)"}
 {"prompt":"What is the capital of Portugal?","expect":"no-trigger","kind":"negative","route_to":"none"}
 {"prompt":"Summarize this PDF about quarterly sales.","expect":"no-trigger","kind":"negative","route_to":"none"}

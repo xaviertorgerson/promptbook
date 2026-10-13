@@ -1,5 +1,15 @@
 # Evidence — adopting-harness
 
+## 2026-10-13 · Routes on a 298-character description in the 8,000-character catalog
+- **Kind:** measured
+- **Source:** node tools/cli.mjs eval-routing skills <Skilldex fc572b6>/skills --skill adopting-harness --runner "<clean-context headless runner>" --json, 3 trials, 2026-10-13 (harness feat/reconcile-skills after 8816da6; runner and full table in skills/ROUTING-RESULTS.md)
+- **Claim:** With all 28 descriptions cut to 7,899 characters and the 5 pinned Skilldex skills installed, this skill's own cases passed 45/45; precision 100%, recall 96% over every case in the catalog. The original 882-character description, same runner and cases: 42/45, precision 77%, recall 100%.
+- **Result:** Misses: none.
+- **Engine:** claude
+- **Model:** haiku (claude-haiku-5-5), effort low
+- **Skill version:** 0.1.0
+- **Revisit:** when any description in the catalog changes, a skill is added, or the routing model changes
+
 ## 2026-10-13 · Only denies are walls under a personal bypass layer
 - **Kind:** measured
 - **Source:** agentic-template DECISIONS.md ADR-0021 and scripts/permission-probe.mjs (branch docs/adr-permission-precedence, commit c177fa1)

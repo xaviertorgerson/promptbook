@@ -1,6 +1,6 @@
 ---
 name: choosing-methodology
-description: Use when deciding how an epic or task should be worked — "which methodology for this", "should this be spec-driven or research-plan-implement", "can we Ralph-loop this overnight", "this is a docs/content pipeline, not code", "switch this epic's mode", "the spec-driven ceremony is too heavy for this fix", "this brownfield change keeps going wrong" — picking a mode (spec-driven, research-plan-implement, ralph-loop, icm-pipeline) by size, risk, repo state (greenfield or existing code) and work type (code or content pipeline), stating what each mode loads and guards, and switching modes mid-epic safely. Do not use for writing the plan's content itself (writing-requirements, planning-work, mapping-journeys), for choosing how deep planning goes before tasks exist (planning-work), or for dispatching the tasks once a mode is set (orchestrating-work).
+description: Use when choosing which mode agents work an epic or task in — spec-driven, research-plan-implement, a Ralph loop overnight, or an icm-pipeline for docs or content; "which methodology for this epic", "too much ceremony for this fix", "switch its mode". Do not use for writing the plan (planning-work).
 license: MIT
 compatibility: Any agent runtime. Optional - Node 22 and the harness validator for the task contract.
 metadata:
@@ -14,6 +14,14 @@ A methodology is a **mode**: a swappable implementation of the same contracts. E
 same task file, the same workflow states, the same return contract and the same invariants. A mode
 only chooses which skills load and which extra guards apply to transitions. Pick one per epic as
 the default and override per task only when a task's shape differs.
+
+Typical asks: "which methodology for this", "should this be spec-driven or research-plan-implement",
+"can we Ralph-loop this overnight", "this is a docs/content pipeline, not code", "switch this epic's
+mode", "the spec-driven ceremony is too heavy for this fix", "this brownfield change keeps going
+wrong".
+
+Hand off instead: writing the plan's content (writing-requirements, planning-work,
+mapping-journeys); dispatching the tasks once a mode is set (orchestrating-work).
 
 ## Inputs
 
@@ -45,11 +53,13 @@ the default and override per task only when a task's shape differs.
 3. **State what the mode loads and guards** (`references/modes.md`): the skills the runtime loads
    for its tasks (and no other workflow skills), the guards it adds to transitions, and the invariants
    it can never remove (walls, the evaluator for risk medium and up, human merge, human spec approval).
-4. **Record it.** Set `mode` on each task file (the `task` contract's field); state the epic default
-   in the epic's spec body (its frontmatter has no `mode` field yet). Add one line of rationale to
-   the spec ("mode: research-plan-implement — brownfield payment path, risk high"). Validate the task
-   files if the validator is available: `node tools/validate.mjs specs/<epic>/tasks/`.
-5. **Hand the guards to the runtime**: the runtime reads `mode` at dispatch, loads that mode's skill
+4. **Record it.** Set the epic's default as `mode` in the spec's frontmatter (the `epic` contract;
+   absent means spec-driven) and `mode` on a task file only where the task differs (a task's `mode`
+   overrides the epic's). Add one line of rationale to the spec ("mode: research-plan-implement —
+   brownfield payment path, risk high"). Validate if the validator is available:
+   `node tools/validate.mjs specs/<epic>/`.
+5. **Hand the guards to the runtime**: the runtime reads the effective mode (the task's, else the
+   epic's, else spec-driven) at dispatch, loads that mode's skill
    set and passes the guards to its gate checks (orchestrating-work).
 
 ### Switching mode mid-epic
@@ -68,7 +78,9 @@ A mode change on a task already past `spec-draft` is a kick-back, never a silent
 5. A `spec-draft` task just changes `mode`. A `ready` task has no transition back to `spec-draft`:
    the owner or an engineer edits `mode` before anyone claims it (suspend it first if a claim is
    imminent), and the new mode's claim guard applies. Merged tasks keep theirs.
-6. Changing the epic default changes nothing already in flight.
+6. Changing the epic's `mode` changes the effective mode of every task without its own `mode`.
+   Before changing it, pin the old value on tasks already claimed (their switch goes through review
+   and `respec` as above); `ready` tasks follow rule 5.
 
 ## Outputs
 
@@ -88,4 +100,4 @@ task: repeated stalls, no-progress stops, or evaluator rejections of the same ki
 - `references/decision-table.md` — the full size × risk × repo state × work type table with reasons.
 - `references/modes.md` — per mode: good for, not for, planning entry, skills loaded, guards, runtime rules.
 - `references/switching.md` — the kick-back procedure with a worked example.
-- `references/examples/specs/rating-engine/tasks/BILL-15.md` — a task after a mode switch; validates against the `task` contract.
+- `references/examples/BILL-15.task.md` — a task after a mode switch; validates against the `task` contract.

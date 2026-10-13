@@ -1,5 +1,15 @@
 # Evidence — verifying-work
 
+## 2026-10-13 · Routes on a 288-character description in the 8,000-character catalog
+- **Kind:** measured
+- **Source:** node tools/cli.mjs eval-routing skills <Skilldex fc572b6>/skills --skill verifying-work --runner "<clean-context headless runner>" --json, 3 trials, 2026-10-13 (harness feat/reconcile-skills after 8816da6; runner and full table in skills/ROUTING-RESULTS.md)
+- **Claim:** With all 28 descriptions cut to 7,899 characters and the 5 pinned Skilldex skills installed, this skill's own cases passed 42/42; precision 100%, recall 100% over every case in the catalog. The original 811-character description, same runner and cases: 38/42, precision 97%, recall 92%.
+- **Result:** Misses: none.
+- **Engine:** claude
+- **Model:** haiku (claude-haiku-5-5), effort low
+- **Skill version:** 0.1.0
+- **Revisit:** when any description in the catalog changes, a skill is added, or the routing model changes
+
 ## 2025-10-26 · Verification is a quarter of multi-agent failures
 - **Kind:** literature
 - **Source:** https://arxiv.org/html/2503.13657v3

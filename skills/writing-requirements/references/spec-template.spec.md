@@ -6,6 +6,7 @@ size: M                      # XS · S · M · L · XL
 business_value: medium       # low · medium · high (or 1-5)
 initiative: null             # an initiative slug, or null
 owner: null                  # the human product owner; required from approved on
+# mode: spec-driven          # optional: the default methodology for the epic's tasks (choosing-methodology)
 ---
 
 # Epic: <epic name>
@@ -15,7 +16,7 @@ owner: null                  # the human product owner; required from approved o
      use; never renumber an id. Statements stay EARS (references/ears.md).
      Check: harness validate specs/<epic>/spec.md (or --contract epic / --contract requirement). -->
 
-- **CUJs:** [`cuj.md`](cuj.md)  ·  **ADRs:** none yet
+- **CUJs:** `cuj.md` (link it once the file exists)  ·  **ADRs:** none yet
 - **Rationale (value vs effort):** <one line: why this priority and size>
 
 ## Problem / motivation

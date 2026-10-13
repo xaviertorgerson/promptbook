@@ -29,7 +29,7 @@ values written, the rationale line, and refusals. pass^k: every trial must pass.
   attempt; the human's respec commit sets `spec-draft`, `mode: research-plan-implement` and a
   `kickback_reason` naming both modes; the branch is kept; Working notes record what failed; no
   status other than the workflow's is used; the result validates like
-  `references/examples/specs/rating-engine/tasks/BILL-15.md`.
+  `references/examples/BILL-15.task.md`.
 
 ## S4 · Lightest entry for a one-line fix (k = 3)
 

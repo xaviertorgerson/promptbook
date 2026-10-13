@@ -1,6 +1,6 @@
 ---
 name: managing-worktrees
-description: Use when a task needs its own checkout, or the user says "set up a worktree for BILL-9", "give this branch its own database and ports", "refresh my branch on main", "rebase the task branch", "clean up the worktrees", "remove the worktree for the merged PR", "which worktrees are stale", or "two agents are fighting over the dev database". Creates one isolated checkout per task keyed on its branch, derives its database, port block and caches from a naming rule, copies env files without committing them, records the base commit, refreshes it, and removes it only after an audit. Do not use for merging or landing a branch (landing-changes), for implementing the task inside the worktree (implementing-task), or for deciding how many tasks run at once (orchestrating-work).
+description: Use when a task needs its own checkout or old ones must go — a worktree with its own database, ports and caches, copying env files in, refresh or rebase on main, stale worktrees, audited cleanup. Do not use for merging (landing-changes) or how many run at once (orchestrating-work).
 license: MIT
 compatibility: Any agent runtime that can run git 2.20 or later. Optional harness tools/validate.mjs (Node 22) to check task records.
 metadata:
@@ -13,6 +13,14 @@ metadata:
 Give each task one hermetic checkout and the resources derived from it, keep it current with its
 base, and remove it only when nothing in it can be lost. File isolation is not enough: a shared
 database, port or cache makes parallel tasks corrupt each other and look like flaky tests.
+
+Typical asks: "set up a worktree for BILL-9", "give this branch its own database and ports",
+"refresh my branch on main", "rebase the task branch", "clean up the worktrees", "remove the
+worktree for the merged PR", "which worktrees are stale", "two agents are fighting over the dev
+database".
+
+Hand off instead: merging or landing a branch (landing-changes); implementing the task inside the
+worktree (implementing-task); deciding how many tasks run at once (orchestrating-work).
 
 ## Inputs
 
@@ -35,8 +43,8 @@ database, port or cache makes parallel tasks corrupt each other and look like fl
 2. **Check the limit and the lane.** Count live task worktrees for this repository. At the limit,
    queue; do not create. If this task's `touches` overlap an active task's, it is the same lane:
    warn and wait, unless a human authorizes running both.
-3. **Fetch the base and record it.** Fetch the target base (default branch, or the integration
-   branch for a per-epic flow) and record its exact commit. Branch from that commit, never from
+3. **Fetch the base and record it.** Fetch the target base (the task's `lands_to`, its epic's
+   integration branch, when set; else the default branch) and record its exact commit. Branch from that commit, never from
    whatever is checked out.
 4. **Create the worktree** at the derived path on the task branch (references/naming-and-resources.md):
    new branch from the recorded commit, or the existing remote branch when resuming. One worktree
@@ -46,7 +54,8 @@ database, port or cache makes parallel tasks corrupt each other and look like fl
    target submodule's remote and branch only after it is initialized.
 6. **Derive the resources** with the naming rule: database `app_<slug>`, a port block offset from
    the project's range, cache and build directories inside the worktree or keyed on the slug.
-   Never hardcode a port; never point two worktrees at one database.
+   Never hardcode a port; never point two worktrees at one database. Record them in the task
+   record's `resources` (`slug`, `worktree_path`, `database`, `ports`, `caches`, `services`).
 7. **Copy untracked inputs by allowlist.** Copy only the files on the project's include list (local
    env files) from the primary checkout; check they are ignored by git in the worktree before
    anything else runs; never print their contents; never stage them. Prefer a reference to the
@@ -74,12 +83,14 @@ database, port or cache makes parallel tasks corrupt each other and look like fl
     exact path matches the record; no uncommitted or untracked work of value; no unpushed commits;
     commits recoverable from a remote branch, PR or merge; no running stateful process; submodules
     clean and recoverable; it is not the primary checkout or a parent other worktrees hang from.
+    Record the result in `resources.audit` (`at`, `result` passed or blocked, `blocked_by`).
 13. **Remove what passed**, with its derived resources: stop its processes, drop its database
     (only the derived name, only after the audit), free its ports, delete its caches, then remove
     the worktree with git's own command and prune. Keep anything that failed the audit visible and
     report the exact blocker and the recommended next action.
-14. **Close the record.** Archive the task record (or mark the worktree removed); cleanup changes
-    no workflow status and no attention.
+14. **Close the record.** Set `resources.worktree_removed_at` (the contract accepts it only after an
+    audit that passed) and archive the task record; cleanup changes no workflow status and no
+    attention.
 
 **Reap (periodic, report-first)**
 
@@ -90,7 +101,7 @@ database, port or cache makes parallel tasks corrupt each other and look like fl
 ## Outputs
 
 - A worktree on the task branch, its derived resources, and its task-record `repository` block
-  (`base_commit` recorded). Example: references/task-record-example.yaml (validates against the
+  (`base_commit` recorded) and `resources`. Example: references/claimed-worktree.task-record.yaml (validates against the
   `task-record` contract; if `harness validate` is available, run
   `node tools/validate.mjs --contract task-record <file>`).
 - A cleanup report: per worktree, removed or kept with the blocker and next action.
@@ -113,5 +124,5 @@ database, port or cache makes parallel tasks corrupt each other and look like fl
 - references/naming-and-resources.md — the naming rule, derived resources, env copying, limits.
 - references/cleanup-audit.md — the audit checklist, submodule audit, the removal commands.
 - references/reaper.md — the stale-worktree reaper and its report.
-- references/task-record-example.yaml — a task record with the recorded base commit.
+- references/claimed-worktree.task-record.yaml — a task record with the recorded base commit.
 - references/engine-notes.md — how runtimes create and remove worktrees.

@@ -1,6 +1,6 @@
 ---
 name: defining-personas
-description: Use when the users of an approved product brief need to be pinned down before journeys are written — "write the personas", "who are our users", "define PER-1 and PER-2", "which user types do we design for", "is this persona backed by research", "do we need a new persona for this feature". Writes PER-n entries (role, jobs, context, constraints, what they must never experience), marks every claim as evidence or assumption, and keeps only the personas that change a decision. Do not use for framing the product or deciding whether to build it (framing-products), or for writing the journeys a persona takes (mapping-journeys).
+description: Use when writing or pruning personas (PER-n) after the brief — who the users are, jobs, context, constraints, evidence vs assumption; "write the personas", "do we need a new persona". Do not use for the brief (framing-products) or journeys (mapping-journeys).
 license: MIT
 compatibility: Any agent runtime that reads Agent Skills. Optional - Node 22 and the harness validator to check personas against their contract.
 metadata:
@@ -14,13 +14,20 @@ Name the few kinds of user whose differences change what gets built, as stable `
 journeys cite. A persona is a role with a job, a context and constraints, not a biography. Each
 claim says whether it rests on evidence or is an assumption still to test.
 
+Typical asks: "write the personas", "who are our users", "define PER-1 and PER-2", "which user types
+do we design for", "is this persona backed by research", "do we need a new persona for this
+feature".
+
+Hand off instead: framing the product or deciding whether to build it (framing-products); writing
+the journeys a persona takes (mapping-journeys).
+
 ## Inputs
 
 - `docs/product/brief.md` (contract `brief`): its Users section, `links`, and `status`.
 - Research the person can point to: interviews, support tickets, analytics, sales notes.
 - Existing personas: `docs/product/personas.md` (entries) or `docs/product/personas/*.md`.
 - Contract `persona`: `id` PER-n, `name`, `role`, `goals` (at least one), optional `pains`,
-  `context`, `quote`, `evidence` (paths or URLs). Template: `references/personas-template.md`.
+  `context`, `quote`, `evidence` (paths or URLs). Template: `references/personas-template.persona.md`.
 
 ## Procedure
 
@@ -84,6 +91,6 @@ claim says whether it rests on evidence or is an assumption still to test.
 
 ## References
 
-- `references/personas-template.md` — the personas file, ready to fill; validates against `persona`.
+- `references/personas-template.persona.md` — the personas file, ready to fill; validates against `persona`.
 - `references/persona-checklist.md` — the decision test, evidence and assumption rules, job wording,
   the one-file-per-persona form, and scale.

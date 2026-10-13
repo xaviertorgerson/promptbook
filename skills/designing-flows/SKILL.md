@@ -1,6 +1,6 @@
 ---
 name: designing-flows
-description: Use when user-facing journeys need their screens designed before tasks are cut — "design the flow for CUJ-1", "what screens does this need", "write the UX for this epic", "what do the empty, loading and error states look like", "make a clickable prototype", "walk the prototype through the journeys", "is this flow accessible". Writes UX-n flows in docs/ux/<epic>.md - steps in plain-Markdown flow notation, the four states (empty, loading, error, success) per screen, an accessibility checklist, a prototype link - and records the result of walking the prototype against every CUJ. Do not use for the visual design system, brand, colours or type (the project's design pack), for writing requirements (writing-requirements), or for building the real screens (implementing-task).
+description: Use when screens for user-facing journeys are designed before tasks — UX-n flows, empty, loading, error and success states, accessibility notes, a clickable prototype walked through every CUJ, re-walking journeys after a screen changes. Do not use for requirements (writing-requirements).
 license: MIT
 compatibility: Any agent runtime that reads Agent Skills. Optional - Node 22 and the harness validator; a browser or a design tool to walk the prototype.
 metadata:
@@ -14,6 +14,13 @@ Design every user-facing journey screen by screen before code, including the sta
 hides, then prove the design by walking a prototype through each journey and writing down what
 failed. A flow is done when every screen has its four states and every walk is recorded.
 
+Typical asks: "design the flow for CUJ-1", "what screens does this need", "write the UX for this
+epic", "what do the empty, loading and error states look like", "make a clickable prototype", "walk
+the prototype through the journeys", "is this flow accessible".
+
+Hand off instead: the visual design system, brand, colours or type (the project's design pack);
+writing requirements (writing-requirements); building the real screens (implementing-task).
+
 ## Inputs
 
 - `specs/<epic>/cuj.md`: journeys with `User-facing: yes`, their steps, success, unwanted and
@@ -24,7 +31,7 @@ failed. A flow is done when every screen has its four states and every walk is r
   exists (tokens, components, the accessibility bar). This skill does not choose colours or type.
 - Contract `ux-flow`: `## UX-n · title` entries with `CUJs`, `Requirements`, `Steps` (sub-items),
   `States` (sub-fields `Empty`, `Loading`, `Error`, `Success`), `Accessibility`; `prototype` in the
-  file's frontmatter (or per flow). Template: `references/ux-template.md`.
+  file's frontmatter (or per flow). Template: `references/ux-template.ux.md`.
 
 ## Procedure
 
@@ -88,7 +95,7 @@ failed. A flow is done when every screen has its four states and every walk is r
 
 ## References
 
-- `references/ux-template.md` — `docs/ux/<epic>.md`, ready to fill; validates against `ux-flow`.
+- `references/ux-template.ux.md` — `docs/ux/<epic>.md`, ready to fill; validates against `ux-flow`.
 - `references/flow-notation.md` — the plain-Markdown notation, an optional Mermaid form, the
   information-architecture list, and prototype handoff.
 - `references/flow-checklist.md` — the four-state rubric, the accessibility checklist, the

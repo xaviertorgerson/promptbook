@@ -1,6 +1,6 @@
 ---
 name: evaluating-skills
-description: Use when a skill's routing or behavior needs testing — "write evals for this skill", "add routing cases", "add near-misses", "this skill triggers on the wrong prompts", "does this skill still trigger", "run the skill evals", "add a scenario", "what k should pass^k use", "log evidence for this skill" — or after a skill's description or body changed. Do not use for authoring a new skill's body (building-skills), moving a skill to another layer or deprecating it (promoting-learnings), or a harness-wide effort sweep and removal tests after a model release (reviewing-harness).
+description: Use when a skill's routing or behaviour must be tested — write or run routing evals and near-miss cases, "does it still trigger after the description change", pass^k scenarios, evidence entries. Do not use for writing a new skill (building-skills).
 license: MIT
 compatibility: Any agent runtime that reads Agent Skills. Routing runs need a cheap model callable non-interactively; validation needs Node 22 when the harness tools are present.
 metadata:
@@ -13,6 +13,14 @@ metadata:
 A skill's description is a routing trigger and its body is a procedure; both break silently when
 someone edits them. Write and run the three evals that catch it: routing cases, outcome scenarios
 graded at pass^k, and an evidence log that records why the skill is the way it is.
+
+Typical asks: "write evals for this skill", "add routing cases", "add near-misses", "this skill
+triggers on the wrong prompts", "does this skill still trigger", "run the skill evals", "add a
+scenario", "what k should pass^k use", "log evidence for this skill".
+
+Hand off instead: authoring a new skill's body (building-skills); moving a skill to another layer or
+deprecating it (promoting-learnings); a harness-wide effort sweep and removal tests
+(reviewing-harness).
 
 ## Inputs
 

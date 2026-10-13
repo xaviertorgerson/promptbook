@@ -1,6 +1,6 @@
 ---
 name: verifying-work
-description: Use when a change needs an independent judgement before it goes to a human, or the user says "evaluate BILL-7", "verify the PR against its acceptance criteria", "is AC-2 actually met", "run the evaluator on this head", "give me a verdict per criterion", or a task at risk medium or higher reaches review. Acts as the separate evaluator in a clean context, preferably a different model family from the writer; it runs the tests and the running app, scores each AC-n pass or fail with evidence, repeats k times by risk (pass^k), records the verdict and never edits. Do not use for a style or design review of a diff (the pinned reviewing-code skill), for a security review (reviewing-security), for fixing what it finds (the original author, via implementing-task), or for building the change (implementing-task).
+description: Use when a PR or change must be verified against its acceptance criteria by an independent evaluator — "evaluate BILL-7", "is AC-2 met on this head", "run the evaluator", "re-evaluate after the fix"; pass or fail per AC before human review. Do not use for a style review (reviewing-code).
 license: MIT
 compatibility: Any agent runtime with a way to start a fresh session or subagent and run the project's tests. Optional harness tools/validate.mjs (Node 22) to check the return.
 metadata:
@@ -14,6 +14,15 @@ Judge whether one changeset meets its task's acceptance criteria, from objective
 someone who did not write it. A writer grading its own work overrates it, and a same-context critic
 shares its blind spots, so the evaluator starts clean, prefers a different model family, runs things
 rather than reading claims, and never fixes what it finds.
+
+Typical asks: "evaluate BILL-7", "verify the PR against its acceptance criteria", "is AC-2 actually
+met", "run the evaluator on this head", "give me a verdict per criterion", or a task at risk medium
+or higher reaching review.
+
+Hand off instead: a style or design review of a diff (reviewing-code); a security review
+(reviewing-security); writing or finding missing tests, such as "cover AC-3 with a test" or "which
+criteria are untested" (writing-tests); fixing what it finds (the original author, via
+implementing-task).
 
 ## Inputs
 
@@ -64,8 +73,8 @@ evaluator's verdict on a different head.
 9. **Hand back** a `return` (role `evaluator`): `criteria.met` and `criteria.unmet` with reasons,
    the verdict path in `artifacts`, `verification` with each command and result, `attention`
    `complete` on pass, `working` on a fail the author can fix, `needs-human` when a verdict needs a
-   decision only a human can make. Examples: references/return-pass-example.json,
-   references/return-fail-example.json.
+   decision only a human can make. Examples: references/verdict-pass.return.json,
+   references/verdict-fail.return.json.
 10. **Route a fail to the same author, with selected findings only.** Whoever disposes findings
     (the human, or a coordinator under a `dispose-findings` grant and its policy) selects which
     finding numbers the author fixes now. `blocks AC-n` findings are the default selection, since
@@ -79,16 +88,19 @@ evaluator's verdict on a different head.
 - A verdict file per evaluated head (references/verdict-template.md).
 - A `return` JSON (contract `return`, role `evaluator`). If `harness validate` is available, run
   `node tools/validate.mjs --contract return <file>`.
-- For the coordinator: a `reviews[]` entry for the task record (`pr`, `head`, `outcome`: `pass` or
-  `changes-requested`, `by`, `ref` to the verdict). The writer adds the agent-log line; the runner
+- For the coordinator: a `reviews[]` entry for the task record (`pr`, `head`, `role: evaluator`,
+  `outcome` `pass` or `fail`, `by`, `ref` to the verdict). On risk medium or high, a `pass` on the
+  current head is what the workflow guard `independent-verification` requires before
+  `mark-pr-ready`. The writer adds the agent-log line; the runner
   records the run. The evaluator writes neither the task file nor the code.
 
 ## Gates and stop conditions
 
 - **Never edit** source, tests, the task file, the PR's state or description. Never approve, merge,
   or mark ready. Never post a review on someone else's PR without a `publish-review` decision.
-- A pass is evidence for the `independent-review` guard, not approval; review counts are not
-  approval. A changed head voids the verdict.
+- A pass is evidence for the `independent-verification` guard (`mark-pr-ready`) and the
+  `independent-review` guard (a grant's `approve-pr`), not approval; review counts are not approval.
+  A changed head voids the verdict.
 - Hand to a human (`needs-human` with a question): a criterion that cannot be judged without a
   product decision (ambiguous or contradictory); the preview or test infrastructure is down for
   reasons outside the change; the packet's head and the PR disagree and you cannot tell which is
@@ -100,5 +112,5 @@ evaluator's verdict on a different head.
 - references/evaluator-packet.md — what the dispatcher sends, what it must not, model choice.
 - references/judging-criteria.md — artifacts per criterion kind, the test-reality checks, k by risk.
 - references/verdict-template.md — the verdict file, the finding classes, the routing table.
-- references/return-pass-example.json, references/return-fail-example.json — evaluator returns.
+- references/verdict-pass.return.json, references/verdict-fail.return.json — evaluator returns.
 - references/engine-notes.md — how runtimes start a clean evaluator on a different model.

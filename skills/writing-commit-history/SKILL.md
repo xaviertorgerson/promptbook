@@ -1,6 +1,6 @@
 ---
 name: writing-commit-history
-description: Use when writing a commit message, or for any question about the project's past that git can answer — why we switched to or chose X, when X last changed, who introduced some code and what its commit says — "write a commit message for this", "commit this", "split this diff into separate commits", "when did X last change", "who introduced this and why", "git blame this", "what does git log say about…". Writes commits a future agent can reconstruct the why from, and reads the log, blame and old messages before guessing. Do not use for something broken now whose cause is unknown (debugging-failures), reviewing a diff (reviewing-code), a stack's whole definition of done (an L4 pack's ship skill), writing pull request text (preparing-pull-requests), or merging and landing a branch (landing-changes).
+description: Use when a question about the project's past can be answered from git — "why did we switch to X", "when did this last change", "who introduced this and why", blame or log — or when writing a commit message or splitting a diff into commits. Do not use for a live failure (debugging-failures).
 license: MIT
 compatibility: Any agent runtime that reads Agent Skills and works in git.
 metadata:
@@ -13,6 +13,14 @@ metadata:
 Git history is the project's durable chronology and the agent's long-term memory: a fresh session
 knows only what the files and the log tell it. Write commits so a future reader can reconstruct why,
 and read the history back before guessing.
+
+Typical asks: "write a commit message for this", "commit this", "split this diff into separate
+commits", "why did we switch to X", "when did X last change", "who introduced this and why", "git
+blame this", "what does git log say about…".
+
+Hand off instead: something broken now whose cause is unknown (debugging-failures); reviewing a diff
+(reviewing-code); a stack's whole definition of done (an L4 pack's ship skill); pull request text
+(preparing-pull-requests); merging and landing a branch (landing-changes).
 
 ## Inputs
 

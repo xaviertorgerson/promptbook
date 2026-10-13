@@ -1,6 +1,6 @@
 ---
 name: implementing-task
-description: Use when the user says "do the next task", "take BILL-12", "implement this task", "keep going", "pick up the ready task and build it", or a loop or dispatcher hands one ready task to a fresh session. Claims it by compare-and-swap, works in its own worktree, keeps a living plan in Working notes, builds only against the AC-n criteria with tests named for them, self-checks, gets an independent evaluation when risk is medium or higher, hands back a return and moves the task to review. Do not use for choosing or ordering work across many tasks (orchestrating-work), for setting up or cleaning a worktree on its own (managing-worktrees), for judging a change you did not write (verifying-work), for writing the tests alone (writing-tests), or for merging (landing-changes).
+description: Use when a ready task file (BILL-12, TMIG-3) is claimed from the queue and built — "do the next task", "take BILL-12", "keep going"; work in its worktree, make design choices inside it, fix evaluator findings, take it to review. Do not use for diagnosis (debugging-failures).
 license: MIT
 compatibility: Any agent runtime that reads Agent Skills and can run git. Optional harness tools/validate.mjs (Node 22) to check the task file and the return.
 metadata:
@@ -13,6 +13,14 @@ metadata:
 Take one `ready` task from claim to a draft PR at `review`, as its only writer. Every step leaves
 durable state in git (task file, commits, PR), so a crash or a fresh session resumes from the files,
 never from a transcript. The acceptance criteria are the stopping condition.
+
+Typical asks: "do the next task", "take BILL-12", "implement this task", "keep going", "pick up the
+ready task and build it", or a loop or dispatcher handing one ready task to a fresh session.
+
+Hand off instead: choosing or ordering work across many tasks (orchestrating-work); a worktree on
+its own (managing-worktrees); judging a change you did not write (verifying-work); a flaky or
+failing test (debugging-failures); a test-only ask such as "cover AC-3 with a test" (writing-tests);
+merging (landing-changes).
 
 ## Inputs
 
@@ -64,16 +72,17 @@ never from a transcript. The acceptance criteria are the stopping condition.
    attribution, pushed to the task branch after each. Open a draft PR (PR text: the pinned
    preparing-pull-requests skill, draft mode). Set `status: in-progress → review` (transition
    `open-draft`, guard: the draft PR exists) with an agent-log line. Update Working notes.
-10. **Get the independent evaluation.** Mandatory when `risk` is `medium` or `high`; the default
-    otherwise. Request verifying-work with only the evaluator packet (task criteria, diff ref
-    `<base>...<head>`, how to run the tests and the PR preview), never your transcript or Working
-    notes. Without a subagent mechanism, end the run at `review` and hand back `attention:
-    working` with "evaluation due on <head>" in the summary; the dispatcher starts the evaluator.
-    A failing verdict comes back to you with a selection list (by the human, or under a
-    `dispose-findings` grant's policy; unmet criteria are selected by default): fix only the
-    selected findings with the pinned resolving-findings skill, push, and ask for re-evaluation
-    of the full current head. Stay at `review` while you iterate; use `iterate` (back to
-    `in-progress`) only when the approach itself must change.
+10. **Get the independent evaluation.** Mandatory when `risk` is `medium` or `high`: the workflow
+    guard `independent-verification` holds `mark-pr-ready` until an evaluator that did not write the
+    change records a pass on the current head. The default otherwise. Request verifying-work with
+    only the evaluator packet (task criteria, diff ref `<base>...<head>`, how to run the tests and
+    the PR preview), never your transcript or Working notes. Without a subagent mechanism, end the
+    run at `review` and hand back `attention: working` with "evaluation due on <head>" in the
+    summary; the dispatcher starts the evaluator. A failing verdict comes back to you with a
+    selection list (by the human, or under a `dispose-findings` grant's policy; unmet criteria are
+    selected by default): fix only the selected findings with the pinned resolving-findings skill,
+    push, and ask for re-evaluation of the full current head. Stay at `review` while you iterate;
+    use `iterate` (back to `in-progress`) only when the approach itself must change.
 11. **Hand back.** Append one entry to the task's `sessions` (`engine`, `session_id`, `actor`,
     `role: coder`, `started_at`, `ended_at`, `outcome`, `run`) and one agent-log line (done, left,
     uncertain, status, session id). Commit and push. Write the `return` JSON to
@@ -91,15 +100,16 @@ never from a transcript. The acceptance criteria are the stopping condition.
 - A `return` (contract `return`): `task`, `role: coder`, `summary` (≤ 8,000 characters),
   `artifacts`, `attention`, `decisions_needed`, `criteria` (`met`, `unmet` with reasons),
   `verification`, `session`. `complete` only when every criterion is met and the evaluation (when
-  required) passed on the current head. Worked examples: references/return-example.json,
-  references/return-needs-input-example.json. If `harness validate` is available, run
+  required) passed on the current head. Worked examples: references/handback-review.return.json,
+  references/handback-needs-input.return.json. If `harness validate` is available, run
   `node tools/validate.mjs --contract return <file>`.
 
 ## Gates and stop conditions
 
 - **Your last transition is `review`.** Never set `human-review`, `merging` or `merged`. Marking the
-  PR ready (`mark-pr-ready`) happens after a passing verdict on the current head, by an engineer or
-  by a coordinator holding a live `finalize` grant. Landing is landing-changes.
+  PR ready (`mark-pr-ready`) happens after a passing verdict on the current head (guard
+  `independent-verification` from risk medium), by an engineer or by a coordinator holding a live
+  `finalize` grant. Landing is landing-changes.
 - Never push to the default or integration branch, never force-push, never approve or merge your
   own PR, never answer a permission prompt. A permission denial is a question for a human.
 - A human who sets `owner` to themselves, or moves `status` (suspend, kick back), wins: commit,
@@ -115,8 +125,8 @@ never from a transcript. The acceptance criteria are the stopping condition.
   Working notes template, the agent-log line, the `sessions` entry, the evaluator packet.
 - references/stop-conditions.md — each stop: the workflow transition, who may make it, what to
   write, the return's attention.
-- references/return-example.json — a `complete` return at `review` after a passing evaluation.
-- references/return-needs-input-example.json — a `needs-human` return with a blocking question.
-- references/task-at-review-example.md — a task file at `review` with Working notes, a `sessions`
+- references/handback-review.return.json — a `complete` return at `review` after a passing evaluation.
+- references/handback-needs-input.return.json — a `needs-human` return with a blocking question.
+- references/task-at-review.task.md — a task file at `review` with Working notes, a `sessions`
   entry and the agent log (validates against the `task` contract).
 - references/engine-notes.md — how runtimes provide worktrees, subagents and structured returns.

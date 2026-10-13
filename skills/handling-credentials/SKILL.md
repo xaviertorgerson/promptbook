@@ -1,6 +1,6 @@
 ---
 name: handling-credentials
-description: Use when setting up or changing how agents get credentials, or the user says "what token should the reviewer agent use", "give the merge agent its own credential", "how do CI jobs reach the cloud without a stored key", "load secrets from the password manager at runtime", "block agents from reading .env and ~/.ssh", "add secret scanning", "rotate this key", "a token leaked in a commit", "is it safe to add this MCP server", or "can this tool see private data and post to the internet". Designs one identity per role with the narrowest scope, short-lived tokens, OIDC federation from CI, runtime injection, deny-read walls, scanning at hook, pre-commit and CI, rotation, the leak response, and the lethal-trifecta check before any new tool or server is enabled. Do not use for reviewing a code change for vulnerabilities such as injection or broken authorization (reviewing-security), for issuing merge authority (delegating-authority), or for deploying with those credentials (releasing-changes).
+description: Use when agent credentials are set up or go wrong — each agent role's token, OIDC instead of stored cloud keys, runtime secret injection, deny reads of .env and ~/.ssh, secret scanning, rotating or leaked keys, "is it safe to add this MCP server". Do not use for code review (reviewing-security).
 license: MIT
 compatibility: Any agent runtime with permission rules or hooks, a forge with scoped tokens, and a secret store. Optional harness tools/validate.mjs (Node 22) to check the policy file.
 metadata:
@@ -14,6 +14,16 @@ An agent reads untrusted text with someone's privileges. A long-lived key in its
 prompt injection away from leaving, and a shared token makes every role as strong as the
 strongest. Design credentials so each role holds only what it needs, for only as long as a run,
 with walls that deny reads and scanners that catch what slips.
+
+Typical asks: "what token should the reviewer agent use", "give the merge agent its own credential",
+"how do CI jobs reach the cloud without a stored key", "load secrets from the password manager at
+runtime", "block agents from reading .env and ~/.ssh", "add secret scanning", "rotate this key", "a
+token leaked in a commit", "is it safe to add this MCP server", "can this tool see private data and
+post to the internet".
+
+Hand off instead: reviewing code for vulnerabilities such as injection or broken authorization
+(reviewing-security); issuing merge authority (delegating-authority); deploying with those
+credentials (releasing-changes).
 
 ## Inputs
 
@@ -79,7 +89,7 @@ with walls that deny reads and scanners that catch what slips.
 
 - A role-identity table and the forge and cloud settings that enforce it.
 - Policy entries (`deny_read`, `forbid`, `egress`) and project deny rules; example:
-  references/policy-fragment.yaml (validates against the `policy` contract; if `harness validate`
+  references/deny-read-fragment.policy.yaml (validates against the `policy` contract; if `harness validate`
   is available, run `node tools/validate.mjs --contract policy <file>`).
 - Scanner placement (hook, pre-commit, CI) and a rotation log entry per rotation.
 - For each admitted tool: the completed trifecta checklist and its pin in `toolkit.lock`.
@@ -104,5 +114,5 @@ with walls that deny reads and scanners that catch what slips.
 - references/deny-read-and-scanning.md — the deny-read patterns, known gaps, the three scan rungs.
 - references/lethal-trifecta-checklist.md — the checklist before enabling any tool or server.
 - references/rotation-and-leak-runbook.md — rotation steps, the leak response, the rotation log.
-- references/policy-fragment.yaml — a `policy` fragment with the deny-read wall.
+- references/deny-read-fragment.policy.yaml — a `policy` fragment with the deny-read wall.
 - references/engine-notes.md — engine and forge specifics.

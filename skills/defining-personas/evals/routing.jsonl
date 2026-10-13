@@ -5,5 +5,5 @@
 {"prompt":"Is this idea worth building? Write the product brief with outcomes and non-goals.","expect":"no-trigger","kind":"near-miss","route_to":"framing-products"}
 {"prompt":"Write the critical user journeys for the organiser persona: logging a bill and settling up.","expect":"no-trigger","kind":"near-miss","route_to":"mapping-journeys"}
 {"prompt":"Design the screens and empty states for the settle-up flow.","expect":"no-trigger","kind":"near-miss","route_to":"designing-flows"}
-{"prompt":"Add retries with backoff to the webhook sender.","expect":"no-trigger","kind":"negative","route_to":"none"}
+{"prompt":"Add retries with backoff to the webhook sender.","expect":"no-trigger","kind":"negative","note":"route none dropped: the router loads implementing-task for a plain code change in every run, and no catalog boundary makes that wrong; the case keeps asserting that defining-personas stays out"}
 {"prompt":"Explain what this regular expression matches.","expect":"no-trigger","kind":"negative","route_to":"none"}

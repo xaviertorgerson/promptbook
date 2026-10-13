@@ -1,6 +1,6 @@
 ---
 name: planning-work
-description: Use when an epic's requirements need to become a task graph an agent can execute — "plan this epic", "decompose into tasks", "break the spec down", "write the task files", "what's the walking skeleton", "which tasks can run in parallel", "size these tasks", "make this bug a task". Writes specs/<epic>/tasks/<ID>.md with the walking skeleton first and every other task depending on it, each task carrying requirements, touches, size, risk, inputs, evaluator, budget, mode, depends_on and EARS criteria AC-n, sized for one focused session, disjoint touches marking what may run in parallel, all at status spec-draft until a human approves the spec. Do not use for shaping a vague idea (framing-products, mapping-journeys), for writing the requirements themselves (writing-requirements), for checking the plan is complete (checking-plan-readiness), or for building a task (implementing-task).
+description: Use when an approved spec or epic must become task files — "plan this epic", "break it into tasks", walking skeleton first, depends_on, touches and which tasks can run in parallel, size, risk, EARS AC-n; split an XL task; make a bug a task. Do not use for building one (implementing-task).
 license: MIT
 compatibility: Any agent runtime that reads Agent Skills. Optional - Node 22 and the harness validator to check task files and the trace graph.
 metadata:
@@ -15,15 +15,25 @@ finish and prove in one focused session, ordered by `depends_on`, starting with 
 that proves the riskiest assumption through the real pipeline. Decompose; do not design the
 implementation, and never invent a criterion the spec does not support.
 
+Typical asks: "plan this epic", "decompose into tasks", "break the spec down", "write the task
+files", "what's the walking skeleton", "which tasks can run in parallel", "size these tasks", "make
+this bug a task".
+
+Hand off instead: shaping a vague idea (framing-products, mapping-journeys); writing the
+requirements themselves (writing-requirements); checking the plan is complete
+(checking-plan-readiness); building a task (implementing-task).
+
 ## Inputs
 
-- `specs/<epic>/spec.md` (REQ and NFR rows), `cuj.md`, `docs/ux/<epic>.md`, `DECISIONS.md` (one-way
-  ADRs and their fitness functions), the brief's riskiest assumption.
+- `specs/<epic>/spec.md` (REQ and NFR rows; the epic's default `mode` in its frontmatter),
+  `cuj.md`, `docs/ux/<epic>.md`, `DECISIONS.md` (one-way ADRs and their fitness functions), the
+  brief's riskiest assumption.
 - Existing tasks across `specs/*/tasks/` (ids are never reused; prefixes stay per epic).
 - Contract `task`: required `id`, `epic`, `status`, `priority`, `cuj`, `guiding_docs`, `branch`,
   `depends_on`, `owner`; optional `parent`, `size`, `requirements`, `touches`, `inputs`, `risk`,
-  `evaluator`, `budget`, `mode`; sections Context, Acceptance criteria, Open questions, Agent log.
-  Templates: `references/task-template.md`, `references/skeleton-task-template.md`.
+  `evaluator`, `budget`, `mode`, `lands_to`; sections Context, Acceptance criteria, Open questions,
+  Agent log.
+  Templates: `references/task-template.task.md`, `references/skeleton-task-template.task.md`.
 
 ## Procedure
 
@@ -58,8 +68,11 @@ implementation, and never invent a criterion the spec does not support.
    - `evaluator`: ordered checks that decide "met": tests and the criterion-coverage script
      always; a separate reviewing agent from medium risk; a human for high risk.
    - `budget`: `{max_turns, max_usd, max_minutes}` for the whole task, from size and risk.
-   - `mode`: spec-driven by default; research-plan-implement for deep changes in unfamiliar code;
-     never ralph-loop for high risk or an existing codebase (choosing-methodology owns the choice).
+   - `mode`: only where the task differs from the epic's `mode` (the spec's frontmatter; absent
+     means spec-driven); research-plan-implement for deep changes in unfamiliar code; never
+     ralph-loop for high risk or an existing codebase (choosing-methodology owns the choice).
+   - `lands_to`: only when the epic lands through an integration branch (`integration/<epic>`);
+     the task then goes `merging` → `integrated`, and `merged` when a human merges that branch.
 6. **Write the criteria**: AC-1…AC-n restating only the requirements this task implements, one
    EARS sentence each ending with the REQ/NFR id; UI tasks name the states the flow designed. Each
    AC id will appear in a test name `<TASK-ID> AC-n …`.
@@ -98,8 +111,8 @@ implementation, and never invent a criterion the spec does not support.
 
 ## References
 
-- `references/task-template.md` — a feature task, ready to fill; validates against `task`.
-- `references/skeleton-task-template.md` — the walking-skeleton task, ready to fill.
+- `references/task-template.task.md` — a feature task, ready to fill; validates against `task`.
+- `references/skeleton-task-template.task.md` — the walking-skeleton task, ready to fill.
 - `references/task-fields.md` — each harness field, with risk → evaluator and size → budget tables.
 - `references/task-graph.md` — skeleton cutting, vertical slicing, the session-size test, the
   touches-overlap rule and lanes, and the Tasks table.

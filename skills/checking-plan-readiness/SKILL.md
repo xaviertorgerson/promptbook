@@ -1,6 +1,6 @@
 ---
 name: checking-plan-readiness
-description: Use when an epic's plan must be checked before the owner approves it and tasks become ready — "is the plan ready", "check readiness", "run the trace check", "are there orphans", "does every requirement have a task", "do any parallel tasks overlap", "write readiness.md", "can we approve the spec". Runs the trace check (brief to personas, journeys, requirements, UX, tasks and criteria in test names) with harness validate --trace, or a manual checklist that mirrors its rules; adds plan checks (touches overlap, task size, blocking questions, unaccepted one-way decisions, the skeleton as root); writes specs/<epic>/readiness.md per the readiness-report contract; lists orphans, overlaps and contradictions; hands the spec-approval decision to a human. Do not use for fixing the gaps it finds (the owning skill, e.g. writing-requirements or planning-work) or for verifying built work (verifying-work).
+description: Use when an epic's plan must be checked before the spec is approved — "is the plan ready", run the trace check, write readiness.md, find orphan requirements, journeys without tasks, parallel tasks that overlap. Do not use for fixing the gaps (planning-work) or built work (verifying-work).
 license: MIT
 compatibility: Any agent runtime that reads Agent Skills. Best with Node 22 and the harness validator (validate --trace --readiness); without it, the manual checklist in references/ applies.
 metadata:
@@ -13,6 +13,13 @@ metadata:
 Decide whether an epic's plan is complete enough for its owner to approve, by running checks, not
 by reading the plan and forming an opinion. The output is a readiness report, a list of what to fix
 and who fixes it, and one question for the owner. You never approve the spec.
+
+Typical asks: "is the plan ready", "check readiness", "run the trace check", "are there orphans",
+"does every requirement have a task", "do any parallel tasks overlap", "write readiness.md", "can we
+approve the spec".
+
+Hand off instead: fixing the gaps it finds (the owning skill, e.g. writing-requirements or
+planning-work); verifying built work (verifying-work).
 
 ## Inputs
 
@@ -38,7 +45,7 @@ and who fixes it, and one question for the owner. You never approve the spec.
    never edit that file by hand, regenerate it.
 3. **Otherwise, run the manual trace** in `references/readiness-checklist.md`, part A: the same
    rules, ids, severities and blocking flags as the tool. Then write `specs/<epic>/readiness.md` from
-   `references/readiness-template.md` with `generator: manual/checking-plan-readiness@0.1.0`, the
+   `references/readiness-template.readiness.md` with `generator: manual/checking-plan-readiness@0.1.0`, the
    counts and coverage you measured, and one gap per finding. Mark it plainly as manual in the Verdict.
 4. **Run the plan checks the trace does not cover** (checklist part B): parallel tasks with
    overlapping `touches`; tasks of size L or XL; blocking open questions; one-way ADRs not yet
@@ -82,5 +89,5 @@ and who fixes it, and one question for the owner. You never approve the spec.
 
 - `references/readiness-checklist.md` — part A: the trace rules with severity and blocking flags,
   part B: plan checks, part C: contradictions, and the routing table to the owning skill.
-- `references/readiness-template.md` — `readiness.md` for a manual run; validates against
+- `references/readiness-template.readiness.md` — `readiness.md` for a manual run; validates against
   `readiness-report`.

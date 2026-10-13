@@ -1,6 +1,6 @@
 ---
 name: reviewing-harness
-description: Use when harness components must be re-tested and the ones that no longer help deleted — after a new model ships, or at the quarterly harness review — "a new model is out, review the harness", "ablate the reviewer subagent", "delete the rule blocks or subagents that don't help", "remove this and measure what changes", "which components are still load-bearing", "run an effort sweep on the new model", "re-tune model and effort per role". Do not use for writing or running one skill's evals (evaluating-skills), turning failed runs and review findings into small fixes (reflecting-on-runs), choosing a model for one role or task outside a review (routing-models), or retiring one skill a better one replaced (promoting-learnings).
+description: Use when a new model ships or the quarterly harness review is due — re-test effort levels on the new model, ablate subagents, rule blocks or loops, delete what is no longer load-bearing, re-tune model and effort per role. Do not use for one skill (evaluating-skills).
 license: MIT
 compatibility: Any agent runtime that reads Agent Skills and can run an eval suite non-interactively with selectable model and effort. Needs run records with cost and turns.
 metadata:
@@ -14,6 +14,15 @@ Every harness component encodes an assumption about what the model cannot do alo
 improve every few weeks. On each major model release, and quarterly otherwise, measure the new model
 alone, remove one component at a time, and delete what is no longer load-bearing. Walls are never
 candidates.
+
+Typical asks: "a new model is out, review the harness", "ablate the reviewer subagent", "delete the
+rule blocks or subagents that don't help", "remove this and measure what changes", "which components
+are still load-bearing", "run an effort sweep on the new model", "re-tune model and effort per
+role".
+
+Hand off instead: writing or running one skill's evals (evaluating-skills); turning failed runs and
+review findings into small fixes (reflecting-on-runs); choosing a model for one role outside a
+review (routing-models); retiring one skill a better one replaced (promoting-learnings).
 
 ## Inputs
 

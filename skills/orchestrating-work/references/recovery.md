@@ -22,8 +22,8 @@ snapshot. A transcript or a session id is a hint. Never replay old handoffs.
 |---|---|---|
 | task `merged` | complete; cleanup eligible | audited cleanup, archive the record |
 | task `human-review`, PR ready, current head passed review | complete | nothing until the human acts |
-| task `review`, PR open, no review of the current head | working, next_role reviewer | start or resume the evaluator on that head |
-| review of the current head with changes requested | working, next_role author | route the recorded findings to the author |
+| task `review`, PR open, no verdict on the current head | working, next_role evaluator | start or resume the evaluator on that head |
+| the current head failed evaluation (or a code review requested changes) | working, next_role author | route the recorded findings to the author |
 | task `in-progress`, branch has commits after the base, no PR | working, next_role author | resume or restart the author from the branch and agent log |
 | task `in-progress`, owner is this runtime, no commits, no live worker | working | the claim stands; restart the author on the same branch |
 | task `ready` but the record says working | working → re-check | the claim never landed: retire the worker, audit the checkout, select again |

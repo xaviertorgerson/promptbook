@@ -1,11 +1,12 @@
 # An operator's policy for three machine profiles. The devbox's autonomous tier is allowed only
 # because production is unreachable from it at the network level and agents run non-root in a
-# container; the description states that precondition (the policy contract has no field for it yet).
+# container; `requires` names those preconditions so the compile refuses the tier without them and
+# the launcher can check them.
 policy_version: 1
 owner: you
 profiles:
   laptop: { tier: auto-edit, engines: [claude, codex], description: "interactive; sandbox on" }
-  devbox: { tier: autonomous, engines: [claude, codex], description: "requires: production unreachable by network ACL from this host; agents run non-root in a container" }
+  devbox: { tier: autonomous, engines: [claude, codex], requires: [prod-unreachable-from-this-host, non-root-container], description: "production unreachable by network ACL from this host; agents run non-root in a container" }
   ci: { tier: unattended, engines: [claude], description: "headless runs: no-prompt mode plus the allow list below; caps from budgets.unattended" }
 deny_read:
   - "**/.env"

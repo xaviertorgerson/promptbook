@@ -1,6 +1,6 @@
 # A task record right after the worktree was created and the task claimed, with the base commit
-# recorded. The contract has no field for derived resources, so they sit under an x- extension key;
-# the naming rule can always recompute them from the branch.
+# recorded, and the resources the naming rule derived from the branch (recomputable, recorded so
+# cleanup guesses nothing).
 task_id: BILL-7
 runtime: claude-loop
 mode: development
@@ -25,8 +25,9 @@ state:
   next_role: author
   next_action: Implement AC-1 against the recorded base
 result: "smoke check passed on 4f1c2d9"
-x-resources:
+resources:
   slug: feat_bill_7_rerate_proration
+  worktree_path: /home/dev/src/billing/.worktrees/BILL-7
   database: app_feat_bill_7_rerate_proration
   ports: { slot: 2, first: 4420, last: 4429 }
   caches: [.worktrees/BILL-7/dist, .worktrees/BILL-7/.agent]

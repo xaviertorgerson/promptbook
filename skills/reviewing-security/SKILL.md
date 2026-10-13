@@ -1,6 +1,6 @@
 ---
 name: reviewing-security
-description: Use when a change needs a security review — it touches authentication, sessions, permissions, secrets, external input, network egress, a new dependency, a webhook, a hook, an MCP server or an agent tool — or the user asks "is this safe", "we're adding a new dependency", "security review this", "can this leak", "check this for injection", "audit this skill or plugin before we install it". Produces severity-ranked findings covering secrets, authn/z, injection, supply chain, permission walls and the lethal trifecta. Do not use for setting up, issuing, storing, injecting or rotating credentials, tokens or OIDC federation (handling-credentials), general correctness or style review (reviewing-code), or judging whether a task meets its criteria (verifying-work).
+description: Use when a change or tool needs a security review — auth, sessions, secrets, injection, webhooks, a new dependency, hooks, a third-party skill pack or MCP server, an agent reading untrusted input; "is this safe". Do not use for credential setup or rotation (handling-credentials).
 license: MIT
 compatibility: Any agent runtime that reads Agent Skills; any language or stack. Read-only; it reports findings and never edits the change.
 metadata:
@@ -14,6 +14,15 @@ Threat-model the change, assume input is hostile and the blast radius is large, 
 findings that matter in a fixed format. Agent tooling gets the same review as application code, plus
 the lethal-trifecta check. If the runtime ships its own security reviewer, run it too; this skill is
 the portable checklist and the findings contract.
+
+Typical asks: "is this safe", "we're adding a new dependency", "security review this", "can this
+leak", "check this for injection", "audit this skill or plugin before we install it"; any change
+touching authentication, sessions, permissions, secrets, external input, network egress, a webhook,
+a hook, an MCP server or an agent tool.
+
+Hand off instead: setting up, issuing, storing, injecting or rotating credentials, tokens or OIDC
+federation (handling-credentials); general correctness or style review (reviewing-code); judging
+whether a task meets its criteria (verifying-work).
 
 ## Inputs
 

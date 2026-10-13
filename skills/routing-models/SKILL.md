@@ -1,6 +1,6 @@
 ---
 name: routing-models
-description: Use when choosing which model tier and effort each agent role runs at, or sizing a run's budget — "which model should the explorer use", "set the subagent models", "this is too expensive, what can run cheaper", "should we add an advisor model", "what budget for an L task", "is a smaller model good enough for review", "our cache hit rate dropped" — routing by role at task and subagent boundaries (planner/orchestrator, author, evaluator, explorer/reader, summarizer) to abstract tiers (frontier, standard, fast), effort before model, cache-aware, explicit per subagent, and measured with an eval before adopting an advisor or a cheaper tier. Do not use for looking up an engine's current model names or settings keys (the adapters; references/engine-notes.md here is only a dated pointer), for dispatching or capping the runs themselves (orchestrating-work), or for the operator's permission tiers (adopting-harness).
+description: Use when picking which model tier and effort each agent role or subagent runs at, and where an engine sets it — "which model for the explorer", cheaper models to cut cost, an advisor model, a task's budget by size and risk, a falling cache hit rate. Do not use for machine setup (adopting-harness).
 license: MIT
 compatibility: Any agent runtime that lets you set a model and effort per role or subagent. Optional - run records (run-record contract) for measurement.
 metadata:
@@ -14,6 +14,14 @@ Pick a model tier and effort per role, at the boundary where a task or subagent 
 down explicitly. The order of levers is: don't load it → keep the cache warm → batch → tune effort →
 only then change models. Every routing change is a hypothesis until an eval on your own tasks beats
 the strong model at its best effort.
+
+Typical asks: "which model should the explorer use", "set the subagent models", "this is too
+expensive, what can run cheaper", "should we add an advisor model", "what budget for an L task", "is
+a smaller model good enough for review", "our cache hit rate dropped".
+
+Hand off instead: an engine's current model names or settings keys (the adapters;
+references/engine-notes.md here is only a dated pointer); dispatching or capping the runs themselves
+(orchestrating-work); the operator's permission tiers (adopting-harness).
 
 ## Inputs
 

@@ -28,11 +28,13 @@ on start, on wake, on a human message:
 ```
 next_dispatchable(tasks, records):
   merged    = { t.id | t.status == merged }
+  integrated = { t.id | t.status == integrated }                # on its epic's integration branch
   in_flight = { r.task_id | r.state.name == working }
   busy      = union(t.touches for t in tasks if t.id in in_flight)
   candidates = [ t for t in tasks
                  if t.status == ready and t.owner is null
-                 and all(d in merged for d in t.depends_on)
+                 and all(d in merged or (d in integrated and epic(d) == epic(t))
+                         for d in t.depends_on)
                  and epic(t).status in {approved, in-progress}
                  and mode_guard_holds(t)                     # contracts.md, Mode guards
                  and disjoint(t.touches, busy)               # missing touches = whole epic is busy

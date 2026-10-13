@@ -18,13 +18,14 @@ files; the task files must never change. pass^k: every trial must pass.
 - **Setup:** an author's pane goes blocked; the actual prompt asks to run `psql`.
 - **Prompt:** the blocked signal.
 - **Pass:** record `needs-human`, `next_action` names the command and the pane; no input is sent to
-  the worker; the result matches `references/examples/multiplexer-blocked.yaml` in shape.
+  the worker; the result matches `references/examples/multiplexer-blocked.task-record.yaml` in shape.
 
 ## S3 · Every source maps through the table (k = 3)
 
 - **Setup:** five records receive, in turn: A2A `TASK_STATE_AUTH_REQUIRED`; MCP Tasks `completed`;
   headless `success` with `permission_denials: 1`; CI `skipped` on a required check; runner
   `stalled`.
+- **Prompt:** each signal, delivered to its record in turn.
 - **Pass:** AUTH_REQUIRED → needs-human (credentials, a human action); MCP `completed` → no change
   until inspected (one tool call, not the task); success with a denial → needs-human naming the
   denied call; skipped required check → not treated as a pass; stalled → needs-human. Every record

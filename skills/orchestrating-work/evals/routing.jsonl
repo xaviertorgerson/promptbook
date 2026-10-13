@@ -4,6 +4,7 @@
 {"prompt":"What are the agents doing right now, and which tasks are waiting on me?","expect":"trigger","kind":"positive"}
 {"prompt":"BILL-4 and BILL-6 both look ready; which can run in parallel without stepping on each other?","expect":"trigger","kind":"positive"}
 {"prompt":"The loop stopped after BILL-3 stalled. What should happen next?","expect":"trigger","kind":"positive"}
+{"prompt":"Dispatch the ready tasks under GRANT-7 and keep four workers busy.","expect":"trigger","kind":"positive","note":"moved from delegating-authority's near-misses: acting under GRANT-7 means checking that grant first, so delegating-authority may load beside this skill; the dispatch itself is this skill's"}
 {"prompt":"Take BILL-12 and implement it end to end.","expect":"no-trigger","kind":"near-miss","route_to":"implementing-task","note":"one task, done by the agent itself"}
 {"prompt":"Write a grant that lets the coordinator merge into the integration branch for this epic only.","expect":"no-trigger","kind":"near-miss","route_to":"delegating-authority"}
 {"prompt":"Land PR 240 now that it's approved.","expect":"no-trigger","kind":"near-miss","route_to":"landing-changes"}

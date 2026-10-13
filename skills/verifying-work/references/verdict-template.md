@@ -52,7 +52,10 @@ Never rewrite findings in your own words when routing them; forward the file or 
 
 ```yaml
 reviews:
-  - { pr: "https://github.com/acme/billing/pull/240", head: 2c4e1aa, outcome: changes-requested, by: evaluator-gemini, ref: .agent/verdicts/BILL-7-2c4e1aa.md }
+  - { pr: "https://github.com/acme/billing/pull/240", head: 2c4e1aa, role: evaluator, outcome: fail, by: evaluator-gemini, ref: .agent/verdicts/BILL-7-2c4e1aa.md }
 ```
 
-`outcome` is `pass` or `changes-requested`; `comment` only for a review that judged nothing.
+An evaluator's entry is `role: evaluator` with `outcome` `pass` or `fail`; `changes-requested` and
+`comment` belong to code reviews (`role: reviewer`). A `pass` on the current head is what the
+workflow guard `independent-verification` checks before `mark-pr-ready` on a task of risk medium or
+high.

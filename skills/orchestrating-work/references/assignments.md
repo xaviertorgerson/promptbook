@@ -31,7 +31,7 @@ verification). If you hit a decision the spec does not answer, stop and ask; do 
 Intent: the task's acceptance criteria ({task_file}), the PR description and linked requirements.
 Judge objective artifacts: run {evaluator_refs}; check every AC id is named in a test.
 Report material, evidence-backed findings with locations to {findings_path}, and your verdict for
-this head (pass, changes-requested). Separate tangential follow-ups. Do not edit source, push,
+this head (pass or fail). Separate tangential follow-ups. Do not edit source, push,
 approve, or publish. Do not start other agents. Hand back a return with the findings path as an artifact.
 ```
 

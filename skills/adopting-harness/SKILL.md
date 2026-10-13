@@ -1,6 +1,6 @@
 ---
 name: adopting-harness
-description: Use when bringing a machine or a repository onto the harness — "set up this laptop for agents", "install the harness skills for every engine", "compile my agent policy", "adopt the harness in this repo", "add a toolkit.lock", "which of these instruction files are duplicates", "our AGENTS.md and personal rules disagree", "make the guardrails real walls", "move this repo to the layered setup" — pinning the harness and packs, fanning skills out to every engine, compiling the operator's policy without ever disabling hooks, pinning runtimes, writing instruction shims, turning guardrails into denies, validating specs/ against the contracts and the trace, and deleting what the layers now own. Do not use for promoting one skill or learning upward (promoting-learnings), for writing grants (delegating-authority), or for reviewing a change for vulnerabilities (reviewing-security).
+description: Use when setting up a laptop or repo for agents — adopt the harness, add toolkit.lock, install skills for every engine, compile agent-policy.yaml (tiers, hooks, deny rules), pick which copy of a rule in both AGENTS.md and personal instructions stays. Do not use for pin bumps (promoting-learnings).
 license: MIT
 compatibility: Git and a shell; a dotfiles or config manager for the machine part. Optional - Node 22 and the harness tools (validate, lock, compile-policy).
 metadata:
@@ -14,6 +14,15 @@ Put every piece of an agent setup in the one layer that owns it, pin what it dep
 the copies. **L1 (personal) decides how often an agent asks, L2 (project) decides what is never
 allowed, L4 (packs and runtimes) decides how much a run may spend; L3 (the harness) defines the
 contracts all three speak.** Adoption is additive and reconciling: never clobber what an owner wrote.
+
+Typical asks: "set up this laptop for agents", "install the harness skills for every engine",
+"compile my agent policy", "adopt the harness in this repo", "add a toolkit.lock", "which of these
+instruction files are duplicates", "our AGENTS.md and personal rules disagree", "make the guardrails
+real walls", "move this repo to the layered setup".
+
+Hand off instead: promoting one skill or learning upward, or bumping a pin in toolkit.lock
+(promoting-learnings); writing grants (delegating-authority); reviewing a change for vulnerabilities
+(reviewing-security).
 
 ## Inputs
 
@@ -57,8 +66,9 @@ contracts all three speak.** Adoption is additive and reconciling: never clobber
      settings override; the compile refuses such a tier;
    - add deny rules; never remove or override a project's denies;
    - a bypass or autonomous default only on profiles where production is unreachable at the network
-     level and the agent runs non-root in a sandbox or container; state that precondition in the
-     profile's `description`;
+     level and the agent runs non-root in a sandbox or container; name those preconditions in the
+     profile's `requires` (`prod-unreachable-from-this-host`, `non-root-container`): the compile
+     refuses a bypass tier without them and hands them to the launcher to check;
    - unattended profiles run the engine's no-prompt mode with an explicit allowlist, and a budget.
 5. **Pin runtimes.** Agents, terminal multiplexers and their plugins at exact versions in the
    package or tool manager; bumps arrive as reviewed changes checked against plugins' minimum-version
@@ -69,10 +79,11 @@ contracts all three speak.** Adoption is additive and reconciling: never clobber
 
 ### 3. A repository (L2)
 
-1. **Lock.** Write `toolkit.lock`: exactly one L3 entry (the harness) and one L4 entry per pack,
-   runtime binding and third-party skill source. Use the lock tool if available (`harness lock`, or
-   `node tools/lock.mjs`); otherwise resolve commit and tree by hand (`references/repo.md`).
-   Validate: `node tools/validate.mjs toolkit.lock`. CI fails on drift.
+1. **Lock.** Write `toolkit.lock`: exactly one harness entry (L3), one `skill-library` entry (L3)
+   per third-party portable skill source, and one L4 entry per pack and runtime binding. Use the
+   lock tool if available (`harness lock`, or `node tools/lock.mjs`); otherwise resolve commit and
+   tree by hand (`references/repo.md`). Validate: `node tools/validate.mjs toolkit.lock`. CI fails
+   on drift.
 2. **Instruction map and shims.** `AGENTS.md` is the map (about 120 lines): north star, commands,
    pointers, domain rules, and the standards block rendered from the pinned harness. Each engine gets
    a one-line loader (an import file, or a settings key naming `AGENTS.md`). Stack guardrails live
@@ -123,4 +134,5 @@ and never weaken a test or a gate to make the validator green.
 - `references/walls.md` — why walls are denies (the measured matrix) and how to verify them.
 - `references/repos-checklist.md` — the "repos today → target" checklist, generic.
 - `references/engine-notes.md` — per-engine paths and switches (adapters own the mapping).
-- `references/examples/` — a `toolkit.lock` and an `agent-policy.yaml` that validate.
+- `references/examples/` — `project.toolkit.lock` (a `toolkit.lock`) and `operator.policy.yaml` (an
+  `agent-policy.yaml`) that validate.

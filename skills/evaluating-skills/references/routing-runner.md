@@ -16,9 +16,18 @@ nothing more.
    punctuation and backticks.
 5. **Repeat to detect ties.** For a description change, run the affected cases 3 times. Any answer
    that differs between runs is a failure: two skills are competing for that prompt.
+6. **Nothing else in the router's context.** A headless call made from inside an agent session can
+   inherit that session's context: injected reminders, instruction files, the host's own notes about
+   skills, an effort override, and, when it starts inside a repository, that repository's status and
+   recent commits. Clear the environment down to what the call needs to reach the model, start it
+   in an empty directory, and pin effort. On 2026-10-13 the same descriptions passed 84% of their
+   cases with the session's environment, 94% with a reduced one, and 98% from an empty directory
+   instead of the repository; the noise looked like description overlap and was not.
 
-If `harness eval-routing` is available, it implements these rules; use it. The prompt below is the
-same one agentic-template's `scripts/skill-evals.mjs` sends.
+If `harness eval-routing` is available, it implements rules 1, 2 and 4 and the grading; the runner
+you give it owns 3 and 6. Its prompt lets the router name several skills, and a near-miss fails
+when the skill appears among them, which is stricter than the one-skill prompt below (the one
+agentic-template's `scripts/skill-evals.mjs` sends).
 
 ## The router prompt
 
@@ -66,6 +75,10 @@ Report one line per case (`ok|FAIL skill: "prompt" → expected X, got Y`) and a
   both descriptions rather than lengthening a "Do not use for" list.
 - Iterate on the failing prompts only (5 runs each, every candidate description), then confirm with
   one full run of the catalog; a full run per edit is slow and its noise hides the effect.
+- When the router may name several skills, a skill loaded beside a neighbour's positive lowers its
+  precision without failing a case; it costs context, not a route. Read precision with recall.
+- A word in a "Do not use for" clause attracts the prompts it names: name the neighbour, not its
+  vocabulary.
 - A cheap model sometimes answers `none` on a clear prompt in a long catalog. Count it, but fix a
   description only when the same prompt fails in more than one of three runs.
 
