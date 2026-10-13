@@ -11,23 +11,25 @@ guiding_docs:
   - docs/ux/settle-up.md#ux-1
   - DECISIONS.md#ADR-0002
 branch: feat/split-2-save-once
+lands_to: integration/settle-up
 depends_on: [SPLIT-1]
 owner: null
 requirements: [REQ-2, REQ-6, REQ-7, NFR-1]
 touches:
   - src/bills/**
+  - src/web/bills/**
   - migrations/**
   - tests/bills/**
 inputs:
   - specs/settle-up/spec.md#requirements
   - docs/ux/settle-up.md#ux-1
+  - { name: bill table and its migration, kind: file, ref: migrations/0001_skeleton.sql, provided_by: SPLIT-1 }
 risk: medium
 evaluator:
   - { kind: tests, ref: the project's test command for src/bills }
-  - { kind: script, ref: criterion coverage for specs/settle-up/tasks/SPLIT-2.md }
-  - { kind: agent-review, ref: reviewer }
+  - { kind: script, ref: harness trace . --strict }
+  - { kind: agent-review, ref: evaluator }
 budget: { max_turns: 80, max_usd: 2, max_minutes: 60 }
-mode: spec-driven
 ---
 
 # SPLIT-2 · Save a bill exactly once
@@ -37,7 +39,7 @@ mode: spec-driven
 ## Context
 The save path of CUJ-1 (UX-1): a double tap or a retry on a slow network must not store a bill
 twice, a failed save keeps the draft, and an invalid amount saves nothing. Shares the migrations
-folder with SPLIT-3, so they form one lane.
+folder with SPLIT-3, so they form one lane and SPLIT-3 waits for this one.
 
 ## Acceptance criteria (EARS)
 - AC-1 — If the same bill is submitted twice within 10 seconds, then the API shall store one bill. (REQ-2)

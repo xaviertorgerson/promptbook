@@ -30,7 +30,7 @@ prototype: docs/ux/prototypes/settle-up/index.html
 
 ## UX-2 · Settle a share from the household link
 - **CUJs:** CUJ-2
-- **Requirements:** REQ-3, REQ-4, REQ-5, REQ-8, NFR-2, NFR-3
+- **Requirements:** REQ-3, REQ-4, REQ-5, REQ-8, NFR-2, NFR-3, NFR-4
 - **Steps:**
   1. **Household page** (loading) → loads → **Household page** with what this housemate owes
   2. **Household page** → taps Mark paid → **Household page** (balance zero, Undo for 24 hours) ⏹ share settled
@@ -42,7 +42,7 @@ prototype: docs/ux/prototypes/settle-up/index.html
   - **Success:** the balance card with Mark paid; after paying, zero and an Undo button.
   - **Revoked:** "This link no longer works. Ask your organiser for a new one." and no household data.
 - **Accessibility:** Mark paid is a button whose name includes the amount; the new balance is announced; the whole flow completes with the keyboard; contrast meets 4.5:1.
-- **Criteria for the building task:** revoked state shows no data; keyboard-only completion; success shows zero.
+- **Criteria for the building tasks:** success shows zero, Undo for 24 hours, keyboard-only completion on every browser of the matrix (SPLIT-3); the revoked state shows no data (SPLIT-4).
 
 ## Walkthroughs
 

@@ -21,6 +21,6 @@
   - when the organiser shares a link, see what I owe and mark it paid, without an account [evidence: docs/research/interviews.md]
 - **Context:** opens a link from a group chat on a phone; may use a screen reader [assumption: ask the pilot households]
 - **Must never:** need an account to settle, or see another household's bills [assumption: test in the pilot]
-- **Changes:** link-based access with no account, and the accessibility NFR
+- **Changes:** link-based access with no account, the accessibility NFR, and the browser matrix (NFR-4)
 - **Evidence:**
   - docs/research/interviews.md

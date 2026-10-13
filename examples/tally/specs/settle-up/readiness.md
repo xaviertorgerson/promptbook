@@ -1,6 +1,6 @@
 ---
 epic: "settle-up"
-generated_at: "2026-10-13T14:31:19Z"
+generated_at: "2026-10-13T21:05:57Z"
 generator: "harness/validate@1.0.0"
 adoption: "full"
 epic_status: "draft"
@@ -14,14 +14,14 @@ coverage:
     covered: 2
     total: 2
   requirements:
-    covered: 11
-    total: 11
+    covered: 12
+    total: 12
   tasks:
-    covered: 3
-    total: 3
+    covered: 4
+    total: 4
   criteria:
-    covered: 14
-    total: 14
+    covered: 17
+    total: 17
 gaps: []
 ---
 
@@ -38,9 +38,9 @@ gaps: []
 | Link | Covered |
 |---|---|
 | Journeys served by a task | 2/2 |
-| Requirements implemented by a task | 11/11 |
-| Tasks citing a requirement | 3/3 |
-| Criteria named in a test | 14/14 |
+| Requirements implemented by a task | 12/12 |
+| Tasks citing a requirement | 4/4 |
+| Criteria named in a test | 17/17 |
 
 ## Gaps
 

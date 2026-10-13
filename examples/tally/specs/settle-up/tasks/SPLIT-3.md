@@ -11,14 +11,16 @@ guiding_docs:
   - docs/ux/settle-up.md#ux-2
   - DECISIONS.md#ADR-0001
   - DECISIONS.md#ADR-0003
+  - DECISIONS.md#ADR-0004
 branch: feat/split-3-settle-from-link
+lands_to: integration/settle-up
 depends_on: [SPLIT-1, SPLIT-2]
 owner: null
-requirements: [REQ-4, REQ-5, REQ-8, NFR-3]
+requirements: [REQ-4, REQ-8, NFR-3, NFR-4]
 touches:
   - src/household/**
-  - src/links/**
   - src/ledger/**
+  - src/web/household/**
   - migrations/**
   - tests/household/**
 inputs:
@@ -27,11 +29,10 @@ inputs:
   - docs/ux/prototypes/settle-up/index.html
 risk: { level: medium, reasons: [the link is the only credential for housemates] }
 evaluator:
-  - { kind: tests, ref: the project's test command for src/household and src/links }
-  - { kind: script, ref: criterion coverage for specs/settle-up/tasks/SPLIT-3.md }
-  - { kind: agent-review, ref: reviewer }
+  - { kind: tests, ref: the project's test command for src/household and src/ledger }
+  - { kind: script, ref: harness trace . --strict }
+  - { kind: agent-review, ref: evaluator }
 budget: { max_turns: 150, max_usd: 5, max_minutes: 120 }
-mode: spec-driven
 ---
 
 # SPLIT-3 · Settle a share from a household link
@@ -39,15 +40,16 @@ mode: spec-driven
 <!-- From skills/planning-work/references/task-template.md. Fictional sample data. -->
 
 ## Context
-CUJ-2 through UX-2: a housemate marks a share paid from the link, can undo for 24 hours, and a
-revoked link shows nothing. Depends on SPLIT-2 because both add migrations (one lane).
+CUJ-2 through UX-2: a housemate marks a share paid from the link, can undo for 24 hours, and the
+page works with the keyboard alone on every browser of ADR-0004's matrix. Adds a `paid_at` migration,
+so it waits for SPLIT-2 (one lane on `migrations/**`). Revocation is SPLIT-4.
 
 ## Acceptance criteria (EARS)
 - AC-1 — When a housemate marks a share paid, the ledger shall set that share's balance to zero. (REQ-4)
-- AC-2 — If a household link has been revoked, then the app shall show the link-revoked page and no household data. (REQ-5)
-- AC-3 — While a share was marked paid less than 24 hours ago, the household page shall offer Undo. (REQ-8)
-- AC-4 — The household page shall pass the automated accessibility audit with 0 serious violations. (NFR-3)
-- AC-5 — The household page shall let a housemate complete CUJ-2 with the keyboard alone. (NFR-3)
+- AC-2 — While a share was marked paid less than 24 hours ago, the household page shall offer Undo. (REQ-8)
+- AC-3 — The household page shall pass the automated accessibility audit with 0 serious violations. (NFR-3)
+- AC-4 — The household page shall let a housemate complete CUJ-2 with the keyboard alone. (NFR-3)
+- AC-5 — The household page shall let a housemate complete CUJ-2 in every browser of the device matrix. (NFR-4)
 
 ## Open questions
 

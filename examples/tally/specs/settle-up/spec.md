@@ -6,14 +6,17 @@ size: M
 business_value: high
 initiative: null
 owner: dana
+mode: spec-driven
 ---
 
 # Epic: Settle up
 
 <!-- From skills/writing-requirements/references/spec-template.md. Fictional sample data. -->
 
-- **CUJs:** [`cuj.md`](cuj.md)  ·  **ADRs:** ADR-0001, ADR-0002, ADR-0003
+- **CUJs:** [`cuj.md`](cuj.md)  ·  **ADRs:** ADR-0001, ADR-0002, ADR-0003, ADR-0004
 - **Rationale (value vs effort):** both brief outcomes depend on it and it is the smallest useful slice; P1, M.
+- **Mode:** spec-driven (choosing-methodology): clear behaviour, unattended agents, one human reviewer.
+- **Lands on:** the skeleton on `main`; every later task on `integration/settle-up`, which dana merges into `main` (landing-changes, tier 3).
 
 ## Problem / motivation
 Organisers rebuild a spreadsheet and chase housemates every month (brief: Problem). This epic lets a
@@ -45,24 +48,31 @@ household log bills and settle each member's share from a link.
 | NFR-1 | performance | The bills API shall acknowledge a saved bill within the save-path latency budget. | p95 < 300 ms at 20 rps on the save path | load test in CI | CUJ-1 | ADR-0002 |
 | NFR-2 | security | The API shall return only the requesting household's data. | 0 cross-household rows in the negative-path suite | permission tests | CUJ-2 | ADR-0001 |
 | NFR-3 | accessibility | The household page shall meet WCAG 2.2 AA. | 0 serious violations in the automated audit; CUJ-2 completes keyboard-only | accessibility check per flow | CUJ-2 | ADR-0003 |
+| NFR-4 | compatibility | The household page shall work in the browsers housemates open links in. | CUJ-2 completes in the last two major versions of mobile Safari and Chrome and in the pilot chat app's in-app browser | device-matrix e2e in CI | CUJ-2 | ADR-0004 |
 
 ## Interfaces / contracts
 `POST /bills`, `GET /h/{link}`, `POST /h/{link}/shares/{id}/paid`, `DELETE /links/{id}`. New, none breaking.
 
 ## Risks & edge cases
 A leaked or forwarded link is the main risk (NFR-2, ADR-0001); revocation must take effect at once.
+Chat apps open links in their own in-app browsers, which lag the system browser (NFR-4, ADR-0004).
 
 ## Open questions
 - [x] Is an even split enough for the pilot? → yes; uneven splits are out of scope (dana, 2026-10-13)
+- [x] Does revocation need its own task? → yes: it touches only `src/links/**`, so it runs in its own lane beside the save path (dana, 2026-10-13)
 
 ## Tasks
 
-| Task | Title | CUJ | Priority | Depends on |
-|---|---|---|---|---|
-| [`SPLIT-1`](tasks/SPLIT-1.md) | Walking skeleton: one household's bill, read only through its link | CUJ-1, CUJ-2 | P0 | — |
-| [`SPLIT-2`](tasks/SPLIT-2.md) | Save a bill exactly once | CUJ-1 | P1 | `SPLIT-1` |
-| [`SPLIT-3`](tasks/SPLIT-3.md) | Settle a share from a household link | CUJ-2 | P1 | `SPLIT-1`, `SPLIT-2` |
+| Task | Title | CUJ | Priority | Depends on | Lands on |
+|---|---|---|---|---|---|
+| [`SPLIT-1`](tasks/SPLIT-1.md) | Walking skeleton: one household's bill, read only through its link | CUJ-1, CUJ-2 | P0 | — | `main` |
+| [`SPLIT-2`](tasks/SPLIT-2.md) | Save a bill exactly once | CUJ-1 | P1 | `SPLIT-1` | `integration/settle-up` |
+| [`SPLIT-3`](tasks/SPLIT-3.md) | Settle a share from a household link | CUJ-2 | P1 | `SPLIT-1`, `SPLIT-2` | `integration/settle-up` |
+| [`SPLIT-4`](tasks/SPLIT-4.md) | Revoke a household link | CUJ-2 | P1 | `SPLIT-1` | `integration/settle-up` |
+
+Lanes (`touches`): SPLIT-2 and SPLIT-3 both add migrations, so SPLIT-3 waits for SPLIT-2; SPLIT-4
+touches only links and runs beside them.
 
 ## Acceptance (epic Definition of Done)
-REQ-1..REQ-8 and NFR-1..NFR-3 verified · SPLIT-1..SPLIT-3 merged · the docs updated · learnings
+REQ-1..REQ-8 and NFR-1..NFR-4 verified · SPLIT-1..SPLIT-4 merged · the docs updated · learnings
 recorded (or "none" with one line of why).

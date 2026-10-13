@@ -38,3 +38,19 @@ access without accounts (PER-2) makes the link the only credential, so it must r
 **Reversed when:** the pilot shows the audit misses issues a manual walk finds, and a stronger check is chosen.
 **Satisfies:** settle-up/NFR-3
 **Consequences:** Each UI task's evaluator includes the audit and a keyboard-only walk.
+
+## ADR-0004: Support the browsers housemates open links in, checked on a device matrix
+**Status:** Accepted
+**Date:** 2026-10-13
+**Decision:** The household page targets the last two major versions of mobile Safari and Chrome and
+the pilot chat app's in-app browser; CI runs CUJ-2 end to end on that matrix.
+**Why:** NFR-4. Housemates open the link from a group chat on a phone (PER-2), and in-app browsers
+lag the system browser; a page that fails there fails the journey that settles the month.
+**Options considered:**
+- Latest browser versions only — rejected: pilot phones lag a version or two behind.
+- Every browser with a market share above 1% — rejected: one part-time developer cannot test it, and the pilot needs only the phones its households use.
+- The pilot's browsers on a device matrix in CI, chosen — small, measurable, and it grows with the pilot.
+**Door:** two-way
+**Reversed when:** the pilot's analytics show a browser outside the matrix opening more than 5% of household links.
+**Satisfies:** settle-up/NFR-4
+**Consequences:** The build targets the matrix's oldest engine; a new chat app in the pilot adds a row to the matrix before its households are invited.

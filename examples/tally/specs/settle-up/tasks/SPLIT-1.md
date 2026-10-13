@@ -25,14 +25,13 @@ inputs:
   - DECISIONS.md#ADR-0001
   - { name: first deploy stage, kind: service }
   - { name: first-stage deploy credential, kind: secret }
-risk: { level: high, reasons: [first pass through the real pipeline, proves the one-way ADR-0001] }
+risk: { level: high, irreversible: false, reasons: [first pass through the real pipeline, proves the one-way ADR-0001] }
 evaluator:
   - { kind: tests, ref: the project's test command }
-  - { kind: script, ref: criterion coverage for specs/settle-up/tasks/SPLIT-1.md }
-  - { kind: agent-review, ref: reviewer }
+  - { kind: script, ref: harness trace . --strict }
+  - { kind: agent-review, ref: evaluator }
   - { kind: human, ref: code-owner }
 budget: { max_turns: 200, max_usd: 6, max_minutes: 150 }
-mode: spec-driven
 ---
 
 # SPLIT-1 · Walking skeleton: one household's bill, read only through its link
@@ -44,6 +43,10 @@ Tests the riskiest assumption (A3: link access can keep households apart) and th
 before any feature work: one bill saved through the real datastore by one household, read through
 that household's link, and refused to every other household, built once and deployed to the first
 stage. AC-3 is ADR-0001's tenancy probe. Every other task depends on this one.
+
+Risk high: never dispatched unattended. It lands on `main` (no `lands_to`), so the first deploy runs
+from the protected branch; the schema it creates (household, member, bill, share, link with
+`revoked_at`) is the data model sketch in ARCHITECTURE.md.
 
 ## Acceptance criteria (EARS)
 - AC-1 — When an organiser saves a bill, the ledger shall add each member's even share to their balance. (REQ-1)

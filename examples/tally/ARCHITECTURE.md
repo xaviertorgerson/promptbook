@@ -9,10 +9,13 @@
 | 1 | anyone holding a link · requests a household's bills · after the link was forwarded or revoked · the household API · returns only that household's data, or nothing once revoked · 0 cross-household rows | settle-up/NFR-2 | ADR-0001 |
 | 2 | an organiser · saves a bill · on a phone over 4G at the evening peak · the bills API · acknowledges the bill · p95 < 300 ms at 20 rps | settle-up/NFR-1 | ADR-0002 |
 | 3 | a housemate using a screen reader · settles a share · on a phone · the household page · completes CUJ-2 · 0 serious audit violations, keyboard-only completion | settle-up/NFR-3 | ADR-0003 |
+| 4 | a housemate · opens the household link from a group chat · in the chat app's in-app browser · the household page · completes CUJ-2 · on every browser of the pilot's matrix | settle-up/NFR-4 | ADR-0004 |
 
 ## Stack
 
-Pack: the project's pinned stack pack in `toolkit.lock`. Deviations: none (ADR-0002).
+Pack: the stack pack's defaults (ADR-0002); a product pins that pack in its `toolkit.lock` beside the
+harness. This example pins only the harness and a skill library, so `harness lock --check` needs
+nothing outside the repository and one public source. Deviations: none.
 
 ## Context view
 
@@ -62,4 +65,5 @@ erDiagram
 | ADR-0001 | dependency rule: only the repository layer imports the database client | CI | another module imports it |
 | ADR-0002 | load test on the save path | CI | p95 over 300 ms at 20 rps |
 | ADR-0003 | automated accessibility audit per flow | CI | a serious violation |
+| ADR-0004 | CUJ-2 end to end on the device matrix | CI | any browser of the matrix fails the journey |
 | all | decision-drift gate | CI | always-loaded text names a retired choice |
