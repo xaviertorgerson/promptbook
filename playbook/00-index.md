@@ -27,6 +27,7 @@ measurement under Evidence, or in a pointer to `adapters/`, where each binding l
 | self-reported | a method's authors or customers, no comparison |
 | practitioner | a named third party's hands-on evaluation, no comparison |
 | secondary | a summary of a source that was not read directly |
+| measured | a measurement the user ran on their own setup, with the method recorded |
 | practice | the user's repos: what is done and why, not a measurement |
 | recommendation | this playbook's judgement, derived from the lines above it |
 
