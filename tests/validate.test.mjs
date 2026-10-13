@@ -119,6 +119,52 @@ describe('test names across languages', () => {
     for (const ac of ['AC-1', 'AC-2', 'AC-3']) assert.ok(namedIn(names, ac), ac);
   });
 
+  it('a commented-out, skipped or todo test, a Rust helper fn and a stray id= evidence nothing', () => {
+    const cases = {
+      'a.test.ts': [
+        "it('X-1 AC-1 runs', () => {});",
+        "// it('X-1 AC-2 commented out', () => {});",
+        "/* test('X-1 AC-3 in a block comment', () => {}); */",
+        "it.skip('X-1 AC-4 skipped', () => {});",
+        "test.todo('X-1 AC-5 todo');",
+        "xit('X-1 AC-6 x-prefixed', () => {});",
+        "describe.skip('suite', () => { it('X-1 AC-7 inside a skipped describe', () => {}); });",
+        "xdescribe('X-1 AC-8 x-described', () => {});",
+        "it('X-1 AC-9 with skip option', { skip: true }, () => {});",
+        "it.skip.each([[1]])('X-1 AC-10 skipped each %s', () => {});",
+        "it('X-1 AC-11 says // in a string', () => {});",
+        "it('X-1 AC-12 skip: false runs', { skip: false }, () => {});",
+      ].join('\n'),
+      'test_a.py': [
+        'def test_x_1_ac_1_runs():',
+        '    pass',
+        '# def test_x_1_ac_2_commented():',
+        'call(id="X-1 AC-3 a stray id kwarg")',
+        'pytest.param(1, id="X-1 AC-11 a real param id")',
+      ].join('\n'),
+      'a.rs': [
+        '#[test]',
+        'fn x_1_ac_1_runs() {}',
+        'fn x_1_ac_2_helper_fn() {}',
+        '#[test]',
+        '#[ignore]',
+        'fn x_1_ac_3_ignored() {}',
+        '// #[test] fn x_1_ac_4_commented() {}',
+        "#[tokio::test]\nasync fn x_1_ac_11_async() { let c = '\"'; }",
+      ].join('\n'),
+      'a_test.go': 'func TestX1AC1Runs(t *testing.T) {}\n// func TestX1AC2Commented(t *testing.T) {}\n/* t.Run("X-1 AC-3 block", nil) */',
+      'a_spec.rb': 'it "X-1 AC-1 runs" do\nend\n# it "X-1 AC-2 commented" do\nxit "X-1 AC-3 pending" do\nend\n=begin\nit "X-1 AC-4 in a block comment" do\n=end',
+    };
+    for (const [file, text] of Object.entries(cases)) {
+      const names = testNames(text, { file });
+      assert.ok(namedIn(names, 'AC-1'), `${file}: AC-1 counts (${JSON.stringify(names)})`);
+      for (const n of [2, 3, 4, 5, 6, 7, 8, 9, 10]) assert.ok(!namedIn(names, `AC-${n}`), `${file}: AC-${n} does not count (${JSON.stringify(names)})`);
+    }
+    assert.ok(namedIn(testNames(cases['a.test.ts'], { file: 'a.test.ts' }), 'AC-11') && namedIn(testNames(cases['a.test.ts'], { file: 'a.test.ts' }), 'AC-12'));
+    assert.ok(namedIn(testNames(cases['test_a.py'], { file: 'test_a.py' }), 'AC-11'));
+    assert.ok(namedIn(testNames(cases['a.rs'], { file: 'a.rs' }), 'AC-11'));
+  });
+
   it('an id matches in its written forms, never inside a longer one', () => {
     for (const n of ['AC-2 rounds', 'test_ac_2_rounds', 'ac2', 'TestBILL7AC2Rounds', 'it AC_2']) assert.ok(namedIn([n], 'AC-2'), n);
     for (const n of ['AC-21', 'FAC2', 'mac2', 'BAC-2', 'ac-2-1'.replace('-1', '1')]) assert.ok(!namedIn([n], 'AC-2'), n);

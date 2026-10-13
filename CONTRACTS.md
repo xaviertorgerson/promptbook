@@ -458,10 +458,14 @@ criterion coverage is a single `tests-exist` warning, as `ears-coverage.mjs` doe
 
 **Test names.** A file's extension picks how its test names are read: JS/TS the first string of
 `it`/`test`/`describe` (ears-coverage's extractor); Go `t.Run("…")` and `func TestXxx`; Python
-`def test_…`, pytest `ids=[…]` and `pytest.param(…, id="…")`; JUnit 5 `@DisplayName("…")`; Kotlin
-backticked function names; Rust `fn` names; Ruby `it`/`describe`/`context`/`specify`/`test "…"`.
-`--test-pattern <regex>` (repeatable) adds a reader for anything else (group 1, or the match, is a
-name). An id matches in any case with a hyphen, an underscore or nothing between prefix and number
+`def test_…`, pytest `ids=[…]` and the `id="…"` of a `pytest.param(…)`; JUnit 5 `@DisplayName("…")`;
+Kotlin backticked function names; Rust the names of `fn`s under a test attribute (`#[test]`,
+`#[tokio::test]`, `#[rstest]`, `#[test_case(…)]`), never a helper `fn` or an `#[ignore]`d one; Ruby
+`it`/`describe`/`context`/`specify`/`test "…"`. A test that never runs evidences nothing: comments are
+blanked first (strings kept), and JS/TS `it.skip`, `test.todo`, `describe.skip` (with the tests it
+holds), their `.each`, `xit`/`xtest`/`xdescribe` and a `{ skip: … }` or `{ todo: … }` option are
+dropped, as are Ruby's `xit` family. `--test-pattern <regex>` (repeatable) adds a reader for anything
+else (group 1, or the match, is a name), read from the same comment-blanked text. An id matches in any case with a hyphen, an underscore or nothing between prefix and number
 (`AC-2`, `ac_2`, `AC2`, `bill_7_ac_2`), or in CamelCase after a lower-case letter or digit
 (`TestBILL7AC2`), never inside a longer id (`AC-21`, `FAC2`).
 

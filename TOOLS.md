@@ -28,7 +28,8 @@ is `validate --trace <root>`; `--readiness <dir>` writes each epic's report with
 `source_commit`, and `--no-timestamp` leaves it and `generated_at` out for a report committed with
 the plan; `--tests <glob>` picks the test files, `--test-pattern <regex>` adds a
 way to read test names beyond the built-in JS/TS, Go, Python, JUnit/Kotlin, Rust and Ruby readers
-(fixtures: `fixtures/test-names/`).
+(fixtures: `fixtures/test-names/`). A commented-out, skipped or todo test, and a Rust `fn` with no
+test attribute, name nothing (CONTRACTS.md, Test names).
 
 ## lint
 
