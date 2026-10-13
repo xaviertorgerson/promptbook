@@ -1,0 +1,18 @@
+# The PR is ready for human review and its current head passed an independent review. Orchestration
+# is complete; the human gate is the task's status (human-review), not attention. An idle pane alone
+# would not have justified this.
+task_id: BILL-2
+runtime: multiplexer-coordinator
+mode: development
+objective: Aggregate usage per account per period
+intent_ref: specs/rating-engine/tasks/BILL-2.md
+pull_requests: ["https://forge.example.com/acme/billing/pull/233"]
+reviews:
+  - { pr: "https://forge.example.com/acme/billing/pull/233", head: 7c2e9f3, outcome: pass, by: billing-reviewer-2, ref: .agent/reviews/BILL-2-7c2e9f3.md }
+state:
+  name: complete
+  summary: PR ready for review
+signals:
+  author: { source: herdr, value: idle, observed_at: "2026-10-13T10:40:00Z" }
+  reviewer: { source: herdr, value: done, observed_at: "2026-10-13T10:38:00Z" }
+updated_at: "2026-10-13T10:41:00Z"

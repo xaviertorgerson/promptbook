@@ -1,0 +1,47 @@
+# A project's lock: one harness (L3), its packs and runtime binding (L4), and a third-party skill
+# pinned at a commit. The harness and skill ids are real (resolved 2026-10-13 with the commands in
+# repo.md); the pack entries are illustrative. A library of portable skills is entered as L4
+# (domain-pack) because the lock allows exactly one L3 entry.
+lock_version: 1
+generated_at: "2026-10-13T14:00:00Z"
+generated_by: harness/lock@0.1.0
+entries:
+  - name: harness
+    layer: L3
+    kind: harness
+    source: ../harness
+    ref: main
+    commit: 4bdc7555aaf11dd12921cc2f03c9074487f70442
+    tree: dd1c9874e70a6b5daa2cd2fc614cc4833ccfaa14
+    version: 0.1.0
+    autoUpdate: minor
+  - name: core-pack
+    layer: L4
+    kind: engine-binding
+    source: https://forge.example.com/you/project-template
+    path: core
+    ref: core/v1.0.0
+    commit: 1eecf8a0c3b2d4e5f60718293a4b5c6d7e8f9012
+    tree: 0a1b2c3d4e5f60718293a4b5c6d7e8f901234567
+    version: 1.0.0
+    autoUpdate: patch
+  - name: cli-runtime
+    layer: L4
+    kind: runtime
+    source: https://forge.example.com/you/project-template
+    path: runtimes/cli
+    ref: core/v1.0.0
+    commit: 1eecf8a0c3b2d4e5f60718293a4b5c6d7e8f9012
+    tree: 5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f80
+    version: 1.0.0
+    autoUpdate: patch
+  - name: reviewing-code
+    layer: L4
+    kind: domain-pack
+    source: https://github.com/QuentinTorg/skilldex
+    path: skills/reviewing-code
+    ref: main
+    commit: fc572b66df2f565da2bd728e9fca7f88be475e31
+    tree: 5cf21df236473d5de166bdf5fa6cebf3c8445a15
+    version: 0.0.0+fc572b6
+    autoUpdate: "off"

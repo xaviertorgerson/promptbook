@@ -1,0 +1,17 @@
+# A headless run hit its turn ceiling. The record says what was tried; the loop stopped this lane.
+task_id: BILL-9
+runtime: cli-loop
+objective: Issue credit notes for re-rated periods
+intent_ref: specs/rating-engine/tasks/BILL-9.md
+repository: { name: acme/billing, base: main, branch: feat/bill-9-credit-notes }
+role_sessions:
+  author: { session_id: 5b7e0a92-1c44-4f3e-9d2a-7a1f0c9e2b18, engine: claude }
+pull_requests: ["https://forge.example.com/acme/billing/pull/251"]
+state:
+  name: needs-human
+  summary: Turn ceiling reached
+  next_action: "Decide: park BILL-9 behind BILL-11 (AC-3 needs its snapshot table) or split AC-3 into a new task; see the return at .agent/returns/BILL-9.json"
+signals:
+  author: { source: claude-headless, value: error_max_turns, observed_at: "2026-10-13T03:14:00Z" }
+result: .agent/returns/BILL-9.json
+updated_at: "2026-10-13T03:15:00Z"

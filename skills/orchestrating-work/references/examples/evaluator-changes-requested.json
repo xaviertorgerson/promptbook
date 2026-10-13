@@ -1,0 +1,18 @@
+{
+  "task": "BILL-7",
+  "role": "evaluator",
+  "summary": "Reviewed PR 240 at head 9e3b1a7 against main. AC-1 and AC-3 hold: their tests run and pass. AC-2 fails: a second rerate of the same segment is accepted when the first is still running, because the lock is taken after the read. Two material findings and one follow-up are in the findings file; the verdict for this head is changes-requested.",
+  "attention": "working",
+  "artifacts": [
+    { "path": ".agent/reviews/BILL-7-9e3b1a7.md", "kind": "report", "note": "findings with locations; verdict changes-requested" }
+  ],
+  "decisions_needed": [],
+  "criteria": {
+    "met": ["AC-1", "AC-3"],
+    "unmet": [{ "id": "AC-2", "reason": "concurrent rerate of one segment is accepted; see finding 1" }]
+  },
+  "verification": [
+    { "command": "npm test -- rating", "result": "pass" },
+    { "command": "node scripts/ears-coverage.mjs specs/rating-engine/tasks/BILL-7.md", "result": "pass" }
+  ]
+}
