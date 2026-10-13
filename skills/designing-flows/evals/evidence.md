@@ -1,5 +1,15 @@
 # Evidence — designing-flows
 
+## 2026-10-13 · Routes on a 288-character description in the 8,000-character catalog
+- **Kind:** measured
+- **Source:** node tools/cli.mjs eval-routing skills <Skilldex fc572b6>/skills --skill designing-flows --runner "<clean-context headless runner>" --json, 3 trials, 2026-10-13 (harness feat/reconcile-skills after 8816da6; runner and full table in skills/ROUTING-RESULTS.md)
+- **Claim:** With all 28 descriptions cut to 7,899 characters and the 5 pinned Skilldex skills installed, this skill's own cases passed 30/30; precision 100%, recall 100% over every case in the catalog. The original 778-character description, same runner and cases: 30/30, precision 100%, recall 100%.
+- **Result:** Misses: none.
+- **Engine:** claude
+- **Model:** haiku (claude-haiku-5-5), effort low
+- **Skill version:** 0.1.0
+- **Revisit:** when any description in the catalog changes, a skill is added, or the routing model changes
+
 ## 2026-09-23 · Every screen has four states
 - **Kind:** observed
 - **Source:** agentic-template template-update/QUALITY.md at commit bbfad58
