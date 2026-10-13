@@ -15,7 +15,7 @@ owner: null                  # the human product owner; required from approved o
      use; never renumber an id. Statements stay EARS (references/ears.md).
      Check: harness validate specs/<epic>/spec.md (or --contract epic / --contract requirement). -->
 
-- **CUJs:** [`cuj.md`](cuj.md)  ·  **ADRs:** none yet
+- **CUJs:** `cuj.md` (link it once the file exists)  ·  **ADRs:** none yet
 - **Rationale (value vs effort):** <one line: why this priority and size>
 
 ## Problem / motivation

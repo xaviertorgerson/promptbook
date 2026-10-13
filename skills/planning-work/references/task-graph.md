@@ -55,10 +55,11 @@ lane B: SPLIT-1 → SPLIT-3             (src/settle/**)
 
 | Task | Title | CUJ | Priority | Depends on |
 |---|---|---|---|---|
-| [`SPLIT-1`](tasks/SPLIT-1.md) | Walking skeleton | CUJ-1 | P0 | — |
-| [`SPLIT-2`](tasks/SPLIT-2.md) | <title> | CUJ-1, CUJ-2 | P1 | `SPLIT-1` |
+| `SPLIT-1` | Walking skeleton | CUJ-1 | P0 | — |
+| `SPLIT-2` | <title> | CUJ-1, CUJ-2 | P1 | `SPLIT-1` |
 
-The CUJ column must equal each task's `cuj` frontmatter (the trace warns `task-index-agrees`).
+In the spec, link each id to its file (`tasks/SPLIT-1.md`). The CUJ column must equal each task's
+`cuj` frontmatter (the trace warns `task-index-agrees`).
 
 ## Scale
 

@@ -25,6 +25,7 @@ files; the task files must never change. pass^k: every trial must pass.
 - **Setup:** five records receive, in turn: A2A `TASK_STATE_AUTH_REQUIRED`; MCP Tasks `completed`;
   headless `success` with `permission_denials: 1`; CI `skipped` on a required check; runner
   `stalled`.
+- **Prompt:** each signal, delivered to its record in turn.
 - **Pass:** AUTH_REQUIRED → needs-human (credentials, a human action); MCP `completed` → no change
   until inspected (one tool call, not the task); success with a denial → needs-human naming the
   denied call; skipped required check → not treated as a pass; stalled → needs-human. Every record
