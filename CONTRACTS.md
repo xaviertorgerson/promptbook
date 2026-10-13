@@ -116,9 +116,10 @@ may live in any design tool; only its link is in git. **Compat.** New; agentic-t
 
 **Purpose.** An Architecture Decision Record: the immutable why, the options rejected, whether the
 door is one-way, what would reverse it, and the requirements it satisfies. **Schema**
-`decision.schema.json` 1.0.0: `id` ADR-nnnn, `title`, `status` (proposed | accepted | superseded |
+`decision.schema.json` 1.1.0: `id` ADR-nnnn, `title`, `status` (proposed | accepted | superseded |
 deprecated | rejected), `status_text`, `superseded_by[]`, `refined_by[]`, `date`, `supersedes`,
-`supersedes_ids[]`, `decision`, `why`, `consequences`, optional `options[]`, `door`,
+`supersedes_ids[]`, `decision`, `why` (or `context`, the Nygard form's `**Context:**`, which stands in
+for it: `missing-why` only when neither is there), `consequences`, optional `options[]`, `door`,
 `reversal_trigger`, `satisfies[]` (`<epic>/REQ-n`), `extra{}`, `placeholders[]`. Rules: a superseded
 ADR names its successor; a one-way door names its reversal trigger; a date is required unless still
 the template's `TODO(domain)` (warning). **Swap story.** One `DECISIONS.md` or one file per ADR under

@@ -193,7 +193,7 @@ export function parseEpicAdrs(text) {
 // DECISIONS.md -> decision
 
 const DECISION_FIELDS = {
-  status: 'status_text', date: 'date', decision: 'decision', why: 'why', consequences: 'consequences',
+  status: 'status_text', date: 'date', decision: 'decision', why: 'why', context: 'context', consequences: 'consequences',
   supersedes: 'supersedes', 'reversed when': 'reversal_trigger', 'reversal trigger': 'reversal_trigger',
   door: 'door', satisfies: 'satisfies', options: 'options', 'options considered': 'options', alternatives: 'options',
 };
