@@ -17,13 +17,16 @@ export function grantLiveAt(g, ms) {
 
 const actionName = (a) => (typeof a === 'string' ? a : a.action);
 
-// Does grant g delegate `action` for this task? merge must name the scenario's repository, exact
-// target and strategy (authority.yaml grantable.merge.scope_rule); every action is bounded by the
-// grant's scope (repositories, epics, tasks).
+// The branch a task lands on: its lands_to (an epic's integration branch), else the protected target.
+export const landingTarget = (sc, task) => task?.lands_to ?? sc.target;
+
+// Does grant g delegate `action` for this task? merge must name the scenario's repository, the
+// exact branch the task lands on and the strategy (authority.yaml grantable.merge.scope_rule);
+// every action is bounded by the grant's scope (repositories, epics, tasks).
 export function grantHas(g, action, sc, task) {
   if (!g) return false;
   if (!g.scope?.repositories?.includes(sc.repo)) return false;
   if (task && g.scope.epics?.length && !g.scope.epics.includes(task.epic)) return false;
   if (task && g.scope.tasks?.length && !g.scope.tasks.includes(task.id)) return false;
-  return g.actions.some((a) => actionName(a) === action && (action !== 'merge' || (a.repo === sc.repo && a.target === sc.target && a.strategy === sc.strategy)));
+  return g.actions.some((a) => actionName(a) === action && (action !== 'merge' || (a.repo === sc.repo && a.target === landingTarget(sc, task) && a.strategy === sc.strategy)));
 }

@@ -1,0 +1,34 @@
+# Tier 2 and tier 3 of the landing tiers. The rating epic's tasks land on integration/rating: the
+# orchestrator approves and lands them itself under a merge grant for exactly that branch (the merge
+# queue serves main only), each goes merging -> integrated, and the human merges the integration
+# branch into main once nothing on it is in flight (promote -> merged). RAT-2 builds on RAT-1 while
+# it is only integrated (same epic); INV-1, in another epic, waits until RAT-1 is merged. Medium-risk
+# tasks are finalized only after the evaluator passed their head.
+name: integration-branch
+description: An epic lands on its integration branch under a merge grant; a human merges the branch to main.
+seed: 9
+policy:
+  tier: autonomous
+  forbid:
+    - { command: [git, push, [--force, -f]] }
+merge: { queue_targets: [main] }
+grant:
+  id: GRANT-1
+  granted_by: owner
+  granted_to: { role: orchestrator, runtime: sim }
+  granted_at: "+0m"
+  source: "sim: scenario integration-branch"
+  scope: { objective: Deliver the rating epic on integration/rating, repositories: [acme/app], epics: [rating] }
+  actions:
+    - select-tasks
+    - finalize
+    - { action: merge, repo: acme/app, target: integration/rating, strategy: squash, requires: [independent-review, required-checks] }
+  limits: { max_workers: 3, budget: { max_usd: 80 } }
+  expires_at: "+14d"
+  revocable: true
+tasks:
+  - { id: RAT-1, epic: rating, size: S, risk: medium, touches: ["src/rating/core/**"], lands_to: integration/rating, priority: P1 }
+  - { id: RAT-2, epic: rating, size: S, risk: medium, touches: ["src/rating/api/**"], depends_on: [RAT-1], lands_to: integration/rating }
+  - { id: RAT-3, epic: rating, size: XS, touches: ["src/rating/docs/**"], lands_to: integration/rating, criteria: 1 }
+  - { id: INV-1, epic: invoicing, size: S, risk: medium, touches: ["src/invoicing/**"], depends_on: [RAT-1] }
+  - { id: INV-2, epic: invoicing, size: XS, risk: medium, touches: ["docs/invoicing/**"], criteria: 1 }

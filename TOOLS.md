@@ -50,14 +50,17 @@ in `fixtures/lint/broken/<rule>/`.
 deterministic discrete-event model of the runtime contracts and checks 18 invariants after every
 event. The world: a supervisor policy (the `orchestrating-work` protocol as code), author and
 evaluator sessions with read-only helpers, CI, a merge queue that classifies conflicts and re-runs
-checks on the merged result, a scripted human with latencies, a forge whose pushes are
-compare-and-swap on the task file and whose branch protection needs an approval of the head, and a
-runtime whose signals (working, blocked, done, idle, unknown) are lossy and duplicable, with
-events-lost notices.
+checks on the merged result (for the branches it serves), the orchestrator's own merge under a
+merge grant for a branch no queue serves, a scripted human with latencies who also merges an
+integration branch into the target once nothing on it is in flight (`promote`), a forge whose
+pushes are compare-and-swap on the task file and whose branches (the protected target and each
+epic's integration branch) admit a merge only with an approval of the head, and a runtime whose
+signals (working, blocked, done, idle, unknown) are lossy and duplicable, with events-lost notices.
 
-A scenario names tasks (`depends_on`, `touches`, `size`, `risk`, `criteria`, `budget`), the policy
-tier and its `forbid`/`ask`/`budgets`, an optional grant (validated against the grant contract), the
-supervisor's caps, the human's behaviour, and faults: `concurrent_claims` (a rival runtime),
+A scenario names tasks (`depends_on`, `touches`, `size`, `risk`, `criteria`, `budget`, `lands_to`),
+the policy tier and its `forbid`/`ask`/`budgets`, an optional grant (validated against the grant
+contract), the supervisor's caps, the merge queue's `queue_targets` (default every branch), the
+human's behaviour (`on_integration: merge|hold`), and faults: `concurrent_claims` (a rival runtime),
 `crash`, `lost_events`, `duplicate_wakes`, `unknown_signals`, `no_progress`, `budget_exhaustion`,
 `semantic_conflict`, `evaluator_rejection`, `grant_expiry`, `merge_without_grant`, `ask`, `wall`,
 `question`. Unknown keys are errors. `--project` reads `specs/<epic>/tasks/*.md` with the
@@ -68,11 +71,11 @@ spec gate).
 |---|---|
 | `one-owner-per-claimed-task` | a claimed task has one owner from a CAS claim; one author session holds it; only the owner commits |
 | `transitions-allowed` | every status change is a `workflow.yaml` transition from its from-state by a listed role, or the orchestrator under a live grant of its `grant`; reasons where needed; humans are humans |
-| `guards-hold` | the transition's guards hold on the evidence (deps merged, checks green, criteria met and named in tests, independent review, mechanical-only, merged checks green, question answered); a grant adds its grant guards |
+| `guards-hold` | the transition's guards hold on the evidence (deps merged, an integrated dependency counting only in the same epic; checks green, criteria met and named in tests, independent review, independent verification by the evaluator for risk medium and up, lands on the protected or the integration branch as `lands_to` says, mechanical-only, merged checks green, integration landed, question answered); a grant adds its grant guards |
 | `human-gates-by-humans` | gates are passed by a human approver, or by the orchestrator under a live grant where the gate is grantable |
 | `signals-never-advance-workflow` | a commit decided on a runtime signal is one the evidence and authority justify on their own |
 | `attention-consistent` | records carry attention only; needs-human names the next action; complete only when the human has nothing left |
-| `merge-requires-authority` | a change lands only by the merge role or a human, with an approval of that head by a human or a grant live when decided (repo, target, strategy), plus `authority.yaml`'s `always_requires`, and never over a semantic conflict or red merged checks |
+| `merge-requires-authority` | a change lands on a branch only by the merge role, a human, or the orchestrator under a merge grant live when it decided for that exact branch; an agent lands only with its `land`/`integrate` commit and after checks on the merged result of that head; with an approval of that head by a human or such a grant, plus `authority.yaml`'s `always_requires`, and never over a semantic conflict or red merged checks |
 | `lanes-disjoint` | claimed tasks never have overlapping `touches` |
 | `cap-workers`, `cap-depth`, `cap-run`, `cap-spend` | workers, delegation depth, per-run turns and spend, per-task and runtime budgets |
 | `no-progress-stops` | after a stalled run or a ceiling, no rerun until a human decides |
@@ -83,17 +86,24 @@ spec gate).
 | `contracts-valid` | every run-record, return, grant and task record produced validates |
 
 Transition tables, roles, gates, guards, side states, the merge requirements and the claimed statuses
-are read from `state-machines/*.yaml` and the task schema. `--break <mutation>` swaps in one of 16
+are read from `state-machines/*.yaml` and the task schema. `--break <mutation>` swaps in one of 19
 deliberately broken supervisors (`--list` names them); the tests run each, plus four broken world
 bindings (bypass that skips walls, a forge without CAS, a merge queue that resolves semantic
-conflicts, no branch protection), and require the named invariant to catch it.
+conflicts, no branch protection), and require the named invariant to catch it. Among them:
+`cross-epic-integrated` (a dependent in another epic treats an integrated dependency as merged:
+`guards-hold`, deps-merged), `finalize-unverified` (a risk-medium PR marked ready with no evaluator
+verdict: `guards-hold`, independent-verification) and `land-without-grant` (the orchestrator lands a
+change no merge grant of its covers: `transitions-allowed`, `merge-requires-authority`).
 
 Output: `.sim-out/<scenario>-seed<n>.jsonl` (one event per line: time, actor, task, the commits it
 applied, effects, violations), `.summary.json` (merged, parked, needs-human, spend, makespan,
 throughput, violations with seed and event index), `.run-records.jsonl` and `.task-records.json` in
 their contracts' shapes. A violation prints a `reproduce:` command. Scenarios:
 `fixtures/scenarios/{happy-path, parallel-overlap, crash-lost-events, merge-without-grant,
-budget-exhaustion, unattended-ask, evaluator-rejection, grant-expiry, wall-bypass}.yaml`.
+budget-exhaustion, unattended-ask, evaluator-rejection, grant-expiry, wall-bypass,
+integration-branch}.yaml`; `integration-branch` is tier 2 and 3: the orchestrator lands an epic's
+tasks on `integration/<epic>` under its merge grant, a same-epic dependent builds on an integrated
+task, a dependent in another epic waits for merged, and the human merges the branch to main.
 
 ## compile-policy
 

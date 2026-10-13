@@ -33,6 +33,7 @@ export const DEFAULTS = {
     on_grant_expiry: 'renew',
     renew_for_minutes: 2880,
     max_conflicts: 2,
+    on_integration: 'merge',
   },
   work: {
     minutes: { XS: [10, 30], S: [30, 90], M: [90, 180], L: [180, 300], XL: [300, 480] },
@@ -45,7 +46,9 @@ export const DEFAULTS = {
   },
   checks: { minutes: [5, 15], red_rate: 0.05, merged_red_rate: 0.02 },
   evaluator: { minutes: [10, 30], reject_rate: 0.05 },
-  merge: { minutes: [3, 10] },
+  // queue_targets: the branches the merge queue (merge role) serves; null = every branch. A branch it
+  // does not serve is landed by whoever holds a merge grant for it (the orchestrator), or nobody.
+  merge: { minutes: [3, 10], queue_targets: null },
   latency: { push: [0.1, 1], signal: [0, 0.5], webhook: [0, 0.2] },
   tasks: [],
   faults: {},
@@ -70,7 +73,7 @@ export const FAULTS = {
 
 const TIERS = ['read-only', 'ask', 'auto-edit', 'autonomous', 'unattended'];
 const SIZES = ['XS', 'S', 'M', 'L', 'XL'];
-const TASK_KEYS = new Set(['id', 'epic', 'priority', 'size', 'risk', 'touches', 'depends_on', 'criteria', 'budget', 'status', 'owner', 'title']);
+const TASK_KEYS = new Set(['id', 'epic', 'priority', 'size', 'risk', 'touches', 'depends_on', 'criteria', 'budget', 'status', 'owner', 'title', 'lands_to']);
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 
@@ -139,6 +142,7 @@ export function normalize(raw, { source = 'scenario' } = {}) {
       budget: t.budget ?? null,
       status: t.status ?? 'ready',
       owner: t.owner ?? null,
+      lands_to: t.lands_to && t.lands_to !== sc.target ? t.lands_to : null,
     };
   });
   for (const t of sc.tasks) for (const d of t.depends_on) if (!ids.has(d)) errors.push(`${t.id}.depends_on: no task ${d}`);
@@ -156,6 +160,8 @@ export function normalize(raw, { source = 'scenario' } = {}) {
     if (k === 'evaluator_rejection') taskRefs(Object.keys(f.tasks), `faults.${k}.tasks`);
     if (k === 'semantic_conflict') for (const p of f.pairs) taskRefs(p, `faults.${k}.pairs`);
   }
+  if (sc.merge.queue_targets !== null && !(Array.isArray(sc.merge.queue_targets) && sc.merge.queue_targets.every((x) => typeof x === 'string'))) errors.push('merge.queue_targets: null (every branch) or a list of branch names');
+  if (!['merge', 'hold'].includes(sc.human.on_integration)) errors.push('human.on_integration: merge or hold');
   for (const [k, r] of [['work.fix_minutes', sc.work.fix_minutes], ['checks.minutes', sc.checks.minutes], ['evaluator.minutes', sc.evaluator.minutes], ['merge.minutes', sc.merge.minutes], ['human.review_minutes', sc.human.review_minutes], ['human.answer_minutes', sc.human.answer_minutes]]) range(r, k, errors);
   if (sc.grant) {
     sc.grant = structuredClone(sc.grant);
@@ -195,6 +201,7 @@ export function scenarioFromProject(root, config = {}) {
       budget: d.budget ?? undefined,
       status: d.status,
       owner: d.owner ?? null,
+      ...(d.lands_to ? { lands_to: d.lands_to } : {}),
     });
   }
   const known = new Set(tasks.map((t) => t.id));

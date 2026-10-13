@@ -11,10 +11,12 @@ import { touchesOverlap } from './util.mjs';
 //   2. surface: every permission prompt, denial, open question, ceiling, crash limit, stall or lapsed
 //      grant becomes attention needs-human naming the next action; it never answers a prompt.
 //   3. advance only through the actor that owns the transition: a coder run (claim, open-draft,
-//      iterate, finalize), the evaluator (a review), or itself only where a live grant delegates it
-//      (finalize -> mark-pr-ready, merge -> approve-pr) and the guards hold on the evidence.
+//      iterate, finalize), the evaluator (a verdict on every head before finalizing), or itself only
+//      where a live grant delegates it (finalize -> mark-pr-ready, merge -> approve-pr, and land or
+//      integrate on a branch no merge queue serves) and the guards hold on the evidence.
 //   4. dispatch ready work in priority order within caps: workers, depth, turns, spend (per run,
-//      per task, per runtime), no-progress, and one writer per lane (disjoint touches).
+//      per task, per runtime), no-progress, and one writer per lane (disjoint touches); a dependency
+//      counts when merged, or integrated in the dependent's own epic.
 
 export const MUTATIONS = {
   'advance-on-wake': 'treats an author\'s done/idle signal as finished work and advances the task without evidence',
@@ -33,6 +35,9 @@ export const MUTATIONS = {
   'status-as-attention': 'writes the workflow status into the task record\'s attention',
   'wake-ledger': 'treats the wake stream as complete: ignores events-lost notices and check-ins, never reconciles',
   'land-directly': 'lands an approved change itself instead of leaving it to the merge queue (no merged-result checks)',
+  'cross-epic-integrated': 'treats a dependency integrated on another epic\'s integration branch as merged, and claims the dependent before that branch reached the protected branch',
+  'finalize-unverified': 'marks a PR ready (finalize) on green checks and covered criteria without waiting for the evaluator\'s verdict on the head',
+  'land-without-grant': 'runs its own merge and lands every approved change, whether or not a merge grant of its covers that branch',
 };
 
 const PRIORITY = { P0: 0, P1: 1, P2: 2, P3: 3 };
@@ -201,7 +206,10 @@ function decide(note, api, { st, T, broken }) {
   // live run of ours) holds its lane until it merges.
   const occupants = () => v.tasks.filter((t) => CLAIMED.has(t.status) || liveFor(t.id, 'author').length);
   const laneFree = (t, extra = []) => broken.has('overlapping-dispatch') || ![...occupants(), ...extra].some((o) => o.id !== t.id && touchesOverlap(o.touches, t.touches));
-  const depsMerged = (t, view = v) => t.depends_on.every((d) => view.tasks.find((x) => x.id === d)?.status === 'merged');
+  const depsMerged = (t, view = v) => t.depends_on.every((d) => {
+    const x = view.tasks.find((y) => y.id === d);
+    return x?.status === 'merged' || (x?.status === 'integrated' && (x.epic === t.epic || broken.has('cross-epic-integrated')));
+  });
 
   // ---------------------------------------------------------------- 3. per task, by evidence
   const ordered = [...tasks.values()].sort(byPriority);
@@ -221,7 +229,7 @@ function decide(note, api, { st, T, broken }) {
           break;
         }
         const review = reviewOf(p);
-        if (!review && !broken.has('skip-evaluator')) { evaluate(t); break; }
+        if (!review && !broken.has('skip-evaluator') && !broken.has('finalize-unverified')) { evaluate(t); break; }
         if (review?.verdict === 'changes-requested') {
           if (ts.roundHead !== p.head) { ts.roundHead = p.head; ts.rounds += 1; }
           if (ts.rounds > cfg.max_review_rounds) wait(t.id, 'review keeps failing', 'review-limit', `${t.id}: ${ts.rounds} review rounds failed; re-plan the criteria`);
@@ -242,8 +250,17 @@ function decide(note, api, { st, T, broken }) {
         if (mayMerge && (independent || broken.has('skip-evaluator')) && p.checks[p.head] === 'green') commit(t, { transition: 'approve-pr', to: 'merging', prApproval: true });
         break;
       }
-      case 'merging':
-        if (broken.has('land-directly') && p && !p.merged) api.land(t.id);
+      case 'merging': {
+        if (broken.has('land-directly') && p && !p.merged) { api.land(t.id); break; }
+        // A branch the merge queue serves is the queue's; one it does not is landed by the holder of a
+        // merge grant for exactly that branch (tier 2), one change at a time.
+        const target = t.lands_to ?? v.protectedBranch;
+        const mayLand = broken.has('land-without-grant') || (!v.queueServes(target) && granted('merge', t));
+        if (mayLand && !v.merging) api.merge(t.id);
+        break;
+      }
+      case 'integrated':
+        if (!ts.integratedRecorded) { ts.integratedRecorded = true; api.record(t.id, { attention: 'complete', summary: `integrated on ${t.lands_to}` }); }
         break;
       case 'in-progress': {
         if (!mine(t) || liveFor(t.id, 'author').length || gated(t)) break;
