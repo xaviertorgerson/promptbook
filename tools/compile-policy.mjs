@@ -4,7 +4,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
-import { compilePolicy, diffClaudeSettings, ENGINES, parseSettingsTemplate, renderDiff } from './lib/compile-policy.mjs';
+import { compilePolicy, diffClaudeSettings, ENGINES, parseSettingsTemplate, renderDiff, renderReport } from './lib/compile-policy.mjs';
 import { readText } from './lib/loaders.mjs';
 import { registry } from './lib/registry.mjs';
 import { validateFile } from './lib/validate.mjs';
@@ -12,7 +12,8 @@ import { validateFile } from './lib/validate.mjs';
 const USAGE = `Compile the L1 agent policy into one engine's settings for one machine profile.
 
   node tools/compile-policy.mjs <agent-policy.yaml> --profile <p> --engine claude|codex|gemini [--out <dir>]
-      --out <dir>          write the files there (default: print them)
+      --out <dir>          write the files there, and report.json: warnings, accepted gaps with
+                           what each degrades, notes (default: print the files)
       --diff <settings>    compare the compiled Claude settings with a hand-written settings.json
                            (or a chezmoi settings.json.tmpl) and report differences; exit 0
       --json               machine-readable result
@@ -46,12 +47,11 @@ export function main(argv = process.argv.slice(2)) {
   const result = compilePolicy(policy, { profile, engine, source: path.basename(file) });
 
   const out = value('--out');
-  if (result.ok && out) {
-    for (const f of result.files) {
-      const dest = path.join(out, f.path);
-      fs.mkdirSync(path.dirname(dest), { recursive: true });
-      fs.writeFileSync(dest, f.content);
-    }
+  const written = result.ok && out ? [...result.files, { path: 'report.json', content: renderReport(result), kind: 'report' }] : [];
+  for (const f of written) {
+    const dest = path.join(out, f.path);
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.writeFileSync(dest, f.content);
   }
   let diff = null;
   const diffWith = value('--diff');
@@ -81,7 +81,7 @@ export function main(argv = process.argv.slice(2)) {
     console.log(`diff: compiled ${engine} settings vs ${diffWith} — ${diff.same ? 'same' : 'different'}`);
     console.log(renderDiff(diff));
   } else if (out) {
-    for (const f of result.files) console.log(`wrote ${path.join(out, f.path)} (${f.kind})`);
+    for (const f of written) console.log(`wrote ${path.join(out, f.path)} (${f.kind})`);
   } else {
     for (const f of result.files) console.log(`--- ${f.path} (${f.kind})\n${f.content}`);
   }

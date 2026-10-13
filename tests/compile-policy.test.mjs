@@ -6,7 +6,7 @@ import path from 'node:path';
 import { after, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
-import { assertNoUnsafeKeys, commandMatches, compilePolicy, diffClaudeSettings, ENGINES, expandCommand, globArgsPattern, parseSettingsTemplate, renderDiff } from '../tools/lib/compile-policy.mjs';
+import { assertNoUnsafeKeys, commandMatches, compilePolicy, diffClaudeSettings, ENGINES, expandCommand, globArgsPattern, parseSettingsTemplate, renderDiff, renderReport } from '../tools/lib/compile-policy.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FIX = path.join(ROOT, 'fixtures/compile-policy');
@@ -19,7 +19,6 @@ after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 const load = (f) => parse(fs.readFileSync(f, 'utf8'));
 const golden = load(path.join(GOLDEN, 'agent-policy.yaml'));
-const report = (r) => `${JSON.stringify({ tier: r.tier, warnings: r.warnings, accepted: r.accepted.map(({ field, reason }) => ({ field, reason })), notes: r.notes }, null, 2)}\n`;
 const git = (cwd, ...a) => spawnSync('git', ['-c', 'safe.directory=*', '-C', cwd, ...a], { encoding: 'utf8' });
 
 describe('compile-policy goldens', () => {
@@ -29,7 +28,7 @@ describe('compile-policy goldens', () => {
         const r = compilePolicy(golden, { profile, engine });
         assert.equal(r.ok, true, JSON.stringify(r.errors, null, 2));
         const dir = path.join(GOLDEN, 'expected', `${engine}-${profile}`);
-        const files = [...r.files, { path: 'report.json', content: report(r) }];
+        const files = [...r.files, { path: 'report.json', content: renderReport(r) }];
         if (UPDATE) {
           fs.rmSync(dir, { recursive: true, force: true });
           for (const f of files) {
@@ -217,6 +216,19 @@ describe('compile-policy CLI', () => {
     assert.equal(no.status, 1);
     assert.match(no.stderr, /REFUSED claude for profile laptop/);
     assert.ok(!fs.existsSync(bad));
+  });
+
+  it('--out writes report.json beside the files: the golden\'s warnings, accepted gaps with what each degrades, notes', () => {
+    for (const [engine, profile] of [['codex', 'ci'], ['claude', 'devbox'], ['gemini', 'laptop']]) {
+      const out = path.join(TMP, `report-${engine}-${profile}`);
+      const r = cli('fixtures/compile-policy/golden/agent-policy.yaml', '--profile', profile, '--engine', engine, '--out', out);
+      assert.equal(r.status, 0, r.stderr);
+      assert.match(r.stdout, /report\.json \(report\)/);
+      const written = fs.readFileSync(path.join(out, 'report.json'), 'utf8');
+      assert.equal(written, fs.readFileSync(path.join(GOLDEN, 'expected', `${engine}-${profile}`, 'report.json'), 'utf8'), `${engine}-${profile}`);
+      const rep = JSON.parse(written);
+      assert.ok(rep.accepted.length && rep.accepted.every((a) => a.field && a.message && a.reason), `${engine}-${profile}: each accepted gap says what it degrades and why`);
+    }
   });
 
   it('validates the policy first, and exits 2 on usage errors', () => {

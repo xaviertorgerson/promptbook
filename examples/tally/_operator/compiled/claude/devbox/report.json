@@ -1,0 +1,14 @@
+{
+  "tier": "autonomous",
+  "warnings": [],
+  "accepted": [
+    {
+      "field": "egress",
+      "message": "WebFetch outside allow_domains runs unasked under bypassPermissions; the sandbox allowlist binds shell commands only (forbid {tool: web-fetch} removes the fetch tool instead)",
+      "reason": "under bypass on the devbox, WebFetch reaches unlisted domains; the devbox container's egress proxy enforces the same domain list for every process"
+    }
+  ],
+  "notes": [
+    "bypass tier devbox requires: prod-unreachable-from-this-host, non-root-container (the launcher checks each before starting; the policy cannot)"
+  ]
+}

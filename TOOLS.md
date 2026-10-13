@@ -122,7 +122,11 @@ task, a dependent in another epic waits for merged, and the human merges the bra
 ## compile-policy
 
 `harness compile-policy <agent-policy.yaml> --profile <p> --engine claude|codex|gemini [--out <dir>]`
-validates the policy, then emits one profile's settings, following `adapters/<engine>/README.md`:
+validates the policy, then emits one profile's settings, following `adapters/<engine>/README.md`.
+`--out` also writes `report.json`: the tier, every warning (an ask or allow dropped, a mode
+degraded), every accepted gap as `{field, message, reason}` (what it degrades and the operator's
+reason) and the notes for the launcher, the same file the goldens hold, so what a compile gave up is
+on disk beside what it wrote, not only on stderr:
 
 | Engine | Files |
 |---|---|
@@ -142,7 +146,8 @@ not match. No output may carry `disableAllHooks`, `hooksConfig.enabled: false`, 
 compile). Unattended, an `ask` compiles to a denial. `--diff <settings.json|settings.json.tmpl>`
 compares the Claude output with a hand-written file.
 
-Goldens: `fixtures/compile-policy/golden/expected/<engine>-<profile>/` (`UPDATE_GOLDEN=1` rewrites).
+Goldens: `fixtures/compile-policy/golden/expected/<engine>-<profile>/`, each with its `report.json`
+(`UPDATE_GOLDEN=1` rewrites).
 `fixtures/compile-policy/dotfiles/agent-policy.yaml` restates the user's Claude settings for the diff
 test; stagehand's `herdr.rules` round-trips through the Codex compiler when the checkout is present.
 

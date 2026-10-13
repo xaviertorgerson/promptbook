@@ -522,6 +522,13 @@ export function compilePolicy(policy, { profile, engine, source = 'agent-policy.
   return { ok, engine, profile, tier: ctx.tier, files: ok ? files : [], errors: ctx.errors, warnings: ctx.warnings, accepted: ctx.accepted, notes: ctx.notes };
 }
 
+// What the compile accepted and lost, beside the files it wrote (--out <dir>/report.json): the tier,
+// every warning (an ask or allow dropped, a mode degraded), every accepted gap with the degradation
+// it accepts and the operator's reason, and the notes for the launcher.
+export function renderReport(r) {
+  return `${JSON.stringify({ tier: r.tier, warnings: r.warnings, accepted: r.accepted.map(({ field, message, reason }) => ({ field, message, reason })), notes: r.notes }, null, 2)}\n`;
+}
+
 // ------------------------------------------------------------------------------------- diff
 
 // A Claude settings file as chezmoi keeps it (settings.json.tmpl): Go template comments and

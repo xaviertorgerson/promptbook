@@ -13,18 +13,22 @@
   "accepted": [
     {
       "field": "deny_read",
+      "message": "read denies reach only the file tools (read_file, read_many_files, glob, search_file_content; names unverified), not run_shell_command reads",
       "reason": "Gemini runs in a container without the secret files mounted"
     },
     {
       "field": "forbid",
+      "message": "write **/.git/hooks/**: a deny reaches the file tools (write_file, replace) only, not shell redirection",
       "reason": "shell redirection into .git/hooks is denied by the project hook"
     },
     {
       "field": "egress",
+      "message": "the sandbox offers open or proxied profiles, not a domain list",
       "reason": "the container's proxy enforces the domain list"
     },
     {
       "field": "sandbox",
+      "message": "fail_if_unavailable has no Gemini key",
       "reason": "the launcher refuses to start without the container"
     }
   ],
