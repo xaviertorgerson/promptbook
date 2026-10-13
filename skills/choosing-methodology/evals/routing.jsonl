@@ -1,0 +1,13 @@
+{"prompt":"Which methodology should the ledger-adjustment epic use? It touches the existing payments code and the risk is high.","expect":"trigger","kind":"positive"}
+{"prompt":"Can we Ralph-loop the new CLI scaffolding overnight? It's a fresh repo with good tests.","expect":"trigger","kind":"positive"}
+{"prompt":"This is a docs pipeline: outline, draft, edit, publish, with me editing between stages. What mode fits?","expect":"trigger","kind":"positive"}
+{"prompt":"The spec-driven ceremony is way too heavy for this one-line fix. What should we do instead?","expect":"trigger","kind":"positive"}
+{"prompt":"The loop keeps stalling on BILL-15 in the old ledger module. Should we switch its mode?","expect":"trigger","kind":"positive"}
+{"prompt":"Should this epic be spec-driven or research-plan-implement?","expect":"trigger","kind":"positive"}
+{"prompt":"Write the EARS requirements for the ledger-adjustment epic.","expect":"no-trigger","kind":"near-miss","route_to":"writing-requirements"}
+{"prompt":"Break the approved ledger epic into tasks with depends_on and touches.","expect":"no-trigger","kind":"near-miss","route_to":"planning-work"}
+{"prompt":"Map the critical user journeys for the refund flow.","expect":"no-trigger","kind":"near-miss","route_to":"mapping-journeys"}
+{"prompt":"Start the ready tasks of the ledger epic now that the mode is set.","expect":"no-trigger","kind":"near-miss","route_to":"orchestrating-work"}
+{"prompt":"Is the plan for this epic complete enough to approve? Check for orphans and overlaps.","expect":"no-trigger","kind":"near-miss","route_to":"checking-plan-readiness"}
+{"prompt":"Explain the difference between Scrum and Kanban for my team.","expect":"no-trigger","kind":"negative","route_to":"none"}
+{"prompt":"What research methodology should my survey study use?","expect":"no-trigger","kind":"negative","route_to":"none"}
