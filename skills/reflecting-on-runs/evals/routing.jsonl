@@ -1,0 +1,11 @@
+{"prompt":"What did we learn from last week's loop runs? Propose fixes to the skills.","expect":"trigger","kind":"positive"}
+{"prompt":"Run the reflector over the evidence logs and open PRs for anything worth changing.","expect":"trigger","kind":"positive"}
+{"prompt":"Agents keep forgetting to name tests by AC id. Why, and what should change in the harness?","expect":"trigger","kind":"positive","note":"recurring correction"}
+{"prompt":"Turn the review findings the owner accepted this sprint into rule changes.","expect":"trigger","kind":"positive"}
+{"prompt":"Postmortem the overnight loop: 6 stalled runs and 2 budget breaches.","expect":"trigger","kind":"positive"}
+{"prompt":"Sonnet 5.5 is out. Ablate the reviewer subagent and the extra rule blocks and delete what doesn't help.","expect":"no-trigger","kind":"near-miss","route_to":"reviewing-harness"}
+{"prompt":"This lesson has three incidents behind it now; move it into the shared pack.","expect":"no-trigger","kind":"near-miss","route_to":"promoting-learnings"}
+{"prompt":"Why is the nightly export job failing right now?","expect":"no-trigger","kind":"near-miss","route_to":"debugging-failures"}
+{"prompt":"Add near-miss routing cases for the reflector skill itself.","expect":"no-trigger","kind":"near-miss","route_to":"evaluating-skills"}
+{"prompt":"Translate this paragraph into French.","expect":"no-trigger","kind":"negative","route_to":"none"}
+{"prompt":"What time zone is Auckland in?","expect":"no-trigger","kind":"negative","route_to":"none"}
