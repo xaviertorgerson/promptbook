@@ -79,8 +79,8 @@ adapters are written from documentation and marked unverified where it matters.
 ## Contributing a playbook change
 
 1. Open a pull request that edits the page and adds or updates an **Evidence** line: date, source
-   URL, and a tag (controlled, vendor, self-reported, practitioner, secondary, measured, practice,
-   recommendation). No source, no change; quotes under 15 words; vendor numbers tagged as vendor.
+   URL, and a tag (controlled, standard, vendor, self-reported, practitioner, secondary, measured,
+   practice, recommendation). No source, no change; quotes under 15 words; vendor numbers tagged as vendor.
 2. Keep the page under about one printed page and in the six-section shape. Practice text names no
    engine or vendor; bindings go in `adapters/`.
 3. If the practice changes a contract, change the schema, fixtures and tests in the same pull request.
