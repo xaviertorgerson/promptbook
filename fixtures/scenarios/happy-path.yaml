@@ -1,0 +1,17 @@
+# Five tasks in two lanes with a dependency chain, a human who reviews every PR, no faults. The
+# baseline every other scenario departs from; two workers, so the worker cap binds.
+name: happy-path
+description: Disjoint and chained tasks flow ready -> merged through the evaluator and the human gate.
+seed: 1
+policy:
+  tier: autonomous
+  forbid:
+    - { command: [git, push, [--force, -f]] }
+  budgets: { max_turns: 200, max_usd: 5 }
+supervisor: { max_workers: 2 }
+tasks:
+  - { id: SIM-1, size: S, touches: ["src/api/**"], priority: P1 }
+  - { id: SIM-2, size: M, touches: ["src/web/**"], priority: P1 }
+  - { id: SIM-3, size: S, touches: ["src/api/invoices.ts"], depends_on: [SIM-1] }
+  - { id: SIM-4, size: XS, touches: ["docs/**"], criteria: 1 }
+  - { id: SIM-5, size: M, touches: ["src/web/pay/**"], depends_on: [SIM-2], budget: { max_usd: 12 } }

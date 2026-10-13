@@ -1,0 +1,23 @@
+# An unattended (dontAsk) runtime: a run needs `psql`, which the policy asks about. Unattended, the
+# ask is a denial, recorded as a question for the human; it must never be approved by anyone but the
+# human, and the task waits for the human's decision. The same scenario in a prompting tier (tests)
+# blocks the run on a prompt only the human answers. A high-risk task never runs unattended.
+name: unattended-ask
+description: An ask in the unattended tier becomes a denial that reaches the human; never auto-approved.
+seed: 6
+policy:
+  tier: unattended
+  forbid:
+    - { command: [git, push, [--force, -f]] }
+  ask:
+    - { command: [psql] }
+  budgets: { max_turns: 200, max_usd: 5 }
+human: { on_ask: approve }
+faults:
+  ask: { tasks: [UNA-1, UNA-3], command: [psql, -c, "select 1"] }
+  question: { tasks: [UNA-2] }
+tasks:
+  - { id: UNA-1, size: S, touches: ["src/db/**"] }
+  - { id: UNA-2, size: S, touches: ["src/rates/**"] }
+  - { id: UNA-3, size: M, touches: ["src/report/**"] }
+  - { id: UNA-4, size: S, touches: ["infra/**"], risk: { level: high, irreversible: true } }

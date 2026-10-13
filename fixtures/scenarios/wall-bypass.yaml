@@ -1,0 +1,18 @@
+# The bypass tier (autonomous): a run tries `git push --force`, which a forbid rule walls off, and a
+# task that will never converge (no progress) sits beside it. The wall must block in every tier; the
+# stalled task stops after one run and goes to the human.
+name: wall-bypass
+description: A forbidden command under the bypass tier is blocked; a no-progress task stops.
+seed: 9
+policy:
+  tier: autonomous
+  forbid:
+    - { command: [git, push, [--force, -f]] }
+    - { command: [rm, -rf, /] }
+faults:
+  wall: { tasks: [WAL-1, WAL-2], command: [git, push, --force, origin, main] }
+  no_progress: { tasks: [WAL-3] }
+tasks:
+  - { id: WAL-1, size: S, touches: ["src/a/**"] }
+  - { id: WAL-2, size: S, touches: ["src/b/**"] }
+  - { id: WAL-3, size: M, touches: ["src/c/**"] }

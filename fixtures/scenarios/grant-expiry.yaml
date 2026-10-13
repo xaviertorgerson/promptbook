@@ -1,0 +1,37 @@
+# A full delegation (select, finalize, merge into main by squash) that expires four hours in. Merges
+# decided under the live grant finish their step; after expiry the orchestrator stops finalizing and
+# merging, records needs-human with a renewal request, and the human renews or reviews by hand. A
+# semantic conflict between two tasks that landed in parallel goes back to the human, never resolved
+# by the merge queue.
+name: grant-expiry
+description: A merge grant expires mid-run; semantic conflicts at the merge queue return to the human.
+seed: 8
+policy:
+  tier: autonomous
+  forbid:
+    - { command: [git, push, [--force, -f]] }
+supervisor: { max_workers: 3 }
+grant:
+  id: GRANT-3
+  granted_by: owner
+  granted_to: { role: orchestrator, runtime: sim }
+  granted_at: "+0m"
+  source: "sim: scenario grant-expiry"
+  scope: { objective: Deliver the sim epic, repositories: [acme/app], epics: [sim] }
+  actions:
+    - select-tasks
+    - finalize
+    - { action: merge, repo: acme/app, target: main, strategy: squash, requires: [independent-review, required-checks, current-head] }
+  limits: { max_workers: 3, budget: { max_usd: 80 } }
+  expires_at: "+14d"
+  revocable: true
+human: { on_grant_expiry: renew, renew_for_minutes: 2880 }
+faults:
+  grant_expiry: { at_minutes: 240 }
+  semantic_conflict: { pairs: [[GEX-2, GEX-3]], rate: 1 }
+tasks:
+  - { id: GEX-1, size: S, touches: ["src/a/**"] }
+  - { id: GEX-2, size: S, touches: ["src/b/**"] }
+  - { id: GEX-3, size: S, touches: ["src/c/**"] }
+  - { id: GEX-4, size: M, touches: ["src/d/**"], depends_on: [GEX-1] }
+  - { id: GEX-5, size: S, touches: ["src/e/**"] }

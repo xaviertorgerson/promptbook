@@ -1,0 +1,23 @@
+# Workers crash mid-task, a third of the runtime's wakes are lost (most with an events_lost notice,
+# some silently), wakes duplicate, and pane states go unknown. The supervisor must rebuild from the
+# durable records instead of trusting wakes, never redispatch a task that already has an author,
+# and never mark a task done because its pane went idle.
+name: crash-lost-events
+description: Crashes, lost and duplicated wakes, unknown pane states; recovery from the task files.
+seed: 3
+policy:
+  tier: autonomous
+  forbid:
+    - { command: [git, push, [--force, -f]] }
+supervisor: { max_workers: 3, max_crash_restarts: 2, checkin_minutes: 45 }
+faults:
+  crash: { tasks: [CLE-1, CLE-3], rate: 0.1, at: [0.2, 0.8] }
+  lost_events: { rate: 0.3, notice_rate: 0.7, notice_minutes: [1, 30] }
+  duplicate_wakes: { rate: 0.25 }
+  unknown_signals: { rate: 0.3 }
+tasks:
+  - { id: CLE-1, size: M, touches: ["src/api/**"] }
+  - { id: CLE-2, size: S, touches: ["src/web/**"] }
+  - { id: CLE-3, size: M, touches: ["src/jobs/**"], depends_on: [CLE-1] }
+  - { id: CLE-4, size: S, touches: ["src/db/**"] }
+  - { id: CLE-5, size: XS, touches: ["docs/**"], criteria: 1 }

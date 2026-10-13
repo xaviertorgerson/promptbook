@@ -1,0 +1,22 @@
+# Eight tasks, four of them sharing src/billing/** in different spellings (a directory glob, a file, a
+# pattern), with four workers available. Overlapping tasks must run as one lane; disjoint ones in
+# parallel. A rival runtime with its own coder races every claim (compare-and-swap on the task file).
+name: parallel-overlap
+description: Overlapping touches form one lane; two runtimes race for the same ready tasks.
+seed: 2
+policy:
+  tier: autonomous
+  forbid:
+    - { command: [git, push, [--force, -f]] }
+supervisor: { max_workers: 4 }
+faults:
+  concurrent_claims: { start_minutes: 0 }
+tasks:
+  - { id: PAR-1, size: M, touches: ["src/billing/**"], priority: P0 }
+  - { id: PAR-2, size: S, touches: ["src/billing/invoice.ts"], priority: P0 }
+  - { id: PAR-3, size: S, touches: ["src/billing/*.test.ts", "tests/billing/**"], priority: P1 }
+  - { id: PAR-4, size: S, touches: ["src/**/rates.ts"], priority: P1 }
+  - { id: PAR-5, size: M, touches: ["src/web/**"], priority: P1 }
+  - { id: PAR-6, size: S, touches: ["src/auth/**"], priority: P2 }
+  - { id: PAR-7, size: XS, touches: ["docs/**"], priority: P2, criteria: 1 }
+  - { id: PAR-8, size: S, touches: ["src/web/checkout/**"], priority: P2, depends_on: [PAR-6] }

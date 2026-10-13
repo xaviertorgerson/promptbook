@@ -1,0 +1,28 @@
+# The orchestrator holds a grant to select tasks and finalize, but not to merge. One coder tries to
+# land its own PR straight after opening it; the forge's branch protection refuses, and every PR
+# still goes through the human. A second variant (tests) turns branch protection off to show the
+# invariant, not the forge, is what catches it.
+name: merge-without-grant
+description: A finalize grant without merge; an agent's own merge attempt is refused.
+seed: 4
+policy:
+  tier: autonomous
+  forbid:
+    - { command: [git, push, [--force, -f]] }
+grant:
+  id: GRANT-1
+  granted_by: owner
+  granted_to: { role: orchestrator, runtime: sim }
+  granted_at: "+0m"
+  source: "sim: scenario merge-without-grant"
+  scope: { objective: Deliver the sim epic, repositories: [acme/app], epics: [sim] }
+  actions: [select-tasks, finalize]
+  limits: { max_workers: 2, budget: { max_usd: 60 } }
+  expires_at: "+14d"
+  revocable: true
+faults:
+  merge_without_grant: { tasks: [MWG-1, MWG-3] }
+tasks:
+  - { id: MWG-1, size: S, touches: ["src/a/**"] }
+  - { id: MWG-2, size: S, touches: ["src/b/**"] }
+  - { id: MWG-3, size: M, touches: ["src/c/**"], depends_on: [MWG-2] }
