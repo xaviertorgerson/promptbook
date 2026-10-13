@@ -1,0 +1,50 @@
+# SPLIT-2 is integrated on integration/settle-up under GRANT-2 and waits for dana's merge of that
+# branch into main: a status (integrated), not attention, so the record is complete. Its history:
+# the evaluator failed the first head, the author fixed it, the evaluator passed the second head.
+# The evaluator's done wake for d8f03b7 (09:53) was lost; the events-lost notice at 10:06 made the
+# coordinator read a snapshot and the verdict file, and it reconciled at 10:07 (signals below).
+task_id: SPLIT-2
+runtime: multiplexer-coordinator
+mode: development
+objective: Save a bill exactly once
+intent_ref: specs/settle-up/tasks/SPLIT-2.md
+grant: GRANT-2
+repository:
+  name: tally/tally
+  root: /home/dana/src/tally
+  worktree: /home/dana/src/tally/.worktrees/SPLIT-2
+  remote: origin
+  base: integration/settle-up
+  base_commit: 7e21c0b5a4d39f2e18c6b0a7d3f5e9c1a2b4d6f8
+  branch: feat/split-2-save-once
+workspace: { id: w2, label: SPLIT-2 save once }
+agents: { author: tally-coder, evaluator: tally-evaluator, reviewer: tally-reviewer }
+role_sessions:
+  author: { pane_id: "w2:p1", session_id: 8d1e6f20-4a7b-4c3d-9e5f-0b2a8c6d4e71, engine: claude, model: frontier, effort: medium }
+  evaluator: { pane_id: "w2:p2", session_id: eval-d8f03b7-k2, engine: gemini, model: frontier, effort: medium }
+wake: { watches: { author: watch-21, evaluator: watch-22 } }
+pull_requests: ["https://forge.example.com/tally/tally/pull/2"]
+reviews:
+  - { pr: "https://forge.example.com/tally/tally/pull/2", head: a41c9e2, role: evaluator, outcome: fail, by: tally-evaluator, ref: .agent/verdicts/SPLIT-2-a41c9e2.md }
+  - { pr: "https://forge.example.com/tally/tally/pull/2", head: d8f03b7, role: reviewer, outcome: pass, by: tally-reviewer, ref: "https://forge.example.com/tally/tally/pull/2#review-4" }
+  - { pr: "https://forge.example.com/tally/tally/pull/2", head: d8f03b7, role: evaluator, outcome: pass, by: tally-evaluator, ref: .agent/verdicts/SPLIT-2-d8f03b7.md }
+decisions:
+  - { decision: "dispose-findings: finding 1 (AC-1 race) to the author now; finding 2 (bills list index) recorded as a follow-up for the planner", source: "GRANT-1 dispose-findings policy; .agent/verdicts/SPLIT-2-a41c9e2.md", scope: SPLIT-2, at: "2026-10-15T09:02:00Z" }
+  - { decision: "approve-pr and integrate PR #2 at d8f03b7 into integration/settle-up by merge commit", source: GRANT-2, scope: "tally/tally integration/settle-up", at: "2026-10-15T10:12:00Z" }
+state:
+  name: complete
+  summary: Integrated on integration/settle-up
+signals:
+  author: { source: herdr, value: idle, observed_at: "2026-10-15T10:12:00Z" }
+  evaluator: { source: herdr, value: done, observed_at: "2026-10-15T10:07:00Z" }
+  merge: { source: ci, value: success, observed_at: "2026-10-15T10:24:00Z" }
+result: "integration/settle-up@9c4e7a1"
+resources:
+  slug: feat_split_2_save_once
+  worktree_path: /home/dana/src/tally/.worktrees/SPLIT-2
+  database: app_feat_split_2_save_once
+  ports: { slot: 1, first: 4510, last: 4519 }
+  caches: [.worktrees/SPLIT-2/dist, .worktrees/SPLIT-2/.agent]
+  services: [dev-feat_split_2_save_once]
+  audit: { at: "2026-10-15T10:45:00Z", result: blocked, blocked_by: ["a running process: the dev server on port 4511"], note: "the coordinator stops it and audits again at the next check-in; the worktree stays until an audit passes" }
+updated_at: "2026-10-15T10:45:00Z"

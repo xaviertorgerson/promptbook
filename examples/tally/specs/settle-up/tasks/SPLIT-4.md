@@ -2,7 +2,7 @@
 id: SPLIT-4
 epic: settle-up
 parent: null
-status: spec-draft
+status: in-progress
 priority: P1
 size: S
 cuj: CUJ-2
@@ -13,7 +13,7 @@ guiding_docs:
 branch: feat/split-4-revoke-link
 lands_to: integration/settle-up
 depends_on: [SPLIT-1]
-owner: null
+owner: tally-coder
 requirements: [REQ-5, NFR-2]
 touches:
   - src/links/**
@@ -28,7 +28,9 @@ evaluator:
   - { kind: tests, ref: the project's test command for src/links }
   - { kind: script, ref: harness trace . --strict }
   - { kind: agent-review, ref: evaluator }
-budget: { max_turns: 80, max_usd: 2, max_minutes: 60 }
+budget: { max_turns: 100, max_usd: 3, max_minutes: 90 }
+sessions:
+  - { engine: claude, session_id: 9f4b2c71-6e8a-4d05-a1c3-5e7f9b0d2a86, actor: tally-coder, role: coder, started_at: "2026-10-15T08:01:00Z", ended_at: "2026-10-15T08:23:00Z", outcome: stalled, run: .agent/loop-runs.jsonl }
 ---
 
 # SPLIT-4 · Revoke a household link
@@ -50,3 +52,6 @@ in its own lane beside SPLIT-2.
 
 ## Agent log (append-only, newest last)
 - 2026-10-13 planner — planned (split from SPLIT-3 so revocation runs in its own lane); status spec-draft
+- 2026-10-13 dana — spec approved (gate 1); status → ready
+- 2026-10-15 tally-coder — claim (dispatched by the coordinator); base integration/settle-up@7e21c0b; status → in-progress
+- 2026-10-15 tally-coder — handoff: AC-1 resolver change committed and pushed on the branch (no PR yet); `psql` on the worktree database was denied (unattended: an ask is a denial); the question is in the return; status unchanged

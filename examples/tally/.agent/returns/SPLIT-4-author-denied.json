@@ -1,0 +1,31 @@
+{
+  "task": "SPLIT-4",
+  "role": "coder",
+  "summary": "SPLIT-4 stopped in-progress. The revoke endpoint and the resolver change for AC-1 are committed and pushed on feat/split-4-revoke-link (head 6b2d9f0, no PR yet). To confirm the link table's columns before writing AC-3's negative-path test, the run tried `psql app_feat_split_4_revoke_link -c '\\d links'`; the policy marks a database shell as ask, and this run is unattended, so the ask was a denial. The run did not work around it. AC-2 and AC-3 are not started.",
+  "attention": "needs-human",
+  "artifacts": [
+    { "path": "src/links/revoke.ts", "kind": "code" },
+    { "path": "specs/settle-up/tasks/SPLIT-4.md", "kind": "spec", "note": "sessions entry, agent-log handoff" }
+  ],
+  "decisions_needed": [
+    {
+      "question": "The run was denied `psql app_feat_split_4_revoke_link -c '\\d links'`. Run it yourself and paste the output into SPLIT-4's Working notes, or say where the link table's columns are written down?",
+      "options": ["run it and paste the output", "point to the schema file"],
+      "recommendation": "point to the schema file: no shell is needed if migrations/0001_skeleton.sql is the source of truth",
+      "blocking": true,
+      "for": "human"
+    }
+  ],
+  "criteria": {
+    "met": ["AC-1"],
+    "unmet": [
+      { "id": "AC-2", "reason": "not started" },
+      { "id": "AC-3", "reason": "blocked on the link table's columns (decision above)" }
+    ]
+  },
+  "verification": [
+    { "command": "pnpm test -- tests/links", "result": "pass", "note": "AC-1 only" },
+    { "command": "psql app_feat_split_4_revoke_link -c '\\d links'", "result": "skipped", "note": "denied: ask under dontAsk" }
+  ],
+  "session": { "engine": "claude", "session_id": "9f4b2c71-6e8a-4d05-a1c3-5e7f9b0d2a86", "actor": "tally-coder", "role": "coder", "started_at": "2026-10-15T08:01:00Z", "ended_at": "2026-10-15T08:23:00Z", "outcome": "stalled", "run": ".agent/loop-runs.jsonl" }
+}

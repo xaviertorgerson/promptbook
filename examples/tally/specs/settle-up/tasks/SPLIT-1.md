@@ -2,7 +2,7 @@
 id: SPLIT-1
 epic: settle-up
 parent: null
-status: spec-draft
+status: merged
 priority: P0
 size: M
 cuj: [CUJ-1, CUJ-2]
@@ -13,7 +13,7 @@ guiding_docs:
   - ARCHITECTURE.md
 branch: feat/split-1-walking-skeleton
 depends_on: []
-owner: null
+owner: dana
 requirements: [REQ-1, REQ-3, NFR-2]
 touches:
   - src/**
@@ -32,6 +32,9 @@ evaluator:
   - { kind: agent-review, ref: evaluator }
   - { kind: human, ref: code-owner }
 budget: { max_turns: 200, max_usd: 6, max_minutes: 150 }
+sessions:
+  - { engine: claude, session_id: 6a1f0c52-3d4b-4e8a-9f21-0c7d5b3a9e14, actor: dana, role: coder, started_at: "2026-10-14T08:35:00Z", ended_at: "2026-10-14T12:50:00Z", outcome: advanced }
+  - { engine: gemini, session_id: eval-3c9a1f4-k2, actor: tally-evaluator, role: evaluator, started_at: "2026-10-14T13:06:00Z", ended_at: "2026-10-14T13:34:00Z", outcome: advanced, run: .agent/loop-runs.jsonl }
 ---
 
 # SPLIT-1 · Walking skeleton: one household's bill, read only through its link
@@ -60,3 +63,10 @@ from the protected branch; the schema it creates (household, member, bill, share
 
 ## Agent log (append-only, newest last)
 - 2026-10-13 planner — planned as the walking skeleton; status spec-draft
+- 2026-10-13 dana — spec approved (gate 1); status → ready
+- 2026-10-14 dana — claim: risk high, so supervised on the workstation, never dispatched unattended; base main@0b7d4e2; status → in-progress
+- 2026-10-14 dana — draft PR #1 at 3c9a1f4; AC-1..AC-5 named in tests; status → review
+- 2026-10-14 tally-evaluator — verdict pass on 3c9a1f4 (k = 2): .agent/verdicts/SPLIT-1-3c9a1f4.md
+- 2026-10-14 dana — PR #1 marked ready; status → human-review
+- 2026-10-14 dana — approved PR #1 (gate 2, pr-approval); status → merging
+- 2026-10-14 merge — landed on main@7e21c0b, merged checks green; status → merged. Staging serves the image by digest (AC-4, AC-5).

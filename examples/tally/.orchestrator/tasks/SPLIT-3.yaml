@@ -1,0 +1,39 @@
+# SPLIT-3 started once SPLIT-2 was integrated: same epic, so integrated counts as merged for it, and
+# the migrations lane was free. A read-only reader mapped the ledger first; the author is working.
+task_id: SPLIT-3
+runtime: multiplexer-coordinator
+mode: development
+objective: Settle a share from a household link
+intent_ref: specs/settle-up/tasks/SPLIT-3.md
+grant: GRANT-1
+repository:
+  name: tally/tally
+  root: /home/dana/src/tally
+  worktree: /home/dana/src/tally/.worktrees/SPLIT-3
+  remote: origin
+  base: integration/settle-up
+  base_commit: 9c4e7a1d2b5f8e03c6a9d1b4e7f0a2c5d8b1e4f7
+  branch: feat/split-3-settle-from-link
+workspace: { id: w4, label: SPLIT-3 settle from link }
+agents: { author: tally-coder, reader: tally-reader }
+role_sessions:
+  author: { pane_id: "w4:p1", session_id: 1e7c3b95-2d48-4f6a-8b0c-9d5e3a7f1c24, engine: claude, model: frontier, effort: medium }
+  reader: { pane_id: "w4:p2", session_id: 4a9d2e60-7b1c-4e3f-a5d8-6c0b2f9e1a73, engine: claude, model: small, effort: low }
+wake: { watches: { author: watch-41 } }
+pull_requests: []
+state:
+  name: working
+  summary: Author implementing AC-1
+  next_role: author
+  next_action: Implement AC-1 and AC-2 against the reader's map, then the migration for paid_at
+signals:
+  author: { source: herdr, value: working, observed_at: "2026-10-15T10:58:00Z" }
+  reader: { source: herdr, value: done, observed_at: "2026-10-15T10:41:00Z" }
+result: .agent/returns/SPLIT-3-reader-ledger.json
+resources:
+  slug: feat_split_3_settle_from_link
+  worktree_path: /home/dana/src/tally/.worktrees/SPLIT-3
+  database: app_feat_split_3_settle_from_link
+  ports: { slot: 3, first: 4530, last: 4539 }
+  caches: [.worktrees/SPLIT-3/dist, .worktrees/SPLIT-3/.agent]
+updated_at: "2026-10-15T10:58:00Z"

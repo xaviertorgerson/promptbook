@@ -1,6 +1,6 @@
 ---
 epic: settle-up
-status: draft
+status: in-progress
 priority: P1
 size: M
 business_value: high

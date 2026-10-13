@@ -2,7 +2,7 @@
 id: SPLIT-3
 epic: settle-up
 parent: null
-status: spec-draft
+status: in-progress
 priority: P1
 size: M
 cuj: CUJ-2
@@ -15,7 +15,7 @@ guiding_docs:
 branch: feat/split-3-settle-from-link
 lands_to: integration/settle-up
 depends_on: [SPLIT-1, SPLIT-2]
-owner: null
+owner: tally-coder
 requirements: [REQ-4, REQ-8, NFR-3, NFR-4]
 touches:
   - src/household/**
@@ -55,3 +55,5 @@ so it waits for SPLIT-2 (one lane on `migrations/**`). Revocation is SPLIT-4.
 
 ## Agent log (append-only, newest last)
 - 2026-10-13 planner — planned; status spec-draft
+- 2026-10-13 dana — spec approved (gate 1); status → ready
+- 2026-10-15 tally-coder — claim (dispatched once SPLIT-2 was integrated: same epic, and the migrations lane was free); base integration/settle-up@9c4e7a1; status → in-progress

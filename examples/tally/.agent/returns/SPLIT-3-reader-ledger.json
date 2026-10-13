@@ -1,0 +1,11 @@
+{
+  "task": "SPLIT-3",
+  "role": "reader",
+  "summary": "Balances are computed in one place, src/ledger/balance.ts, from shares joined to bills by household id; marking a share paid has no column to land on yet (shares has amount and member_id only), so AC-1 needs the paid_at migration SPLIT-3 plans. The household page reads balances through src/household/view.ts, which already takes the household id from the link resolver (ADR-0001). Full list with locations in the findings file.",
+  "attention": "complete",
+  "artifacts": [
+    { "path": ".agent/reads/SPLIT-3-ledger.md", "kind": "report", "note": "path:line, why it matters, most relevant first" }
+  ],
+  "decisions_needed": [],
+  "session": { "engine": "claude", "session_id": "4a9d2e60-7b1c-4e3f-a5d8-6c0b2f9e1a73", "actor": "tally-reader", "role": "reader", "started_at": "2026-10-15T10:30:00Z", "ended_at": "2026-10-15T10:41:00Z" }
+}

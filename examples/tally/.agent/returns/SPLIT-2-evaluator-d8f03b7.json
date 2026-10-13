@@ -1,0 +1,18 @@
+{
+  "task": "SPLIT-2",
+  "role": "evaluator",
+  "summary": "Verdict pass on SPLIT-2 head d8f03b7 (base 7e21c0b), risk medium, k = 2, evaluator gemini (writer claude). Gates green on both runs. Each of AC-1..AC-4 has a test carrying its id that asserts the EARS response and fails on the base; the new race test sends two identical submits concurrently and finds one stored bill, and the preview agreed 2/2. migrations/0002 adds a unique index on (household_id, idempotency_key) and the insert does nothing on conflict. The diff loosens no assertion. This verdict is evidence for independent verification on this head only; it is not approval.",
+  "attention": "complete",
+  "artifacts": [
+    { "path": ".agent/verdicts/SPLIT-2-d8f03b7.md", "kind": "report", "note": "full verdict" }
+  ],
+  "decisions_needed": [],
+  "criteria": { "met": ["AC-1", "AC-2", "AC-3", "AC-4"], "unmet": [] },
+  "verification": [
+    { "command": "pnpm test -- tests/bills (x2)", "result": "pass" },
+    { "command": "harness trace . --strict", "result": "pass" },
+    { "command": "preview: two concurrent POST /bills with one key (x2)", "result": "pass" },
+    { "command": "fail-without-change check AC-1..AC-4", "result": "pass" }
+  ],
+  "session": { "engine": "gemini", "session_id": "eval-d8f03b7-k2", "actor": "tally-evaluator", "role": "evaluator", "started_at": "2026-10-15T09:35:00Z", "ended_at": "2026-10-15T09:53:00Z", "outcome": "advanced", "run": ".agent/loop-runs.jsonl" }
+}
