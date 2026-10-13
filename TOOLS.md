@@ -33,6 +33,10 @@ authoring rules. Errors name a stable rule; `--strict` fails on warnings too.
 | the skill contract (`agentskills-core-fields-only`, `name-matches-path`, …) | frontmatter via the validator |
 | `name-is-gerund` | the first word ends in -ing: `writing-requirements` |
 | `description-use-when`, `description-do-not-use-for` | a "Use when …" trigger and a "Do not use for … (neighbour)" clause; warnings if out of order or naming no neighbour |
+| `description-length` | a description over 400 characters fails, over 300 warns: every description stays loaded in every session |
+| `description-budget` (warning) | the scanned set's descriptions together exceed 8000 characters (one engine keeps skill metadata within 2% of context or 8000 characters); the longest are named |
+| `deprecated-description` | a skill with `metadata.deprecated` is exempt from "Use when": its description starts with "Deprecated:" and names the replacement skill |
+| `parse-error` | the frontmatter is YAML; when a plain value holds ": " (the usual cause), the error says to quote it |
 | `body-length` | warn over 200 body lines, fail over 300 |
 | `engine-neutral` | no engine, runtime, forge or stack name in the description or body; `references/engine-notes.md` is exempt. The deny-list (Claude Code, Claude, Codex, Gemini, Antigravity, Herdr, Heeler, stagehand, OpenAI, Anthropic, Copilot, GitHub, GitLab, Forgejo, Cloudflare, Coolify, Hetzner, Angular, NestJS, Drizzle, pnpm) is replaced with `--deny-terms`, narrowed with `--allow-terms`; URLs are ignored |
 | `links-stay-in-skill` | no relative link leaves the skill folder (a skill installs alone) |

@@ -1,6 +1,6 @@
 ---
 name: sorting-widgets
-description: Use when someone asks to sort widgets. Do not use for drafting widget specs (drafting-widgets).
+description: "Deprecated: folded into drafting-widgets in 0.2.0, which sorts widgets too; use drafting-widgets."
 license: MIT
 metadata:
   version: "0.2.0"

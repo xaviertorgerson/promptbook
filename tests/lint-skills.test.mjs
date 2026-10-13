@@ -45,7 +45,7 @@ describe('lint-skills', () => {
 
   const cases = fs.readdirSync(path.join(FIX, 'broken')).sort();
   it('has a broken case per authoring rule', () => {
-    for (const rule of ['agentskills-core-fields-only', 'name-matches-path', 'name-is-gerund', 'description-use-when', 'description-do-not-use-for', 'body-length', 'engine-neutral', 'links-stay-in-skill', 'evals-present', 'routing-counts', 'route-to-known', 'near-miss-names-route', 'scenarios-count', 'scenario-format', 'evidence-count', 'outside-evidence-cites-url', 'deprecated-never-triggers', 'description-overlap']) {
+    for (const rule of ['agentskills-core-fields-only', 'name-matches-path', 'name-is-gerund', 'description-use-when', 'description-do-not-use-for', 'description-length', 'deprecated-description', 'parse-error', 'body-length', 'engine-neutral', 'links-stay-in-skill', 'evals-present', 'routing-counts', 'route-to-known', 'near-miss-names-route', 'scenarios-count', 'scenario-format', 'evidence-count', 'outside-evidence-cites-url', 'deprecated-never-triggers', 'description-overlap']) {
       assert.ok(cases.includes(rule), `no fixtures/lint/broken/${rule}`);
     }
   });
@@ -63,6 +63,27 @@ describe('lint-skills', () => {
       assert.ok(rules(r, 'error').has(rule), `expected error ${rule}, got errors ${[...rules(r, 'error')]} warnings ${[...rules(r, 'warning')]}`);
     });
   }
+
+  it('a frontmatter that does not parse because a value holds ": " gets the quoting hint', () => {
+    const r = lintSkills([overlay('parse-error')]);
+    const e = r.skills.flatMap((x) => x.findings).find((x) => x.rule === 'parse-error');
+    assert.match(e.message, /quote values that contain ": "/);
+  });
+
+  it('a description over 300 characters warns, over 400 fails; a set over the 8000-character budget warns', () => {
+    const dir = overlay('description-length');
+    const skill = path.join(dir, 'drafting-widgets/SKILL.md');
+    const text = fs.readFileSync(skill, 'utf8');
+    const d = text.match(/^description: (.*)$/m)[1];
+    fs.writeFileSync(skill, text.replace(d, d.slice(0, 340).replace(/ [^ ]*$/, '') + '. Do not use for checking (checking-widgets).'));
+    const r = lintSkills([dir]);
+    assert.ok(!rules(r, 'error').has('description-length'));
+    assert.ok(rules(r, 'warning').has('description-length'));
+    const budget = lintSkills([GOOD], { limits: { descriptionBudget: 500 } });
+    const w = budget.overlaps.find((x) => x.rule === 'description-budget');
+    assert.ok(w && /total \d+ characters, over the 500/.test(w.message), JSON.stringify(budget.overlaps));
+    assert.equal(budget.counts.error, 0, 'the budget is a warning');
+  });
 
   it('lets engine names live in references/engine-notes.md only', () => {
     const r = lintSkills([path.join(GOOD, 'drafting-widgets')]);

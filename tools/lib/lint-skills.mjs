@@ -24,6 +24,11 @@ export const DEFAULT_DENY_TERMS = [
 export const LIMITS = {
   bodyWarn: 200,
   bodyFail: 300,
+  // A description is always in context: keep each short, and the whole set under the smallest
+  // engine's always-loaded budget (one engine caps skill metadata at 2% of context or 8000 chars).
+  descriptionWarn: 300,
+  descriptionFail: 400,
+  descriptionBudget: 8000,
   positive: 4,
   nearMiss: 3,
   negative: 2,
@@ -135,7 +140,10 @@ function loadFrontmatter(file) {
   const fm = splitFrontmatter(text);
   if (!fm) return { text, data: null, body: text, bodyLine: 1 };
   const y = parseYaml(fm.yaml, 1);
-  return { text, data: y.errors.length ? null : y.data, body: fm.body, bodyLine: fm.bodyLine };
+  // The usual cause of a frontmatter that does not parse: a plain value holding ": " (description:
+  // Deprecated: use x), which YAML reads as a nested mapping.
+  const colon = fm.yaml.split(/\r?\n/).findIndex((l) => /^\s*[A-Za-z_][\w-]*:\s+(?!["'|>])[^#]*:\s/.test(l));
+  return { text, data: y.errors.length ? null : y.data, body: fm.body, bodyLine: fm.bodyLine, parseHint: y.errors.length && colon !== -1 ? `quote values that contain ": " (line ${colon + 2}: description: "…")` : null };
 }
 
 function validateWith(file, contract, format, captures, reg) {
@@ -159,21 +167,27 @@ export function lintSkills(targets, opts = {}) {
   for (const s of skills) {
     const f = (severity, rule, file, line, message) => s.findings.push({ severity, rule, file: file ? path.relative(s.dir, file) || path.basename(file) : null, line: line ?? null, message });
     const skillFile = path.join(s.dir, 'SKILL.md');
-    const { data, body, bodyLine } = loadFrontmatter(skillFile);
+    const { data, body, bodyLine, parseHint } = loadFrontmatter(skillFile);
     s.description = typeof data?.description === 'string' ? data.description : '';
     s.deprecated = data?.metadata?.deprecated ?? null;
 
     // 1. The skill contract (agentskills.io core fields, name = directory).
     const v = validateWith(skillFile, 'skill', 'frontmatter-markdown', [s.name], reg);
-    for (const x of v.findings) f(x.severity, x.rule, skillFile, x.line, `${x.pointer} ${x.message}`);
+    for (const x of v.findings) f(x.severity, x.rule, skillFile, x.line, `${x.pointer} ${x.message}${x.rule === 'parse-error' && parseHint ? `; ${parseHint}` : ''}`);
     if (data?.name && data.name !== s.name && !v.findings.some((x) => x.rule === 'name-matches-path')) {
       f('error', 'name-matches-path', skillFile, 2, `name is "${data.name}", the directory is "${s.name}"`);
     }
     if (!isGerundName(s.name)) f('error', 'name-is-gerund', skillFile, 2, `"${s.name}" is not gerund kebab-case (writing-requirements, debugging-failures)`);
 
-    // 2. The description is a routing trigger.
+    // 2. The description is a routing trigger, short enough to stay loaded. A deprecated skill's
+    // description no longer triggers: it says "Deprecated:" first and names the replacement.
     const d = s.description;
-    if (d) {
+    if (d.length > limits.descriptionFail) f('error', 'description-length', skillFile, 3, `description is ${d.length} characters (limit ${limits.descriptionFail}; aim under ${limits.descriptionWarn}: the discriminating feature, the strongest triggers, one "Do not use for" neighbour; longer trigger lists go in the body)`);
+    else if (d.length > limits.descriptionWarn) f('warning', 'description-length', skillFile, 3, `description is ${d.length} characters (aim under ${limits.descriptionWarn}; limit ${limits.descriptionFail})`);
+    if (d && s.deprecated) {
+      if (!/^Deprecated:/.test(d)) f('error', 'deprecated-description', skillFile, 3, 'a deprecated skill\'s description starts with "Deprecated:" and names its replacement, so no router picks it');
+      else if (![...names, ...known].some((n) => n !== 'none' && n !== s.name && d.includes(n))) f('error', 'deprecated-description', skillFile, 3, 'the "Deprecated:" description names no replacement skill');
+    } else if (d) {
       const useAt = d.search(/\bUse when\b/);
       const notAt = d.search(/\bDo not use for\b/);
       if (useAt === -1) f('error', 'description-use-when', skillFile, 3, 'description has no "Use when …" trigger clause');
@@ -294,6 +308,13 @@ export function lintSkills(targets, opts = {}) {
         overlaps.push({ severity: 'warning', rule: 'description-overlap', a: skills[i].name, b: skills[j].name, score: Number(score.toFixed(3)), shared, message: `${skills[i].name} ↔ ${skills[j].name}: trigger overlap ${score.toFixed(2)} > ${limits.overlap} (shared: ${shared.join(', ')}); sharpen one description or merge them` });
       }
     }
+  }
+
+  // 8. The set's always-loaded budget.
+  const total = skills.reduce((a, s) => a + s.description.length, 0);
+  if (total > limits.descriptionBudget) {
+    const longest = [...skills].sort((a, b) => b.description.length - a.description.length).slice(0, 3).map((s) => `${s.name} ${s.description.length}`);
+    overlaps.push({ severity: 'warning', rule: 'description-budget', score: total, message: `the ${skills.length} descriptions total ${total} characters, over the ${limits.descriptionBudget} an engine may keep loaded (2% of context or 8000 characters); longest: ${longest.join(', ')}` });
   }
 
   const all = [...skills.flatMap((s) => s.findings), ...overlaps];
