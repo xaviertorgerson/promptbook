@@ -23,7 +23,7 @@ implementation, and never invent a criterion the spec does not support.
 - Contract `task`: required `id`, `epic`, `status`, `priority`, `cuj`, `guiding_docs`, `branch`,
   `depends_on`, `owner`; optional `parent`, `size`, `requirements`, `touches`, `inputs`, `risk`,
   `evaluator`, `budget`, `mode`; sections Context, Acceptance criteria, Open questions, Agent log.
-  Templates: `references/task-template.md`, `references/skeleton-task-template.md`.
+  Templates: `references/task-template.task.md`, `references/skeleton-task-template.task.md`.
 
 ## Procedure
 
@@ -98,8 +98,8 @@ implementation, and never invent a criterion the spec does not support.
 
 ## References
 
-- `references/task-template.md` — a feature task, ready to fill; validates against `task`.
-- `references/skeleton-task-template.md` — the walking-skeleton task, ready to fill.
+- `references/task-template.task.md` — a feature task, ready to fill; validates against `task`.
+- `references/skeleton-task-template.task.md` — the walking-skeleton task, ready to fill.
 - `references/task-fields.md` — each harness field, with risk → evaluator and size → budget tables.
 - `references/task-graph.md` — skeleton cutting, vertical slicing, the session-size test, the
   touches-overlap rule and lanes, and the Tasks table.

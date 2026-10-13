@@ -88,4 +88,4 @@ task: repeated stalls, no-progress stops, or evaluator rejections of the same ki
 - `references/decision-table.md` — the full size × risk × repo state × work type table with reasons.
 - `references/modes.md` — per mode: good for, not for, planning entry, skills loaded, guards, runtime rules.
 - `references/switching.md` — the kick-back procedure with a worked example.
-- `references/examples/specs/rating-engine/tasks/BILL-15.md` — a task after a mode switch; validates against the `task` contract.
+- `references/examples/BILL-15.task.md` — a task after a mode switch; validates against the `task` contract.

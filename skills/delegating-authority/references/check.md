@@ -15,7 +15,7 @@ Run immediately before the action, every time. The first "no" decides.
 
 ## Worked checks
 
-With `references/examples/GRANT-7-milestone-no-merge.yaml` live:
+With `references/examples/GRANT-7-milestone-no-merge.grant.yaml` live:
 
 | Action | Answer | Step |
 |---|---|---|
@@ -27,7 +27,7 @@ With `references/examples/GRANT-7-milestone-no-merge.yaml` live:
 | start a task in the invoicing epic | no — not in scope | 5 |
 | approve the next epic's spec | no — never delegable | 1 |
 
-With `references/examples/GRANT-8-integration-merge.yaml` live:
+With `references/examples/GRANT-8-integration-merge.grant.yaml` live:
 
 | Action | Answer | Step |
 |---|---|---|

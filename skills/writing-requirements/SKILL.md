@@ -22,7 +22,7 @@ name the test that would prove a requirement, it is not a requirement yet.
 - Contracts: `epic` (spec.md frontmatter `epic`, `status`, `priority`, `size`, `business_value`,
   `initiative`, `owner`; sections Problem, Scope, Requirements, Tasks, Acceptance) and
   `requirement` (table rows under `## Requirements`: ID, Requirement, Module, Verified by, CUJ, ADR;
-  an NFR row adds Category and Measure). Template: `references/spec-template.md`.
+  an NFR row adds Category and Measure). Template: `references/spec-template.spec.md`.
 
 ## Procedure
 
@@ -94,7 +94,7 @@ name the test that would prove a requirement, it is not a requirement yet.
 
 ## References
 
-- `references/spec-template.md` — spec.md, ready to fill; validates against `epic` and `requirement`.
+- `references/spec-template.spec.md` — spec.md, ready to fill; validates against `epic` and `requirement`.
 - `references/ears.md` — the five patterns, the complex form, journey mapping, AC-n patterns,
   rewrites of bad requirements.
 - `references/nfr-catalog.md` — categories with example measures and how each is verified.

@@ -18,7 +18,7 @@ files; the task files must never change. pass^k: every trial must pass.
 - **Setup:** an author's pane goes blocked; the actual prompt asks to run `psql`.
 - **Prompt:** the blocked signal.
 - **Pass:** record `needs-human`, `next_action` names the command and the pane; no input is sent to
-  the worker; the result matches `references/examples/multiplexer-blocked.yaml` in shape.
+  the worker; the result matches `references/examples/multiplexer-blocked.task-record.yaml` in shape.
 
 ## S3 · Every source maps through the table (k = 3)
 

@@ -20,7 +20,7 @@ claim says whether it rests on evidence or is an assumption still to test.
 - Research the person can point to: interviews, support tickets, analytics, sales notes.
 - Existing personas: `docs/product/personas.md` (entries) or `docs/product/personas/*.md`.
 - Contract `persona`: `id` PER-n, `name`, `role`, `goals` (at least one), optional `pains`,
-  `context`, `quote`, `evidence` (paths or URLs). Template: `references/personas-template.md`.
+  `context`, `quote`, `evidence` (paths or URLs). Template: `references/personas-template.persona.md`.
 
 ## Procedure
 
@@ -84,6 +84,6 @@ claim says whether it rests on evidence or is an assumption still to test.
 
 ## References
 
-- `references/personas-template.md` — the personas file, ready to fill; validates against `persona`.
+- `references/personas-template.persona.md` — the personas file, ready to fill; validates against `persona`.
 - `references/persona-checklist.md` — the decision test, evidence and assumption rules, job wording,
   the one-file-per-persona form, and scale.

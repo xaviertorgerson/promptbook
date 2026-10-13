@@ -109,4 +109,4 @@ with the grant (surface the conflict; never hide it in a worker prompt); anyone 
 - `references/authority.md` — defaults, grantable actions and their limits, the never-delegable list, lifecycle rules.
 - `references/check.md` — the action check as a decision table.
 - `references/grant-template.md` — a blank grant with every field explained.
-- `references/examples/` — two worked grants that validate: milestone delivery with at most four workers and no merge; merge into one repository's integration branch only.
+- `references/examples/*.grant.yaml` — three worked grants that validate: milestone delivery with at most four workers and no merge; merge into one repository's integration branch only; a grant narrowed, then revoked.

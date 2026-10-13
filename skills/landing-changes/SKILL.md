@@ -85,7 +85,7 @@ exact head and green checks on the merged result. Overlapping logic is never res
 
 - A merged PR (or a PR returned to a human with the reason), the task at `merged` or back at
   `human-review`, a land record, and the grant's limits updated in the coordinator's notes.
-- Grant files validate against the `grant` contract: references/grant-integration-example.yaml.
+- Grant files validate against the `grant` contract: references/integration-example.grant.yaml.
   If `harness validate` is available, run `node tools/validate.mjs --contract grant <file>`.
 
 ## Gates and stop conditions
@@ -104,7 +104,7 @@ exact head and green checks on the merged result. Overlapping logic is never res
 
 - references/authority-tiers.md — the four tiers, who acts, which workflow transitions, forge settings.
 - references/grant-check.md — the grant check, field by field, with the failure for each.
-- references/grant-integration-example.yaml — a tier-2 merge grant into an integration branch.
+- references/integration-example.grant.yaml — a tier-2 merge grant into an integration branch.
 - references/conflict-classes.md — the mechanical vs semantic table, ported from the template's
   classifier with one measured correction.
 - references/integration-branch.md — the per-epic integration branch flow and the merge queue.

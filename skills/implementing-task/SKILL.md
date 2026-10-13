@@ -91,8 +91,8 @@ never from a transcript. The acceptance criteria are the stopping condition.
 - A `return` (contract `return`): `task`, `role: coder`, `summary` (≤ 8,000 characters),
   `artifacts`, `attention`, `decisions_needed`, `criteria` (`met`, `unmet` with reasons),
   `verification`, `session`. `complete` only when every criterion is met and the evaluation (when
-  required) passed on the current head. Worked examples: references/return-example.json,
-  references/return-needs-input-example.json. If `harness validate` is available, run
+  required) passed on the current head. Worked examples: references/handback-review.return.json,
+  references/handback-needs-input.return.json. If `harness validate` is available, run
   `node tools/validate.mjs --contract return <file>`.
 
 ## Gates and stop conditions
@@ -115,8 +115,8 @@ never from a transcript. The acceptance criteria are the stopping condition.
   Working notes template, the agent-log line, the `sessions` entry, the evaluator packet.
 - references/stop-conditions.md — each stop: the workflow transition, who may make it, what to
   write, the return's attention.
-- references/return-example.json — a `complete` return at `review` after a passing evaluation.
-- references/return-needs-input-example.json — a `needs-human` return with a blocking question.
-- references/task-at-review-example.md — a task file at `review` with Working notes, a `sessions`
+- references/handback-review.return.json — a `complete` return at `review` after a passing evaluation.
+- references/handback-needs-input.return.json — a `needs-human` return with a blocking question.
+- references/task-at-review.task.md — a task file at `review` with Working notes, a `sessions`
   entry and the agent log (validates against the `task` contract).
 - references/engine-notes.md — how runtimes provide worktrees, subagents and structured returns.

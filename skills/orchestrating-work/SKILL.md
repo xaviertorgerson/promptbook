@@ -172,4 +172,4 @@ findings repeat without progress; or the grant's stop condition is met. Keep oth
 - `references/assignments.md` — thin assignment templates for author, evaluator and reader.
 - `references/recovery.md` — crash and lost-event recovery from task records plus git.
 - `references/engine-notes.md` — engine and runtime specifics (adapters own the mapping).
-- `references/examples/` — returns that validate against the `return` contract.
+- `references/examples/*.return.json` — returns that validate against the `return` contract.

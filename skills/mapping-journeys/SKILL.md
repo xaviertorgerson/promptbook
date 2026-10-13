@@ -21,7 +21,7 @@ the brief promises. Its trigger, success and unwanted outcome become the epic's 
 - Existing journeys: every `specs/*/cuj.md`; reuse or extend before writing a new one.
 - Contract `journey`: `## CUJ-n · title` headings with `- **Field:** value` bullets: `Actor`,
   `Personas` (PER-n list), `User-facing` (yes|no), `Goal`, `Trigger`, `Steps` (numbered sub-items),
-  `Success`, `Unwanted`; any other label is kept as an extra. Template: `references/cuj-template.md`.
+  `Success`, `Unwanted`; any other label is kept as an extra. Template: `references/cuj-template.cuj.md`.
 
 ## Procedure
 
@@ -81,6 +81,6 @@ the brief promises. Its trigger, success and unwanted outcome become the epic's 
 
 ## References
 
-- `references/cuj-template.md` — `cuj.md`, ready to fill; validates against `journey`.
+- `references/cuj-template.cuj.md` — `cuj.md`, ready to fill; validates against `journey`.
 - `references/journey-checklist.md` — what "critical" means, the EARS mapping, failure-path
   wording, scale and target lengths.

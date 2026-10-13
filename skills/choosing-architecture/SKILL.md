@@ -22,7 +22,7 @@ what would reopen it and which requirements it exists for, then make the decisio
 - Contract `decision`: `## ADR-NNNN: title` with `**Status:**`, `**Date:**`, `**Decision:**`,
   `**Why:**`, `**Options considered:**` (bullets), `**Door:**` one-way|two-way, `**Reversed when:**`,
   `**Satisfies:**` (`<epic>/NFR-n`, `<epic>/REQ-n`), `**Consequences:**`; other labels are kept as
-  extras. Templates: `references/adr-template.md`, `references/architecture-template.md`.
+  extras. Templates: `references/adr-template.adr.md`, `references/architecture-template.md`.
 
 ## Procedure
 
@@ -98,7 +98,7 @@ what would reopen it and which requirements it exists for, then make the decisio
 
 ## References
 
-- `references/adr-template.md` — ADR entries (one-way and two-way), ready to fill; validates against `decision`.
+- `references/adr-template.adr.md` — ADR entries (one-way and two-way), ready to fill; validates against `decision`.
 - `references/architecture-template.md` — scenarios, options table, context and container views,
   data model sketch, fitness functions.
 - `references/decision-checklist.md` — quality-attribute scenarios, door test, options scoring,

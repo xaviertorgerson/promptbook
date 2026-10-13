@@ -38,7 +38,7 @@ and who fixes it, and one question for the owner. You never approve the spec.
    never edit that file by hand, regenerate it.
 3. **Otherwise, run the manual trace** in `references/readiness-checklist.md`, part A: the same
    rules, ids, severities and blocking flags as the tool. Then write `specs/<epic>/readiness.md` from
-   `references/readiness-template.md` with `generator: manual/checking-plan-readiness@0.1.0`, the
+   `references/readiness-template.readiness.md` with `generator: manual/checking-plan-readiness@0.1.0`, the
    counts and coverage you measured, and one gap per finding. Mark it plainly as manual in the Verdict.
 4. **Run the plan checks the trace does not cover** (checklist part B): parallel tasks with
    overlapping `touches`; tasks of size L or XL; blocking open questions; one-way ADRs not yet
@@ -82,5 +82,5 @@ and who fixes it, and one question for the owner. You never approve the spec.
 
 - `references/readiness-checklist.md` — part A: the trace rules with severity and blocking flags,
   part B: plan checks, part C: contradictions, and the routing table to the owning skill.
-- `references/readiness-template.md` — `readiness.md` for a manual run; validates against
+- `references/readiness-template.readiness.md` — `readiness.md` for a manual run; validates against
   `readiness-report`.

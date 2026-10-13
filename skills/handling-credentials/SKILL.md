@@ -79,7 +79,7 @@ with walls that deny reads and scanners that catch what slips.
 
 - A role-identity table and the forge and cloud settings that enforce it.
 - Policy entries (`deny_read`, `forbid`, `egress`) and project deny rules; example:
-  references/policy-fragment.yaml (validates against the `policy` contract; if `harness validate`
+  references/deny-read-fragment.policy.yaml (validates against the `policy` contract; if `harness validate`
   is available, run `node tools/validate.mjs --contract policy <file>`).
 - Scanner placement (hook, pre-commit, CI) and a rotation log entry per rotation.
 - For each admitted tool: the completed trifecta checklist and its pin in `toolkit.lock`.
@@ -104,5 +104,5 @@ with walls that deny reads and scanners that catch what slips.
 - references/deny-read-and-scanning.md — the deny-read patterns, known gaps, the three scan rungs.
 - references/lethal-trifecta-checklist.md — the checklist before enabling any tool or server.
 - references/rotation-and-leak-runbook.md — rotation steps, the leak response, the rotation log.
-- references/policy-fragment.yaml — a `policy` fragment with the deny-read wall.
+- references/deny-read-fragment.policy.yaml — a `policy` fragment with the deny-read wall.
 - references/engine-notes.md — engine and forge specifics.

@@ -30,5 +30,5 @@ Record the result of the check (grant id, each row's evidence, now) in the land 
 
 ## Example
 
-references/grant-integration-example.yaml is a tier-2 grant for one epic's integration branch. It
+references/integration-example.grant.yaml is a tier-2 grant for one epic's integration branch. It
 validates against the `grant` contract.

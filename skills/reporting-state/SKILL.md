@@ -101,4 +101,4 @@ to the human; do not retry, re-dispatch or interrupt a working agent because a s
 - `references/reconcile.md` — deciding attention from evidence, including lost events.
 - `references/task-record-template.md` — the record's fields with rules.
 - `references/engine-notes.md` — where each runtime's signals come from (adapters own the mapping).
-- `references/examples/` — task records that validate against the `task-record` contract.
+- `references/examples/` — task records (`*.task-record.yaml`) and run records (`runs.run-record.jsonl`) that validate against their contracts.

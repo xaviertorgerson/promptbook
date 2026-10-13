@@ -123,4 +123,4 @@ and never weaken a test or a gate to make the validator green.
 - `references/walls.md` — why walls are denies (the measured matrix) and how to verify them.
 - `references/repos-checklist.md` — the "repos today → target" checklist, generic.
 - `references/engine-notes.md` — per-engine paths and switches (adapters own the mapping).
-- `references/examples/` — a `toolkit.lock` and an `agent-policy.yaml` that validate.
+- `references/examples/` — a `toolkit.lock` and `operator.policy.yaml` (an `agent-policy.yaml`) that validate.

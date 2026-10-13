@@ -20,7 +20,7 @@ about what is only believed, and decided by a person, not by you.
 - `docs/product/brief.md` if it exists: amend it; never write a second brief for the same product.
 - Contract `brief`: frontmatter `id: BRIEF`, `product`, `owner`, `status` (draft | approved |
   superseded), `updated`, optional `personas` (PER-n ids) and `links` (paths or URLs); body sections
-  Problem, Users, Outcomes, Non-goals. Template: `references/brief-template.md`.
+  Problem, Users, Outcomes, Non-goals. Template: `references/brief-template.brief.md`.
 
 ## Procedure
 
@@ -88,6 +88,6 @@ about what is only believed, and decided by a person, not by you.
 
 ## References
 
-- `references/brief-template.md` — the brief, ready to fill; validates against `brief`.
+- `references/brief-template.brief.md` — the brief, ready to fill; validates against `brief`.
 - `references/brief-checklist.md` — the rubric, what counts as a market fact, assumption test
   types, riskiest-assumption scoring, and the gate message.

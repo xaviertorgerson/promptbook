@@ -24,7 +24,7 @@ failed. A flow is done when every screen has its four states and every walk is r
   exists (tokens, components, the accessibility bar). This skill does not choose colours or type.
 - Contract `ux-flow`: `## UX-n · title` entries with `CUJs`, `Requirements`, `Steps` (sub-items),
   `States` (sub-fields `Empty`, `Loading`, `Error`, `Success`), `Accessibility`; `prototype` in the
-  file's frontmatter (or per flow). Template: `references/ux-template.md`.
+  file's frontmatter (or per flow). Template: `references/ux-template.ux.md`.
 
 ## Procedure
 
@@ -88,7 +88,7 @@ failed. A flow is done when every screen has its four states and every walk is r
 
 ## References
 
-- `references/ux-template.md` — `docs/ux/<epic>.md`, ready to fill; validates against `ux-flow`.
+- `references/ux-template.ux.md` — `docs/ux/<epic>.md`, ready to fill; validates against `ux-flow`.
 - `references/flow-notation.md` — the plain-Markdown notation, an optional Mermaid form, the
   information-architecture list, and prototype handoff.
 - `references/flow-checklist.md` — the four-state rubric, the accessibility checklist, the

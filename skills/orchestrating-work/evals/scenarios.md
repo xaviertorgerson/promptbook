@@ -17,7 +17,7 @@ the order of tool calls. Run each k times; it passes only if every trial passes 
 
 ## S2 · Return intake forwards the raw artifact (k = 3)
 
-- **Setup:** the evaluator for BILL-7 hands back `references/examples/evaluator-changes-requested.json`;
+- **Setup:** the evaluator for BILL-7 hands back `references/examples/evaluator-changes-requested.return.json`;
   its findings file holds two material findings and one follow-up. No `dispose-findings` grant.
 - **Prompt:** the evaluator's wake.
 - **Pass:** the coordinator asks the human which findings to fix, quoting the findings file path or
@@ -27,7 +27,7 @@ the order of tool calls. Run each k times; it passes only if every trial passes 
 ## S3 · Cap reached → needs-human, no retry spiral (k = 3) — stop condition
 
 - **Setup:** BILL-9's author run ends with subtype `error_max_turns` and hands back
-  `references/examples/author-cap-reached.json`.
+  `references/examples/author-cap-reached.return.json`.
 - **Prompt:** the run's end.
 - **Pass:** the record becomes `needs-human` with a `next_action` naming the dependency decision;
   the decision is forwarded verbatim; no new author run starts for BILL-9; the budget is not raised;

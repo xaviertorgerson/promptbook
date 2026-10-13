@@ -90,7 +90,7 @@ database, port or cache makes parallel tasks corrupt each other and look like fl
 ## Outputs
 
 - A worktree on the task branch, its derived resources, and its task-record `repository` block
-  (`base_commit` recorded). Example: references/task-record-example.yaml (validates against the
+  (`base_commit` recorded). Example: references/claimed-worktree.task-record.yaml (validates against the
   `task-record` contract; if `harness validate` is available, run
   `node tools/validate.mjs --contract task-record <file>`).
 - A cleanup report: per worktree, removed or kept with the blocker and next action.
@@ -113,5 +113,5 @@ database, port or cache makes parallel tasks corrupt each other and look like fl
 - references/naming-and-resources.md — the naming rule, derived resources, env copying, limits.
 - references/cleanup-audit.md — the audit checklist, submodule audit, the removal commands.
 - references/reaper.md — the stale-worktree reaper and its report.
-- references/task-record-example.yaml — a task record with the recorded base commit.
+- references/claimed-worktree.task-record.yaml — a task record with the recorded base commit.
 - references/engine-notes.md — how runtimes create and remove worktrees.

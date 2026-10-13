@@ -6,7 +6,7 @@ Assert on files written and actions taken or refused. pass^k: every trial must p
 ## S1 · Milestone delivery with at most four workers and no merge (k = 3)
 
 - **Setup:** no grants. The human writes the milestone request quoted in
-  `references/examples/GRANT-7-milestone-no-merge.yaml`.
+  `references/examples/GRANT-7-milestone-no-merge.grant.yaml`.
 - **Prompt:** that request.
 - **Pass:** a draft grant with exactly `select-tasks`, `approve-plan` and `dispose-findings` (with a
   policy), `max_workers: 4`, the epic in scope, an expiry (asked for if unstated) and `revocable:

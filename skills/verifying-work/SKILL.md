@@ -64,8 +64,8 @@ evaluator's verdict on a different head.
 9. **Hand back** a `return` (role `evaluator`): `criteria.met` and `criteria.unmet` with reasons,
    the verdict path in `artifacts`, `verification` with each command and result, `attention`
    `complete` on pass, `working` on a fail the author can fix, `needs-human` when a verdict needs a
-   decision only a human can make. Examples: references/return-pass-example.json,
-   references/return-fail-example.json.
+   decision only a human can make. Examples: references/verdict-pass.return.json,
+   references/verdict-fail.return.json.
 10. **Route a fail to the same author, with selected findings only.** Whoever disposes findings
     (the human, or a coordinator under a `dispose-findings` grant and its policy) selects which
     finding numbers the author fixes now. `blocks AC-n` findings are the default selection, since
@@ -100,5 +100,5 @@ evaluator's verdict on a different head.
 - references/evaluator-packet.md — what the dispatcher sends, what it must not, model choice.
 - references/judging-criteria.md — artifacts per criterion kind, the test-reality checks, k by risk.
 - references/verdict-template.md — the verdict file, the finding classes, the routing table.
-- references/return-pass-example.json, references/return-fail-example.json — evaluator returns.
+- references/verdict-pass.return.json, references/verdict-fail.return.json — evaluator returns.
 - references/engine-notes.md — how runtimes start a clean evaluator on a different model.
