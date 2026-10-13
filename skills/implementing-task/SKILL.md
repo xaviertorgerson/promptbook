@@ -67,8 +67,8 @@ never from a transcript. The acceptance criteria are the stopping condition.
 10. **Get the independent evaluation.** Mandatory when `risk` is `medium` or `high`; the default
     otherwise. Request verifying-work with only the evaluator packet (task criteria, diff ref
     `<base>...<head>`, how to run the tests and the PR preview), never your transcript or Working
-    notes. Without a subagent mechanism, end the run at `review` and say in the return that the
-    evaluation is due. A failing verdict comes back to you: fix only the findings that show an
+    notes. Without a subagent mechanism, end the run at `review` and hand back `attention:
+    working` with "evaluation due on <head>" in the summary; the dispatcher starts the evaluator. A failing verdict comes back to you: fix only the findings that show an
     `AC-n` unmet or that were selected (by the human, or under a `dispose-findings` grant's
     policy), using the pinned resolving-findings skill; push; ask for re-evaluation of the full
     current head. Stay at `review` while you iterate; use `iterate` (back to `in-progress`) only

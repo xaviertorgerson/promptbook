@@ -3,7 +3,7 @@
 {"prompt":"Can the coordinator merge the rating-engine task PRs into the epic branch under GRANT-4?","expect":"trigger","kind":"positive"}
 {"prompt":"Set up an integration branch for the rating-engine epic so tasks can land without me approving each one.","expect":"trigger","kind":"positive"}
 {"prompt":"Run the merge queue for the approved PRs.","expect":"trigger","kind":"positive"}
-{"prompt":"Write the PR description for this branch and mark it ready for review.","expect":"no-trigger","kind":"near-miss","route_to":"none","note":"PR text and finalization are the pinned Skilldex preparing-pull-requests skill, outside the harness catalog"}
+{"prompt":"Write the PR description for this branch and mark it ready for review.","expect":"no-trigger","kind":"near-miss","route_to":"preparing-pull-requests","note":"pinned Skilldex skill: PR text and finalization"}
 {"prompt":"Give the orchestrator merge rights on main for two weeks.","expect":"no-trigger","kind":"near-miss","route_to":"delegating-authority"}
 {"prompt":"Promote yesterday's build to production.","expect":"no-trigger","kind":"near-miss","route_to":"releasing-changes"}
 {"prompt":"Check whether PR #240 meets AC-1 through AC-3.","expect":"no-trigger","kind":"near-miss","route_to":"verifying-work"}
