@@ -4,7 +4,7 @@
 {"prompt":"What budget should an L-sized, medium-risk task get?","expect":"trigger","kind":"positive"}
 {"prompt":"Our cache hit rate fell from 80% to 30% this week. Why, and what do we change?","expect":"trigger","kind":"positive"}
 {"prompt":"Is a smaller model good enough for the reviewer, or should it be a different model family?","expect":"trigger","kind":"positive"}
-{"prompt":"What's the exact settings key to set the subagent model in our engine's config file?","expect":"no-trigger","kind":"near-miss","route_to":"adopting-harness","note":"engine-specific settings come from the adapter while adopting the harness"}
+{"prompt":"What's the exact settings key to set the subagent model in our engine's config file?","expect":"no-trigger","kind":"near-miss","route_to":"none","note":"relabeled from adopting-harness: engine settings keys belong to the adapters, which are not a skill (catalog: routing-models is not for per-engine model names)"}
 {"prompt":"Start the next three ready tasks and cap each run at 150 turns.","expect":"no-trigger","kind":"near-miss","route_to":"orchestrating-work"}
 {"prompt":"Run the effort sweep and ablations for the new model release and delete what no longer pays.","expect":"no-trigger","kind":"near-miss","route_to":"reviewing-harness"}
 {"prompt":"Write the routing eval cases for this skill's description.","expect":"no-trigger","kind":"near-miss","route_to":"evaluating-skills"}

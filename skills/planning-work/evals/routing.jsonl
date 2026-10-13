@@ -9,4 +9,5 @@
 {"prompt":"Write EARS requirements for CUJ-3.","expect":"no-trigger","kind":"near-miss","route_to":"writing-requirements"}
 {"prompt":"Which ready task should the workers pick up next, and how many at once?","expect":"no-trigger","kind":"near-miss","route_to":"orchestrating-work"}
 {"prompt":"Translate this paragraph into Spanish.","expect":"no-trigger","kind":"negative","route_to":"none"}
-{"prompt":"Print the git log for the last week.","expect":"no-trigger","kind":"negative","route_to":"none"}
+{"prompt":"Print the git log for the last week.","expect":"no-trigger","kind":"near-miss","route_to":"writing-commit-history","note":"relabeled from negative/none: reading the log is writing-commit-history's mining half"}
+{"prompt":"Recommend a podcast about Roman history.","expect":"no-trigger","kind":"negative","route_to":"none"}

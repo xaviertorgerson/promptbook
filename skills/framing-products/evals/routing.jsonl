@@ -7,5 +7,7 @@
 {"prompt":"Add a feature to our existing app so owners can export invoices as CSV.","expect":"no-trigger","kind":"near-miss","route_to":"mapping-journeys"}
 {"prompt":"Turn the approved brief's outcomes into EARS requirements and NFRs for the first epic.","expect":"no-trigger","kind":"near-miss","route_to":"writing-requirements"}
 {"prompt":"Decompose the approved invoicing epic into tasks with a walking skeleton first.","expect":"no-trigger","kind":"near-miss","route_to":"planning-work"}
-{"prompt":"Fix the off-by-one error in the pagination helper.","expect":"no-trigger","kind":"negative","route_to":"none"}
-{"prompt":"Write a commit message for these staged changes.","expect":"no-trigger","kind":"negative","route_to":"none"}
+{"prompt":"Fix the off-by-one error in the pagination helper.","expect":"no-trigger","kind":"near-miss","route_to":"debugging-failures","note":"relabeled from negative/none: a bug to fix is debugging-failures' case, so asserting no skill loads was wrong"}
+{"prompt":"Write a commit message for these staged changes.","expect":"no-trigger","kind":"near-miss","route_to":"writing-commit-history","note":"relabeled from negative/none: writing-commit-history owns commit messages"}
+{"prompt":"Translate this README into German.","expect":"no-trigger","kind":"negative","route_to":"none"}
+{"prompt":"How long should I boil an egg for a soft yolk?","expect":"no-trigger","kind":"negative","route_to":"none"}

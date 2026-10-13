@@ -3,7 +3,7 @@
 {"prompt":"When did the rating engine change last?","expect":"trigger","kind":"positive","note":"ported from commit-history evals"}
 {"prompt":"I have a refactor and a bug fix mixed in one diff. Split it into proper commits.","expect":"trigger","kind":"positive"}
 {"prompt":"Who introduced this config key, and what does the commit say about why?","expect":"trigger","kind":"positive","note":"a retry-loop variant routed to debugging-failures 4/4 on haiku; see evidence 2026-10-13"}
-{"prompt":"Ship it.","expect":"no-trigger","kind":"near-miss","route_to":"none","note":"a stack's definition of done is an L4 pack's ship skill; ported from commit-history evals"}
+{"prompt":"Ship it.","expect":"no-trigger","kind":"negative","note":"relabeled from near-miss/none: no L3 skill owns it (an L4 pack's ship skill does) and the pinned preparing-pull-requests may take it, so only this skill's absence is asserted"}
 {"prompt":"Why is the export failing right now? It started an hour ago.","expect":"no-trigger","kind":"near-miss","route_to":"debugging-failures","note":"a live bug; ported from commit-history evals"}
 {"prompt":"Open a draft pull request for this branch with a good description.","expect":"no-trigger","kind":"near-miss","route_to":"preparing-pull-requests"}
 {"prompt":"The PR is approved; rebase it onto main and land it.","expect":"no-trigger","kind":"near-miss","route_to":"landing-changes"}

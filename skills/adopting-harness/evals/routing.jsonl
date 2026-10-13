@@ -10,5 +10,6 @@
 {"prompt":"Rotate the CI agent's API key and move it to short-lived tokens.","expect":"no-trigger","kind":"near-miss","route_to":"handling-credentials"}
 {"prompt":"A new model shipped; sweep effort and delete the harness parts that no longer pay.","expect":"no-trigger","kind":"near-miss","route_to":"reviewing-harness"}
 {"prompt":"Which model tier should the explorer subagent use?","expect":"no-trigger","kind":"near-miss","route_to":"routing-models"}
+{"prompt":"Move the pack pin in toolkit.lock to its newest tag.","expect":"no-trigger","kind":"near-miss","route_to":"promoting-learnings","note":"pin bumps belong to promoting-learnings (measured overlap)"}
 {"prompt":"Install Docker on Ubuntu.","expect":"no-trigger","kind":"negative","route_to":"none"}
 {"prompt":"Help me adopt a rescue dog.","expect":"no-trigger","kind":"negative","route_to":"none"}
