@@ -292,6 +292,14 @@ describe('a project\'s _-prefixed templates (agentic-template\'s docs/ux/_UX-TEM
     assert.equal(r.status, 'FAIL', 'its placeholders are not a flow');
     assert.equal(validateFile(path.join(dir, '.orchestrator/grants/_GRANT-TEMPLATE.yaml'), { contract: 'grant' }).status, 'FAIL');
   });
+
+  it('--contract binds nothing from a _-prefixed name, so a valid template is not failed for its file name', () => {
+    const flow = fs.readFileSync(path.join(FIX, 'valid/ux-flow/invoicing/docs/ux/invoicing.md'), 'utf8');
+    const rel = 'docs/ux/_VALID-TEMPLATE.md';
+    fs.writeFileSync(path.join(dir, rel), flow);
+    const r = validateFile(path.join(dir, rel), { contract: 'ux-flow' });
+    assert.equal(r.status, 'PASS', JSON.stringify(r.results));
+  });
 });
 
 describe('a project\'s own skills: evals under a dot-folder', () => {

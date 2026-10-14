@@ -62,7 +62,7 @@ export function inferContracts(file, { contract, registry = sharedRegistry() } =
         const m = matchSuffix(posix, glob);
         // A _-prefixed folder in a captured segment (specs/_drafts/spec.md) is out of the layout,
         // as the trace reads it.
-        if (m && !contract && m.captures.some((c) => c.startsWith('_'))) continue;
+        if (m && m.captures.some((c) => c.startsWith('_'))) continue;
         if (m) return { contract: name, artifact: art, captures: m.captures, matched: m.matched };
       }
     }

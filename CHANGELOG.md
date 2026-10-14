@@ -14,6 +14,8 @@ Fixes from an independent review of 0.1.0 (workflow, authority, trace, simulator
 
 ### Changed
 
+- **behavioral** — `validate --contract` binds nothing from a `_`-prefixed file or folder name, so a
+  template such as `docs/ux/_UX-TEMPLATE.md` is validated on its content, not failed for its name.
 - **behavioral** — `trace`: a test that never runs evidences no criterion. Comments are blanked
   before test names are read; JS/TS `it.skip`, `test.todo`, `describe.skip` (with the tests it
   holds), their `.each`, `xit`/`xtest`/`xdescribe` and `{ skip }`/`{ todo }` options are dropped;
