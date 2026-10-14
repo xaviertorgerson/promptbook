@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import process from 'node:process';
 import { ENGINES, ENFORCES, GENERATOR } from './compile-policy.mjs';
 import { preconditionFailures } from './requires.mjs';
 
@@ -57,7 +58,7 @@ export async function refusePreconditions(runner, env) {
 export function runEngine(runner, command, { graceSeconds = 10, log = () => {}, stdout = process.stdout } = {}) {
   const argv = [...command, ...runner.args];
   const caps = runner.caps;
-  const report = { engine: runner.engine, profile: runner.profile, tier: runner.tier, argv, caps, enforcement: runner.enforcement, exit_code: null, signal: null, stopped_by: null, stopped_by_engine: null, turns: runner.engine === 'codex' ? 0 : null, cost_usd: null, usage: null, duration_ms: 0 };
+  const report = { engine: runner.engine, profile: runner.profile, tier: runner.tier, role: runner.role ?? null, argv, caps, enforcement: runner.enforcement, exit_code: null, signal: null, stopped_by: null, stopped_by_engine: null, turns: runner.engine === 'codex' ? 0 : null, cost_usd: null, usage: null, duration_ms: 0 };
   const started = Date.now();
   return new Promise((resolve, reject) => {
     const child = spawn(argv[0], argv.slice(1), { stdio: ['inherit', 'pipe', 'inherit'], detached: true });

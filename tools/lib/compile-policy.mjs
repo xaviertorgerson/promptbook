@@ -512,7 +512,8 @@ function emitCodex(ctx) {
         prefixRule({ ...r, command: pattern, examples: examples.length ? examples : undefined }, 'forbidden', field);
       }
       if (guard) return;
-      ctx.gap(field, `${as}${describeRule(r)}: execpolicy matches an argv prefix token by token, so only "${pattern ? expandCommand(pattern).map((a) => a.join(' ')).join('", "') : r.command.flat().join(' ')}" is denied, not the flags anywhere later in the command${r.flags_anywhere.some((f) => f.endsWith('*')) ? ' nor a token a * flag begins' : ''} (hooks.forbid_guard covers it)`);
+      const denied = pattern ? `only "${expandCommand(pattern).map((a) => a.join(' ')).join('", "')}" is denied` : 'none of it is denied';
+      ctx.gap(field, `${as}${describeRule(r)}: execpolicy matches an argv prefix token by token, so ${denied}, not the flags anywhere later in the command${r.flags_anywhere.some((f) => f.endsWith('*')) ? ' nor a token a * flag begins' : ''} (hooks.forbid_guard covers it)`);
       return;
     }
     if (r.command) prefixRule(field === 'ask' ? { ...r, reason: `ask in an unattended tier is a denial${r.reason ? `: ${r.reason}` : ''}` } : r, 'forbidden', field);

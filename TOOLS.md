@@ -209,8 +209,9 @@ The timeout is a hard kill: SIGTERM to the run's process group, SIGKILL `--grace
 (default 10). A run stopped at the timeout exits 124; one stopped at, or reporting a result past, a
 cap exits 125; otherwise the engine's own exit code passes through. An unattended runner without
 its caps, or without a timeout on an engine that meters no spend, is refused (exit 1), as is a file
-compile-policy did not write. `--report` writes `{argv, caps, enforcement, exit_code, signal,
+compile-policy did not write. `--report` writes `{role, argv, caps, enforcement, exit_code, signal,
 stopped_by, stopped_by_engine, turns, cost_usd, usage, duration_ms}`, the fields a run record needs.
+A role's run takes its own `roles/<role>/runner.json`.
 
 ## check-requires
 

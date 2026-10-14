@@ -58,7 +58,7 @@ export async function main(argv = process.argv.slice(2)) {
   const out = value('--report');
   if (out) fs.writeFileSync(out, `${JSON.stringify(report, null, 2)}\n`);
   const code = exitCodeOf(report);
-  console.error(`harness run: ${runner.engine} (profile ${runner.profile}, tier ${runner.tier}) exited ${report.exit_code ?? report.signal}${report.stopped_by ? `; stopped by harness run at ${report.stopped_by}` : ''} -> ${code}`);
+  console.error(`harness run: ${runner.engine} (profile ${runner.profile}, tier ${runner.tier}${runner.role ? `, role ${runner.role}` : ''}) exited ${report.exit_code ?? report.signal}${report.stopped_by ? `; stopped by harness run at ${report.stopped_by}` : ''} -> ${code}`);
   return code;
 }
 
