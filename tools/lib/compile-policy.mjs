@@ -456,6 +456,22 @@ export function coversInterpreter(command) {
   });
 }
 
+// The path a Codex filesystem entry may hold for an access. Codex 0.162.1 refuses to load a glob
+// with any access but deny ("filesystem glob path `**/.git/hooks/**` only supports `deny` access;
+// use an exact path or trailing `/**` for `read` subtree access"): a path with no wildcard, or one
+// with a single trailing /** on an otherwise literal path, takes read and write too.
+export const codexTakesAccess = (g) => !hasGlob(g) || (g.endsWith('/**') && !hasGlob(g.slice(0, -3)));
+
+// The entry a write deny downgrades to read: the path itself where Codex takes it, the workspace
+// root for **, and the literal for **/<literal> and **/<literal>/**, which reaches only the copy at
+// each workspace root (topOnly); null for any other glob, which no read entry can hold.
+export function codexReadKey(g) {
+  if (codexTakesAccess(g)) return { key: g };
+  if (g === '**') return { key: '.' };
+  const m = /^\*\*\/(.+?)(\/\*\*)?$/.exec(g);
+  return m && !hasGlob(m[1]) ? { key: `${m[1]}${m[2] ?? ''}`, topOnly: true } : null;
+}
+
 const CODEX_BASE = { 'read-only': ':read-only', ask: ':workspace', 'auto-edit': ':workspace', auto: ':workspace', autonomous: ':workspace', unattended: ':workspace' };
 const CODEX_APPROVAL = { ask: 'on-request', 'auto-edit': 'on-request', auto: 'on-request', autonomous: 'never', unattended: 'never' };
 
@@ -518,7 +534,12 @@ function emitCodex(ctx) {
     }
     if (r.command) prefixRule(field === 'ask' ? { ...r, reason: `ask in an unattended tier is a denial${r.reason ? `: ${r.reason}` : ''}` } : r, 'forbidden', field);
     else if (r.write) {
-      if (ctx.gap(field, `${as}write ${r.write}: a filesystem "read" downgrade covers sandboxed commands, not the apply_patch tool`)) setPath(r.write, 'read');
+      const read = codexReadKey(r.write);
+      if (!read) ctx.gap(field, `${as}write ${r.write}: Codex takes a glob only for deny, and this one has no exact path or trailing /** to downgrade to "read", so nothing is emitted: sandboxed commands and the apply_patch tool can both write it`);
+      else if (ctx.gap(field, `${as}write ${r.write}: a filesystem "read" downgrade covers sandboxed commands, not the apply_patch tool`)) {
+        if (read.topOnly) ctx.warn('glob-top-level-only', `${field} write ${r.write}: Codex takes a glob only for deny, so the "read" downgrade is "${read.key}" at each workspace root; a copy deeper down (<dir>/${read.key.replace(/\/\*\*$/, '')}) stays writable for sandboxed commands`);
+        setPath(read.key, 'read');
+      }
     } else if (r.tool === 'web-fetch' && r.domain) setDomain(r.domain, 'deny');
     else if (r.tool.startsWith('mcp:') && r.tool.split(':')[2]) {
       const [, s, t] = r.tool.split(':');
@@ -551,8 +572,8 @@ function emitCodex(ctx) {
     if (r.command) continue;
     else if (r.write) {
       if (r.write === '**') setPath('.', 'write');
-      else if (!hasGlob(r.write)) setPath(r.write, 'write');
-      else ctx.drop('allow', r, 'Codex filesystem globs are fully supported only for deny');
+      else if (codexTakesAccess(r.write)) setPath(r.write, 'write');
+      else ctx.drop('allow', r, 'Codex takes a glob only for deny: a write entry needs an exact path or a trailing /**');
     } else if (r.tool === 'web-fetch' && r.domain) setDomain(r.domain, 'allow');
     else ctx.drop('allow', r, 'no documented Codex key');
   }
@@ -560,7 +581,10 @@ function emitCodex(ctx) {
   for (const d of p.egress?.deny_domains ?? []) setDomain(d, 'deny');
   if (p.sandbox?.fail_if_unavailable) ctx.gap('sandbox', 'fail_if_unavailable has no documented Codex key');
   if (p.sandbox?.credentials?.length) ctx.gap('sandbox', `credential masks have no documented Codex key: sandboxed commands would read ${p.sandbox.credentials.map((c) => c.path ?? `$${c.env}`).join(', ')} unmasked`);
-  for (const w of p.sandbox?.writable_roots ?? []) setPath(w, 'write');
+  for (const w of p.sandbox?.writable_roots ?? []) {
+    if (codexTakesAccess(w)) setPath(w, 'write');
+    else ctx.drop('sandbox.writable_roots', { write: w }, 'Codex takes a glob only for deny: a write entry needs an exact path or a trailing /**');
+  }
 
   // No documented turn, spend or token flag for codex exec: harness run counts tool actions in the
   // --json event stream against max_turns, and kills the run at max_minutes.

@@ -7,7 +7,7 @@ import { after, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
 import { forbidHit } from '../tools/guards/forbid-guard.mjs';
-import { commandMatches, compilePolicy, coversInterpreter, diffClaudeSettings, ENGINES, expandCommand, globArgsPattern, parseSettingsTemplate, renderDiff, renderReport, unsafeKeys } from '../tools/lib/compile-policy.mjs';
+import { codexReadKey, codexTakesAccess, commandMatches, compilePolicy, coversInterpreter, diffClaudeSettings, ENGINES, expandCommand, globArgsPattern, parseSettingsTemplate, renderDiff, renderReport, unsafeKeys } from '../tools/lib/compile-policy.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FIX = path.join(ROOT, 'fixtures/compile-policy');
@@ -645,5 +645,90 @@ describe('review finding 15: roles narrow a profile\'s allowlist and egress per 
     const w = compilePolicy(tally, { profile: 'workstation', engine: 'claude' });
     assert.ok(!w.files.some((f) => f.path.startsWith('roles/')));
     assert.ok(w.notes.some((n) => /roles compile for the unattended tier/.test(n)));
+  });
+});
+
+describe('Codex filesystem entries: a glob takes deny only (Codex 0.162.1 refuses to load anything else)', () => {
+  const base = { policy_version: 1, profiles: { box: { tier: 'ask' }, ci: { tier: 'unattended' } }, deny_read: ['**/.env'], forbid: [], budgets: { unattended: { max_turns: 5, max_usd: 1, max_minutes: 10 } }, accept_gaps: [{ engine: 'codex', field: 'forbid', reason: 'apply_patch is refused by the project hook' }] };
+  const codex = (p, profile = 'box') => compilePolicy({ ...base, ...p }, { profile, engine: 'codex' });
+  const roots = (r) => r.files.find((f) => f.path.endsWith('config.toml')).data.permissions.harness.filesystem?.[':workspace_roots'] ?? {};
+  // Every filesystem entry an output holds: [path, access].
+  const entries = (data) => Object.values(data.permissions ?? {}).flatMap((prof) => Object.entries(prof.filesystem ?? {}).flatMap(([k, v]) => (typeof v === 'object' ? Object.entries(v) : [[k, v]])));
+
+  it('an exact path, or a single trailing /** on a literal path, takes read and write; any other wildcard is a glob', () => {
+    for (const g of ['deploy/**', 'Makefile', '.git/hooks/**', '~/.cache/pnpm', '~/**', '/etc/**', '.']) assert.ok(codexTakesAccess(g), g);
+    for (const g of ['**', '**/.git/hooks/**', '**/.env', 'src/*/gen/**', '*.pem', 'docs/**/x', '~/.ssh/*_rsa', 'a/**/**', 'logs/?.txt', 'src/{a,b}/**']) assert.ok(!codexTakesAccess(g), g);
+    assert.deepEqual(codexReadKey('**/.git/hooks/**'), { key: '.git/hooks/**', topOnly: true });
+    assert.deepEqual(codexReadKey('**/package.json'), { key: 'package.json', topOnly: true });
+    assert.deepEqual(codexReadKey('**'), { key: '.' });
+    assert.deepEqual(codexReadKey('deploy/**'), { key: 'deploy/**' });
+    for (const g of ['**/*.pem', '**/a/**/b', 'src/**/gen', '~/**/.git/hooks/**']) assert.equal(codexReadKey(g), null, g);
+  });
+
+  it('a write forbid on **/<literal>/** or **/<literal> downgrades the literal at each workspace root, and warns that a deeper copy stays writable', () => {
+    const r = codex({ forbid: [{ write: '**/.git/hooks/**' }, { write: '**/package.json' }, { write: 'deploy/**' }], allow: [{ write: '**' }] });
+    assert.equal(r.ok, true, JSON.stringify(r.errors));
+    assert.deepEqual(roots(r), { '**/.env': 'deny', '.git/hooks/**': 'read', 'package.json': 'read', 'deploy/**': 'read', '.': 'write' });
+    const top = r.warnings.filter((w) => w.rule === 'glob-top-level-only').map((w) => w.message);
+    assert.equal(top.length, 2, top.join('\n'));
+    assert.match(top[0], /^forbid write \*\*\/\.git\/hooks\/\*\*: .*"\.git\/hooks\/\*\*" at each workspace root; a copy deeper down \(<dir>\/\.git\/hooks\) stays writable/);
+    assert.ok(r.accepted.every((a) => a.field === 'forbid' && /apply_patch/.test(a.message)), JSON.stringify(r.accepted));
+  });
+
+  it('a write forbid on ** makes the whole workspace read-only, over the workspace write', () => {
+    const r = codex({ forbid: [{ write: '**' }], allow: [{ write: '**' }] });
+    assert.equal(r.ok, true, JSON.stringify(r.errors));
+    assert.deepEqual(roots(r), { '**/.env': 'deny', '.': 'read' });
+    assert.ok(!r.warnings.some((w) => w.rule === 'glob-top-level-only'), 'the workspace root is the whole of **');
+  });
+
+  it('a write forbid on any other glob is a forbid gap: refused until accepted, and then nothing invalid is emitted for it', () => {
+    const p = { forbid: [{ write: 'src/**/generated/**' }, { write: '**/*.pem' }], accept_gaps: [] };
+    const refused = codex(p);
+    assert.equal(refused.ok, false);
+    assert.deepEqual(refused.files, []);
+    for (const g of ['src/**/generated/**', '**/*.pem']) assert.ok(refused.errors.some((e) => e.field === 'forbid' && e.message.includes(`write ${g}: Codex takes a glob only for deny`) && /nothing is emitted/.test(e.message)), `${g}: ${JSON.stringify(refused.errors)}`);
+    const accepted = codex({ ...p, accept_gaps: base.accept_gaps });
+    assert.equal(accepted.ok, true, JSON.stringify(accepted.errors));
+    assert.deepEqual(roots(accepted), { '**/.env': 'deny' });
+    assert.equal(accepted.accepted.filter((a) => /nothing is emitted/.test(a.message)).length, 2, JSON.stringify(accepted.accepted));
+  });
+
+  it('unattended, a write ask on a glob is the same denial under the ask gap', () => {
+    const ask = { ask: [{ write: '**/infra/**' }, { write: 'ops/*/secrets' }] };
+    const refused = codex(ask, 'ci');
+    assert.ok(refused.errors.some((e) => e.field === 'ask' && /ops\/\*\/secrets: Codex takes a glob only for deny/.test(e.message)), JSON.stringify(refused.errors));
+    const r = codex({ ...ask, accept_gaps: [{ engine: 'codex', field: 'ask', profiles: ['ci'], reason: 'the project hook refuses both' }] }, 'ci');
+    assert.equal(r.ok, true, JSON.stringify(r.errors));
+    assert.deepEqual(roots(r), { '**/.env': 'deny', 'infra/**': 'read' });
+    assert.ok(r.warnings.some((w) => w.rule === 'glob-top-level-only' && /^ask write \*\*\/infra\/\*\*/.test(w.message)), JSON.stringify(r.warnings));
+  });
+
+  it('an allow write or a writable root Codex cannot take is dropped with a warning; one it takes is emitted', () => {
+    const r = codex({ allow: [{ write: 'docs/**' }, { write: 'src/**/*.ts' }], sandbox: { enabled: true, writable_roots: ['~/.cache/pnpm', '~/.cache/*/tmp'] } });
+    assert.equal(r.ok, true, JSON.stringify(r.errors));
+    assert.equal(roots(r)['docs/**'], 'write');
+    const fsys = r.files[0].data.permissions.harness.filesystem;
+    assert.equal(fsys['~/.cache/pnpm'], 'write');
+    assert.equal(fsys['~/.cache/*/tmp'], undefined);
+    assert.equal(roots(r)['src/**/*.ts'], undefined);
+    const dropped = r.warnings.filter((w) => w.rule === 'dropped').map((w) => w.message);
+    assert.ok(dropped.some((m) => m.startsWith('allow write src/**/*.ts')) && dropped.some((m) => m.startsWith('sandbox.writable_roots write ~/.cache/*/tmp')), dropped.join('\n'));
+  });
+
+  it('no compiled Codex output holds a glob with an access other than deny, on any fixture policy, profile or role', () => {
+    const policies = [golden, load(path.join(FIX, 'dotfiles/agent-policy.yaml')), load(path.join(ROOT, 'examples/tally/_operator/agent-policy.yaml')), ...fs.readdirSync(path.join(ROOT, 'fixtures/valid/policy')).map((f) => load(path.join(ROOT, 'fixtures/valid/policy', f)))];
+    let checked = 0;
+    for (const p of policies) {
+      for (const profile of Object.keys(p.profiles)) {
+        for (const f of compilePolicy(p, { profile, engine: 'codex' }).files.filter((x) => x.path.endsWith('config.toml'))) {
+          for (const [g, access] of entries(f.data)) {
+            checked += 1;
+            assert.ok(access === 'deny' || codexTakesAccess(g), `${profile}/${f.path}: "${g}" = "${access}"`);
+          }
+        }
+      }
+    }
+    assert.ok(checked > 40, `${checked} entries checked`);
   });
 });

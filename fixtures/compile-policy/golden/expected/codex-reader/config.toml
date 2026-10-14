@@ -15,7 +15,7 @@ extends = ":read-only"
 [permissions.harness.filesystem.":workspace_roots"]
 "**/.env" = "deny"
 "**/secrets/**" = "deny"
-"**/.git/hooks/**" = "read"
+".git/hooks/**" = "read"
 
 [permissions.harness.network]
 enabled = true

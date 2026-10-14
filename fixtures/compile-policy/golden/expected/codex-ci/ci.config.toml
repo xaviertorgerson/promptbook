@@ -16,7 +16,7 @@ extends = ":workspace"
 [permissions.harness.filesystem.":workspace_roots"]
 "**/.env" = "deny"
 "**/secrets/**" = "deny"
-"**/.git/hooks/**" = "read"
+".git/hooks/**" = "read"
 "infra/**" = "read"
 "." = "write"
 

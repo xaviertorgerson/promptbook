@@ -10,6 +10,10 @@
       "message": "Codex has no classifier-reviewed mode: auto compiles to approval_policy on-request on the workspace sandbox (sandboxed work runs without asking; anything outside it prompts)"
     },
     {
+      "rule": "glob-top-level-only",
+      "message": "forbid write **/.git/hooks/**: Codex takes a glob only for deny, so the \"read\" downgrade is \".git/hooks/**\" at each workspace root; a copy deeper down (<dir>/.git/hooks) stays writable for sandboxed commands"
+    },
+    {
       "rule": "dropped",
       "message": "ask write infra/** dropped on codex: Codex has no ask for writes or tools"
     },

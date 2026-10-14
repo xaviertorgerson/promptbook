@@ -14,6 +14,14 @@ Fixes from an independent review of 0.1.0 (workflow, authority, trace, simulator
 
 ### Changed
 
+- **behavioral** — `compile-policy` (Codex): a write deny on a glob no longer emits
+  `"<glob>" = "read"`, which Codex 0.162.1 refuses to load (a glob takes only `deny`). `**` is the
+  workspace root `"."`; `**/<literal>/**` and `**/<literal>` are emitted as `<literal>/**` /
+  `<literal>` with a `glob-top-level-only` warning (a copy below a workspace root stays writable);
+  any other glob is a `forbid` gap (unattended, an `ask` gap) that fails the compile until accepted,
+  and nothing is emitted for it. An allow write or a `sandbox.writable_roots` entry that is such a
+  glob is dropped with a warning; `docs/**`-style allow writes are now emitted. The Tally reader's
+  `"**" = "read"` became `"." = "read"`.
 - **behavioral** — `validate --contract` binds nothing from a `_`-prefixed file or folder name, so a
   template such as `docs/ux/_UX-TEMPLATE.md` is validated on its content, not failed for its name.
 - **behavioral** — `trace`: a test that never runs evidences no criterion. Comments are blanked

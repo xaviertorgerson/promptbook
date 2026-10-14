@@ -10,6 +10,10 @@
       "message": "Codex has no \"edits free, commands ask\" mode: auto-edit compiles like ask (approval_policy on-request)"
     },
     {
+      "rule": "glob-top-level-only",
+      "message": "forbid write **/.git/hooks/**: Codex takes a glob only for deny, so the \"read\" downgrade is \".git/hooks/**\" at each workspace root; a copy deeper down (<dir>/.git/hooks) stays writable for sandboxed commands"
+    },
+    {
       "rule": "dropped",
       "message": "ask write infra/** dropped on codex: Codex has no ask for writes or tools"
     },
