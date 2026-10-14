@@ -1,4 +1,5 @@
 import { classify, criteria } from './ears.mjs';
+import { narrowingFindings } from './grant.mjs';
 import { globToRegExp } from './glob.mjs';
 import { headings, splitLines, stripComments, fenceMask } from './markdown.mjs';
 
@@ -78,6 +79,11 @@ export const CHECKS = {
     return (Array.isArray(data?.actions) ? data.actions : []).flatMap((a, i) => (a && typeof a === 'object' && a.action === 'merge' && a.target && a.target === a.protected_branch
       ? [{ rule: 'merge-target-not-protected', pointer: `/actions/${i}/target`, message: `merge into ${a.target}, the protected branch: no grant covers it; target an integration branch (integration/<epic>) and leave its merge into ${a.protected_branch} to a human (promote)` }]
       : []));
+  },
+
+  // narrowed[] removes only what the grant in force holds and lowers only limits (tools/lib/grant.mjs).
+  'narrowing-only-narrows'({ data }) {
+    return narrowingFindings(data);
   },
 
   // A rule in allow or ask that a forbid rule already covers never takes effect (deny wins on every

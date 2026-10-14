@@ -1,0 +1,14 @@
+# A "narrowing" that widens: it raises the worker cap and pushes the expiry out, and removes an
+# action the grant never held. Widening is a new grant from the human.
+id: GRANT-11
+granted_by: maria
+granted_to: { role: orchestrator }
+granted_at: "2026-10-01T08:00:00Z"
+source: "https://forge.example.com/acme/billing/issues/210#issuecomment-4"
+scope: { objective: Deliver the invoicing epic, repositories: [acme/billing], epics: [invoicing] }
+actions: [select-tasks, approve-plan]
+limits: { max_workers: 2, budget: { max_usd: 20 } }
+expires_at: "2026-10-15T08:00:00Z"
+revocable: true
+narrowed:
+  - { at: "2026-10-03T10:00:00Z", by: maria, remove_actions: [finalize], reduce_limits: { max_workers: 4, expires_at: "2026-11-01T08:00:00Z" } }

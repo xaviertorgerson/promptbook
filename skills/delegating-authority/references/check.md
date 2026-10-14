@@ -4,10 +4,11 @@ Run immediately before the action, every time. The first "no" decides.
 
 | # | Question | Read | If no |
 |---|---|---|---|
+| 0 | Is it a grant? | `harness grant verify <file> --git`: committed by `granted_by`, an owner of `.orchestrator/grants/`; issued fields unchanged; `narrowed[]` appended and narrowing only; not a draft | ask the human |
 | 1 | Is the action delegable at all? | the never-grantable list; a merge whose base is the protected branch | stop; the human acts |
 | 2 | Does no policy deny or project wall forbid it? | the operator's policy, project deny rules, branch protection | stop; walls win |
 | 3 | Is there a live grant for me? | `.orchestrator/grants/*.yaml`: `granted_at` ≤ now < `expires_at`, no `revoked_at`, `granted_to.role` (and `agent`, `runtime` if set) match | ask the human |
-| 4 | Does its current `actions` list this action? | `actions` (strings or objects) | ask |
+| 4 | Does the grant in force list this action? | the issued `actions` minus every `narrowed[].remove_actions` | ask |
 | 5 | Does `scope` cover the subject? | `repositories` contains the PR's or task's repository; if `epics`/`tasks`/`requirements` are listed, the subject is among them; not in `non_goals` | ask |
 | 6 | (merge) Do the parameters match? | the merge action's `repo` = the PR's repository; `target` = the PR's base branch, exactly, and not the protected branch (`protected_branch`, and the forge's default branch); `strategy` = the strategy you will use; `requires`: the reviewer role passed this exact head, required checks are green on it, the head did not change since, and a human approval exists if listed | ask, or wait for the missing evidence |
 | 7 | Are the limits intact? | live workers < `limits.max_workers` (to start a worker: of every live grant that dispatches work; a merge-only grant's bounds merges); Σ run records `total_cost_usd` with `grant: GRANT-n` < `limits.budget.max_usd`; no `limits.stop_when` met | stop delegated work; needs-human |

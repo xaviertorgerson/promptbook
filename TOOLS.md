@@ -13,6 +13,7 @@ harness <command> [args]          # package.json bin: tools/cli.mjs; or pnpm <co
   simulate        the runtime contracts under faults                tools/simulate.mjs
   compile-policy  agent-policy.yaml into one engine's settings      tools/compile-policy.mjs
   lock            pin or verify toolkit.lock                        tools/lock.mjs
+  grant           verify a grant before acting under it             tools/grant.mjs
   eval-routing    routing evals through a model command             tools/eval-routing.mjs
   import-evals    an agentic-template evals.md into the eval files  tools/import-evals.mjs
 ```
@@ -193,6 +194,22 @@ Goldens: `fixtures/compile-policy/golden/expected/<engine>-<profile>/`, each wit
 (`UPDATE_GOLDEN=1` rewrites).
 `fixtures/compile-policy/dotfiles/agent-policy.yaml` restates the user's Claude settings for the diff
 test; stagehand's `herdr.rules` round-trips through the Codex compiler when the checkout is present.
+
+## grant
+
+`harness grant verify <grant.yaml>... [--git] [--owners a,b] [--identities <file>] [--root <dir>]`
+answers "may a coordinator act under this file?" (`state-machines/authority.yaml` lifecycle.issue):
+the grant contract, schema and named checks; the file is under `.orchestrator/grants/` and not a
+draft under `drafts/` (`grant-on-protected-path`, `grant-is-draft`); `granted_by`, each
+`narrowed[].by` and `revoked_by` are owners of that path, read from the project's CODEOWNERS (the
+last matching rule, as the forges read it) or `--owners` (`granted-by-is-owner`,
+`narrowed-by-owner`); `narrowed[]` only narrows (`narrowing-only-narrows`, also a validator check).
+`--git` reads the file's history: its last commit is by `granted_by` (`committed-by-granter`; an
+author matches a handle by name, email local part or the `--identities` map), every commit touching
+it is by an owner, the issued fields equal the issuing commit's (`issued-fields-unchanged`),
+`narrowed[]` was only appended to (`narrowing-append-only`), and a commit `source` names exists
+(`source-resolves`). The grant in force (issued minus narrowing) is `effectiveGrant()` in
+`tools/lib/grant.mjs`, which the simulator uses too.
 
 ## lock
 

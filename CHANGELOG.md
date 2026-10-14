@@ -41,6 +41,13 @@ Fixes from an independent review of 0.1.0 (workflow, authority, trace, simulator
   `terminal-on-task-branch`, `land-on-stale-approval`); task records carry reviews, verdicts and
   approvals bound to heads. Skills (implementing-task, landing-changes, orchestrating-work,
   managing-worktrees, reporting-state), the playbook and the Tally example say the same.
+- **breaking** — grant 2.0.0: `narrowed[]` entries are structured (`remove_actions`,
+  `remove_scope`, `reduce_limits`, `reason`; the free-text `change` is gone) and only narrow
+  (`narrowing-only-narrows`); the issued fields stay as issued and the grant in force is the issue
+  minus every entry. A live grant is committed by `granted_by`, a human owner of the
+  CODEOWNERS-protected `.orchestrator/grants/`; agents write only `.orchestrator/grants/drafts/`
+  (validated as grants, never live). Migrate a narrowed grant by restoring its issued `actions` and
+  `scope` and writing each removal as a `remove_actions` or `remove_scope` entry.
 - **breaking** — grant 2.0.0, authority 1.3.0, workflow 1.4.0: a merge grant names the repository's
   `protected_branch` and its `target` may never be it (`merge-target-not-protected`). `land` onto
   the protected branch is the merge role's alone, after a human's approval, and never grantable; a
@@ -61,6 +68,10 @@ Fixes from an independent review of 0.1.0 (workflow, authority, trace, simulator
 
 ### Added
 
+- **additive** — `harness grant verify <file> [--git]`: a grant's provenance and narrowing, checked
+  before acting under it (owners from CODEOWNERS or `--owners`, the committing human, issued fields
+  as first committed, append-only narrowing, a source commit that exists). The Tally example gains
+  the CODEOWNERS rule its grants verify against.
 - **additive** — `simulate --supervisor <module>`: runs a runtime's own supervisor against every
   invariant, so a binding can be tested; TOOLS.md documents the api it is given.
 

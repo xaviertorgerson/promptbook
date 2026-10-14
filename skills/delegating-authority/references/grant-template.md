@@ -38,7 +38,9 @@ limits:
   stop_when: [<the agreed outcome>, <repeated non-progress>]
 expires_at: "<ISO 8601, required>"
 revocable: true                     # always
-# narrowed: [{ at: "<ISO 8601>", by: <handle>, change: <what was removed> }]
+# narrowed:                         # appended by a human owner; the fields above stay as issued
+#   - { at: "<ISO 8601>", by: <handle>, remove_actions: [<action>], remove_scope: { epics: [<slug>] },
+#       reduce_limits: { max_workers: <lower>, budget: { max_usd: <lower> }, expires_at: "<earlier>" }, reason: <why> }
 # revoked_at: "<ISO 8601>"
 # revoked_by: <handle>
 # revocation_reason: <why>

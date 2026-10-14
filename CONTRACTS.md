@@ -257,7 +257,8 @@ evaluator's or reader's run is logged as what it was instead of an author's "adv
 until an expiry (`state-machines/authority.yaml`). **Schema** `grant.schema.json` 2.0.0: `id`,
 `granted_by`, `granted_to{role, agent, runtime}`, `granted_at`, `source`, `scope{objective,
 repositories, epics, tasks, requirements, non_goals}`, `actions[]`, `limits{max_workers, budget,
-stop_when}`, `expires_at`, `revocable: true`, `revoked_at/by/reason`, `narrowed[]`. Actions:
+stop_when}`, `expires_at`, `revocable: true`, `revoked_at/by/reason`, `narrowed[]` (structured:
+`{at, by, remove_actions, remove_scope, reduce_limits, reason}`, at least one of the three). Actions:
 `select-tasks`, `approve-plan`, `dispose-findings` (with a `policy`), `finalize`, `publish-review`,
 and `merge{repo, target, protected_branch, strategy, requires}` where `requires` must include
 `independent-review` and `required-checks`; only an orchestrator or the merge role may hold merge.
@@ -270,9 +271,16 @@ project's `.orchestrator/grants/GRANT-n.yaml`; it applies to that project only a
 deleted, so the audit trail stays), its *dates* (`pending` before `granted_at`, `live` until
 `expires_at`, exclusive, then `expired`), its *revocation* (`revoked` from `revoked_at`, with
 `revoked_by` and `revocation_reason`; it wins over expiry), its *narrowing* (`narrowed[]`, append-only;
-widening is a new grant), and its *recorded uses* (every task record, run record and orchestrator
+the issued fields never change, and the grant in force is the issue minus every entry; an entry
+only removes what the grant holds, only lowers limits and the expiry and never empties a scope list,
+`narrowing-only-narrows`; widening is a new grant), its *provenance* (a live grant is the file the
+granting human committed under `.orchestrator/grants/`, a CODEOWNERS-protected path, `granted_by`
+one of its owners; agents write only `.orchestrator/grants/drafts/`, which validate as grants but are
+never live; `harness grant verify <file> --git` checks the owners, the last commit's author, the
+issued fields against the issuing commit, append-only narrowing and a source commit), and its
+*recorded uses* (every task record, run record and orchestrator
 commit that names its id). A coordinator derives the state before each delegated action
-(`authority.yaml` lifecycle.validity); the simulator's `grantState()` is the reference. A coordinator
+(`authority.yaml` lifecycle.validity); the simulator's `grantState()` and `tools/lib/grant.mjs` `effectiveGrant()` are the reference. A coordinator
 may hold several grants (a work grant and a merge grant, revocable alone): each action is exercised
 under the grant that delegates it, and the workers cap is the smallest `max_workers` among the live
 grants that dispatch work, so a merge-only grant's `max_workers` bounds its merges, not the epic's

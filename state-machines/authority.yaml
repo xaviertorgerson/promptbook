@@ -40,7 +40,7 @@ never_grantable:
   - id: destructive-data
     why: Dropping databases, deleting volumes, wiping backups (agentic-template hard rule 3).
   - id: widen-grant
-    why: Widening is a new grant from the human; a coordinator may only narrow its own.
+    why: Widening is a new grant from the human; a coordinator may only stop exercising part of its own and draft the narrowing.
   - id: promote-integration
     why: >-
       An integration branch reaches the protected branch only by a human's merge (tier 3); workflow
@@ -104,6 +104,12 @@ lifecycle:
     source: >-
       Recorded with where the human said it (a commit, an issue comment, a transcript reference).
       A worker's claim of delegation is not a source.
+    provenance: >-
+      A live grant is the file the granting human committed under .orchestrator/grants/, a path the
+      project's CODEOWNERS gives to its human owners (or a forge-side record); granted_by is one of
+      them. Agents write only .orchestrator/grants/drafts/. Before acting, a coordinator verifies
+      the file's last commit is by granted_by, the issued fields are as first committed, and
+      narrowed[] was only appended to (harness grant verify --git).
   validity: >-
     A grant is live when granted_at <= now < expires_at and revoked_at is absent. A coordinator
     checks liveness before every delegated action, not once at start.
@@ -111,8 +117,12 @@ lifecycle:
     Required on every grant. On expiry, actions in flight finish their current step and stop; the
     coordinator records needs-human with a renewal request.
   narrowing: >-
-    The human (or the coordinator, of its own grant) may remove actions or scope at any time;
-    append to narrowed. Widening is a new grant.
+    A human owner appends a structured entry to narrowed (remove_actions, remove_scope,
+    reduce_limits); the issued fields stay as issued and the grant in force is the issue minus
+    every entry. An entry only removes what the grant holds, only lowers limits and the expiry, and
+    never empties a scope list (grant contract rule narrowing-only-narrows). A coordinator narrows
+    its own grant by stopping the narrowed actions at once and drafting the entry for the human to
+    commit. Widening is a new grant.
   revocation: >-
     Always possible (revocable is always true). Set revoked_at, revoked_by and a reason. Revocation
     takes effect at the coordinator's next check; work already landed stays landed.

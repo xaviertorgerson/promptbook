@@ -81,7 +81,7 @@ are relative to the repo root. "Unverified" marks a path documented inconsistent
 | Task queue | L2 | `specs/<epic>/tasks/*.md`, validated against L3 `task` |
 | Runtime task records | L4, untracked in L2 checkout or control workspace | `.orchestrator/tasks/<id>.yaml` (`task-record`) |
 | Run records | L4 writes; L3 schema | `.agent/loop-runs.jsonl` (gitignored), one `run-record` per run |
-| Authority grants | L4 runtime, issued by a human | the runtime's project note, as `grant` documents |
+| Authority grants | L2 file, issued by a human; L4 runtimes read them | `.orchestrator/grants/GRANT-n.yaml`, committed by the granting human on a CODEOWNERS-protected path (or a forge-side record); agents write only `.orchestrator/grants/drafts/`; `harness grant verify --git` before acting |
 | CI agents (planner, coder, reviewer, merge) | L4 runtime, installed into L2 | `.github/workflows/agent-*.yml`; engine binding in `adapters/ci` |
 | Secrets, personal | L1 | Bitwarden note rendered to `~/.config/shell/secrets.sh` (mode 600) at apply time |
 | Secrets, CI and stages | L2 names them, the forge holds them | forge environments and secrets; never a file |
