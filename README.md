@@ -39,8 +39,9 @@ including where every artifact goes and how existing repos move, is [LAYERS.md](
    `tools/compile-policy.mjs` from a chezmoi run script. The compiler's contract is to refuse a tier
    that disables hooks, and a bypass tier that names no `requires` (the preconditions it relies on,
    such as production being unreachable from the host).
-4. A run script fans pinned skills into `~/.agents/skills/` and copies them for engines that do not
-   read that directory (`adapters/<engine>/README.md` says which).
+4. A run script fans pinned skills into `~/.agents/skills/` (an install set, `personal` or `solo`,
+   never the whole library: Core vs optional) and copies them for engines that do not read that
+   directory (`adapters/<engine>/README.md` says which).
 
 **L2, a project.** From the template, or by adoption into an existing repo:
 
@@ -58,6 +59,42 @@ never advances workflow status on a runtime signal. `harness simulate --supervis
 runtime's own supervisor (its dispatch and authority decisions, written against the simulator's api)
 in the runtime-neutral simulation and checks it against every invariant; without the flag the
 simulation runs the `orchestrating-work` protocol as code.
+
+## Core vs optional
+
+The core is what every adopter uses; the rest is for a scale or a moment that not every project
+reaches, and stays out until its trigger holds.
+
+| | Core | Optional, and when |
+|---|---|---|
+| Practice | `standards/engineering.md`; the playbook pages you cite | — |
+| Contracts | task, epic, decision, readiness-report; brief, persona, journey, requirement and ux-flow when a product is planned (without a brief the trace check runs as legacy adoption); policy and toolkit-lock; return and run-record; skill and evidence | grant and task-record: a coordinator runs several agents under delegated authority. harness-review and reflection-report: there are runs to review |
+| Tools | `validate` (with `trace` and `--readiness --check`), `lint`, `compile-policy`, `lock` | `simulate`: changing the state machines, or checking a runtime's supervisor. `grant`: grants are in use. `eval-routing`: a description changes. `import-evals`: once, migrating an agentic-template project |
+| Skills | the `solo` set of [`skills/SETS.yaml`](skills/SETS.yaml) | the `coordinator` set (several agents at once) and the `maintainer` set (changing the harness itself) |
+| Engines | the adapter of the engine you run | every other adapter; only one engine's permissions are measured (Status) |
+
+[`skills/SETS.yaml`](skills/SETS.yaml) names the install sets: `personal` (user scope, any
+repository), `planning`, `delivery`, `coordinator` and `maintainer` (project scope), `solo`
+(personal, planning and delivery at user scope) and `full` (the library, never installed whole). Each
+installable set fits the 8,000-character always-loaded description budget with 10% headroom beside
+the five pinned Skilldex skills; `harness lint skills` checks every set and `harness lint
+--budget-set <set>` prints one. The totals are in [skills/ROUTING-RESULTS.md](skills/ROUTING-RESULTS.md).
+
+### Minimum adoption for one developer
+
+1. **Machine.** Pin this repo, render the standards block into your personal instructions, write
+   `agent-policy.yaml` with one profile per machine and compile it (`harness compile-policy`), and
+   install the `solo` set into `~/.agents/skills/` (`harness lint --budget-set solo` checks it with
+   what else you install).
+2. **Each repository.** A `toolkit.lock` pinning the harness, checked by `harness lock` in CI; tasks
+   as `specs/<epic>/tasks/<ID>.md` with acceptance criteria, and `harness validate` plus
+   `harness trace . --readiness specs --check` in CI.
+3. **Each task.** One writer at a time: implementing-task claims and builds it, verifying-work gets
+   the separate verdict, landing-changes lands it after your approval. No coordinator, grants,
+   task-records or simulator.
+
+Add the rest when its trigger fires: a coordinator and grants when you hand agents a batch of tasks
+to run without you; the reflection and review contracts once there are runs to learn from.
 
 ## Repository map
 
@@ -82,8 +119,7 @@ simulation runs the `orchestrating-work` protocol as code.
 each change is logged in `CHANGELOG.md` with its class. Pin a commit, not a branch. Only one engine's
 permission behavior has been measured (Claude Code 2.1.296: agentic-template ADR-0021 and
 `scripts/permission-probe.mjs` on branch `docs/adr-permission-precedence`, commit `c177fa1`, not yet
-on master); the other
-adapters are written from documentation and marked unverified where it matters.
+on master); the other adapters are written from documentation and marked unverified where it matters.
 
 ## Contributing a playbook change
 

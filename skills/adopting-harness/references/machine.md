@@ -57,17 +57,24 @@ library: the harness's 28 descriptions fit (7,899 characters), but a devbox that
 skills from a skill library and one from its multiplexer (34 skills, 9,901 characters) is over, so
 some descriptions may be cut before a router sees them. Check each profile's set before rendering:
 
+Install sets, never the whole library. The harness's `skills/SETS.yaml` names them: `personal` at
+user scope on every machine (useful in any repository), `planning`, `delivery`, `coordinator` and
+`maintainer` at project scope, and `solo` (personal, planning and delivery) at user scope for one
+developer who plans and builds alone. Each installable set, with what a session loads beside it
+(the personal set, and the pinned skill library measured at its commit), must stay within the budget
+less 10% headroom; `harness lint skills` checks every set:
+
 ```sh
-harness lint --budget-set <profile>.skills    # one installed skills folder per line, or the profile's toolkit.lock
+harness lint --budget-set solo                                   # one set, with what loads beside it
+harness lint --budget-set solo --external skilldex=<checkout>    # read that library's real descriptions
+harness lint --budget-set <profile>.skills    # a profile's own list: one skills folder per line, or its toolkit.lock
 ```
 
-Over the budget, install a per-profile subset rather than shortening every description. A
-coordinator profile that dispatches, verifies and lands work does not need the planning skills
-(framing-products, defining-personas, mapping-journeys, writing-requirements, designing-flows,
-choosing-architecture, planning-work, checking-plan-readiness); a CI runner that only verifies needs
-verifying-work, writing-tests and reviewing-security, not the authoring ones. List each profile's
-subset in its data (a skills list per source, as an `x-skills` list narrows a lock entry) and let the
-fan-out script install only those; re-run the check when a pin moves.
+A profile's data names its sets (a skills list per source, as an `x-skills` list narrows a lock
+entry), and the fan-out script installs only their skills. A CI runner that only verifies needs
+verifying-work, writing-tests and reviewing-security, not the authoring ones: check such a list with
+the profile form, as a machine that adds a runtime's own skill must: the multiplexer's (328
+characters) beside solo makes 7,276, inside the headroom. Re-run the check when a pin moves.
 
 ## Policy compile checklist
 

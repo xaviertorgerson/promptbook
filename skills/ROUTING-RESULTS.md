@@ -137,6 +137,31 @@ Every changed case carries a `note` with its old label.
 - **Added to keep minimum counts:** four negatives (HTTP 418, a German translation, boiling an egg,
   a podcast).
 
+## Install sets
+
+What each install set of skills/SETS.yaml loads into the always-loaded catalog, description
+characters, with the five Skilldex skills (1,674) loaded beside every set and the personal set
+beside every project set. The budget is 8,000 less 10% headroom: 7,200. `harness lint skills`
+checks every set (set-over-budget); `harness lint --budget-set <set>` prints one.
+
+| Set | Scope | Harness skills | Loads | Fits |
+|---|---|---|---|---|
+| personal | user | 5 | 2,993 | yes |
+| planning | project | 8 | 5,242 | yes |
+| delivery | project | 6 | 4,699 | yes |
+| coordinator | project | 5 | 4,463 | yes |
+| maintainer | project | 4 | 4,148 | yes |
+| solo (personal, planning, delivery) | user | 19 | 6,948 | yes, 252 to spare |
+| full | library | 28 | 7,899 alone, 9,573 with Skilldex | never installed |
+
+Project sets combine: planning and delivery together load what solo does (6,948), and delivery with
+coordinator 6,169; any three project sets exceed 7,200 (planning, delivery and coordinator: 8,418),
+so one place installs at most two: a project running a coordinator installs delivery and coordinator
+where agents build, and planning where plans are written. A machine that also installs a runtime's skill counts it
+too: the multiplexer's skill (328 characters) beside solo makes 7,276, under 8,000 but inside the
+headroom, so such a machine checks its own list (`harness lint --budget-set <profile>.skills`) and
+leaves out a set it does not use.
+
 ## Spend
 
 About $1.80 for the whole exercise at the CLI's list prices: $1.66 logged across 12,629 calls

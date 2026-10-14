@@ -24,7 +24,6 @@ Fixes from an independent review of 0.1.0 (workflow, authority, trace, simulator
   are reported uncovered), so a merged task with no test never reads ready.
 - **behavioral** — attention 1.3.0, authority 1.3.0: a human answers an A2A `INPUT_REQUIRED` or an
   MCP `input_required`; no grant delegates it (`answer-input-request` is never grantable).
-
 - **behavioral** — `simulate`: readers (the helpers an author starts) count toward the workers cap,
   as orchestrating-work says, and the runtime refuses a reader when every slot is taken; a guard
   the simulator has no evidence model for throws instead of passing; new mutation
@@ -74,10 +73,17 @@ Fixes from an independent review of 0.1.0 (workflow, authority, trace, simulator
   the CODEOWNERS rule its grants verify against.
 - **additive** — `simulate --supervisor <module>`: runs a runtime's own supervisor against every
   invariant, so a binding can be tested; TOOLS.md documents the api it is given.
-
 - **additive** — `trace --readiness <dir> --check`: regenerates each committed readiness report in
   its `--no-timestamp` form and fails on one that is missing, stale, timestamped or names no epic.
 - **additive** — `CHANGELOG.md`.
+- **additive** — install sets (`skills/SETS.yaml`): `personal` (user scope), `planning`, `delivery`,
+  `coordinator`, `maintainer` (project scope), `solo` (personal, planning and delivery at user scope)
+  and `full` (the library, never installed). `harness lint` checks every installable set, with what
+  loads beside it (the five Skilldex skills at their pinned commit), against 8,000 characters less
+  10% headroom (`sets-shape`, `sets-known`, `sets-disjoint`, `sets-cover`, `set-over-budget`,
+  `set-not-installed`); `--budget-set` also takes a set name, and `--external name=<dir>` reads a
+  pinned pack's real descriptions. The README gains Core vs optional and the minimum adoption for
+  one developer.
 
 ### Fixed
 

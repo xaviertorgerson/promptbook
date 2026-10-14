@@ -204,3 +204,70 @@ describe('lint --budget-set: the installed set\'s description budget', () => {
     assert.equal(cli('--budget-set', path.join(TMP, 'no-such-file.txt')).status, 2);
   });
 });
+
+describe('install sets (skills/SETS.yaml)', () => {
+  const cli = (...a) => spawnSync(process.execPath, [path.join(ROOT, 'tools/lint-skills.mjs'), ...a], { encoding: 'utf8', cwd: ROOT });
+  const SKILLS = path.join(ROOT, 'skills');
+  const SKILLDEX = ['building-skills', 'preparing-pull-requests', 'resolving-findings', 'reviewing-code', 'writing-specifications'];
+  const setsOf = (dir) => lintSkills([dir]).sets[0];
+
+  it('every installed set fits the budget less 10% with what loads beside it, Skilldex included; the library is never installed whole', () => {
+    const st = setsOf(SKILLS);
+    assert.deepEqual(st.findings, []);
+    const by = Object.fromEntries(st.sets.map((x) => [x.name, x]));
+    assert.deepEqual(Object.keys(by).sort(), ['coordinator', 'delivery', 'full', 'maintainer', 'personal', 'planning', 'solo']);
+    for (const x of st.sets.filter((y) => y.scope !== 'library')) {
+      assert.ok(x.total <= 7200, `${x.name}: ${x.total}`);
+      assert.ok(x.parts.some((p) => p.from === 'skilldex'), `${x.name} is counted with Skilldex`);
+    }
+    assert.equal(by.full.skills, fs.readdirSync(SKILLS).filter((d) => fs.existsSync(path.join(SKILLS, d, 'SKILL.md'))).length, 'full is the whole library');
+    assert.ok(by.full.total + by.personal.parts.find((p) => p.from === 'skilldex').chars > 8000, 'the whole library beside Skilldex would not fit');
+    assert.deepEqual([by.personal.scope, by.solo.scope], ['user', 'user']);
+  });
+
+  it('personal holds only skills useful in any repository: none of the project-workflow sets\' skills', () => {
+    const yaml = fs.readFileSync(path.join(SKILLS, 'SETS.yaml'), 'utf8');
+    const personal = yaml.match(/personal:[\s\S]*?skills: \[([^\]]+)\]/)[1].split(',').map((s) => s.trim());
+    assert.deepEqual(personal.sort(), ['debugging-failures', 'evaluating-skills', 'reviewing-security', 'writing-commit-history', 'writing-tests']);
+    for (const s of ['implementing-task', 'orchestrating-work', 'planning-work', 'landing-changes', 'adopting-harness']) assert.ok(!personal.includes(s), s);
+  });
+
+  it('names an unknown skill, a skill in two sets, an uninstalled skill and a set over budget', () => {
+    const dir = path.join(TMP, 'sets-broken');
+    fs.cpSync(GOOD, dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'SETS.yaml'), [
+      'budget: { limit: 1000, headroom: 0.10 }',
+      'external:',
+      `  dex: { source: x, commit: abc1234, skills: [${SKILLDEX.join(', ')}], chars: 600 }`,
+      'sets:',
+      '  mine: { scope: user, skills: [drafting-widgets, checking-widgets, no-such-skill], loaded_with: [dex] }',
+      '  team: { scope: project, skills: [checking-widgets, shipping-widgets], loaded_with: [mine, nobody] }',
+      '  all: { scope: library, includes: [mine, team, sorting] }',
+      '',
+    ].join('\n'));
+    const st = setsOf(dir);
+    const got = st.findings.map((f) => f.rule).sort();
+    assert.deepEqual([...new Set(got)].sort(), ['set-over-budget', 'sets-cover', 'sets-disjoint', 'sets-known']);
+    assert.ok(st.findings.some((f) => f.rule === 'sets-cover' && /sorting-widgets/.test(f.message)));
+    assert.ok(st.findings.some((f) => f.rule === 'set-over-budget' && /^mine \(user\) loads \d+ characters .*dex 600/.test(f.message)), JSON.stringify(st.findings));
+    fs.writeFileSync(path.join(dir, 'SETS.yaml'), 'budget: 8000\nsets: { x: { scope: everywhere } }\n');
+    assert.deepEqual([...new Set(setsOf(dir).findings.map((f) => f.rule))], ['sets-shape']);
+  });
+
+  it('--budget-set takes a set name: what a session holding it loads, against the budget less its headroom', () => {
+    const r = cli('--budget-set', 'solo');
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.match(r.stdout, /^budget set .*SETS\.yaml#solo: 24 skill\(s\), \d+ of 7200 characters$/m);
+    const j = JSON.parse(cli('--budget-set', 'personal', '--json').stdout).budgetSet;
+    assert.deepEqual([...new Set(j.skills.map((s) => s.from))], ['personal', 'skilldex']);
+    const dex = path.join(TMP, 'dex');
+    for (const n of SKILLDEX) {
+      fs.mkdirSync(path.join(dex, n), { recursive: true });
+      fs.writeFileSync(path.join(dex, n, 'SKILL.md'), `---\nname: ${n}\ndescription: ${'x'.repeat(1000)}\n---\n`);
+    }
+    const heavy = cli('--budget-set', 'solo', '--external', `skilldex=${dex}`);
+    assert.equal(heavy.status, 1, 'with the real (here: long) externals read from a checkout, solo is over');
+    assert.match(heavy.stdout, /error {3}set-over-budget — solo loads \d+ characters, over 7200/);
+    assert.equal(cli('--budget-set', 'nope').status, 2);
+  });
+});

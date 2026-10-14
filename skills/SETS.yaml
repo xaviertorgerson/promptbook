@@ -1,0 +1,52 @@
+# Install sets: which of the harness's skills a machine (user scope) or a project (project scope)
+# installs. Every description an engine loads stays in its always-loaded catalog, and one engine keeps
+# that catalog within 8,000 characters, so a set is checked with what a session loads beside it
+# (loaded_with) and must leave 10% headroom: `harness lint skills` checks every set, and
+# `harness lint --budget-set <set>` prints one. The library as a whole (full) is not installed
+# anywhere; it is what this repository holds and what the routing runs load.
+budget: { limit: 8000, headroom: 0.10 }
+
+# Skills a session loads that are not the harness's. The measured characters stand in when no
+# checkout is given (lint --external skilldex=<dir> reads the real ones).
+external:
+  skilldex:
+    source: https://github.com/QuentinTorg/skilldex
+    commit: fc572b6
+    skills: [building-skills, preparing-pull-requests, resolving-findings, reviewing-code, writing-specifications]
+    chars: 1674
+
+sets:
+  personal:
+    scope: user
+    about: Useful in any repository, with or without the harness's workflow; the L1 fan-out installs it on every machine.
+    skills: [writing-commit-history, debugging-failures, writing-tests, reviewing-security, evaluating-skills]
+    loaded_with: [skilldex]
+  planning:
+    scope: project
+    about: Brief to approved plan; a project that plans with the harness installs it.
+    skills: [framing-products, defining-personas, mapping-journeys, writing-requirements, designing-flows, choosing-architecture, planning-work, checking-plan-readiness]
+    loaded_with: [personal, skilldex]
+  delivery:
+    scope: project
+    about: One task from claim to production; any project whose tasks agents build.
+    skills: [implementing-task, managing-worktrees, verifying-work, landing-changes, releasing-changes, handling-credentials]
+    loaded_with: [personal, skilldex]
+  coordinator:
+    scope: project
+    about: Several agents at once under grants; only where a coordinator runs.
+    skills: [orchestrating-work, delegating-authority, routing-models, reporting-state, choosing-methodology]
+    loaded_with: [personal, skilldex]
+  maintainer:
+    scope: project
+    about: Adopting, reviewing and improving the harness itself.
+    skills: [adopting-harness, promoting-learnings, reflecting-on-runs, reviewing-harness]
+    loaded_with: [personal, skilldex]
+  solo:
+    scope: user
+    about: The minimum for one developer working with agents across their repositories (README, Core vs optional).
+    includes: [personal, planning, delivery]
+    loaded_with: [skilldex]
+  full:
+    scope: library
+    about: Every harness skill; never installed whole (it exceeds the budget beside Skilldex).
+    includes: [personal, planning, delivery, coordinator, maintainer]
