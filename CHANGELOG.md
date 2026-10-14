@@ -14,6 +14,26 @@ Fixes from an independent review of 0.1.0 (workflow, authority, trace, simulator
 
 ### Changed
 
+- **behavioral** — `compile-policy` (Gemini): `argsPattern` (read denies, write denies, fetch
+  domains) no longer quantifies a group. Gemini CLI 0.64.0 drops a rule whose pattern fails its
+  ReDoS check, printing an error but still loading the rest, so each golden lost 8 of its 25 or 26
+  rules, 6 of them denies. Path patterns now read the arguments as Gemini serializes them (each
+  top-level pair between NULs), and the compiler refuses (`gemini-drops`) any pattern the same
+  check rejects.
+- **behavioral** — `compile-policy` (Codex): an MCP tool deny (`forbid`, and unattended an `ask`) is
+  no longer a `[mcp_servers.<id>] disabled_tools` table in `config.toml`, which Codex 0.162.1
+  refuses to load without the server's transport (`command` or `url`), which the policy does not
+  hold. It is written to `mcp-restrictions.toml`, to be merged into the entries that define those
+  servers, with a report note; since it holds only once merged, it is now a `forbid` (or `ask`) gap
+  that fails the compile until accepted. The `merge-mcp` warning is gone.
+- **behavioral** — `compile-policy` (Codex): a write deny on a glob no longer emits
+  `"<glob>" = "read"`, which Codex 0.162.1 refuses to load (a glob takes only `deny`). `**` is the
+  workspace root `"."`; `**/<literal>/**` and `**/<literal>` are emitted as `<literal>/**` /
+  `<literal>` with a `glob-top-level-only` warning (a copy below a workspace root stays writable);
+  any other glob is a `forbid` gap (unattended, an `ask` gap) that fails the compile until accepted,
+  and nothing is emitted for it. An allow write or a `sandbox.writable_roots` entry that is such a
+  glob is dropped with a warning; `docs/**`-style allow writes are now emitted. The Tally reader's
+  `"**" = "read"` became `"." = "read"`.
 - **behavioral** — `validate --contract` binds nothing from a `_`-prefixed file or folder name, so a
   template such as `docs/ux/_UX-TEMPLATE.md` is validated on its content, not failed for its name.
 - **behavioral** — `trace`: a test that never runs evidences no criterion. Comments are blanked
@@ -69,6 +89,16 @@ Fixes from an independent review of 0.1.0 (workflow, authority, trace, simulator
 
 ### Added
 
+- **additive** — `tests/gemini-load.test.mjs`: the real Gemini CLI (`GEMINI_BIN`, or `gemini` on
+  `PATH`; skipped without one) loads every committed Gemini `settings.json` and `policies/harness.toml`
+  and each fresh compile of the fixture policies with `gemini mcp list` in a scratch
+  `GEMINI_CLI_HOME`, and fails on any refused setting or dropped rule in its output.
+- **additive** — `tests/codex-load.test.mjs`: the real Codex CLI (`CODEX_BIN`, or `codex` on `PATH`;
+  skipped without one) loads every committed Codex `config.toml` (goldens, the Tally example, the
+  dotfiles' compiled output when present) with `codex features list` in a scratch `CODEX_HOME`,
+  every rules file with `codex execpolicy check` (the committed ones must forbid a force-push), each
+  fresh compile of the fixture policies as written and with every gap accepted, and each
+  `mcp-restrictions.toml` merged into a defined server.
 - **additive** — `harness grant verify <file> [--git]`: a grant's provenance and narrowing, checked
   before acting under it (owners from CODEOWNERS or `--owners`, the committing human, issued fields
   as first committed, append-only narrowing, a source commit that exists). The Tally example gains

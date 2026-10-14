@@ -456,6 +456,22 @@ export function coversInterpreter(command) {
   });
 }
 
+// The path a Codex filesystem entry may hold for an access. Codex 0.162.1 refuses to load a glob
+// with any access but deny ("filesystem glob path `**/.git/hooks/**` only supports `deny` access;
+// use an exact path or trailing `/**` for `read` subtree access"): a path with no wildcard, or one
+// with a single trailing /** on an otherwise literal path, takes read and write too.
+export const codexTakesAccess = (g) => !hasGlob(g) || (g.endsWith('/**') && !hasGlob(g.slice(0, -3)));
+
+// The entry a write deny downgrades to read: the path itself where Codex takes it, the workspace
+// root for **, and the literal for **/<literal> and **/<literal>/**, which reaches only the copy at
+// each workspace root (topOnly); null for any other glob, which no read entry can hold.
+export function codexReadKey(g) {
+  if (codexTakesAccess(g)) return { key: g };
+  if (g === '**') return { key: '.' };
+  const m = /^\*\*\/(.+?)(\/\*\*)?$/.exec(g);
+  return m && !hasGlob(m[1]) ? { key: `${m[1]}${m[2] ?? ''}`, topOnly: true } : null;
+}
+
 const CODEX_BASE = { 'read-only': ':read-only', ask: ':workspace', 'auto-edit': ':workspace', auto: ':workspace', autonomous: ':workspace', unattended: ':workspace' };
 const CODEX_APPROVAL = { ask: 'on-request', 'auto-edit': 'on-request', auto: 'on-request', autonomous: 'never', unattended: 'never' };
 
@@ -518,11 +534,18 @@ function emitCodex(ctx) {
     }
     if (r.command) prefixRule(field === 'ask' ? { ...r, reason: `ask in an unattended tier is a denial${r.reason ? `: ${r.reason}` : ''}` } : r, 'forbidden', field);
     else if (r.write) {
-      if (ctx.gap(field, `${as}write ${r.write}: a filesystem "read" downgrade covers sandboxed commands, not the apply_patch tool`)) setPath(r.write, 'read');
+      const read = codexReadKey(r.write);
+      if (!read) ctx.gap(field, `${as}write ${r.write}: Codex takes a glob only for deny, and this one has no exact path or trailing /** to downgrade to "read", so nothing is emitted: sandboxed commands and the apply_patch tool can both write it`);
+      else if (ctx.gap(field, `${as}write ${r.write}: a filesystem "read" downgrade covers sandboxed commands, not the apply_patch tool`)) {
+        if (read.topOnly) ctx.warn('glob-top-level-only', `${field} write ${r.write}: Codex takes a glob only for deny, so the "read" downgrade is "${read.key}" at each workspace root; a copy deeper down (<dir>/${read.key.replace(/\/\*\*$/, '')}) stays writable for sandboxed commands`);
+        setPath(read.key, 'read');
+      }
     } else if (r.tool === 'web-fetch' && r.domain) setDomain(r.domain, 'deny');
     else if (r.tool.startsWith('mcp:') && r.tool.split(':')[2]) {
+      // Codex refuses to load an mcp_servers entry with no transport ("invalid transport in
+      // `mcp_servers.<id>`"), and the policy defines no server, so the deny cannot sit in config.toml.
       const [, s, t] = r.tool.split(':');
-      (mcp[s] ??= { disabled_tools: [] }).disabled_tools.push(t);
+      if (ctx.gap(field, `${as}${describeRule(r)}: Codex loads an mcp_servers entry only with its transport (command or url), which the policy does not define, so config.toml cannot carry disabled_tools; the deny is in mcp-restrictions.toml and holds only once merged into the entry that defines ${s}`)) (mcp[s] ??= { disabled_tools: [] }).disabled_tools.push(t);
     } else ctx.gap(field, `${as}${describeRule(r)} has no documented Codex key${r.tool.startsWith('mcp:') ? ' (omit the server from config.toml instead)' : ''}`);
   };
   for (const r of p.forbid) deny(r, 'forbid');
@@ -551,8 +574,8 @@ function emitCodex(ctx) {
     if (r.command) continue;
     else if (r.write) {
       if (r.write === '**') setPath('.', 'write');
-      else if (!hasGlob(r.write)) setPath(r.write, 'write');
-      else ctx.drop('allow', r, 'Codex filesystem globs are fully supported only for deny');
+      else if (codexTakesAccess(r.write)) setPath(r.write, 'write');
+      else ctx.drop('allow', r, 'Codex takes a glob only for deny: a write entry needs an exact path or a trailing /**');
     } else if (r.tool === 'web-fetch' && r.domain) setDomain(r.domain, 'allow');
     else ctx.drop('allow', r, 'no documented Codex key');
   }
@@ -560,7 +583,10 @@ function emitCodex(ctx) {
   for (const d of p.egress?.deny_domains ?? []) setDomain(d, 'deny');
   if (p.sandbox?.fail_if_unavailable) ctx.gap('sandbox', 'fail_if_unavailable has no documented Codex key');
   if (p.sandbox?.credentials?.length) ctx.gap('sandbox', `credential masks have no documented Codex key: sandboxed commands would read ${p.sandbox.credentials.map((c) => c.path ?? `$${c.env}`).join(', ')} unmasked`);
-  for (const w of p.sandbox?.writable_roots ?? []) setPath(w, 'write');
+  for (const w of p.sandbox?.writable_roots ?? []) {
+    if (codexTakesAccess(w)) setPath(w, 'write');
+    else ctx.drop('sandbox.writable_roots', { write: w }, 'Codex takes a glob only for deny: a write entry needs an exact path or a trailing /**');
+  }
 
   // No documented turn, spend or token flag for codex exec: harness run counts tool actions in the
   // --json event stream against max_turns, and kills the run at max_minutes.
@@ -579,15 +605,18 @@ function emitCodex(ctx) {
   if (CODEX_APPROVAL[tier]) config.approval_policy = CODEX_APPROVAL[tier];
   config.permissions = { harness: profileTable };
   if (network) config.features = { network_proxy: true };
-  if (Object.keys(mcp).length) {
-    config.mcp_servers = mcp;
-    ctx.warn('merge-mcp', `merge mcp_servers.{${Object.keys(mcp).join(',')}}.disabled_tools into the existing server entries`);
-  }
   const header = `# Compiled from ${ctx.source} (profile ${ctx.profileName}, tier ${tier}) by ${GENERATOR}.\n# A fragment: merge into ~/.codex/config.toml; recompile rather than edit.\n`;
   const configName = tier === 'unattended' ? `${ctx.profileName}.config.toml` : 'config.toml';
   const rulesText = `# Compiled from ${ctx.source} (profile ${ctx.profileName}, tier ${tier}) by ${GENERATOR}.\n# Most restrictive decision wins: forbidden > prompt > allow. Check: codex execpolicy check --rules <this file> -- <cmd>\n\n${rules.map(renderPrefixRule).join('\n')}`;
+  // The MCP tool denies, kept out of config.toml so it loads standalone: each table is merged into
+  // the entry that defines its server, and skipped where no entry does (no server, no tool to call).
+  const servers = Object.keys(mcp);
+  if (servers.length) ctx.notes.push(`mcp-restrictions.toml: merge each mcp_servers.<id>.disabled_tools (${servers.join(', ')}) into the config entry that defines that server; never add a table for a server no entry defines (Codex refuses an entry without command or url)`);
+  const mcpData = { mcp_servers: mcp };
+  const mcpHeader = `# Compiled from ${ctx.source} (profile ${ctx.profileName}, tier ${tier}) by ${GENERATOR}.\n# Not a config.toml: Codex refuses an [mcp_servers.<id>] table without command or url. Merge each\n# disabled_tools list into the entry that defines that server; skip a server no entry defines.\n`;
   return [
     { path: configName, content: `${header}\n${toToml(config)}`, kind: 'settings-fragment', data: config },
+    ...(servers.length ? [{ path: 'mcp-restrictions.toml', content: `${mcpHeader}\n${toToml(mcpData)}`, kind: 'mcp-fragment', data: mcpData }] : []),
     { path: 'rules/harness.rules', content: rulesText, kind: 'rules', data: rules },
     jsonFile('runner.json', runnerFile(ctx, runnerArgs, budget), 'runner'),
     ...(guard ? [jsonFile('hooks.json', { description: `harness forbid guard, compiled from ${ctx.source} (profile ${ctx.profileName})`, hooks: guardRegistration('codex') }, 'settings-fragment'), ...guardFiles(ctx)] : []),
@@ -600,24 +629,34 @@ const GEMINI_MODE = { 'read-only': 'plan', ask: 'default', 'auto-edit': 'auto_ed
 
 const reEscape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-// A path glob as a regex over the JSON-serialized tool arguments: a string field whose name holds
-// "path" ({"file_path":"/abs/.env"}), or one entry of such an array ({"paths":["a","/abs/.env"]}).
+// Gemini drops a policy rule whose argsPattern fails its ReDoS check (isSafeRegExp in the 0.64.0
+// policy loader: over 2048 characters, or a "(" whose text before the next ")" holds a quantifier,
+// the "?" of "(?:" included, with any later ")" followed by one), so no pattern here quantifies a
+// group: an optional directory is (?:dir/|), never (?:dir/)?. Every pattern is checked against the
+// same test before it is written.
+const GEMINI_UNSAFE_REGEX = /\([^)]*[*+?{].*\)[*+?{]/;
+export const geminiDropsPattern = (re) => re.length > 2048 || GEMINI_UNSAFE_REGEX.test(re);
+
+// A path glob as a regex over the tool arguments as Gemini serializes them (stableStringify: keys
+// sorted, each top-level pair between NUL characters): a string field whose name holds "path"
+// ({"file_path":"/abs/.env"}), or one entry of such an array ({"paths":["a","/abs/.env"]}). [^\x00]*
+// stays inside the pair; without the NULs it reads on to later pairs, which can only deny more.
 export function globArgsPattern(glob) {
   let body;
   let g = glob;
-  if (isHome(g)) { body = '[^"]*/'; g = g.slice(2); } else if (isAbsolute(g)) { body = '/'; g = g.slice(1); } else body = g.startsWith('**/') ? '' : '(?:[^"]*/)?';
+  if (isHome(g)) { body = '[^"]*/'; g = g.slice(2); } else if (isAbsolute(g)) { body = '/'; g = g.slice(1); } else body = g.startsWith('**/') ? '' : '(?:[^"]*/|)';
   for (let i = 0; i < g.length; i += 1) {
     const c = g[i];
     if (c === '*' && g[i + 1] === '*') {
-      if (g[i + 2] === '/') { body += '(?:[^"]*/)?'; i += 2; } else { body += '[^"]*'; i += 1; }
+      if (g[i + 2] === '/') { body += '(?:[^"]*/|)'; i += 2; } else { body += '[^"]*'; i += 1; }
     } else if (c === '*') body += '[^/"]*';
     else if (c === '?') body += '[^/"]';
     else body += reEscape(c);
   }
-  return `"[A-Za-z_]*paths?":\\[?(?:"[^"]*",)*"${body}"`;
+  return `"[A-Za-z_]*paths?":[^\\x00]*"${body}"`;
 }
 
-const domainArgsPattern = (d) => (d.startsWith('**.') ? `https?://(?:[^/"]*\\.)?${reEscape(d.slice(3))}(?:[:/"]|$)` : d.startsWith('*.') ? `https?://[^/"]+\\.${reEscape(d.slice(2))}(?:[:/"]|$)` : `https?://${reEscape(d)}(?:[:/"]|$)`);
+const domainArgsPattern = (d) => (d.startsWith('**.') ? `https?://(?:[^/"]*\\.|)${reEscape(d.slice(3))}(?:[:/"]|$)` : d.startsWith('*.') ? `https?://[^/"]+\\.${reEscape(d.slice(2))}(?:[:/"]|$)` : `https?://${reEscape(d)}(?:[:/"]|$)`);
 
 function emitGemini(ctx) {
   const { policy: p, tier } = ctx;
@@ -687,6 +726,7 @@ function emitGemini(ctx) {
   const budget = p.budgets?.[tier] ?? {};
   if (budget.max_turns) settings.model = { maxSessionTurns: budget.max_turns };
 
+  for (const r of rules.filter((x) => x.argsPattern && geminiDropsPattern(x.argsPattern))) ctx.error('gemini-drops', `argsPattern ${r.argsPattern} fails Gemini's ReDoS check, so Gemini would load the policy without this rule (a compiler bug; nothing written)`);
   const header = `# Compiled from ${ctx.source} (profile ${ctx.profileName}, tier ${tier}) by ${GENERATOR}.\n# User-tier policy (~/.gemini/policies/); the workspace tier is disabled upstream. Tool names other than\n# read_file, glob, write_file, replace and run_shell_command are unverified (adapters/gemini).\n`;
   return [
     jsonFile('settings.json', settings, 'settings-fragment'),

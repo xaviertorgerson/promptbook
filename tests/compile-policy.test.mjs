@@ -7,7 +7,7 @@ import { after, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
 import { forbidHit } from '../tools/guards/forbid-guard.mjs';
-import { commandMatches, compilePolicy, coversInterpreter, diffClaudeSettings, ENGINES, expandCommand, globArgsPattern, parseSettingsTemplate, renderDiff, renderReport, unsafeKeys } from '../tools/lib/compile-policy.mjs';
+import { codexReadKey, codexTakesAccess, commandMatches, compilePolicy, coversInterpreter, diffClaudeSettings, ENGINES, expandCommand, geminiDropsPattern, globArgsPattern, parseSettingsTemplate, renderDiff, renderReport, unsafeKeys } from '../tools/lib/compile-policy.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FIX = path.join(ROOT, 'fixtures/compile-policy');
@@ -272,14 +272,48 @@ describe('compile-policy contract', () => {
     });
   });
 
+  // Gemini 0.64.0 matches argsPattern against stableStringify(args): keys sorted, each top-level
+  // pair between NUL characters.
+  const geminiArgs = (args) => `{${Object.keys(args).sort().map((k) => `\0${JSON.stringify(k)}:${JSON.stringify(args[k])}\0`).join(',')}}`;
+
   it('Gemini: read denies match path arguments, single or listed, and nothing else', () => {
     const re = new RegExp(globArgsPattern('**/.env'));
-    assert.ok(re.test(JSON.stringify({ file_path: '/w/app/.env' })));
-    assert.ok(re.test(JSON.stringify({ paths: ['/w/a.ts', '/w/.env'] })));
-    assert.ok(!re.test(JSON.stringify({ file_path: '/w/.envrc' })));
+    for (const ser of [JSON.stringify, geminiArgs]) {
+      assert.ok(re.test(ser({ file_path: '/w/app/.env' })));
+      assert.ok(re.test(ser({ file_path: '.env' })));
+      assert.ok(re.test(ser({ paths: ['/w/a.ts', '/w/.env'] })));
+      assert.ok(re.test(ser({ paths: ['/w/a]b.ts', 'x:y', '/w/.env'] })), 'no earlier entry hides a later one');
+      assert.ok(!re.test(ser({ file_path: '/w/.envrc' })));
+      assert.ok(!re.test(ser({ file_path: '/w/x.env' })));
+    }
     const home = new RegExp(globArgsPattern('~/.ssh/**'));
-    assert.ok(home.test(JSON.stringify({ absolute_path: '/home/u/.ssh/id_ed25519' })));
+    assert.ok(home.test(geminiArgs({ absolute_path: '/home/u/.ssh/id_ed25519' })));
+    const hooks = new RegExp(globArgsPattern('**/.git/hooks/**'));
+    assert.ok(hooks.test(geminiArgs({ content: 'x', file_path: '/w/.git/hooks/pre-commit' })));
+    assert.ok(!hooks.test(geminiArgs({ file_path: '/w/README.md', new_string: 'run ".git/hooks/pre-commit" by hand', old_string: 'x' })), 'a later field in its own pair is not a path');
     assert.deepEqual(expandCommand(['git', 'push', ['--force', '-f']]), [['git', 'push', '--force'], ['git', 'push', '-f']]);
+  });
+
+  it('Gemini: no argsPattern the compiler writes is one Gemini drops as a potential ReDoS', () => {
+    for (const re of ['(?:[^"]*/)?\\.env', '\\[?(?:"[^"]*",)*"x"', 'https?://(?:[^/"]*\\.)?example\\.com']) assert.ok(geminiDropsPattern(re), re);
+    for (const re of [globArgsPattern('**/.env'), globArgsPattern('src/**/gen/*.ts'), 'https?://(?:[^/"]*\\.|)example\\.com(?:[:/"]|$)']) assert.ok(!geminiDropsPattern(re), re);
+    const policies = [golden, load(path.join(ROOT, 'examples/tally/_operator/agent-policy.yaml')), load(path.join(FIX, 'dotfiles/agent-policy.yaml'))];
+    let n = 0;
+    for (const p of policies) {
+      for (const profile of Object.keys(p.profiles)) {
+        for (const f of compilePolicy(p, { profile, engine: 'gemini' }).files.filter((x) => x.path.endsWith('harness.toml'))) {
+          for (const r of f.data.filter((x) => x.argsPattern)) {
+            n += 1;
+            assert.ok(!geminiDropsPattern(r.argsPattern), `${profile}/${f.path}: ${r.argsPattern}`);
+          }
+        }
+      }
+    }
+    assert.ok(n >= 20, `${n} patterns checked`);
+    const domain = compilePolicy(golden, { profile: 'laptop', engine: 'gemini' }).files.find((f) => f.path.endsWith('harness.toml')).data.find((r) => r.toolName === 'web_fetch' && r.decision === 'deny');
+    const fetch = new RegExp(domain.argsPattern);
+    for (const url of ['https://internal.example.com/x', 'https://a.b.internal.example.com']) assert.ok(fetch.test(geminiArgs({ prompt: `read ${url}` })), url);
+    assert.ok(!fetch.test(geminiArgs({ prompt: 'read https://notinternal.example.com.evil.org' })));
   });
 });
 
@@ -462,10 +496,12 @@ describe('review finding 7: unattended, an ask Codex cannot represent is a denia
     const p = { policy_version: 1, profiles: { ci: { tier: 'unattended' } }, deny_read: ['~/.ssh/**'], forbid: [], ask: [{ tool: 'web-fetch', domain: 'docs.example.com' }, { tool: 'mcp:db:query' }, { tool: 'web-search' }], budgets: { unattended: { max_turns: 5, max_usd: 1, max_minutes: 10 } }, sandbox: { enabled: true } };
     const r = compilePolicy(p, { profile: 'ci', engine: 'codex' });
     assert.ok(r.errors.some((e) => e.field === 'ask' && /web-search/.test(e.message)), JSON.stringify(r.errors));
-    const ok = compilePolicy({ ...p, ask: p.ask.slice(0, 2) }, { profile: 'ci', engine: 'codex' });
+    assert.ok(r.errors.some((e) => e.field === 'ask' && /mcp:db:query: Codex loads an mcp_servers entry only with its transport/.test(e.message)), 'config.toml cannot carry the MCP deny: an ask gap');
+    const ok = compilePolicy({ ...p, ask: p.ask.slice(0, 2), accept_gaps: [{ engine: 'codex', field: 'ask', profiles: ['ci'], reason: 'the launcher merges mcp-restrictions.toml into the db entry' }] }, { profile: 'ci', engine: 'codex' });
     assert.equal(ok.ok, true, JSON.stringify(ok.errors));
     assert.match(config(ok), /"docs\.example\.com" = "deny"/);
-    assert.match(config(ok), /disabled_tools = \["query"\]/);
+    assert.doesNotMatch(config(ok), /mcp_servers/);
+    assert.match(ok.files.find((f) => f.path === 'mcp-restrictions.toml').content, /\[mcp_servers\.db\]\ndisabled_tools = \["query"\]/);
     const interactive = compilePolicy({ ...p, profiles: { ci: { tier: 'ask' } } }, { profile: 'ci', engine: 'codex' });
     assert.ok(interactive.warnings.some((w) => w.rule === 'dropped' && /web-search/.test(w.message)), 'an interactive ask is still a convenience');
   });
@@ -645,5 +681,142 @@ describe('review finding 15: roles narrow a profile\'s allowlist and egress per 
     const w = compilePolicy(tally, { profile: 'workstation', engine: 'claude' });
     assert.ok(!w.files.some((f) => f.path.startsWith('roles/')));
     assert.ok(w.notes.some((n) => /roles compile for the unattended tier/.test(n)));
+  });
+});
+
+describe('Codex filesystem entries: a glob takes deny only (Codex 0.162.1 refuses to load anything else)', () => {
+  const base = { policy_version: 1, profiles: { box: { tier: 'ask' }, ci: { tier: 'unattended' } }, deny_read: ['**/.env'], forbid: [], budgets: { unattended: { max_turns: 5, max_usd: 1, max_minutes: 10 } }, accept_gaps: [{ engine: 'codex', field: 'forbid', reason: 'apply_patch is refused by the project hook' }] };
+  const codex = (p, profile = 'box') => compilePolicy({ ...base, ...p }, { profile, engine: 'codex' });
+  const roots = (r) => r.files.find((f) => f.path.endsWith('config.toml')).data.permissions.harness.filesystem?.[':workspace_roots'] ?? {};
+  // Every filesystem entry an output holds: [path, access].
+  const entries = (data) => Object.values(data.permissions ?? {}).flatMap((prof) => Object.entries(prof.filesystem ?? {}).flatMap(([k, v]) => (typeof v === 'object' ? Object.entries(v) : [[k, v]])));
+
+  it('an exact path, or a single trailing /** on a literal path, takes read and write; any other wildcard is a glob', () => {
+    for (const g of ['deploy/**', 'Makefile', '.git/hooks/**', '~/.cache/pnpm', '~/**', '/etc/**', '.']) assert.ok(codexTakesAccess(g), g);
+    for (const g of ['**', '**/.git/hooks/**', '**/.env', 'src/*/gen/**', '*.pem', 'docs/**/x', '~/.ssh/*_rsa', 'a/**/**', 'logs/?.txt', 'src/{a,b}/**']) assert.ok(!codexTakesAccess(g), g);
+    assert.deepEqual(codexReadKey('**/.git/hooks/**'), { key: '.git/hooks/**', topOnly: true });
+    assert.deepEqual(codexReadKey('**/package.json'), { key: 'package.json', topOnly: true });
+    assert.deepEqual(codexReadKey('**'), { key: '.' });
+    assert.deepEqual(codexReadKey('deploy/**'), { key: 'deploy/**' });
+    for (const g of ['**/*.pem', '**/a/**/b', 'src/**/gen', '~/**/.git/hooks/**']) assert.equal(codexReadKey(g), null, g);
+  });
+
+  it('a write forbid on **/<literal>/** or **/<literal> downgrades the literal at each workspace root, and warns that a deeper copy stays writable', () => {
+    const r = codex({ forbid: [{ write: '**/.git/hooks/**' }, { write: '**/package.json' }, { write: 'deploy/**' }], allow: [{ write: '**' }] });
+    assert.equal(r.ok, true, JSON.stringify(r.errors));
+    assert.deepEqual(roots(r), { '**/.env': 'deny', '.git/hooks/**': 'read', 'package.json': 'read', 'deploy/**': 'read', '.': 'write' });
+    const top = r.warnings.filter((w) => w.rule === 'glob-top-level-only').map((w) => w.message);
+    assert.equal(top.length, 2, top.join('\n'));
+    assert.match(top[0], /^forbid write \*\*\/\.git\/hooks\/\*\*: .*"\.git\/hooks\/\*\*" at each workspace root; a copy deeper down \(<dir>\/\.git\/hooks\) stays writable/);
+    assert.ok(r.accepted.every((a) => a.field === 'forbid' && /apply_patch/.test(a.message)), JSON.stringify(r.accepted));
+  });
+
+  it('a write forbid on ** makes the whole workspace read-only, over the workspace write', () => {
+    const r = codex({ forbid: [{ write: '**' }], allow: [{ write: '**' }] });
+    assert.equal(r.ok, true, JSON.stringify(r.errors));
+    assert.deepEqual(roots(r), { '**/.env': 'deny', '.': 'read' });
+    assert.ok(!r.warnings.some((w) => w.rule === 'glob-top-level-only'), 'the workspace root is the whole of **');
+  });
+
+  it('a write forbid on any other glob is a forbid gap: refused until accepted, and then nothing invalid is emitted for it', () => {
+    const p = { forbid: [{ write: 'src/**/generated/**' }, { write: '**/*.pem' }], accept_gaps: [] };
+    const refused = codex(p);
+    assert.equal(refused.ok, false);
+    assert.deepEqual(refused.files, []);
+    for (const g of ['src/**/generated/**', '**/*.pem']) assert.ok(refused.errors.some((e) => e.field === 'forbid' && e.message.includes(`write ${g}: Codex takes a glob only for deny`) && /nothing is emitted/.test(e.message)), `${g}: ${JSON.stringify(refused.errors)}`);
+    const accepted = codex({ ...p, accept_gaps: base.accept_gaps });
+    assert.equal(accepted.ok, true, JSON.stringify(accepted.errors));
+    assert.deepEqual(roots(accepted), { '**/.env': 'deny' });
+    assert.equal(accepted.accepted.filter((a) => /nothing is emitted/.test(a.message)).length, 2, JSON.stringify(accepted.accepted));
+  });
+
+  it('unattended, a write ask on a glob is the same denial under the ask gap', () => {
+    const ask = { ask: [{ write: '**/infra/**' }, { write: 'ops/*/secrets' }] };
+    const refused = codex(ask, 'ci');
+    assert.ok(refused.errors.some((e) => e.field === 'ask' && /ops\/\*\/secrets: Codex takes a glob only for deny/.test(e.message)), JSON.stringify(refused.errors));
+    const r = codex({ ...ask, accept_gaps: [{ engine: 'codex', field: 'ask', profiles: ['ci'], reason: 'the project hook refuses both' }] }, 'ci');
+    assert.equal(r.ok, true, JSON.stringify(r.errors));
+    assert.deepEqual(roots(r), { '**/.env': 'deny', 'infra/**': 'read' });
+    assert.ok(r.warnings.some((w) => w.rule === 'glob-top-level-only' && /^ask write \*\*\/infra\/\*\*/.test(w.message)), JSON.stringify(r.warnings));
+  });
+
+  it('an allow write or a writable root Codex cannot take is dropped with a warning; one it takes is emitted', () => {
+    const r = codex({ allow: [{ write: 'docs/**' }, { write: 'src/**/*.ts' }], sandbox: { enabled: true, writable_roots: ['~/.cache/pnpm', '~/.cache/*/tmp'] } });
+    assert.equal(r.ok, true, JSON.stringify(r.errors));
+    assert.equal(roots(r)['docs/**'], 'write');
+    const fsys = r.files[0].data.permissions.harness.filesystem;
+    assert.equal(fsys['~/.cache/pnpm'], 'write');
+    assert.equal(fsys['~/.cache/*/tmp'], undefined);
+    assert.equal(roots(r)['src/**/*.ts'], undefined);
+    const dropped = r.warnings.filter((w) => w.rule === 'dropped').map((w) => w.message);
+    assert.ok(dropped.some((m) => m.startsWith('allow write src/**/*.ts')) && dropped.some((m) => m.startsWith('sandbox.writable_roots write ~/.cache/*/tmp')), dropped.join('\n'));
+  });
+
+  it('no compiled Codex output holds a glob with an access other than deny, on any fixture policy, profile or role', () => {
+    const policies = [golden, load(path.join(FIX, 'dotfiles/agent-policy.yaml')), load(path.join(ROOT, 'examples/tally/_operator/agent-policy.yaml')), ...fs.readdirSync(path.join(ROOT, 'fixtures/valid/policy')).map((f) => load(path.join(ROOT, 'fixtures/valid/policy', f)))];
+    let checked = 0;
+    for (const p of policies) {
+      for (const profile of Object.keys(p.profiles)) {
+        for (const f of compilePolicy(p, { profile, engine: 'codex' }).files.filter((x) => x.path.endsWith('config.toml'))) {
+          for (const [g, access] of entries(f.data)) {
+            checked += 1;
+            assert.ok(access === 'deny' || codexTakesAccess(g), `${profile}/${f.path}: "${g}" = "${access}"`);
+          }
+        }
+      }
+    }
+    assert.ok(checked > 40, `${checked} entries checked`);
+  });
+});
+
+describe('Codex MCP tool denies: config.toml loads standalone, and the deny is never dropped', () => {
+  const base = { policy_version: 1, profiles: { box: { tier: 'ask' }, ci: { tier: 'unattended' } }, deny_read: ['**/.env'], forbid: [{ tool: 'mcp:prod-db:execute' }, { tool: 'mcp:prod-db:drop' }, { tool: 'mcp:docs:write' }], budgets: { unattended: { max_turns: 5, max_usd: 1, max_minutes: 10 } } };
+  const accept = (field = 'forbid') => ({ accept_gaps: [{ engine: 'codex', field, reason: 'the dotfiles merge mcp-restrictions.toml into each server entry they define' }] });
+  const codex = (p, profile = 'box') => compilePolicy({ ...base, ...p }, { profile, engine: 'codex' });
+  const file = (r, p) => r.files.find((f) => f.path === p);
+
+  it('an MCP tool forbid is a forbid gap: Codex refuses an mcp_servers entry without its transport, which the policy does not hold', () => {
+    const r = codex({});
+    assert.equal(r.ok, false);
+    assert.deepEqual(r.files, []);
+    const e = r.errors.filter((x) => x.field === 'forbid');
+    assert.equal(e.length, 3, JSON.stringify(r.errors));
+    assert.match(e[0].message, /tool mcp:prod-db:execute: Codex loads an mcp_servers entry only with its transport \(command or url\)/);
+    assert.match(e[0].stanza, /engine: codex, field: forbid, profiles: \[box\]/);
+  });
+
+  it('accepted, the denies go to mcp-restrictions.toml per server, config.toml holds no mcp_servers table, and a note says how to merge', () => {
+    const r = codex(accept());
+    assert.equal(r.ok, true, JSON.stringify(r.errors));
+    const cfg = r.files.find((f) => f.path === 'config.toml');
+    assert.equal(cfg.data.mcp_servers, undefined);
+    assert.doesNotMatch(cfg.content, /mcp_servers/);
+    const frag = file(r, 'mcp-restrictions.toml');
+    assert.equal(frag.kind, 'mcp-fragment');
+    assert.deepEqual(frag.data, { mcp_servers: { 'prod-db': { disabled_tools: ['execute', 'drop'] }, docs: { disabled_tools: ['write'] } } });
+    assert.match(frag.content, /^# Not a config\.toml/m);
+    assert.equal(r.accepted.filter((a) => a.field === 'forbid' && /holds only once merged into the entry that defines (prod-db|docs)/.test(a.message)).length, 3, JSON.stringify(r.accepted));
+    assert.ok(r.notes.some((n) => /^mcp-restrictions\.toml: merge each mcp_servers\.<id>\.disabled_tools \(prod-db, docs\)/.test(n)), JSON.stringify(r.notes));
+    assert.ok(!r.warnings.some((w) => w.rule === 'merge-mcp'));
+  });
+
+  it('unattended, an MCP tool ask is the same deny under the ask gap; interactive, it is dropped with a warning', () => {
+    const p = { forbid: [], ask: [{ tool: 'mcp:db:query' }] };
+    assert.ok(codex(p, 'ci').errors.some((e) => e.field === 'ask' && /mcp:db:query/.test(e.message)));
+    const r = codex({ ...p, ...accept('ask') }, 'ci');
+    assert.equal(r.ok, true, JSON.stringify(r.errors));
+    assert.deepEqual(file(r, 'mcp-restrictions.toml').data, { mcp_servers: { db: { disabled_tools: ['query'] } } });
+    const interactive = codex(p);
+    assert.equal(interactive.ok, true, JSON.stringify(interactive.errors));
+    assert.equal(file(interactive, 'mcp-restrictions.toml'), undefined);
+    assert.ok(interactive.warnings.some((w) => w.rule === 'dropped' && /mcp:db:query/.test(w.message)));
+  });
+
+  it('a role\'s MCP denies are the role\'s own fragment, beside its config', () => {
+    const p = { ...base, ...accept(), profiles: { ci: { tier: 'unattended' } }, roles: { reader: { read_only: true, engines: ['codex'] } } };
+    const r = compilePolicy(p, { profile: 'ci', engine: 'codex' });
+    assert.equal(r.ok, true, JSON.stringify(r.errors));
+    assert.ok(file(r, 'roles/reader/mcp-restrictions.toml') && !file(r, 'mcp-restrictions.toml'));
+    assert.equal(file(r, 'roles/reader/ci.config.toml').data.mcp_servers, undefined);
   });
 });

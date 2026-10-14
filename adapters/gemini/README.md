@@ -5,7 +5,8 @@ CLI settings and policy-engine TOML. Verified against geminicli.com and antigrav
 2026-10-13. Gemini CLI was replaced by Antigravity CLI (`agy`) for unpaid and Google One users on
 2026-06-18; paid API-key and enterprise users may still run Gemini CLI
 ([migration][migrate]). This adapter targets Gemini CLI's documented surfaces and notes where `agy`
-differs; Antigravity's own policy and hook surfaces were not documented on the pages read.
+differs; Antigravity's own policy and hook surfaces were not documented on the pages read. Every
+compiled `settings.json` and policy file is loaded by Gemini CLI 0.64.0 (below).
 
 ## Where artifacts land
 
@@ -38,7 +39,7 @@ non-interactive mode `ask_user` is treated as `deny`.
 | `tier: auto` | `general.defaultApprovalMode: "auto_edit"` | No classifier-reviewed mode; the closest stricter one edits without asking and asks for commands. Compiled with a `degraded` warning. |
 | `tier: autonomous` | no settings key: YOLO "can only be enabled from the command line"; the launcher passes it | Whether an admin- or user-tier `deny` outranks YOLO's auto-approval is not stated on the page read *(unverified)*; until a probe shows it, the compiler refuses `autonomous` for Gemini unless `accept_gaps` names `{engine: gemini, field: tier}`. |
 | `tier: unattended` | launcher passes the non-interactive flags; `ask_user` becomes deny | |
-| `deny_read` | `[[rule]] toolName = [<the file-reading tools>], argsPattern = "<regex of the glob>", decision = "deny"` | The tool names (`read_file`, `read_many_files`, the search and glob tools) are taken from the installed version's tool list at compile time *(not verified here)*; **partial**, and `run_shell_command` reads (`cat .env`) are not covered without a sandbox. Error unless `accept_gaps` names `{engine: gemini, field: deny_read}` or the profile runs Gemini sandboxed without the files mounted. |
+| `deny_read` | `[[rule]] toolName = [<the file-reading tools>], argsPattern = "<regex of the glob>", decision = "deny"` | The arguments are "converted to a stable JSON string" ([policy engine][policy]); in 0.64.0 that is keys sorted with each top-level pair between NUL characters, so the pattern is `"<key ending in path or paths>":[^\x00]*"<glob as regex>"`, which stays inside the path's own pair (without the NULs it reads on, which only denies more). No group in it carries a quantifier: the loader drops a rule whose pattern fails its ReDoS check (a `(` whose text before the next `)` holds a quantifier, the `?` of `(?:` included, with a later `)` followed by one), printing "Policy file error … Unsafe regex pattern (potential ReDoS)" and still exiting 0; the compiler applies the same check and refuses (`gemini-drops`) rather than write such a rule. The tool names (`read_file`, `read_many_files`, the search and glob tools) are taken from the installed version's tool list at compile time *(not verified here)*; **partial**, and `run_shell_command` reads (`cat .env`) are not covered without a sandbox. Error unless `accept_gaps` names `{engine: gemini, field: deny_read}` or the profile runs Gemini sandboxed without the files mounted. |
 | `forbid: {command: [...]}` | `[[rule]] commandPrefix = "a b", decision = "deny", denyMessage = reason`, priority 900 | One rule per alternatives expansion. |
 | `forbid: {command: [...], flags_anywhere: [...]}` | `[[rule]] commandPrefix = "<words> <flag>"` per expansion and flag | The prefix form only (`commandPrefix` "matches if the command argument starts with the given string"); the flags later in the command are a `forbid` gap. `commandRegex` could carry them, but the page names neither its regex flavor nor how the JSON-serialized arguments are escaped, so it is not emitted until a probe shows it. `hooks.forbid_guard` is not registered for Gemini (its hook events and decision output differ): a `hooks-not-emitted` warning. |
 | `forbid: {write: glob}` | `[[rule]] toolName = [<the file-writing tools>], argsPattern = "<regex>", decision = "deny"` | Same partial caveat as `deny_read`. |
@@ -53,6 +54,26 @@ non-interactive mode `ask_user` is treated as `deny`.
 | `sandbox.writable_roots` | — | Container mounts are the launcher's job. |
 | `sandbox.credentials` (masks) | — | **No equivalent**: sandboxed commands would read the credential unmasked; error unless `accept_gaps` names `{engine: gemini, field: sandbox}` (a container that mounts no credentials is the usual reason). |
 | `budgets` | `settings.json` `model.maxSessionTurns` for `max_turns`; `runner.json` `caps` and `enforcement` for `harness run` | `model.maxSessionTurns` is the session's turn limit ([configuration][config]); headless, exceeding it exits 53, "turn limit exceeded" ([headless][headless]), which `harness run` reports as the engine's own stop. `harness run` enforces `max_minutes` by a hard kill (exit 124). **Not enforced: `max_usd`** — the headless JSON reports tokens, not cost: unattended, a `spend-unmetered` warning and `max_minutes` is required; elsewhere `max_usd` (and `max_tokens` everywhere) is a `budgets` gap. |
+
+**Loaded by the real CLI.** `tests/gemini-load.test.mjs` (`GEMINI_BIN=<gemini> pnpm test`, or
+`gemini` on `PATH`; skipped otherwise) writes each compiled `settings.json` and
+`policies/harness.toml` (the goldens, the Tally evaluator, and fresh compiles of the fixture
+policies as written and with every gap accepted) into a scratch `GEMINI_CLI_HOME` as the user tier
+and runs `gemini mcp list`, the one offline command found that loads both: settings the schema
+refuses print "Invalid configuration in …/settings.json", and a policy rule the loader cannot use
+prints "[USER] Policy file error in harness.toml" and is dropped while the command exits 0, so the
+test reads the output, and first proves both messages appear for a planted bad setting and rule.
+Measured on 2026-10-13: before the patterns above, each golden lost 8 of its 25 or 26 rules this
+way, 6 of them denies (every `deny_read`, the `.git/hooks` write deny, the internal-domain fetch deny).
+Not checked offline: whether a loaded rule matches what it should (no command lists the loaded
+rules; the unit tests match the patterns against arguments serialized the 0.64.0 way). Also seen:
+`tools.allowed` prints a deprecation warning ("will be removed in 1.0: Migrate to Policy Engine");
+the policy file's `allow` rules carry the same pre-approvals. In a folder that is not trusted,
+"Approval mode overridden to "default"": `plan` (read-only) and `auto_edit` start as `default`
+until the folder is trusted. From the 0.64.0 bundle, not the docs: `read_many_files` takes
+`include`, `glob` and `grep_search` take `pattern` and `dir_path`, and `search_file_content` is a
+legacy alias of `grep_search`, so a read deny keyed on `*path`/`*paths` misses `include` and glob
+patterns: part of the `deny_read` gap.
 
 **Never emitted:** `hooksConfig.enabled: false`, `security.disableYoloMode: false` overrides on a
 shared machine, any `tools.exclude` (deprecated in favour of deny rules).

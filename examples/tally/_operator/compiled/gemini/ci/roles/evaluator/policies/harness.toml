@@ -4,35 +4,35 @@
 
 [[rule]]
 toolName = ["read_file", "read_many_files", "glob", "search_file_content"]
-argsPattern = "\"[A-Za-z_]*paths?\":\\[?(?:\"[^\"]*\",)*\"(?:[^\"]*/)?\\.env\""
+argsPattern = "\"[A-Za-z_]*paths?\":[^\\x00]*\"(?:[^\"]*/|)\\.env\""
 decision = "deny"
 priority = 900
 denyMessage = "deny_read **/.env (agent-policy.yaml)"
 
 [[rule]]
 toolName = ["read_file", "read_many_files", "glob", "search_file_content"]
-argsPattern = "\"[A-Za-z_]*paths?\":\\[?(?:\"[^\"]*\",)*\"(?:[^\"]*/)?\\.env\\.[^/\"]*\""
+argsPattern = "\"[A-Za-z_]*paths?\":[^\\x00]*\"(?:[^\"]*/|)\\.env\\.[^/\"]*\""
 decision = "deny"
 priority = 900
 denyMessage = "deny_read **/.env.* (agent-policy.yaml)"
 
 [[rule]]
 toolName = ["read_file", "read_many_files", "glob", "search_file_content"]
-argsPattern = "\"[A-Za-z_]*paths?\":\\[?(?:\"[^\"]*\",)*\"(?:[^\"]*/)?secrets/[^\"]*\""
+argsPattern = "\"[A-Za-z_]*paths?\":[^\\x00]*\"(?:[^\"]*/|)secrets/[^\"]*\""
 decision = "deny"
 priority = 900
 denyMessage = "deny_read **/secrets/** (agent-policy.yaml)"
 
 [[rule]]
 toolName = ["read_file", "read_many_files", "glob", "search_file_content"]
-argsPattern = "\"[A-Za-z_]*paths?\":\\[?(?:\"[^\"]*\",)*\"[^\"]*/\\.ssh/[^\"]*\""
+argsPattern = "\"[A-Za-z_]*paths?\":[^\\x00]*\"[^\"]*/\\.ssh/[^\"]*\""
 decision = "deny"
 priority = 900
 denyMessage = "deny_read ~/.ssh/** (agent-policy.yaml)"
 
 [[rule]]
 toolName = ["read_file", "read_many_files", "glob", "search_file_content"]
-argsPattern = "\"[A-Za-z_]*paths?\":\\[?(?:\"[^\"]*\",)*\"[^\"]*/\\.config/shell/secrets\\.sh\""
+argsPattern = "\"[A-Za-z_]*paths?\":[^\\x00]*\"[^\"]*/\\.config/shell/secrets\\.sh\""
 decision = "deny"
 priority = 900
 denyMessage = "deny_read ~/.config/shell/secrets.sh (agent-policy.yaml)"
@@ -88,7 +88,7 @@ denyMessage = "volumes hold the only copy of local data"
 
 [[rule]]
 toolName = ["write_file", "replace"]
-argsPattern = "\"[A-Za-z_]*paths?\":\\[?(?:\"[^\"]*\",)*\"(?:[^\"]*/)?\\.git/hooks/[^\"]*\""
+argsPattern = "\"[A-Za-z_]*paths?\":[^\\x00]*\"(?:[^\"]*/|)\\.git/hooks/[^\"]*\""
 decision = "deny"
 priority = 900
 denyMessage = "hooks run on every commit"
@@ -107,7 +107,7 @@ priority = 500
 
 [[rule]]
 toolName = ["write_file", "replace"]
-argsPattern = "\"[A-Za-z_]*paths?\":\\[?(?:\"[^\"]*\",)*\"(?:[^\"]*/)?deploy/[^\"]*\""
+argsPattern = "\"[A-Za-z_]*paths?\":[^\\x00]*\"(?:[^\"]*/|)deploy/[^\"]*\""
 decision = "ask_user"
 priority = 500
 

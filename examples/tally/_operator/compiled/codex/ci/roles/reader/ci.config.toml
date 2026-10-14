@@ -16,8 +16,8 @@ extends = ":read-only"
 "**/.env" = "deny"
 "**/.env.*" = "deny"
 "**/secrets/**" = "deny"
-"**/.git/hooks/**" = "read"
-"**" = "read"
+".git/hooks/**" = "read"
+"." = "read"
 "deploy/**" = "read"
 
 [permissions.harness.network]

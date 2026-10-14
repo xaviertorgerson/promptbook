@@ -7,6 +7,11 @@
       "role": "reader"
     },
     {
+      "rule": "glob-top-level-only",
+      "message": "forbid write **/.git/hooks/**: Codex takes a glob only for deny, so the \"read\" downgrade is \".git/hooks/**\" at each workspace root; a copy deeper down (<dir>/.git/hooks) stays writable for sandboxed commands",
+      "role": "reader"
+    },
+    {
       "rule": "allow-unsandboxed",
       "message": "allow [\"git\", [\"status\", \"log\", \"diff\", \"show\"]] not emitted on codex: an execpolicy allow runs outside the sandbox, past deny_read and egress; the commands run sandboxed instead (accept_gaps {engine: codex, field: allow, profiles: [ci]} emits them)",
       "role": "reader"

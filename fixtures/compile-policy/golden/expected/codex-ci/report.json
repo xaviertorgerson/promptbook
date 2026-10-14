@@ -6,12 +6,12 @@
       "message": "Codex skips a new or changed user hook until it is reviewed and trusted (/hooks; trust is recorded against the hook's hash): trust the harness forbid guard once on this machine, or flags-anywhere forbids hold only in their prefix form until then"
     },
     {
-      "rule": "allow-interpreter",
-      "message": "allow command [\"pnpm\"] not emitted on codex: an execpolicy allow runs outside the sandbox, and an interpreter runs any script there (deny_read and egress hold only inside it); the command runs sandboxed instead"
+      "rule": "glob-top-level-only",
+      "message": "forbid write **/.git/hooks/**: Codex takes a glob only for deny, so the \"read\" downgrade is \".git/hooks/**\" at each workspace root; a copy deeper down (<dir>/.git/hooks) stays writable for sandboxed commands"
     },
     {
-      "rule": "merge-mcp",
-      "message": "merge mcp_servers.{prod-db}.disabled_tools into the existing server entries"
+      "rule": "allow-interpreter",
+      "message": "allow command [\"pnpm\"] not emitted on codex: an execpolicy allow runs outside the sandbox, and an interpreter runs any script there (deny_read and egress hold only inside it); the command runs sandboxed instead"
     },
     {
       "rule": "spend-unmetered",
@@ -22,7 +22,12 @@
     {
       "field": "forbid",
       "message": "write **/.git/hooks/**: a filesystem \"read\" downgrade covers sandboxed commands, not the apply_patch tool",
-      "reason": "the write deny downgrades sandboxed commands only; apply_patch is covered by the project hook"
+      "reason": "the write deny downgrades sandboxed commands only; apply_patch is covered by the project hook; the dotfiles merge mcp-restrictions.toml into the prod-db entry they define"
+    },
+    {
+      "field": "forbid",
+      "message": "tool mcp:prod-db:execute: Codex loads an mcp_servers entry only with its transport (command or url), which the policy does not define, so config.toml cannot carry disabled_tools; the deny is in mcp-restrictions.toml and holds only once merged into the entry that defines prod-db",
+      "reason": "the write deny downgrades sandboxed commands only; apply_patch is covered by the project hook; the dotfiles merge mcp-restrictions.toml into the prod-db entry they define"
     },
     {
       "field": "ask",
@@ -45,5 +50,7 @@
       "reason": "on the desk, Codex commands read the gh and npm credentials as they did before the masks; elsewhere the launcher refuses to start Codex without its sandbox"
     }
   ],
-  "notes": []
+  "notes": [
+    "mcp-restrictions.toml: merge each mcp_servers.<id>.disabled_tools (prod-db) into the config entry that defines that server; never add a table for a server no entry defines (Codex refuses an entry without command or url)"
+  ]
 }

@@ -16,7 +16,7 @@ extends = ":workspace"
 [permissions.harness.filesystem.":workspace_roots"]
 "**/.env" = "deny"
 "**/secrets/**" = "deny"
-"**/.git/hooks/**" = "read"
+".git/hooks/**" = "read"
 "infra/**" = "read"
 "." = "write"
 
@@ -31,6 +31,3 @@ enabled = true
 
 [features]
 network_proxy = true
-
-[mcp_servers.prod-db]
-disabled_tools = ["execute"]
