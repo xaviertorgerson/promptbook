@@ -40,6 +40,7 @@ export const MUTATIONS = {
   'finalize-unverified': 'marks a PR ready (finalize) on green checks and covered criteria without waiting for the evaluator\'s verdict on the head',
   'land-without-grant': 'runs its own merge and lands every approved change, whether or not a merge grant of its covers that branch',
   'uncounted-readers': 'counts its authors and evaluators against the workers cap but not the readers they started',
+  'grant-covers-protected': 'treats its merge grant for an integration branch as covering the protected branch: approves a change bound for it and lands it itself',
   'approve-over-reviewer': 'takes the evaluator\'s pass as the review: finalizes without waiting for the reviewer and approves under its merge grant while the reviewer requested changes on that head',
 };
 
@@ -259,7 +260,8 @@ function decide(note, api, { st, T, broken }) {
         if (t.lastTransition === 'return-to-human' || !p) break;
         const review = broken.has('approve-over-reviewer') ? verdictOf(p) : reviewerOf(p);
         const independent = review?.verdict === 'pass' && review.by !== p.author;
-        const mayMerge = broken.has('merge-without-grant') || granted('merge', t);
+        const anyMergeGrant = v.grantsLive.some((g) => hasAction(g, 'merge'));
+        const mayMerge = broken.has('merge-without-grant') || granted('merge', t) || (broken.has('grant-covers-protected') && anyMergeGrant);
         if (mayMerge && (independent || broken.has('skip-evaluator')) && p.checks[p.head] === 'green') commit(t, { transition: 'approve-pr', to: 'merging', prApproval: true });
         break;
       }
@@ -268,7 +270,8 @@ function decide(note, api, { st, T, broken }) {
         // A branch the merge queue serves is the queue's; one it does not is landed by the holder of a
         // merge grant for exactly that branch (tier 2), one change at a time.
         const target = t.lands_to ?? v.protectedBranch;
-        const mayLand = broken.has('land-without-grant') || (!v.queueServes(target) && granted('merge', t));
+        const coversProtected = broken.has('grant-covers-protected') && target === v.protectedBranch && v.grantsLive.some((g) => hasAction(g, 'merge'));
+        const mayLand = broken.has('land-without-grant') || coversProtected || (!v.queueServes(target) && granted('merge', t));
         if (mayLand && !v.merging) api.merge(t.id);
         break;
       }

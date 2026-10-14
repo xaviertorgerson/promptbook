@@ -140,14 +140,19 @@ describe('simulate: the faults happen and are handled as the contracts say', () 
     // The conflict needs GEX-2 and GEX-3 in the merge window together, which most seeds produce.
     const returned = runs.filter((r) => r.trace.flatMap((l) => l.commits ?? []).some((c) => c.transition === 'return-to-human'));
     assert.ok(returned.length >= 5, `the semantic conflict went back to the human in ${returned.length}/10 seeds`);
-    for (const r of returned) assert.ok(r.trace.flatMap((l) => l.commits ?? []).filter((c) => c.transition === 'return-to-human').every((c) => c.role === 'merge'));
+    for (const r of returned) assert.ok(r.trace.flatMap((l) => l.commits ?? []).filter((c) => c.transition === 'return-to-human').every((c) => c.role === 'orchestrator' && ['GRANT-3', 'GRANT-4'].includes(c.grant)), 'the orchestrator, under the live merge grant, hands it back');
+    for (const r of runs) {
+      const commits = r.trace.flatMap((l) => l.commits ?? []);
+      assert.ok(!commits.some((c) => c.transition === 'land'), 'nothing lands on main under the grant');
+      assert.ok(commits.filter((c) => c.transition === 'promote').every((c) => c.role === 'owner'), 'the human promotes the integration branch');
+    }
   });
 
   describe('a runtime holding a work grant and a separate merge grant', () => {
     const grant = (id, actions, limits) => ({ id, granted_by: 'owner', granted_to: { role: 'orchestrator', runtime: 'sim' }, granted_at: '+0m', source: `sim: ${id}`, scope: { objective: 'Deliver the sim epic', repositories: ['acme/app'], epics: ['sim'] }, actions, limits, expires_at: '+14d', revocable: true });
     const work = grant('GRANT-1', ['select-tasks', 'approve-plan', 'finalize'], { max_workers: 2, budget: { max_usd: 60 } });
-    const mergeOnly = grant('GRANT-2', [{ action: 'merge', repo: 'acme/app', target: 'main', strategy: 'squash', requires: ['independent-review', 'required-checks'] }], { max_workers: 1, budget: { max_usd: 5 } });
-    const tasks = ['a', 'b', 'c', 'd', 'e'].map((x, i) => ({ id: `TWO-${i + 1}`, size: 'S', touches: [`src/${x}/**`] }));
+    const mergeOnly = grant('GRANT-2', [{ action: 'merge', repo: 'acme/app', target: 'integration/sim', protected_branch: 'main', strategy: 'squash', requires: ['independent-review', 'required-checks'] }], { max_workers: 1, budget: { max_usd: 5 } });
+    const tasks = ['a', 'b', 'c', 'd', 'e'].map((x, i) => ({ id: `TWO-${i + 1}`, size: 'S', lands_to: 'integration/sim', touches: [`src/${x}/**`] }));
     const base = { name: 'two-grants', supervisor: { max_workers: 4 }, merge: { queue_targets: [] }, grants: [work, mergeOnly], tasks };
     const peak = (w) => {
       const marks = [...w.sessions.values()].filter((s) => s.runtime === 'main' && ['author', 'evaluator'].includes(s.kind)).flatMap((s) => [[s.startedAt, 1], [s.endedAt ?? Infinity, -1]]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
@@ -173,8 +178,8 @@ describe('simulate: the faults happen and are handled as the contracts say', () 
         const by = (t) => [...new Set(commits.filter((c) => c.transition === t).map((c) => c.grant))];
         assert.deepEqual(by('mark-pr-ready'), ['GRANT-1']);
         assert.deepEqual(by('approve-pr'), ['GRANT-2']);
-        assert.deepEqual(by('land'), ['GRANT-2']);
-        assert.equal(r.summary.merged, 5);
+        assert.deepEqual(by('integrate'), ['GRANT-2']);
+        assert.equal(r.summary.merged, 5, 'the human promoted the integration branch');
       }
       const noMerge = runAll(normalize({ ...base, grants: [work], merge: { queue_targets: null } }), 5, { trace: true });
       for (const r of noMerge) {
@@ -183,7 +188,14 @@ describe('simulate: the faults happen and are handled as the contracts say', () 
       }
     });
 
-    it('grant and grants together are a scenario error; so is a grant id twice', () => {
+    it('no merge grant covers the protected branch: one naming it, or naming another protected branch than the repository\'s, is refused', () => {
+    const toMain = grant('GRANT-2', [{ action: 'merge', repo: 'acme/app', target: 'main', protected_branch: 'main', strategy: 'squash', requires: ['independent-review', 'required-checks'] }], { max_workers: 1, budget: { max_usd: 5 } });
+    assert.throws(() => simulate(normalize({ ...base, grants: [work, toMain] }), { trace: false }), /merge-target-not-protected/);
+    const wrong = grant('GRANT-2', [{ action: 'merge', repo: 'acme/app', target: 'integration/sim', protected_branch: 'trunk', strategy: 'squash', requires: ['independent-review', 'required-checks'] }], { max_workers: 1, budget: { max_usd: 5 } });
+    assert.throws(() => simulate(normalize({ ...base, grants: [work, wrong] }), { trace: false }), /names trunk as acme\/app's protected branch; the scenario's is main/);
+  });
+
+  it('grant and grants together are a scenario error; so is a grant id twice', () => {
       assert.throws(() => normalize({ ...base, grant: work }), /grant and grants/);
       assert.throws(() => normalize({ ...base, grants: [work, work] }), /GRANT-1 repeats/);
     });
@@ -293,10 +305,11 @@ const MUTANTS = [
   { break: 'finalize-unverified', scenario: 'integration-branch', caught: ['guards-hold'], message: /mark-pr-ready: guard independent-verification does not hold$/ },
   { break: 'land-without-grant', scenario: 'integration-branch', over: { merge: { queue_targets: [] } }, caught: ['transitions-allowed', 'merge-requires-authority'], message: /orchestrator/ },
   { break: 'uncounted-readers', scenario: 'happy-path', over: { work: { helper_rate: 1 } }, caught: ['cap-workers'] },
+  { break: 'grant-covers-protected', scenario: 'grant-expiry', over: { tasks: [...raw('grant-expiry').tasks, { id: 'GEX-6', size: 'S', touches: ['src/f/**'] }] }, caught: ['human-gates-by-humans', 'transitions-allowed', 'merge-requires-authority'], message: /GEX-6/ },
   { break: 'approve-over-reviewer', scenario: 'integration-branch', over: { reviewer: { reject_rate: 0.5 } }, caught: ['guards-hold', 'merge-requires-authority'], message: /independent-review/ },
   { world: { engine: 'bypass-skips-walls' }, label: 'engine binding: bypass skips walls (disableAllHooks)', scenario: 'wall-bypass', caught: ['walls-block'] },
   { world: { cas: false }, label: 'forge without compare-and-swap', scenario: 'parallel-overlap', caught: ['one-owner-per-claimed-task'] },
-  { world: { mergeBot: 'resolve-semantic' }, label: 'merge queue resolves semantic conflicts', scenario: 'grant-expiry', caught: ['guards-hold', 'merge-requires-authority'] },
+  { world: { mergeBot: 'resolve-semantic' }, label: 'merge queue resolves semantic conflicts', scenario: 'grant-expiry', over: { merge: { queue_targets: null } }, caught: ['guards-hold', 'merge-requires-authority'] },
   { world: { forgeProtection: false }, label: 'forge without branch protection', scenario: 'merge-without-grant', caught: ['merge-requires-authority'] },
 ];
 

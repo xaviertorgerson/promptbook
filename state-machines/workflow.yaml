@@ -7,7 +7,7 @@
 #
 # Source: agentic-template docs/workflow.md, docs/roles.md and docs/interjection.md (2026-10-13),
 # generalized. Authority for the orchestrator role, and every `grant:` below, is authority.yaml.
-version: 1.3.0
+version: 1.4.0
 contract: workflow
 
 rules:
@@ -35,8 +35,10 @@ rules:
   - id: landing-target
     text: >-
       A task lands on the protected branch unless its lands_to names its epic's integration branch.
-      There it is integrated (tier 2) and reaches merged only when a human merges that branch into
-      the protected branch (tier 3). A dependent in the same epic builds on the integration branch,
+      Only the merge role lands on the protected branch, after a human's approval; no grant covers
+      it. On the integration branch a task is integrated (tier 2, the merge role or a coordinator
+      under a merge grant for exactly that branch) and reaches merged only when a human merges that
+      branch into the protected branch (tier 3). A dependent in the same epic builds on the integration branch,
       so an integrated dependency satisfies it; a dependent in another epic waits for merged.
   - id: side-states-resume-to-prior
     text: >-
@@ -50,7 +52,7 @@ roles:
   coder:        { kind: agent }
   reviewer:     { kind: agent, note: "Reviews every pushed head as code (inline comments, then pass or changes-requested); never approves, never pushes. Its pass is the independent-review guard." }
   evaluator:    { kind: agent, note: "Judges the current head against the task's criteria in a clean context and records a verdict (pass or fail); never edits, never approves, never commits a status (playbook: verification). Its pass is the independent-verification guard." }
-  merge:        { kind: agent, note: "The only automated role that lands on the protected branch, and only after pr-approval." }
+  merge:        { kind: agent, note: "The only automated role that lands on the protected branch, and only after a human's pr-approval." }
   train:        { kind: automation, note: "Promotes one built artifact through the stages; never retries a red hop." }
   orchestrator: { kind: agent, note: "A coordinator. Holds nothing by default; acts only through a grant (authority.yaml)." }
 
@@ -67,9 +69,10 @@ gates:
     approver: [owner, engineer]
     grantable: merge
     why: >-
-      A human reviews the change. A merge grant lets a coordinator stand in only with an
-      independent review of the current head and the required checks, and only where the forge's
-      branch protection admits it.
+      A human reviews the change. A merge grant lets a coordinator stand in only for a change that
+      lands on an epic's integration branch (never the protected branch), with the reviewer's pass
+      and the evaluator's verdict on the current head and the required checks, and only where the
+      forge's branch protection admits it.
   production-release:
     machine: release
     transition: release
@@ -133,11 +136,11 @@ machines:
           note: "In agentic-template the coder does this when the deterministic gates pass; a runtime whose default is human finalization (stagehand) needs the finalize grant. Every task waits for the evaluator's pass on the current head; a runtime that has a reviewer waits for its review too, since a changes-requested found after this point needs a human to send the task back." }
       - { id: iterate,           from: review,       to: in-progress,  by: [coder, engineer] }
       - { id: approve-pr,        from: human-review, to: merging,      by: [owner, engineer], gate: pr-approval, grant: merge, guards: [checks-green],
-          grant_guards: [independent-review, independent-verification, checks-green] }
-      - { id: land,              from: merging,      to: merged,       by: [merge], grant: merge, guards: [lands-on-protected, mechanical-only, merged-checks-green],
-          note: "The merge role after the approval; or the orchestrator under a live merge grant whose repo, target and strategy match (a runtime with no separate merge role)." }
+          grant_guards: [lands-on-integration, independent-review, independent-verification, checks-green] }
+      - { id: land,              from: merging,      to: merged,       by: [merge], guards: [lands-on-protected, mechanical-only, merged-checks-green],
+          note: "The merge role, after a human's approval. Never grantable: a merge grant never targets the protected branch (authority.yaml merge.scope_rule)." }
       - { id: integrate,         from: merging,      to: integrated,   by: [merge], grant: merge, guards: [lands-on-integration, mechanical-only, merged-checks-green],
-          note: "Tier 2: into the epic's integration branch, by the merge role or the orchestrator under a live merge grant whose target is that branch." }
+          note: "Tier 2: into the epic's integration branch, by the merge role or the orchestrator under a live merge grant whose repo, strategy and exact target (that branch) match." }
       - { id: return-to-human,   from: merging,      to: human-review, by: [merge], grant: merge, reason: true,
           note: "A semantic conflict or red checks on the merged result; whoever lands never resolves those." }
       - { id: promote,           from: integrated,   to: merged,       by: [owner, engineer], guards: [integration-landed],

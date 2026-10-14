@@ -22,7 +22,7 @@ grant:
   actions:
     - select-tasks
     - finalize
-    - { action: merge, repo: acme/app, target: integration/rating, strategy: squash, requires: [independent-review, required-checks] }
+    - { action: merge, repo: acme/app, target: integration/rating, protected_branch: main, strategy: squash, requires: [independent-review, required-checks] }
   limits: { max_workers: 3, budget: { max_usd: 80 } }
   expires_at: "+14d"
   revocable: true

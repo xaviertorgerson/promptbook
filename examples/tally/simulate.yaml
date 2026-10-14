@@ -74,6 +74,7 @@ grants:
       - action: merge
         repo: tally/tally
         target: integration/settle-up
+        protected_branch: main
         strategy: merge
         requires: [independent-review, required-checks, current-head]
     limits:

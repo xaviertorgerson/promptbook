@@ -72,6 +72,14 @@ export const CHECKS = {
     return out;
   },
 
+  // A merge grant never targets the protected branch (authority.yaml grantable.merge.scope_rule):
+  // the coordinator lands on an epic's integration branch at most; promotion is a human's merge.
+  'merge-target-not-protected'({ data }) {
+    return (Array.isArray(data?.actions) ? data.actions : []).flatMap((a, i) => (a && typeof a === 'object' && a.action === 'merge' && a.target && a.target === a.protected_branch
+      ? [{ rule: 'merge-target-not-protected', pointer: `/actions/${i}/target`, message: `merge into ${a.target}, the protected branch: no grant covers it; target an integration branch (integration/<epic>) and leave its merge into ${a.protected_branch} to a human (promote)` }]
+      : []));
+  },
+
   // A rule in allow or ask that a forbid rule already covers never takes effect (deny wins on every
   // engine), so it misleads a reader. A forbid that an allow repeats is a mistake either way.
   'policy-shadowing'({ data }) {

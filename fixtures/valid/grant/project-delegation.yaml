@@ -1,6 +1,7 @@
 # A human delegates the rating-engine epic to the orchestrator for two weeks: it may pick and
-# sequence tasks, approve plans, decide findings and finalize, and merge to main by squash —
-# still behind an independent review and the required checks.
+# sequence tasks, approve plans, decide findings and finalize, and merge into the epic's integration
+# branch by squash, still behind the reviewer's pass and the required checks. main stays the
+# human's: no grant targets the protected branch.
 id: GRANT-3
 granted_by: maria
 granted_to: { role: orchestrator, runtime: stagehand }
@@ -18,7 +19,8 @@ actions:
   - finalize
   - action: merge
     repo: acme/billing
-    target: main
+    target: integration/rating-engine
+    protected_branch: main
     strategy: squash
     requires: [independent-review, required-checks, current-head]
 limits:

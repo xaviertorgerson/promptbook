@@ -112,7 +112,7 @@ spec gate).
 
 Transition tables, roles, gates, guards, side states, the merge requirements and the claimed statuses
 are read from `state-machines/*.yaml` and the task schema; a guard the simulator has no evidence
-model for is an error, never a pass. `--break <mutation>` swaps in one of 21
+model for is an error, never a pass. `--break <mutation>` swaps in one of 22
 deliberately broken supervisors (`--list` names them); the tests run each, plus four broken world
 bindings (bypass that skips walls, a forge without CAS, a merge queue that resolves semantic
 conflicts, no branch protection), and require the named invariant to catch it. Among them:

@@ -13,7 +13,8 @@ PR. The protected branch stays human (tier 3); the coordinator lands only into t
    project's required checks and no direct pushes. Code-owner review is not required on it, or the
    grant cannot be exercised there.
 2. **Grant** (a human): a `grant` whose merge action names `repo`, `target: integration/<epic>`,
-   one `strategy`, and `requires` with at least `independent-review` and `required-checks`
+   `protected_branch` (the branch the target must never be), one `strategy`, and `requires` with
+   at least `independent-review` and `required-checks`
    (example: integration-example.grant.yaml). With an expiry and limits.
 3. **Tasks target it.** Each task sets `lands_to: integration/<epic>`; its worktree bases on the
    integration branch's recorded commit (managing-worktrees); its PR's base is `integration/<epic>`.

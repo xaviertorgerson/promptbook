@@ -1,4 +1,4 @@
-# Authority rules (excerpt of the harness `authority` machine 1.3.0 and `grant` contract 1.1.0)
+# Authority rules (excerpt of the harness `authority` machine 1.3.0 and `grant` contract 2.0.0)
 
 ## Default
 
@@ -17,14 +17,17 @@ request and never renewed from a saved summary.
 | `dispose-findings` + `policy` | decide which review findings are fixed now and which become follow-ups | dropping a material in-scope finding; skipping the re-review after fixes |
 | `finalize` | mark a PR ready once the current head passed an independent review | merging |
 | `publish-review` | publish a review on someone else's PR for the exact head reviewed | publishing for a changed head without re-review |
-| `merge{repo, target, strategy, requires}` | land a PR through the forge in place of the human approval | any other repository, branch or strategy; a wildcard target; a direct push |
+| `merge{repo, target, protected_branch, strategy, requires}` | approve and integrate a PR into an epic's integration branch through the forge in place of the human approval | the protected branch (never a target); any other repository, branch or strategy; a wildcard target; a direct push |
 
 Merge rules: one repository, one exact target branch, one strategy; `requires` always includes
-`independent-review` and `required-checks` (optionally `current-head`, `human-approval`); only a
+`independent-review` (the reviewer role's pass on the current head) and `required-checks`
+(optionally `current-head`, `human-approval`); only a
 coordinator (`orchestrator`) or the `merge` role may hold it; workers never do; the forge's branch
-protection still applies, and a required human code-owner review cannot be satisfied by a grant. A
-grant for `main` does not cover `release/*`. Merge is delegated last, if ever; prefer a per-epic
-integration branch and leave integration → default branch to a human.
+protection still applies, and a required human code-owner review cannot be satisfied by a grant.
+The target is never the protected branch, which the grant names as `protected_branch`: a grant for
+`integration/rating` covers neither `integration/rating-v2` nor `main`, and integration → protected
+branch is a human's merge (`promote-integration`, never grantable). Merge is delegated last, if
+ever.
 
 ## Never grantable
 

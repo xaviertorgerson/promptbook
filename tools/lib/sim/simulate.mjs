@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { registry as sharedRegistry } from '../registry.mjs';
+import { validateData } from '../validate.mjs';
 import { Checker, exportTaskRecords } from './invariants.mjs';
 import { loadMachines } from './machines.mjs';
 import { orchestrating } from './policies.mjs';
@@ -19,8 +19,11 @@ export function machines() {
 export function simulate(sc, { seed = sc.seed, policy = orchestrating(), rivalPolicy = null, engine = 'correct', forgeProtection = true, cas = true, mergeBot = 'correct', trace = true, only = null } = {}) {
   const m = machines();
   for (const g of sc.grants) {
-    const v = sharedRegistry().validator('grant');
-    if (!v(g)) throw new Error(`${sc.source}: grant ${g.id ?? '?'} is not a valid grant: ${v.errors.map((e) => `${e.instancePath || '/'} ${e.message}`).join('; ')}`);
+    const errors = validateData('grant', g);
+    if (errors.length) throw new Error(`${sc.source}: grant ${g.id ?? '?'} is not a valid grant: ${errors.join('; ')}`);
+    for (const a of g.actions.filter((x) => x?.action === 'merge')) {
+      if (a.protected_branch !== sc.target) throw new Error(`${sc.source}: grant ${g.id} names ${a.protected_branch} as ${a.repo}'s protected branch; the scenario's is ${sc.target}`);
+    }
   }
   const world = new World(sc, { seed, machines: m, policies: { main: policy, rival: rivalPolicy ?? policy }, engine, forgeProtection, cas, mergeBot, trace });
   const checker = new Checker({ machines: m, only });

@@ -21,14 +21,16 @@ const actionName = (a) => (typeof a === 'string' ? a : a.action);
 export const landingTarget = (sc, task) => task?.lands_to ?? sc.target;
 
 // Does grant g delegate `action` for this task? merge must name the scenario's repository, the
-// exact branch the task lands on and the strategy (authority.yaml grantable.merge.scope_rule);
-// every action is bounded by the grant's scope (repositories, epics, tasks).
+// exact branch the task lands on, which is never the protected branch, and the strategy
+// (authority.yaml grantable.merge.scope_rule); every action is bounded by the grant's scope
+// (repositories, epics, tasks).
 export function grantHas(g, action, sc, task) {
   if (!g) return false;
   if (!g.scope?.repositories?.includes(sc.repo)) return false;
   if (task && g.scope.epics?.length && !g.scope.epics.includes(task.epic)) return false;
   if (task && g.scope.tasks?.length && !g.scope.tasks.includes(task.id)) return false;
-  return g.actions.some((a) => actionName(a) === action && (action !== 'merge' || (a.repo === sc.repo && a.target === landingTarget(sc, task) && a.strategy === sc.strategy)));
+  const mergeCovers = (a) => a.repo === sc.repo && a.target === landingTarget(sc, task) && a.target !== sc.target && a.protected_branch === sc.target && a.strategy === sc.strategy;
+  return g.actions.some((a) => actionName(a) === action && (action !== 'merge' || mergeCovers(a)));
 }
 
 // Actions that start or steer workers. A grant that delegates one of them bounds how many run at

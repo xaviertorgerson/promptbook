@@ -211,6 +211,17 @@ export function validateAs(file, hit, { registry = sharedRegistry(), text = read
   return { contract: name, version: registry.version(name), records: loaded.records.length, findings };
 }
 
+// Validate one in-memory record (a grant the simulator holds, a run record it wrote) against a
+// contract: the schema, then the contract's named checks. Returns the error messages, [] when valid.
+export function validateData(name, data, { registry = sharedRegistry() } = {}) {
+  const v = registry.validator(name);
+  const out = v(data) ? [] : v.errors.map((e) => `${e.instancePath || '/'} ${e.message}`);
+  for (const id of registry.schema(name)['x-checks'] ?? []) {
+    for (const f of CHECKS[id]({ data, text: '', file: null })) if ((f.severity ?? 'error') === 'error') out.push(`${f.pointer} ${f.rule}: ${f.message}`);
+  }
+  return out;
+}
+
 // Validate a file against every contract it maps to. status: PASS | FAIL | SKIP (no contract).
 export function validateFile(file, opts = {}) {
   const registry = opts.registry ?? sharedRegistry();

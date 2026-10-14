@@ -252,13 +252,17 @@ evaluator's or reader's run is logged as what it was instead of an author's "adv
 ### grant
 
 **Purpose.** A human delegating named decisions to a coordinator for a named scope, within limits,
-until an expiry (`state-machines/authority.yaml`). **Schema** `grant.schema.json` 1.1.0: `id`,
+until an expiry (`state-machines/authority.yaml`). **Schema** `grant.schema.json` 2.0.0: `id`,
 `granted_by`, `granted_to{role, agent, runtime}`, `granted_at`, `source`, `scope{objective,
 repositories, epics, tasks, requirements, non_goals}`, `actions[]`, `limits{max_workers, budget,
 stop_when}`, `expires_at`, `revocable: true`, `revoked_at/by/reason`, `narrowed[]`. Actions:
 `select-tasks`, `approve-plan`, `dispose-findings` (with a `policy`), `finalize`, `publish-review`,
-and `merge{repo, target, strategy, requires}` where `requires` must include `independent-review` and
-`required-checks`; only an orchestrator or the merge role may hold merge. **Lifecycle (derived; no
+and `merge{repo, target, protected_branch, strategy, requires}` where `requires` must include
+`independent-review` and `required-checks`; only an orchestrator or the merge role may hold merge.
+2.0.0 (breaking): `protected_branch` is required and `target` may not equal it
+(`merge-target-not-protected`): a merge grant lands on an epic's integration branch at most, and
+the protected branch is reached only by the merge role after a human's approval or by a human's
+merge of the integration branch (workflow `land` is never grantable; `promote` is a human's). **Lifecycle (derived; no
 status field).** A grant's state is read from the record, never stored in it: *where* it is (the
 project's `.orchestrator/grants/GRANT-n.yaml`; it applies to that project only and is never moved or
 deleted, so the audit trail stays), its *dates* (`pending` before `granted_at`, `live` until
@@ -525,15 +529,16 @@ means what is `state-machines/attention.yaml`; what a human may delegate is
 `state-machines/authority.yaml`. The invariant that ties them: **status is a commit by an authorized
 role; a runtime signal is a hint that changes attention at most.**
 
-Landing (workflow since 1.2.0, authority since 1.1.0). `land` (→ `merged`), `integrate` (→ `integrated`) and
-`return-to-human` are the merge role's, or the orchestrator's under a live `merge` grant whose repo,
-strategy and exact target match — the target being the task's `lands_to`, else the protected branch
-(a runtime with no separate merge role). `promote` (`integrated` → `merged`) is a human's, after the
+Landing (workflow since 1.2.0, authority since 1.1.0). `land` (→ `merged`, the protected branch) is the
+merge role's alone, after a human's approval (never grantable since workflow 1.4.0). `integrate` (→
+`integrated`) and `return-to-human` are the merge role's, or the orchestrator's under a live
+`merge` grant whose repo, strategy and exact target match — the target being the task's `lands_to`,
+an integration branch, never the protected branch (a runtime with no separate merge role). `promote` (`integrated` → `merged`) is a human's, after the
 human merged the integration branch (tier 3; never grantable). `reopen` and `respec` take an
 integrated task back with a reason when a later integration breaks it. `deps-merged` counts an
 `integrated` dependency only for a dependent in the same epic. `mark-pr-ready` carries
 `independent-verification`: every task needs the evaluator's passing verdict on the current head
-(workflow 1.3.0; risk sets its trials and model family). `independent-review` is the reviewer role's
+(workflow since 1.3.0; risk sets its trials and model family). `independent-review` is the reviewer role's
 pass on the current head, required where a merge grant approves; the two are separate records
 (`task-record.reviews[].role`) and neither counts as the other. The simulator enforces all of it
 (TOOLS.md).

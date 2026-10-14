@@ -44,8 +44,8 @@ never_grantable:
   - id: promote-integration
     why: >-
       An integration branch reaches the protected branch only by a human's merge (tier 3); workflow
-      transition promote. A merge grant names one exact target and never the protected branch's
-      promotion of an integration branch.
+      transition promote. A merge grant names one exact integration target and never the protected
+      branch.
 
 grantable:
   select-tasks:
@@ -72,19 +72,24 @@ grantable:
     does_not_cover: Publishing for a changed head without re-review.
   merge:
     means: >-
-      Approve a PR for landing in place of the human approval, and land it (or hand it back on a
-      semantic conflict or red merged checks) where the runtime has no separate merge role.
-    workflow: [task.approve-pr, task.land, task.integrate, task.return-to-human]
-    parameters: [repo, target, strategy, requires]
+      Approve a PR for landing on an epic's integration branch in place of the human approval, and
+      integrate it (or hand it back on a semantic conflict or red merged checks) where the runtime
+      has no separate merge role for that branch.
+    workflow: [task.approve-pr, task.integrate, task.return-to-human]
+    parameters: [repo, target, protected_branch, strategy, requires]
     scope_rule: >-
-      One repository, one exact target branch, one strategy. No wildcard target. A grant for
-      main does not cover release/*. The target is the branch the task lands on: its lands_to (the
-      epic's integration branch, tier 2), else the protected branch.
+      One repository, one exact target branch, one strategy. No wildcard target: a grant for
+      integration/rating does not cover integration/rating-v2. The target is the branch the task
+      lands on, its lands_to (the epic's integration branch, tier 2), and never the repository's
+      protected branch, which the grant names as protected_branch (grant contract rule
+      merge-target-not-protected): a change reaches the protected branch only by the merge role
+      after a human's approval, or by a human's merge of the integration branch (promote).
     # independent-review is a reviewer-role pass on the current head (workflow guards); the
     # evaluator's verdict (independent-verification) is already required to reach human-review.
     always_requires: [independent-review, required-checks]
     also_checks: >-
-      The actual base and head at merge time; record the result. Only the coordinator exercises it,
+      The actual base and head at merge time, and that protected_branch is the forge's protected
+      (default) branch; record the result. Only the coordinator exercises it,
       through the forge's PR merge, never a direct push; workers never hold it. The forge's branch
       protection still applies: if it requires a human code-owner approval, the grant cannot satisfy
       it and the coordinator asks.

@@ -52,7 +52,9 @@ deploying a merged build (releasing-changes).
    from the start of the run: it is live (`granted_at` ≤ now < `expires_at`, no `revoked_at`); you
    hold it (`granted_to` role, and agent or runtime if named); the repository is in
    `scope.repositories` and the task or epic in scope; one `merge` action names this exact `repo`,
-   this exact `target` branch and the strategy you will use; `requires` is satisfied (always
+   this exact `target` branch, which is an integration branch and never the protected branch (the
+   grant's `protected_branch`, checked against the forge's default branch), and the strategy you
+   will use; `requires` is satisfied (always
    `independent-review` and `required-checks`, plus `current-head` and `human-approval` when
    listed); `limits` and `stop_when` are not breached; branch protection on the target does not
    require a human code-owner approval (if it does, the grant cannot satisfy it: ask). Any miss is
@@ -82,9 +84,9 @@ deploying a merged build (releasing-changes).
    target, the strategy, the tier and the grant id if any. Into the protected branch: `land`
    (`merging` → `merged`). Into the epic's integration branch (the task's `lands_to`): `integrate`
    (`merging` → `integrated`); the task becomes `merged` only through `promote`, a human's, after the
-   human merges the integration branch (step 10). Both belong to the merge role, or to the
-   coordinator under a live merge grant whose repo, strategy and exact target match (a runtime with
-   no separate merge role). On red merged checks: `return-to-human` with the
+   human merges the integration branch (step 10). `land` belongs to the merge role alone, after a
+   human's approval; `integrate` to the merge role, or to the coordinator under a live merge grant
+   whose repo, strategy and exact target match (a runtime with no separate merge role). On red merged checks: `return-to-human` with the
    failure, and the author gets it back through the human. Append the land record
    (references/land-record.md); the runner writes the run-record line with `grant`.
 10. **Epic integration flow** (references/integration-branch.md): the coordinator lands task PRs into
@@ -106,8 +108,8 @@ deploying a merged build (releasing-changes).
 
 - Never: approve or merge your own work; push to the protected or integration branch directly;
   force-push a shared branch; enable auto-merge on the protected branch; resolve a semantic
-  conflict; land on a red merged result; treat a grant as covering the protected branch when its
-  protection requires a human code owner; widen a grant (only a human issues a wider one).
+  conflict; land on a red merged result; treat any grant as covering the protected branch (no merge
+  grant may target it); widen a grant (only a human issues a wider one).
 - Stop and hand to a human (attention `needs-human`, `next_action` naming the decision): any
   semantic conflict; red checks on the merged result; a grant that is expired, revoked, out of
   scope, at its limits or ambiguous; an approval on a stale head; branch protection that blocks

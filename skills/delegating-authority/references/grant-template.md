@@ -4,7 +4,7 @@ A blank grant with every field explained. Placeholders in `<...>` do not validat
 human's words, then run `node tools/validate.mjs --contract grant <file>` if the validator is available.
 
 ```yaml
-# A blank grant (grant contract 1.1.0). Delete what the human did not say; never add what they did not say.
+# A blank grant (grant contract 2.0.0). Delete what the human did not say; never add what they did not say.
 id: GRANT-<n>                       # never reused
 granted_by: <human handle>          # the human who holds the authority (owner or engineer)
 granted_to:
@@ -28,7 +28,8 @@ actions:                            # each is separate; finalize is not merge
   # - publish-review
   # - action: merge
   #   repo: <owner/name>
-  #   target: <one exact branch, no wildcard>
+  #   target: <one exact integration branch, no wildcard; never the protected branch>
+  #   protected_branch: <the repository's protected (default) branch, e.g. main>
   #   strategy: merge               # merge | squash | rebase
   #   requires: [independent-review, required-checks, current-head]
 limits:

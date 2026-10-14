@@ -29,6 +29,13 @@ Fixes from an independent review of 0.1.0 (workflow, authority, trace, simulator
   as orchestrating-work says, and the runtime refuses a reader when every slot is taken; a guard
   the simulator has no evidence model for throws instead of passing; new mutation
   `uncounted-readers` (caught by `cap-workers`).
+- **breaking** — grant 2.0.0, authority 1.3.0, workflow 1.4.0: a merge grant names the repository's
+  `protected_branch` and its `target` may never be it (`merge-target-not-protected`). `land` onto
+  the protected branch is the merge role's alone, after a human's approval, and never grantable; a
+  grant's `approve-pr` carries `lands-on-integration`. Migrate a grant by adding
+  `protected_branch: <default branch>` to its merge action and pointing `target` at the epic's
+  integration branch. The simulator refuses such a grant (and one naming another protected branch
+  than the scenario's); new mutation `grant-covers-protected`.
 - **behavioral** — workflow 1.3.0: every task needs the evaluator's verdict on its current head
   before `human-review` (`independent-verification`; risk sets the trials and the model family, not
   whether it runs). `independent-review` is the reviewer role's pass on the current head, required

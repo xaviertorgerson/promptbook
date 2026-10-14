@@ -14,14 +14,16 @@ Treat merge authority as tiers, each granted explicitly and revocably:
 |---|---|---|---|
 | 0 (default) | a human | the protected branch | human approval of the PR |
 | 1 | the merge role, after human approval | the protected branch | mechanical conflicts only; CI re-run on the merged result |
-| 2 | the coordinator, under a grant | a per-epic integration branch | current-head independent review passed; required checks green; within the grant's limits |
+| 2 | the coordinator, under a grant | a per-epic integration branch | the reviewer's pass and the evaluator's verdict on the current head; required checks green; within the grant's limits |
 | 3 | a human | integration → protected branch | the epic's acceptance evidence |
 
 - **Grants name scope.** A merge grant names the repository, the target branch, the strategy and the
   required evidence, plus limits (max workers, budget) and an expiry. It is revocable at any time and
   applies to one project. Workers never hold merge authority; only the coordinator exercises a grant.
-- **The protected branch stays human.** No grant covers it. Branch protection, required reviews from
-  code owners (agents are never code owners) and required checks enforce this, not prose.
+- **The protected branch stays human.** No grant covers it: a merge grant names the protected
+  branch only to say its target is not it, and the grant contract rejects one whose target is.
+  Branch protection, required reviews from code owners (agents are never code owners) and required
+  checks enforce this, not prose.
 - **A merge queue re-runs CI on the merged result**, landing one change at a time; a clean base and a
   clean PR can still merge red.
 - **Conflicts split two ways.** Mechanical (lockfiles, generated files, one-sided hunks) may be

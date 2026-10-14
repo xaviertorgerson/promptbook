@@ -39,8 +39,10 @@ workers a grant covers (orchestrating-work); permission policy or walls (adoptin
 1. Read the request in the human's words. Separate the **outcome assigned** (deliver the milestone)
    from the **decisions delegated** (choose tasks, approve plans). An outcome alone delegates nothing.
 2. Map each decision to an action: `select-tasks`, `approve-plan`, `dispose-findings` (needs a
-   `policy`), `finalize`, `publish-review`, `merge` (needs `repo`, one exact `target`, `strategy`,
-   `requires` including `independent-review` and `required-checks`). Each is separate: finalize is
+   `policy`), `finalize`, `publish-review`, `merge` (needs `repo`, one exact `target`, the
+   repository's `protected_branch`, `strategy`, `requires` including `independent-review` and
+   `required-checks`). The target is an epic's integration branch, never the protected branch: a
+   request to let the coordinator merge into the protected branch is refused and kept human. Each is separate: finalize is
    not merge; merge is not publish-review.
 3. Refuse anything on the never-delegable list (below); say so and keep it with the human.
 4. Fill the template in `references/grant-template.md`: `granted_by` (the human), `granted_to`
@@ -73,8 +75,9 @@ Run `references/check.md` in order; stop at the first "no":
 4. **The action is listed** in its current `actions` (narrowing already removed what it removed).
 5. **The scope covers it:** the repository is in `scope.repositories`; the epic, task or requirement
    is listed when the grant lists any; it is not a `non_goal`.
-6. **Merge only:** same `repo`, the PR's base equals `target` exactly, the strategy matches, an
-   independent reviewer (not the author) passed the current head, required checks are green on it,
+6. **Merge only:** same `repo`, the PR's base equals `target` exactly and is not the protected
+   branch (the grant's `protected_branch` and the forge's default branch), the strategy matches,
+   the reviewer role (not the author) passed the current head and the evaluator's verdict is on it, required checks are green on it,
    and every other `requires` entry holds. The forge's branch protection still applies; if it needs a
    human code owner, the grant cannot satisfy it.
 7. **Limits:** live workers < `max_workers`; spend under the grant (sum of run records with
