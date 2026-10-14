@@ -23,7 +23,7 @@
     {
       "field": "sandbox",
       "message": "fail_if_unavailable has no documented Codex key",
-      "reason": "the devbox image fails to start without its sandbox; on the desk, Codex commands read the gh and npm credentials as they did before the masks"
+      "reason": "on the desk, Codex commands read the gh and npm credentials as they did before the masks; elsewhere the launcher refuses to start Codex without its sandbox"
     },
     {
       "field": "budgets",

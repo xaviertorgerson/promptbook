@@ -53,14 +53,18 @@ sandbox:
 budgets:
   unattended: { max_turns: 200, max_usd: 5, max_minutes: 60 }
   autonomous: { max_usd: 20 }
+# An entry without profiles covers every profile but the bypass tier's; the devbox's gaps name it.
 accept_gaps:
-  - { engine: claude, field: egress, reason: "WebFetch under bypass reaches unlisted domains; the devbox's network ACL is the egress boundary" }
-  - { engine: codex, field: forbid, reason: "the write deny downgrades sandboxed commands only; apply_patch is covered by the project hook" }
-  - { engine: codex, field: sandbox, reason: "the devbox image fails to start without its sandbox; on the desk, Codex commands read the gh and npm credentials as they did before the masks" }
+  - { engine: claude, field: egress, profiles: [devbox], reason: "WebFetch under bypass reaches unlisted domains; the devbox's network ACL is the egress boundary" }
+  - { engine: codex, field: forbid, profiles: [devbox, laptop, desk, reader, ci], reason: "the write deny downgrades sandboxed commands only; apply_patch is covered by the project hook" }
+  - { engine: codex, field: sandbox, profiles: [devbox], reason: "the devbox image fails to start without its sandbox" }
+  - { engine: codex, field: sandbox, reason: "on the desk, Codex commands read the gh and npm credentials as they did before the masks; elsewhere the launcher refuses to start Codex without its sandbox" }
   - { engine: codex, field: budgets, reason: "the runner enforces turns and spend from its own logs" }
-  - { engine: gemini, field: deny_read, reason: "Gemini runs in a container without the secret files mounted" }
-  - { engine: gemini, field: forbid, reason: "shell redirection into .git/hooks is denied by the project hook" }
-  - { engine: gemini, field: egress, reason: "the container's proxy enforces the domain list" }
-  - { engine: gemini, field: sandbox, reason: "the launcher refuses to start without the container, which mounts no gh or npm credentials" }
+  - { engine: codex, field: budgets, profiles: [devbox], reason: "the devbox's spend is watched by the operator, who is reachable" }
+  - { engine: gemini, field: deny_read, profiles: [devbox, laptop, desk, reader, ci], reason: "Gemini runs in a container without the secret files mounted" }
+  - { engine: gemini, field: forbid, profiles: [devbox, laptop, desk, reader, ci], reason: "shell redirection into .git/hooks is denied by the project hook" }
+  - { engine: gemini, field: egress, profiles: [devbox, laptop, desk, reader, ci], reason: "the container's proxy enforces the domain list" }
+  - { engine: gemini, field: sandbox, profiles: [devbox, laptop, desk, reader, ci], reason: "the launcher refuses to start without the container, which mounts no gh or npm credentials" }
   - { engine: gemini, field: budgets, reason: "the runner enforces turns and spend from its own logs" }
-  - { engine: gemini, field: tier, reason: "YOLO only inside the devbox container, measured against a deny probe before use" }
+  - { engine: gemini, field: budgets, profiles: [devbox], reason: "the devbox's spend is watched by the operator, who is reachable" }
+  - { engine: gemini, field: tier, profiles: [devbox], reason: "YOLO only inside the devbox container, measured against a deny probe before use" }

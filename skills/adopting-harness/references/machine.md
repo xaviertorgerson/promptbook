@@ -72,7 +72,8 @@ fan-out script install only those; re-run the check when a pin moves.
 ## Policy compile checklist
 
 - Every tier compiles for every engine listed in its profile, or the compile fails; an
-  unrepresentable deny is an error unless `accept_gaps` names it with the operator's reason.
+  unrepresentable deny is an error unless `accept_gaps` names it with the operator's reason; a
+  bypass-tier profile's gaps are accepted only by an entry whose `profiles` names it.
 - No output sets a "disable all hooks" switch; no output removes or loosens a project deny.
 - Unattended tiers emit nothing into settings that would loosen a project; the runner passes the
   no-prompt mode, the allowlist and the budget.

@@ -133,7 +133,7 @@ describe('compile-policy contract', () => {
       assert.equal(r.ok, false, engine);
       for (const e of r.errors) {
         assert.equal(e.rule, 'unrepresentable');
-        assert.match(e.stanza, new RegExp(`engine: ${engine}, field: ${e.field}, reason: `));
+        assert.match(e.stanza, new RegExp(`engine: ${engine}, field: ${e.field}, profiles: \\[laptop\\], reason: `));
       }
       const fields = new Set(r.errors.map((e) => e.field));
       assert.ok(fields.has(engine === 'codex' ? 'forbid' : 'deny_read'), [...fields].join());
@@ -341,5 +341,43 @@ describe('compile-policy CLI', () => {
     assert.match(bad.stderr, /not a valid policy/);
     assert.equal(cli('fixtures/compile-policy/golden/agent-policy.yaml', '--profile', 'ci', '--engine', 'vim').status, 2);
     assert.equal(cli('fixtures/compile-policy/golden/agent-policy.yaml', '--engine', 'claude').status, 2);
+  });
+});
+
+describe('review findings: the compiler never loosens a wall silently', () => {
+  const REVIEW = path.join(FIX, 'review');
+  const review = (f) => load(path.join(REVIEW, f));
+  const settingsOf = (r) => JSON.parse(r.files.find((f) => f.path === 'settings.json').content);
+
+  it('finding 2: a gap accepted without profiles never waives the bypass tier\'s preconditions, nor lends it another profile\'s reason', () => {
+    const p = review('gap-scope-egress.yaml');
+    const box2 = compilePolicy(p, { profile: 'box2', engine: 'claude' });
+    assert.equal(box2.ok, false, 'box2 runs bypass with open egress on desk\'s acceptance');
+    assert.ok(box2.errors.some((e) => e.rule === 'bypass-preconditions' && /egress\.default: deny/.test(e.message) && /profiles: \[box2\]/.test(e.message)), JSON.stringify(box2.errors));
+    assert.equal(compilePolicy(p, { profile: 'desk', engine: 'claude' }).ok, true, 'desk keeps its own acceptance');
+    const scoped = { ...p, accept_gaps: [...p.accept_gaps, { engine: 'claude', field: 'egress', profiles: ['box2'], reason: 'box2 sits behind an egress proxy' }] };
+    const ok = compilePolicy(scoped, { profile: 'box2', engine: 'claude' });
+    assert.equal(ok.ok, true, JSON.stringify(ok.errors));
+    assert.ok(ok.accepted.every((a) => a.reason === 'box2 sits behind an egress proxy'), JSON.stringify(ok.accepted));
+  });
+
+  it('finding 2: a profile\'s strict sandbox key follows its own isolation, not another profile\'s accepted gap', () => {
+    const p = review('gap-scope-sandbox.yaml');
+    const unscoped = compilePolicy(p, { profile: 'container', engine: 'claude' });
+    assert.ok(unscoped.errors.some((e) => e.rule === 'bypass-preconditions'), 'an unscoped gap does not reach a bypass profile');
+    const scoped = { ...p, accept_gaps: [...p.accept_gaps.map((g) => ({ ...g, profiles: ['container'] })), { engine: 'claude', field: 'egress', profiles: ['container'], reason: 'the container network allows the registry only' }] };
+    const container = compilePolicy(scoped, { profile: 'container', engine: 'claude' });
+    assert.equal(container.ok, true, JSON.stringify(container.errors));
+    assert.equal(settingsOf(container).sandbox?.allowUnsandboxedCommands, undefined, 'no sandbox to keep strict');
+    const devbox = compilePolicy(scoped, { profile: 'devbox', engine: 'claude' });
+    assert.equal(devbox.ok, true, JSON.stringify(devbox.errors));
+    assert.equal(settingsOf(devbox).sandbox.allowUnsandboxedCommands, false, 'the devbox relies on its sandbox');
+    assert.deepEqual(devbox.accepted, []);
+  });
+
+  it('finding 2: accept_gaps names only profiles the policy has', () => {
+    const p = review('gap-scope-sandbox.yaml');
+    const r = compilePolicy({ ...p, accept_gaps: [{ ...p.accept_gaps[0], profiles: ['contianer'] }] }, { profile: 'devbox', engine: 'claude' });
+    assert.ok(r.errors.some((e) => e.rule === 'gap-profiles-exist' && /contianer/.test(e.message)), JSON.stringify(r.errors));
   });
 });

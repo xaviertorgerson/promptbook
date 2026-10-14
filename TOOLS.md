@@ -150,8 +150,9 @@ prints the `accept_gaps` stanza that would accept it (credential masks on Codex 
 warning; an unrepresentable ask or allow is dropped with a warning; on any error
 nothing is written. Refused outright: the bypass tier (`autonomous`) without a `requires` list naming
 its outside preconditions, or without `sandbox.enabled`, `sandbox.fail_if_unavailable` and
-`egress.default: deny` unless the missing field's gap is accepted by name (`accept_gaps` sandbox or
-egress, with a reason) (HAR-4); `requires` goes into `runner.json` and the notes for the launcher;
+`egress.default: deny` unless the missing field's gap is accepted for that profile by name
+(`accept_gaps` sandbox or egress with `profiles: [<it>]` and a reason; an entry without `profiles`
+never covers a bypass-tier profile) (HAR-4); `requires` goes into `runner.json` and the notes for the launcher;
 an unattended tier without turn and spend caps (HAR-3); any `x-` extension that disables hooks (HAR-2); an `examples` entry its rule does
 not match. No output may carry `disableAllHooks`, `hooksConfig.enabled: false`, `disableYoloMode`,
 `tools.exclude`, a full-access mode, or a bypass key outside the bypass tier: every compile checks

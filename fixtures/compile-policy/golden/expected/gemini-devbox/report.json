@@ -35,7 +35,7 @@
     {
       "field": "budgets",
       "message": "max_usd have no main-session key (only subagent max_turns)",
-      "reason": "the runner enforces turns and spend from its own logs"
+      "reason": "the devbox's spend is watched by the operator, who is reachable"
     }
   ],
   "notes": [

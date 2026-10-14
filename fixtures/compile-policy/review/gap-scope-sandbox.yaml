@@ -1,0 +1,14 @@
+# Review finding 2, repro B: the container profile's accepted sandbox gap must not cost the devbox,
+# which relies on its own sandbox, its strict-sandbox key (allowUnsandboxedCommands: false).
+policy_version: 1
+profiles:
+  container: { tier: autonomous, engines: [claude], requires: [non-root-container], sandbox: { enabled: false } }
+  devbox: { tier: autonomous, engines: [claude], requires: [prod-unreachable-from-this-host] }
+deny_read: ["~/.ssh/**"]
+forbid:
+  - { command: [git, push, --force] }
+  - { tool: web-fetch }
+egress: { default: deny, allow_domains: [registry.npmjs.org] }
+sandbox: { enabled: true, fail_if_unavailable: true }
+accept_gaps:
+  - { engine: claude, field: sandbox, reason: "container profile: the container is the isolation" }

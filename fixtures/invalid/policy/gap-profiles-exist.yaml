@@ -1,0 +1,8 @@
+# An accepted gap scoped to a profile the policy does not have accepts nothing.
+policy_version: 1
+profiles:
+  devbox: { tier: autonomous, engines: [claude], requires: [prod-unreachable-from-this-host] }
+deny_read: ["~/.ssh/**"]
+forbid: []
+accept_gaps:
+  - { engine: claude, field: egress, profiles: [dev-box], reason: "the devbox's egress proxy enforces the list" }

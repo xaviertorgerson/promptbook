@@ -7,7 +7,9 @@ import { toToml } from './toml.mjs';
 //   fail closed   a deny the engine cannot represent (deny_read, forbid, egress, sandbox, budgets,
 //                 tier) is an error unless accept_gaps names {engine, field} with a reason; an ask or
 //                 allow it cannot represent is dropped with a warning (dropping one never loosens a
-//                 wall). On any error nothing is written.
+//                 wall). An accept_gaps entry covers the profiles it names, or, naming none, every
+//                 profile but a bypass-tier one: the bypass tier's gaps are accepted for it by name.
+//                 On any error nothing is written.
 //   walls only    the compiler never emits a key that removes walls: disableAllHooks,
 //                 hooksConfig.enabled false, security.disableYoloMode overrides, tools.exclude,
 //                 :danger-full-access, a bypass mode or its prompt skip outside the bypass tier
@@ -70,18 +72,26 @@ class Context {
     this.warnings.push({ rule, message });
   }
 
+  // The operator's acceptance of a gap in this field for this engine and profile: an entry naming the
+  // profile, or one naming no profiles when the profile is not the bypass tier (a bypass profile's
+  // isolation is too specific to inherit from a policy-wide entry, HAR-4).
+  acceptedGap(field) {
+    return (this.policy.accept_gaps ?? []).find((g) => g.engine === this.engine && g.field === field && (g.profiles ? g.profiles.includes(this.profileName) : this.tier !== BYPASS_TIER));
+  }
+
+  stanza(field) {
+    return `accept_gaps:\n  - { engine: ${this.engine}, field: ${field}, profiles: [${this.profileName}], reason: "<why this degradation is acceptable>" }`;
+  }
+
   // A deny-side field the engine cannot represent (or only partly). true when the operator accepted
   // the gap, so the caller may emit its best effort; false (and an error) otherwise.
   gap(field, message) {
-    const acc = (this.policy.accept_gaps ?? []).find((g) => g.engine === this.engine && g.field === field);
+    const acc = this.acceptedGap(field);
     if (acc) {
       this.accepted.push({ field, message, reason: acc.reason });
       return true;
     }
-    this.error('unrepresentable', `${this.engine} cannot represent ${field}: ${message}`, {
-      field,
-      stanza: `accept_gaps:\n  - { engine: ${this.engine}, field: ${field}, reason: "<why this degradation is acceptable>" }`,
-    });
+    this.error('unrepresentable', `${this.engine} cannot represent ${field}: ${message}`, { field, stanza: this.stanza(field) });
     return false;
   }
 
@@ -114,6 +124,10 @@ function preflight(ctx) {
       }
     });
   }
+  (p.accept_gaps ?? []).forEach((g, i) => {
+    const unknown = (g.profiles ?? []).filter((n) => !p.profiles?.[n]);
+    if (unknown.length) ctx.error('gap-profiles-exist', `accept_gaps/${i} names ${unknown.join(', ')}, which ${unknown.length > 1 ? 'are not profiles' : 'is not a profile'} (profiles: ${Object.keys(p.profiles ?? {}).join(', ')})`);
+  });
   if (!ctx.profile) {
     ctx.error('profile-exists', `no profile "${ctx.profileName}" (profiles: ${Object.keys(p.profiles ?? {}).join(', ')})`);
     return;
@@ -128,9 +142,10 @@ function preflight(ctx) {
     // HAR-4: bypass only where the agent is sandboxed (non-root, never falling back to running
     // unsandboxed) and production is unreachable at the network level. The policy's own isolation is
     // the sandbox and egress.default deny; an operator who isolates the host another way (a
-    // container, a network ACL) accepts that field's gap by name, with a reason. What keeps the host
-    // safe outside the policy is named in the profile's requires, which nothing waives.
-    const accepted = (field) => (p.accept_gaps ?? []).find((g) => g.engine === ctx.engine && g.field === field);
+    // container, a network ACL) accepts that field's gap for this profile by name, with a reason.
+    // What keeps the host safe outside the policy is named in the profile's requires, which nothing
+    // waives.
+    const accepted = (field) => ctx.acceptedGap(field);
     const missing = [];
     const sandboxed = p.sandbox?.enabled === true && p.sandbox?.fail_if_unavailable === true;
     const sandboxGap = accepted('sandbox');
@@ -142,7 +157,7 @@ function preflight(ctx) {
     if (p.egress?.default !== 'deny' && !egressGap) missing.push('egress.default: deny (with allow_domains)');
     else if (p.egress?.default !== 'deny') ctx.accepted.push({ field: 'egress', message: 'the bypass tier runs with open egress (HAR-4)', reason: egressGap.reason });
     if (missing.length) {
-      ctx.error('bypass-preconditions', `profile "${ctx.profileName}" is the bypass tier (${BYPASS_TIER}) without its preconditions (HAR-4: sandboxed, non-root, production unreachable): set ${missing.join(', ')}, or accept the gap by name (accept_gaps: { engine: ${ctx.engine}, field: sandbox|egress, reason })`);
+      ctx.error('bypass-preconditions', `profile "${ctx.profileName}" is the bypass tier (${BYPASS_TIER}) without its preconditions (HAR-4: sandboxed, non-root, production unreachable): set ${missing.join(', ')}, or accept the gap for this profile by name (accept_gaps: { engine: ${ctx.engine}, field: sandbox|egress, profiles: [${ctx.profileName}], reason })`);
     }
     const req = ctx.profile.requires ?? [];
     if (!req.length) ctx.error('bypass-requires', `profile "${ctx.profileName}" is the bypass tier (${BYPASS_TIER}) and names no preconditions; set requires: [prod-unreachable-from-this-host, ...] (HAR-4). The compiler cannot see a network ACL or a container, so it will not assume one`);
@@ -241,11 +256,11 @@ function emitClaude(ctx) {
   const sandbox = {};
   if (p.sandbox?.enabled !== undefined) sandbox.enabled = p.sandbox.enabled;
   if (p.sandbox?.fail_if_unavailable !== undefined) sandbox.failIfUnavailable = p.sandbox.fail_if_unavailable;
-  // A bypass tier that relies on the policy's sandbox for its isolation (HAR-4, no accepted sandbox
-  // gap) must not let a command the sandbox blocked retry outside it: under bypassPermissions that
-  // retry runs with no prompt (sandboxing: the unsandboxed retry escape hatch).
-  const sandboxGap = (p.accept_gaps ?? []).some((g) => g.engine === 'claude' && g.field === 'sandbox');
-  if (tier === BYPASS_TIER && p.sandbox?.enabled === true && p.sandbox?.fail_if_unavailable === true && !sandboxGap) sandbox.allowUnsandboxedCommands = false;
+  // A bypass profile whose own sandbox is on must not let a command the sandbox blocked retry outside
+  // it: under bypassPermissions that retry runs with no prompt (sandboxing: the unsandboxed retry
+  // escape hatch). Decided from this profile's merged sandbox alone, never from another profile's
+  // accepted gap.
+  if (tier === BYPASS_TIER && p.sandbox?.enabled === true) sandbox.allowUnsandboxedCommands = false;
   for (const w of p.sandbox?.writable_roots ?? []) {
     if (isHome(w) || isAbsolute(w)) fsys.allowWrite.push(w);
     else ctx.drop('sandbox.writable_roots', { write: w }, 'a relative sandbox path in user settings resolves against ~/.claude, not the workspace');

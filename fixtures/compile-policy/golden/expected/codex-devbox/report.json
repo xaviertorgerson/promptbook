@@ -23,12 +23,12 @@
     {
       "field": "sandbox",
       "message": "fail_if_unavailable has no documented Codex key",
-      "reason": "the devbox image fails to start without its sandbox; on the desk, Codex commands read the gh and npm credentials as they did before the masks"
+      "reason": "the devbox image fails to start without its sandbox"
     },
     {
       "field": "budgets",
       "message": "max_usd have no documented codex exec flag (a runner timeout enforces max_minutes only)",
-      "reason": "the runner enforces turns and spend from its own logs"
+      "reason": "the devbox's spend is watched by the operator, who is reachable"
     }
   ],
   "notes": [

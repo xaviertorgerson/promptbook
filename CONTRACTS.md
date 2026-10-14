@@ -278,7 +278,7 @@ harness adds a mandatory expiry.
 
 **Purpose.** The operator's (L1) agent policy: autonomy tier per machine profile, what is never read
 (`deny_read`), never done (`forbid`), asked about (`ask`), pre-approved (`allow`), network `egress`,
-`sandbox`, and run `budgets`; compiled per engine. **Schema** `policy.schema.json` 1.3.0. Tiers:
+`sandbox`, and run `budgets`; compiled per engine. **Schema** `policy.schema.json` 1.4.0. Tiers:
 read-only, ask, auto-edit, auto, autonomous, unattended (an unattended profile requires
 `budgets.unattended`). `auto` (1.3.0) is a classifier-reviewed tier: routine actions run without
 asking, the engine's classifier blocks or asks for risky ones, ask rules still prompt and walls hold;
@@ -297,15 +297,18 @@ must name them (a validation warning, a compile error) and the compiler passes t
 in `runner.json`. A rule has exactly one matcher: `command` (argv prefix, with alternatives),
 `write` (path glob) or `tool` (web-fetch with a domain, web-search, `mcp:server[:tool]`). An `allow`
 or `ask` that a `forbid` covers is a warning (it never takes effect). `accept_gaps` records the
-degradations the operator accepts. **Swap story.** One policy, three engines: the compiler emits
+degradations the operator accepts; an entry's `profiles` (1.4.0) scopes it, and an entry without
+`profiles` covers every profile except a bypass-tier one, whose gaps are accepted only by an entry
+that names it (`gap-profiles-exist` checks the names). **Swap story.** One policy, three engines: the compiler emits
 Claude settings, Codex config + execpolicy rules, Gemini settings + policy TOML; per-engine maps and
 gaps are in `adapters/{claude,codex,gemini}/README.md`. **Fail closed:** an unrepresentable deny is
 a compile error unless accepted with a reason; an unrepresentable ask is dropped with a warning. The
 bypass tier also needs the policy's own isolation (`sandbox.enabled`, `fail_if_unavailable`,
-`egress.default: deny`) or, where the host is isolated another way, that field's gap accepted by
-name; its `requires` is never waivable. Where it relies on the sandbox, the compile also forbids an
-unsandboxed retry of a command the sandbox blocked (Claude `sandbox.allowUnsandboxedCommands:
-false`), which bypass would otherwise run without a prompt.
+`egress.default: deny`) or, where the host is isolated another way, that field's gap accepted for
+that profile by name; its `requires` is never waivable. Where its own sandbox is on, the compile also
+forbids an unsandboxed retry of a command the sandbox blocked (Claude
+`sandbox.allowUnsandboxedCommands: false`), which bypass would otherwise run without a prompt; that
+is decided from the profile's merged sandbox alone, never from another profile's accepted gap.
 **Compat.** The dotfiles' `settings.json.tmpl` is restated as the valid fixture.
 
 ### toolkit-lock

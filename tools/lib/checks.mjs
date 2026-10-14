@@ -115,6 +115,15 @@ CHECKS['credential-not-denied'] = ({ data }) => {
   }));
 };
 
+// The profile names a policy cites resolve: an accept_gaps entry scoped to a profile that does not
+// exist accepts nothing, which the operator meant to accept somewhere.
+CHECKS['policy-names-resolve'] = ({ data }) => {
+  const known = new Set(Object.keys(data?.profiles ?? {}));
+  return (Array.isArray(data?.accept_gaps) ? data.accept_gaps : []).flatMap((g, i) => (Array.isArray(g?.profiles) ? g.profiles : [])
+    .map((n, j) => [n, j]).filter(([n]) => !known.has(n))
+    .map(([n, j]) => ({ rule: 'gap-profiles-exist', pointer: `/accept_gaps/${i}/profiles/${j}`, message: `"${n}" is not a profile (profiles: ${[...known].join(', ')})` })));
+};
+
 // toolkit.lock kinds and layers agree: harness and skill-library are L3 kinds, the others L4 ones.
 // A warning: the schema accepted any kind on any layer before skill-library existed.
 const L3_KINDS = new Set(['harness', 'skill-library']);

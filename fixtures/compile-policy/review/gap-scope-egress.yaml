@@ -1,0 +1,13 @@
+# Review finding 2, repro A: a gap accepted for the auto-tier desk must not waive HAR-4 for the
+# bypass-tier box2, nor lend it desk's reason.
+policy_version: 1
+profiles:
+  desk: { tier: auto, engines: [claude] }
+  box2: { tier: autonomous, engines: [claude], requires: [prod-unreachable-from-this-host], egress: { default: allow } }
+deny_read: ["~/.ssh/**"]
+forbid:
+  - { command: [git, push, --force] }
+egress: { default: deny, allow_domains: [registry.npmjs.org] }
+sandbox: { enabled: true, fail_if_unavailable: true }
+accept_gaps:
+  - { engine: claude, field: egress, reason: "desk: WebFetch left to the auto classifier" }
