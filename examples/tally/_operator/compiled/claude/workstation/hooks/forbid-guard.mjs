@@ -1,0 +1,202 @@
+#!/usr/bin/env node
+// The harness forbid guard: a PreToolUse hook that denies a shell command a policy forbid rule
+// matches, however the command is spelled. compile-policy copies this file and the compiled rule
+// list (forbid.json) next to an engine's settings when the policy sets hooks.forbid_guard, and
+// registers it for the shell tool; Claude Code and Codex send the same hook input
+// ({tool_name: "Bash", tool_input: {command}}) and both read exit 2 as "deny, stderr is the reason".
+//
+//   node forbid-guard.mjs <forbid.json>    reads the hook input on stdin; exit 0 allow, 2 deny
+//
+// Defense in depth, not the wall: the project's own hook deny (L2) and the engine's sandbox are.
+// It reads the command as a shell would split it: compound commands (&&, ||, ;, |, &, newlines,
+// subshells), command and process substitution, `sh -c` / `bash -lc` / `eval` strings, quoting,
+// leading VAR=value assignments, wrappers (env, sudo, nice, timeout, nohup, stdbuf, command,
+// builtin, exec, time, xargs, doas, noglob) and a program named by path (/usr/bin/git). It does not
+// expand variables or aliases, so `$GIT push -f` and an alias get through; anything it cannot read
+// (unbalanced quotes, unreadable input or rules) is denied. Node builtins only: it runs from the
+// directory it is copied to.
+import fs from 'node:fs';
+import process from 'node:process';
+import { fileURLToPath } from 'node:url';
+
+const SEPARATORS = new Set([';', '&', '|', '\n', '(', ')']);
+const SHELLS = new Set(['sh', 'bash', 'zsh', 'dash', 'ksh', 'fish']);
+const WRAPPERS = new Set(['env', 'sudo', 'doas', 'nice', 'timeout', 'nohup', 'stdbuf', 'command', 'builtin', 'exec', 'time', 'xargs', 'noglob']);
+// Wrapper options that take the next token as their value.
+const VALUED = { env: ['-u', '-C', '-S'], sudo: ['-u', '-g', '-C', '-p', '-r', '-t', '-U', '-h'], nice: ['-n'], timeout: ['-s', '-k'], stdbuf: ['-i', '-o', '-e'], xargs: ['-n', '-I', '-P', '-L', '-s', '-d', '-E', '-a'] };
+const ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/;
+
+const base = (t) => t.split('/').at(-1);
+
+// Index of the parenthesis that closes the one at `open`, honouring quotes.
+function closingParen(text, open) {
+  let depth = 0;
+  let quote = null;
+  for (let i = open; i < text.length; i += 1) {
+    const c = text[i];
+    if (quote) {
+      if (c === '\\' && quote === '"') i += 1;
+      else if (c === quote) quote = null;
+    } else if (c === '\\') i += 1;
+    else if (c === "'" || c === '"') quote = c;
+    else if (c === '(') depth += 1;
+    else if (c === ')' && --depth === 0) return i;
+  }
+  throw new Error('unbalanced parenthesis');
+}
+
+// The simple commands in a shell string, each an argv. Substitutions are read as commands of their
+// own (and leave a placeholder word); redirections and their targets are dropped.
+export function splitCommands(text) {
+  const out = [];
+  let argv = [];
+  let word = null;
+  let skipTarget = false;
+  const endWord = () => {
+    if (word === null) return;
+    if (skipTarget) skipTarget = false;
+    else argv.push(word);
+    word = null;
+  };
+  const endCommand = () => {
+    endWord();
+    if (argv.length) out.push(...expand(argv));
+    argv = [];
+  };
+  const substitution = (i) => {
+    const close = closingParen(text, i + 1);
+    out.push(...splitCommands(text.slice(i + 2, close)));
+    word = `${word ?? ''}$(…)`;
+    return close;
+  };
+  const backtick = (i) => {
+    const close = text.indexOf('`', i + 1);
+    if (close === -1) throw new Error('unbalanced backtick');
+    out.push(...splitCommands(text.slice(i + 1, close)));
+    word = `${word ?? ''}\`…\``;
+    return close;
+  };
+  for (let i = 0; i < text.length; i += 1) {
+    const c = text[i];
+    if (c === '\\') {
+      if (text[i + 1] === '\n') { i += 1; continue; }
+      word = (word ?? '') + (text[i + 1] ?? '');
+      i += 1;
+    } else if (c === "'") {
+      const close = text.indexOf("'", i + 1);
+      if (close === -1) throw new Error('unbalanced quote');
+      word = (word ?? '') + text.slice(i + 1, close);
+      i = close;
+    } else if (c === '"') {
+      word = word ?? '';
+      for (i += 1; i < text.length && text[i] !== '"'; i += 1) {
+        if (text[i] === '\\' && i + 1 < text.length) { word += text[i + 1]; i += 1; } else if (text[i] === '$' && text[i + 1] === '(') i = substitution(i);
+        else if (text[i] === '`') i = backtick(i);
+        else word += text[i];
+      }
+      if (i >= text.length) throw new Error('unbalanced quote');
+    } else if (c === '$' && text[i + 1] === '(') i = substitution(i);
+    else if ((c === '<' || c === '>') && text[i + 1] === '(') {
+      const close = closingParen(text, i + 1);
+      out.push(...splitCommands(text.slice(i + 2, close)));
+      i = close;
+    } else if (c === '`') i = backtick(i);
+    else if (c === '<' || c === '>') {
+      if (word !== null && /^[0-9&]*$/.test(word)) word = null; // an fd prefix (2>, &>)
+      endWord();
+      while (text[i + 1] === '>' || text[i + 1] === '&' || text[i + 1] === '<') i += 1;
+      if (/[0-9-]/.test(text[i + 1] ?? '') && text[i] === '&') { while (/[0-9-]/.test(text[i + 1] ?? '')) i += 1; } else skipTarget = true;
+    } else if (SEPARATORS.has(c)) endCommand();
+    else if (c === '#' && word === null) {
+      while (i < text.length && text[i] !== '\n') i += 1;
+      endCommand();
+    } else if (/\s/.test(c)) endWord();
+    else word = (word ?? '') + c;
+  }
+  endCommand();
+  return out;
+}
+
+// One argv, and the commands it runs in a string: sh -c '...', bash -lc "...", eval ....
+function expand(argv) {
+  const out = [argv];
+  const a = unwrap(argv);
+  const head = a.length ? base(a[0]) : '';
+  if (SHELLS.has(head)) {
+    const c = a.findIndex((t, i) => i > 0 && /^-[A-Za-z]*c[A-Za-z]*$/.test(t));
+    if (c !== -1 && a[c + 1] !== undefined) out.push(...splitCommands(a[c + 1]));
+  }
+  if (head === 'eval') out.push(...splitCommands(a.slice(1).join(' ')));
+  return out;
+}
+
+// The argv a wrapper runs: leading assignments and wrappers (with their options) removed.
+export function unwrap(argv) {
+  let a = argv;
+  for (;;) {
+    while (a.length && ASSIGNMENT.test(a[0])) a = a.slice(1);
+    const w = a.length ? base(a[0]) : '';
+    if (!WRAPPERS.has(w)) return a;
+    if (w === 'command' && a[1] === '-v') return a;
+    a = a.slice(1);
+    while (a.length && a[0].startsWith('-') && a[0] !== '-') {
+      const takes = (VALUED[w] ?? []).includes(a[0]);
+      a = a.slice(takes ? 2 : 1);
+    }
+    if (w === 'timeout' && a.length) a = a.slice(1); // the duration
+    if (w === 'nice' && /^-?[0-9]+$/.test(a[0] ?? '')) a = a.slice(1);
+  }
+}
+
+const tokenIs = (tok, alt, i) => [].concat(alt).some((w) => (i === 0 ? base(tok) : tok) === w);
+const flagIs = (tok, flag) => (flag.endsWith('*') ? tok.startsWith(flag.slice(0, -1)) : tok === flag);
+
+// Does a forbid rule match one simple command? A command rule matches the argv's prefix once the
+// wrappers are removed; with flags_anywhere it matches when the command words appear in order
+// anywhere in the argv and a later token is one of the flags (a flag ending in * matches every
+// token it begins).
+export function ruleMatches(rule, argv) {
+  if (!rule.flags_anywhere) {
+    const a = unwrap(argv);
+    return rule.command.length <= a.length && rule.command.every((alt, i) => tokenIs(a[i], alt, i));
+  }
+  let at = -1;
+  for (const [i, alt] of rule.command.entries()) {
+    at = argv.findIndex((t, j) => j > at && tokenIs(t, alt, i));
+    if (at === -1) return false;
+  }
+  return argv.slice(at + 1).some((t) => rule.flags_anywhere.some((f) => flagIs(t, f)));
+}
+
+// The first simple command in `command` (a shell string, or an argv as Codex may send it) that a
+// rule matches: { rule, argv }, or null.
+export function forbidHit(rules, command) {
+  const commands = Array.isArray(command) ? expand(command.map(String)) : splitCommands(command);
+  for (const argv of commands) {
+    const rule = rules.find((r) => ruleMatches(r, argv));
+    if (rule) return { rule, argv };
+  }
+  return null;
+}
+
+const describe = (r) => `${JSON.stringify(r.command)}${r.flags_anywhere ? ` with ${r.flags_anywhere.join(' | ')} anywhere` : ''}`;
+
+function main() {
+  const deny = (why) => {
+    process.stderr.write(`harness forbid guard: ${why}\n`);
+    process.exitCode = 2;
+  };
+  try {
+    const input = JSON.parse(fs.readFileSync(0, 'utf8'));
+    if (input?.tool_name !== 'Bash') return;
+    const { rules } = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+    const command = input.tool_input?.command;
+    if (typeof command !== 'string' && !Array.isArray(command)) { deny('a Bash call with no command; denied (fail closed)'); return; }
+    const hit = forbidHit(rules, command);
+    if (hit) deny(`\`${hit.argv.join(' ')}\` is forbidden by the operator's policy (${describe(hit.rule)})${hit.rule.reason ? `: ${hit.rule.reason}` : ''}`);
+  } catch (e) {
+    deny(`${e.message}; denied (fail closed)`);
+  }
+}
+
+if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) main();

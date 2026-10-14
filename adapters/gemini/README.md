@@ -40,9 +40,11 @@ non-interactive mode `ask_user` is treated as `deny`.
 | `tier: unattended` | launcher passes the non-interactive flags; `ask_user` becomes deny | |
 | `deny_read` | `[[rule]] toolName = [<the file-reading tools>], argsPattern = "<regex of the glob>", decision = "deny"` | The tool names (`read_file`, `read_many_files`, the search and glob tools) are taken from the installed version's tool list at compile time *(not verified here)*; **partial**, and `run_shell_command` reads (`cat .env`) are not covered without a sandbox. Error unless `accept_gaps` names `{engine: gemini, field: deny_read}` or the profile runs Gemini sandboxed without the files mounted. |
 | `forbid: {command: [...]}` | `[[rule]] commandPrefix = "a b", decision = "deny", denyMessage = reason`, priority 900 | One rule per alternatives expansion. |
+| `forbid: {command: [...], flags_anywhere: [...]}` | `[[rule]] commandPrefix = "<words> <flag>"` per expansion and flag | The prefix form only (`commandPrefix` "matches if the command argument starts with the given string"); the flags later in the command are a `forbid` gap. `commandRegex` could carry them, but the page names neither its regex flavor nor how the JSON-serialized arguments are escaped, so it is not emitted until a probe shows it. `hooks.forbid_guard` is not registered for Gemini (its hook events and decision output differ): a `hooks-not-emitted` warning. |
 | `forbid: {write: glob}` | `[[rule]] toolName = [<the file-writing tools>], argsPattern = "<regex>", decision = "deny"` | Same partial caveat as `deny_read`. |
 | `forbid: {tool: web-fetch, domain}` | `[[rule]] toolName = "web_fetch", argsPattern = "<domain regex>", decision = "deny"` | |
 | `forbid: {tool: "mcp:server[:tool]"}` | `[[rule]] toolName = "mcp_<server>_*"` (or the tool), `decision = "deny"`; or `mcpServers.<s>.excludeTools` | Avoid underscores in server aliases (the engine splits on the first one). |
+| `roles.<r>` (unattended) | `roles/<r>/settings.json`, `policies/harness.toml`, `runner.json` | The policy files are user-tier and machine-wide, so a role runs from its own environment (the evaluator's container). `read_only`: a deny for the file-writing tools with no `argsPattern`; shell writes stay the usual `forbid` gap. |
 | `ask` | `[[rule]] ... decision = "ask_user"` | Denied when non-interactive. |
 | `allow` | `[[rule]] ... decision = "allow"` and `tools.allowed` | |
 | `egress.*` | — | **No equivalent**: the sandbox offers "open" or "proxied" profiles, not a domain list [sandbox][sandbox]. `default: deny` or any `deny_domains` → error unless accepted; with a proxy profile the operator's proxy enforces the list. |
@@ -50,7 +52,7 @@ non-interactive mode `ask_user` is treated as `deny`.
 | `sandbox.fail_if_unavailable` | — | **No equivalent**; error unless accepted. |
 | `sandbox.writable_roots` | — | Container mounts are the launcher's job. |
 | `sandbox.credentials` (masks) | — | **No equivalent**: sandboxed commands would read the credential unmasked; error unless `accept_gaps` names `{engine: gemini, field: sandbox}` (a container that mounts no credentials is the usual reason). |
-| `budgets` | subagent `max_turns`, `timeout_mins` only; none for the main session | Runner timeout; `max_usd` → error unless accepted. |
+| `budgets` | `settings.json` `model.maxSessionTurns` for `max_turns`; `runner.json` `caps` and `enforcement` for `harness run` | `model.maxSessionTurns` is the session's turn limit ([configuration][config]); headless, exceeding it exits 53, "turn limit exceeded" ([headless][headless]), which `harness run` reports as the engine's own stop. `harness run` enforces `max_minutes` by a hard kill (exit 124). **Not enforced: `max_usd`** — the headless JSON reports tokens, not cost: unattended, a `spend-unmetered` warning and `max_minutes` is required; elsewhere `max_usd` (and `max_tokens` everywhere) is a `budgets` gap. |
 
 **Never emitted:** `hooksConfig.enabled: false`, `security.disableYoloMode: false` overrides on a
 shared machine, any `tools.exclude` (deprecated in favour of deny rules).
@@ -66,3 +68,4 @@ write. A profile that lists `gemini` in `engines` and cannot compile is not rend
 [config]: https://geminicli.com/docs/reference/configuration
 [policy]: https://geminicli.com/docs/reference/policy-engine
 [sandbox]: https://geminicli.com/docs/cli/sandbox/
+[headless]: https://geminicli.com/docs/cli/headless/

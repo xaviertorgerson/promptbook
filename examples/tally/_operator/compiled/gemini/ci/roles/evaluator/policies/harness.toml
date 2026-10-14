@@ -53,6 +53,20 @@ denyMessage = "no force-push of shared branches"
 
 [[rule]]
 toolName = "run_shell_command"
+commandPrefix = "git push --mirror"
+decision = "deny"
+priority = 900
+denyMessage = "no force-push of shared branches"
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "git push +"
+decision = "deny"
+priority = 900
+denyMessage = "no force-push of shared branches"
+
+[[rule]]
+toolName = "run_shell_command"
 commandPrefix = "rm -rf /"
 decision = "deny"
 priority = 900
@@ -78,6 +92,12 @@ argsPattern = "\"[A-Za-z_]*paths?\":\\[?(?:\"[^\"]*\",)*\"(?:[^\"]*/)?\\.git/hoo
 decision = "deny"
 priority = 900
 denyMessage = "hooks run on every commit"
+
+[[rule]]
+toolName = ["write_file", "replace"]
+decision = "deny"
+priority = 900
+denyMessage = "role evaluator is read-only"
 
 [[rule]]
 toolName = "run_shell_command"
@@ -117,95 +137,18 @@ priority = 100
 
 [[rule]]
 toolName = "run_shell_command"
-commandPrefix = "git branch"
+commandPrefix = "pnpm test"
 decision = "allow"
 priority = 100
 
 [[rule]]
 toolName = "run_shell_command"
-commandPrefix = "git add"
+commandPrefix = "pnpm lint"
 decision = "allow"
 priority = 100
 
 [[rule]]
 toolName = "run_shell_command"
-commandPrefix = "git commit"
-decision = "allow"
-priority = 100
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "git fetch"
-decision = "allow"
-priority = 100
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "git pull"
-decision = "allow"
-priority = 100
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "git push"
-decision = "allow"
-priority = 100
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "git switch"
-decision = "allow"
-priority = 100
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "git checkout"
-decision = "allow"
-priority = 100
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "git worktree"
-decision = "allow"
-priority = 100
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "gh pr create"
-decision = "allow"
-priority = 100
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "gh pr view"
-decision = "allow"
-priority = 100
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "gh pr ready"
-decision = "allow"
-priority = 100
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "gh pr comment"
-decision = "allow"
-priority = 100
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "pnpm"
-decision = "allow"
-priority = 100
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "node"
-decision = "allow"
-priority = 100
-
-[[rule]]
-toolName = ["write_file", "replace"]
+commandPrefix = "pnpm typecheck"
 decision = "allow"
 priority = 100

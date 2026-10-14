@@ -8,9 +8,24 @@
     "prod-unreachable-from-this-host",
     "non-root-container"
   ],
+  "requires_config": {
+    "prod_hosts": [
+      "10.40.0.12:5432",
+      "api.tally.example.com:443"
+    ]
+  },
   "args": [
     "--max-budget-usd",
     "20"
   ],
-  "timeout_seconds": null
+  "caps": {
+    "max_turns": null,
+    "max_budget_usd": 20,
+    "timeout_seconds": null
+  },
+  "enforcement": {
+    "max_turns": "engine",
+    "max_budget_usd": "engine",
+    "timeout_seconds": "harness-run"
+  }
 }

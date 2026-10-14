@@ -2,12 +2,24 @@
   "tier": "autonomous",
   "warnings": [
     {
+      "rule": "hook-trust",
+      "message": "Codex skips a new or changed user hook until it is reviewed and trusted (/hooks; trust is recorded against the hook's hash): trust the harness forbid guard once on this machine, or flags-anywhere forbids hold only in their prefix form until then"
+    },
+    {
       "rule": "dropped",
       "message": "ask write infra/** dropped on codex: Codex has no ask for writes or tools"
     },
     {
       "rule": "dropped",
       "message": "ask tool web-search dropped on codex: Codex has no ask for writes or tools"
+    },
+    {
+      "rule": "allow-interpreter",
+      "message": "allow command [\"pnpm\"] not emitted on codex: an execpolicy allow runs outside the sandbox, and an interpreter runs any script there (deny_read and egress hold only inside it); the command runs sandboxed instead"
+    },
+    {
+      "rule": "allow-unsandboxed",
+      "message": "allow [\"git\", [\"status\", \"log\", \"diff\"]] not emitted on codex: an execpolicy allow runs outside the sandbox, past deny_read and egress; the commands run sandboxed instead (accept_gaps {engine: codex, field: allow, profiles: [devbox]} emits them)"
     },
     {
       "rule": "merge-mcp",
@@ -23,15 +35,15 @@
     {
       "field": "sandbox",
       "message": "fail_if_unavailable has no documented Codex key",
-      "reason": "the devbox image fails to start without its sandbox; on the desk, Codex commands read the gh and npm credentials as they did before the masks"
+      "reason": "the devbox image fails to start without its sandbox"
     },
     {
       "field": "budgets",
-      "message": "max_usd have no documented codex exec flag (a runner timeout enforces max_minutes only)",
-      "reason": "the runner enforces turns and spend from its own logs"
+      "message": "codex reports no cost: max_usd 20 is not metered; the run is bounded by no other cap",
+      "reason": "the devbox's spend is watched by the operator, who is reachable; neither engine reports cost"
     }
   ],
   "notes": [
-    "bypass tier devbox requires: prod-unreachable-from-this-host, non-root-container (the launcher checks each before starting; the policy cannot)"
+    "bypass tier devbox requires: prod-unreachable-from-this-host, non-root-container (harness check-requires probes each on the host; harness run refuses the profile's runs until they pass)"
   ]
 }

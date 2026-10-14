@@ -17,6 +17,8 @@
     "lint": "node tools/lint-skills.mjs",
     "simulate": "node tools/simulate.mjs",
     "compile-policy": "node tools/compile-policy.mjs",
+    "run": "node tools/run.mjs",
+    "check-requires": "node tools/check-requires.mjs",
     "lock": "node tools/lock.mjs",
     "grant": "node tools/grant.mjs",
     "eval-routing": "node tools/eval-routing.mjs",

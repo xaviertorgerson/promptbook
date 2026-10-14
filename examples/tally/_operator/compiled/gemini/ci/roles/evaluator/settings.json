@@ -1,0 +1,17 @@
+{
+  "tools": {
+    "sandbox": true,
+    "allowed": [
+      "run_shell_command(git status)",
+      "run_shell_command(git log)",
+      "run_shell_command(git diff)",
+      "run_shell_command(git show)",
+      "run_shell_command(pnpm test)",
+      "run_shell_command(pnpm lint)",
+      "run_shell_command(pnpm typecheck)"
+    ]
+  },
+  "model": {
+    "maxSessionTurns": 120
+  }
+}

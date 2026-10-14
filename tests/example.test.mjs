@@ -120,7 +120,10 @@ describe('the worked example: Tally', () => {
       assert.deepEqual(got, want, t.id);
     }
     const policy = yaml('_operator/agent-policy.yaml');
-    const commands = (list) => list.filter((x) => x.command).map((x) => x.command);
+    // The simulator models argv-prefix rules: a flags-anywhere forbid enters as its prefix form (the
+    // words, then one of its literal flags), what every engine compiles from it.
+    const prefix = (x) => (x.flags_anywhere ? [...x.command, x.flags_anywhere.filter((f) => !f.endsWith('*'))] : x.command);
+    const commands = (list) => list.filter((x) => x.command).map(prefix);
     assert.deepEqual(sc.policy.forbid.map((x) => x.command), commands(policy.forbid));
     assert.deepEqual(sc.policy.ask.map((x) => x.command), commands(policy.ask));
     assert.equal(sc.policy.tier, policy.profiles.ci.tier);

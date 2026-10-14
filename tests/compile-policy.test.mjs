@@ -6,7 +6,8 @@ import path from 'node:path';
 import { after, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
-import { assertNoUnsafeKeys, commandMatches, compilePolicy, diffClaudeSettings, ENGINES, expandCommand, globArgsPattern, parseSettingsTemplate, renderDiff, renderReport } from '../tools/lib/compile-policy.mjs';
+import { forbidHit } from '../tools/guards/forbid-guard.mjs';
+import { commandMatches, compilePolicy, coversInterpreter, diffClaudeSettings, ENGINES, expandCommand, globArgsPattern, parseSettingsTemplate, renderDiff, renderReport, unsafeKeys } from '../tools/lib/compile-policy.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FIX = path.join(ROOT, 'fixtures/compile-policy');
@@ -61,12 +62,37 @@ describe('compile-policy contract', () => {
             assert.doesNotMatch(f.content, /disableAllHooks|hooksConfig|disableYoloMode|danger-full-access|dangerously-skip-permissions/, `${engine}/${profile}/${f.path}`);
             if (p.profiles[profile].tier !== 'autonomous') assert.doesNotMatch(f.content, /bypassPermissions|skipDangerousModePermissionPrompt|yolo/, `${engine}/${profile}/${f.path}`);
           }
+          assert.deepEqual(unsafeKeys(r.files, { tier: p.profiles[profile].tier }), [], `${engine}/${profile}`);
         }
       }
     }
     assert.ok(compiled >= 30, `compiled ${compiled} files`);
-    assert.throws(() => assertNoUnsafeKeys([{ path: 'settings.json', content: '{"disableAllHooks": true}' }], { engine: 'claude', tier: 'autonomous' }), /removes a wall/);
-    assert.throws(() => assertNoUnsafeKeys([{ path: 'settings.json', content: '{"permissions":{"defaultMode":"bypassPermissions"}}' }], { engine: 'claude', tier: 'ask' }), /bypass key outside/);
+    const settings = (data) => [{ path: 'settings.json', kind: 'settings-fragment', data }];
+    assert.match(unsafeKeys(settings({ disableAllHooks: true }), { tier: 'autonomous' }).join(), /disableAllHooks/);
+    assert.match(unsafeKeys(settings({ permissions: { defaultMode: 'bypassPermissions' } }), { tier: 'ask' }).join(), /bypass mode outside/);
+    assert.match(unsafeKeys(settings({ hooksConfig: { enabled: false } }), { tier: 'ask' }).join(), /hooksConfig\.enabled false/);
+    assert.match(unsafeKeys([{ path: 'config.toml', kind: 'settings-fragment', data: { permissions: { harness: { extends: ':danger-full-access' } } } }], { tier: 'ask' }).join(), /full-access/);
+    assert.match(unsafeKeys([{ path: 'runner.json', kind: 'runner', data: { args: ['--approval-mode=yolo'] } }], { tier: 'unattended' }).join(), /bypass flag outside/);
+    assert.deepEqual(unsafeKeys([{ path: 'runner.json', kind: 'runner', data: { args: ['--approval-mode=yolo'] } }], { tier: 'autonomous' }), []);
+  });
+
+  it('a forbid that names a full-access or bypass flag is data, not a key: it compiles on every engine (finding 11)', () => {
+    const p = load(path.join(ROOT, 'fixtures/valid/policy/forbid-full-access-flags.yaml'));
+    for (const engine of ENGINES) {
+      const r = compilePolicy(p, { profile: 'laptop', engine });
+      assert.equal(r.ok, true, `${engine}: ${JSON.stringify(r.errors)}`);
+    }
+    const claude = JSON.parse(compilePolicy(p, { profile: 'laptop', engine: 'claude' }).files[0].content);
+    assert.ok(claude.permissions.deny.includes('Bash(claude --dangerously-skip-permissions *)'));
+    assert.ok(compilePolicy(p, { profile: 'laptop', engine: 'codex' }).files.find((f) => f.path === 'rules/harness.rules').content.includes('"--yolo"'));
+  });
+
+  it('an unsafe key in the output is a compile error through the normal channel, never a thrown stack trace', () => {
+    const p = load(path.join(FIX, 'refuse/never-disable-hooks.yaml'));
+    const r = compilePolicy({ ...p, 'x-claude-extra': undefined, profiles: { laptop: { tier: 'ask', engines: ['claude'] } } }, { profile: 'laptop', engine: 'claude', emit: { claude: (ctx) => [{ path: 'settings.json', kind: 'settings-fragment', content: '{}', data: { disableAllHooks: true } }] } });
+    assert.equal(r.ok, false);
+    assert.deepEqual(r.files, []);
+    assert.ok(r.errors.some((e) => e.rule === 'walls-only' && /settings\.json: disableAllHooks/.test(e.message)), JSON.stringify(r.errors));
   });
 
   const refusals = {
@@ -108,7 +134,7 @@ describe('compile-policy contract', () => {
       assert.equal(r.ok, false, engine);
       for (const e of r.errors) {
         assert.equal(e.rule, 'unrepresentable');
-        assert.match(e.stanza, new RegExp(`engine: ${engine}, field: ${e.field}, reason: `));
+        assert.match(e.stanza, new RegExp(`engine: ${engine}, field: ${e.field}, profiles: \\[laptop\\], reason: `));
       }
       const fields = new Set(r.errors.map((e) => e.field));
       assert.ok(fields.has(engine === 'codex' ? 'forbid' : 'deny_read'), [...fields].join());
@@ -145,7 +171,7 @@ describe('compile-policy contract', () => {
     for (const profile of Object.keys(golden.profiles)) {
       const text = compilePolicy(golden, { profile, engine: 'codex' }).files.find((f) => f.path === 'rules/harness.rules').content;
       const blocks = [...text.matchAll(/pattern = (\[.*\]),\n[\s\S]*?match = (\[.*\]),/g)];
-      assert.ok(blocks.length >= 5);
+      assert.ok(blocks.length >= 4, `${profile}: ${blocks.length} rules`);
       for (const [, pat, ex] of blocks) for (const e of JSON.parse(ex)) assert.ok(commandMatches(JSON.parse(pat), e.split(' ')), `${e} vs ${pat}`);
     }
   });
@@ -156,7 +182,7 @@ describe('compile-policy contract', () => {
     const rules = [...src.stdout.matchAll(/pattern = (\[[\s\S]*?\]),\n\s*decision = "(\w+)"/g)].map(([, pat, decision]) => ({ command: JSON.parse(pat), decision }));
     assert.ok(rules.length >= 15, `${rules.length} rules parsed`);
     const list = { allow: 'allow', prompt: 'ask', forbidden: 'forbid' };
-    const policy = { policy_version: 1, profiles: { box: { tier: 'ask' } }, deny_read: ['**/.env'], forbid: [], ask: [], allow: [] };
+    const policy = { policy_version: 1, profiles: { box: { tier: 'ask' } }, deny_read: ['**/.env'], forbid: [], ask: [], allow: [], accept_gaps: [{ engine: 'codex', field: 'allow', reason: 'herdr talks to its own server outside the sandbox' }] };
     for (const r of rules) policy[list[r.decision]].push({ command: r.command });
     const out = compilePolicy(policy, { profile: 'box', engine: 'codex' }).files.find((f) => f.path === 'rules/harness.rules').content;
     for (const r of rules) assert.ok(out.includes(`pattern = ${JSON.stringify(r.command).replace(/","/g, '", "').replace(/\["/g, '["').replace(/,\[/g, ', [')},\n    decision = "${r.decision}"`), `${JSON.stringify(r.command)} → ${r.decision}`);
@@ -316,5 +342,301 @@ describe('compile-policy CLI', () => {
     assert.match(bad.stderr, /not a valid policy/);
     assert.equal(cli('fixtures/compile-policy/golden/agent-policy.yaml', '--profile', 'ci', '--engine', 'vim').status, 2);
     assert.equal(cli('fixtures/compile-policy/golden/agent-policy.yaml', '--engine', 'claude').status, 2);
+  });
+});
+
+describe('review findings: the compiler never loosens a wall silently', () => {
+  const REVIEW = path.join(FIX, 'review');
+  const review = (f) => load(path.join(REVIEW, f));
+  const settingsOf = (r) => JSON.parse(r.files.find((f) => f.path === 'settings.json').content);
+
+  it('finding 2: a gap accepted without profiles never waives the bypass tier\'s preconditions, nor lends it another profile\'s reason', () => {
+    const p = review('gap-scope-egress.yaml');
+    const box2 = compilePolicy(p, { profile: 'box2', engine: 'claude' });
+    assert.equal(box2.ok, false, 'box2 runs bypass with open egress on desk\'s acceptance');
+    assert.ok(box2.errors.some((e) => e.rule === 'bypass-preconditions' && /egress\.default: deny/.test(e.message) && /profiles: \[box2\]/.test(e.message)), JSON.stringify(box2.errors));
+    assert.equal(compilePolicy(p, { profile: 'desk', engine: 'claude' }).ok, true, 'desk keeps its own acceptance');
+    const scoped = { ...p, accept_gaps: [...p.accept_gaps, { engine: 'claude', field: 'egress', profiles: ['box2'], reason: 'box2 sits behind an egress proxy' }] };
+    const ok = compilePolicy(scoped, { profile: 'box2', engine: 'claude' });
+    assert.equal(ok.ok, true, JSON.stringify(ok.errors));
+    assert.ok(ok.accepted.every((a) => a.reason === 'box2 sits behind an egress proxy'), JSON.stringify(ok.accepted));
+  });
+
+  it('finding 2: a profile\'s strict sandbox key follows its own isolation, not another profile\'s accepted gap', () => {
+    const p = review('gap-scope-sandbox.yaml');
+    const unscoped = compilePolicy(p, { profile: 'container', engine: 'claude' });
+    assert.ok(unscoped.errors.some((e) => e.rule === 'bypass-preconditions'), 'an unscoped gap does not reach a bypass profile');
+    const scoped = { ...p, accept_gaps: [...p.accept_gaps.map((g) => ({ ...g, profiles: ['container'] })), { engine: 'claude', field: 'egress', profiles: ['container'], reason: 'the container network allows the registry only' }] };
+    const container = compilePolicy(scoped, { profile: 'container', engine: 'claude' });
+    assert.equal(container.ok, true, JSON.stringify(container.errors));
+    assert.equal(settingsOf(container).sandbox?.allowUnsandboxedCommands, undefined, 'no sandbox to keep strict');
+    const devbox = compilePolicy(scoped, { profile: 'devbox', engine: 'claude' });
+    assert.equal(devbox.ok, true, JSON.stringify(devbox.errors));
+    assert.equal(settingsOf(devbox).sandbox.allowUnsandboxedCommands, false, 'the devbox relies on its sandbox');
+    assert.deepEqual(devbox.accepted, []);
+  });
+
+  it('finding 2: accept_gaps names only profiles the policy has', () => {
+    const p = review('gap-scope-sandbox.yaml');
+    const r = compilePolicy({ ...p, accept_gaps: [{ ...p.accept_gaps[0], profiles: ['contianer'] }] }, { profile: 'devbox', engine: 'claude' });
+    assert.ok(r.errors.some((e) => e.rule === 'gap-profiles-exist' && /contianer/.test(e.message)), JSON.stringify(r.errors));
+  });
+});
+
+describe('review finding 1: a Codex allow rule runs outside the sandbox', () => {
+  const { roles, ...tally } = load(path.join(ROOT, 'examples/tally/_operator/agent-policy.yaml'));
+  const codexRules = (r) => r.files.find((f) => f.path === 'rules/harness.rules').content;
+
+  it('an interpreter allow is never emitted, accepted gap or not: it would void deny_read and egress for any script', () => {
+    for (const p of [tally, { ...tally, accept_gaps: [...tally.accept_gaps, { engine: 'codex', field: 'allow', reason: 'test' }] }]) {
+      const r = compilePolicy(p, { profile: 'ci', engine: 'codex' });
+      assert.equal(r.ok, true, JSON.stringify(r.errors));
+      const text = codexRules(r);
+      assert.doesNotMatch(text, /pattern = \["node"\]/);
+      assert.doesNotMatch(text, /pattern = \["pnpm"\]/, '[pnpm] covers pnpm exec');
+      for (const cmd of ['node', 'pnpm']) assert.ok(r.warnings.some((w) => w.rule === 'allow-interpreter' && w.message.includes(`["${cmd}"]`)), cmd);
+    }
+  });
+
+  it('any other command allow is dropped, so the command runs sandboxed, unless the allow gap is accepted for the profile', () => {
+    const r = compilePolicy(tally, { profile: 'ci', engine: 'codex' });
+    assert.doesNotMatch(codexRules(r), /decision = "allow"/);
+    assert.ok(r.warnings.some((w) => w.rule === 'allow-unsandboxed' && /"gh", "pr"/.test(w.message)), JSON.stringify(r.warnings));
+    const accepted = compilePolicy({ ...tally, accept_gaps: [...tally.accept_gaps, { engine: 'codex', field: 'allow', profiles: ['ci'], reason: 'git and gh need the forge credential outside the sandbox' }] }, { profile: 'ci', engine: 'codex' });
+    assert.match(codexRules(accepted), /pattern = \["gh", "pr", \["create", "view", "ready", "comment"\]\],\n {4}decision = "allow"/);
+    assert.ok(accepted.accepted.some((a) => a.field === 'allow' && /outside the sandbox/.test(a.message) && /forge credential/.test(a.reason)), JSON.stringify(accepted.accepted));
+  });
+
+  it('interpreters: shells, language runtimes, package runners and the package managers that cover them', () => {
+    for (const c of [['sh'], ['bash'], ['zsh'], ['node'], ['python3'], ['python3.12'], ['ruby'], ['perl'], ['npx'], ['deno'], ['bun'], ['pnpm'], ['npm'], ['pnpm', 'exec'], ['npm', 'exec'], ['pnpm', 'dlx'], ['/usr/bin/env'], [['node', 'git']]]) assert.ok(coversInterpreter(c), JSON.stringify(c));
+    for (const c of [['git', 'status'], ['gh', 'pr'], ['pnpm', 'test'], ['npm', 'ci'], ['make']]) assert.ok(!coversInterpreter(c), JSON.stringify(c));
+  });
+});
+
+describe('review finding 6: Claude\'s read and write denies without the sandbox', () => {
+  const p = load(path.join(FIX, 'review/claude-no-sandbox.yaml'));
+
+  it('deny_read and a write forbid without sandbox.enabled are a sandbox gap: Bash scripts read past Read() denies', () => {
+    const r = compilePolicy(p, { profile: 'ci', engine: 'claude' });
+    assert.equal(r.ok, false);
+    const e = r.errors.find((x) => x.rule === 'unrepresentable' && x.field === 'sandbox');
+    assert.ok(e && /deny_read and forbid write/.test(e.message) && /\["bash"\]/.test(e.message), JSON.stringify(r.errors));
+    const accepted = compilePolicy({ ...p, accept_gaps: [{ engine: 'claude', field: 'sandbox', profiles: ['ci'], reason: 'the ci container mounts no secrets' }] }, { profile: 'ci', engine: 'claude' });
+    assert.equal(accepted.ok, true, JSON.stringify(accepted.errors));
+    assert.ok(accepted.accepted.some((a) => a.field === 'sandbox'));
+    const s = JSON.parse(accepted.files.find((f) => f.path === 'settings.json').content);
+    assert.ok(s.permissions.deny.includes('Read(~/.ssh/**)'), 'the file-tool deny is still emitted');
+    assert.equal(s.sandbox, undefined, 'no inert sandbox.filesystem.denyRead without a sandbox');
+  });
+
+  it('a sandbox that may fall back to unsandboxed is a warning that says what then reads past the denies', () => {
+    const r = compilePolicy(golden, { profile: 'desk', engine: 'claude' });
+    assert.ok(r.warnings.some((w) => w.rule === 'sandbox-may-fall-back' && /deny_read/.test(w.message)), JSON.stringify(r.warnings));
+    assert.ok(!compilePolicy(golden, { profile: 'laptop', engine: 'claude' }).warnings.some((w) => w.rule === 'sandbox-may-fall-back'));
+  });
+});
+
+describe('review finding 7: unattended, an ask Codex cannot represent is a denial, never dropped', () => {
+  const { roles, ...tally } = load(path.join(ROOT, 'examples/tally/_operator/agent-policy.yaml'));
+  const config = (r) => r.files.find((f) => f.path.endsWith('config.toml')).content;
+  const noAskGap = { ...tally, accept_gaps: tally.accept_gaps.filter((g) => !(g.engine === 'codex' && g.field === 'ask')) };
+
+  it('an ask on writes fails closed until accepted, then downgrades the path to read', () => {
+    const refused = compilePolicy(noAskGap, { profile: 'ci', engine: 'codex' });
+    assert.equal(refused.ok, false, 'the deploy/** ask was dropped, so the workspace "." = "write" let it through');
+    assert.ok(refused.errors.some((e) => e.field === 'ask' && /deploy\/\*\*/.test(e.message) && /denial/.test(e.message)), JSON.stringify(refused.errors));
+    const r = compilePolicy({ ...noAskGap, accept_gaps: [...noAskGap.accept_gaps, { engine: 'codex', field: 'ask', profiles: ['ci'], reason: 'apply_patch into deploy/ is refused by the product hook' }] }, { profile: 'ci', engine: 'codex' });
+    assert.equal(r.ok, true, JSON.stringify(r.errors));
+    assert.match(config(r), /"deploy\/\*\*" = "read"/);
+    assert.ok(!r.warnings.some((w) => w.rule === 'dropped' && /^ask/.test(w.message)), JSON.stringify(r.warnings));
+  });
+
+  it('an ask on a tool with a Codex key becomes its deny; one without fails closed', () => {
+    const p = { policy_version: 1, profiles: { ci: { tier: 'unattended' } }, deny_read: ['~/.ssh/**'], forbid: [], ask: [{ tool: 'web-fetch', domain: 'docs.example.com' }, { tool: 'mcp:db:query' }, { tool: 'web-search' }], budgets: { unattended: { max_turns: 5, max_usd: 1, max_minutes: 10 } }, sandbox: { enabled: true } };
+    const r = compilePolicy(p, { profile: 'ci', engine: 'codex' });
+    assert.ok(r.errors.some((e) => e.field === 'ask' && /web-search/.test(e.message)), JSON.stringify(r.errors));
+    const ok = compilePolicy({ ...p, ask: p.ask.slice(0, 2) }, { profile: 'ci', engine: 'codex' });
+    assert.equal(ok.ok, true, JSON.stringify(ok.errors));
+    assert.match(config(ok), /"docs\.example\.com" = "deny"/);
+    assert.match(config(ok), /disabled_tools = \["query"\]/);
+    const interactive = compilePolicy({ ...p, profiles: { ci: { tier: 'ask' } } }, { profile: 'ci', engine: 'codex' });
+    assert.ok(interactive.warnings.some((w) => w.rule === 'dropped' && /web-search/.test(w.message)), 'an interactive ask is still a convenience');
+  });
+});
+
+describe('review finding 12: unattended caps are never waived; runner.json carries them for harness run', () => {
+  const { roles, ...tally } = load(path.join(ROOT, 'examples/tally/_operator/agent-policy.yaml'));
+  const runner = (r) => JSON.parse(r.files.find((f) => f.path === 'runner.json').content);
+
+  it('every runner.json carries caps and says who enforces each', () => {
+    const want = {
+      claude: { max_turns: 'engine', max_budget_usd: 'engine', timeout_seconds: 'harness-run' },
+      codex: { max_turns: 'harness-run', max_budget_usd: 'none', timeout_seconds: 'harness-run' },
+      gemini: { max_turns: 'engine', max_budget_usd: 'none', timeout_seconds: 'harness-run' },
+    };
+    for (const engine of ENGINES) {
+      const r = compilePolicy(tally, { profile: 'ci', engine });
+      assert.equal(r.ok, true, `${engine}: ${JSON.stringify(r.errors)}`);
+      assert.deepEqual(runner(r).caps, { max_turns: 120, max_budget_usd: 4, timeout_seconds: 5400 }, engine);
+      assert.deepEqual(runner(r).enforcement, want[engine], engine);
+      assert.ok(!r.accepted.some((a) => a.field === 'budgets'), `${engine}: a budgets gap waived an unattended cap`);
+    }
+    assert.ok(runner(compilePolicy(tally, { profile: 'ci', engine: 'codex' })).args.includes('--json'), 'harness run counts Codex tool actions from --json');
+    const gem = compilePolicy(tally, { profile: 'ci', engine: 'gemini' });
+    assert.equal(JSON.parse(gem.files.find((f) => f.path === 'settings.json').content).model.maxSessionTurns, 120);
+    for (const engine of ['codex', 'gemini']) assert.ok(compilePolicy(tally, { profile: 'ci', engine }).warnings.some((w) => w.rule === 'spend-unmetered'), engine);
+    assert.deepEqual(runner(compilePolicy(tally, { profile: 'workstation', engine: 'claude' })).caps, { max_turns: null, max_budget_usd: null, timeout_seconds: null });
+  });
+
+  it('unattended on an engine with no spend flag needs max_minutes, whatever accept_gaps says', () => {
+    const { max_minutes, ...noClock } = tally.budgets.unattended;
+    const p = { ...tally, budgets: { ...tally.budgets, unattended: noClock }, accept_gaps: [...tally.accept_gaps, { engine: 'codex', field: 'budgets', reason: 'trust me' }, { engine: 'gemini', field: 'budgets', reason: 'trust me' }] };
+    for (const engine of ['codex', 'gemini']) {
+      const r = compilePolicy(p, { profile: 'ci', engine });
+      assert.ok(r.errors.some((e) => e.rule === 'unattended-caps' && /max_minutes/.test(e.message)), `${engine}: ${JSON.stringify(r.errors)}`);
+    }
+    assert.equal(compilePolicy(p, { profile: 'ci', engine: 'claude' }).ok, true, 'Claude caps turns and spend itself');
+  });
+});
+
+describe('review finding 14: a forbid that matches its flags anywhere in the command', () => {
+  // Claude Code's Bash rule matching as the permissions page states it: compound commands are split
+  // and each part matched, a leading VAR=value and the fixed wrappers are stripped, * stands for any
+  // text, and a trailing " *" that is the rule's only wildcard also matches the bare command.
+  const CLAUDE_WRAPPERS = /^(?:(?:timeout\s+\S+|time|nice|nohup|stdbuf(?:\s+-\S+)*|command|builtin|noglob|xargs)\s+)+/;
+  const claudeDenies = (rule, cmd) => {
+    const m = /^Bash\((.*)\)$/.exec(rule);
+    if (!m) return false;
+    const pat = m[1];
+    const stars = (pat.match(/\*/g) ?? []).length;
+    const body = pat.split('*').map((x) => x.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('.*');
+    const re = new RegExp(`^${stars === 1 && pat.endsWith(' *') ? `${body.slice(0, -3)}(?: .*)?` : body}$`);
+    return cmd.split(/&&|\|\||[;|&\n]/).map((x) => x.trim().replace(/^(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)+/, '').replace(CLAUDE_WRAPPERS, '')).some((part) => re.test(part));
+  };
+  const EVASIONS = ['git push origin main --force', 'git push -u -f origin main', 'git push origin +main', 'git -C . push -f', 'env git push -f', 'docker compose -f x.yml down -v', 'docker-compose down -v'];
+  const LEGIT = ['git push origin feat/settle-up', 'git push --follow-tags', 'git push origin feat/fix-flaky', 'git push --force-with-lease origin feat/x', 'docker compose down', 'docker compose -f x.yml down', 'docker compose up -d'];
+  const deny = (engine, profile = 'laptop', p = golden) => compilePolicy(p, { profile, engine });
+
+  it('the engine-neutral matcher denies the reviewer\'s evasions and leaves ordinary pushes alone', () => {
+    const rules = golden.forbid.filter((r) => r.command);
+    for (const c of EVASIONS) assert.ok(forbidHit(rules, c), c);
+    for (const c of LEGIT) assert.equal(forbidHit(rules, c), null, c);
+    assert.ok(forbidHit(rules, 'bash -lc "cd app && git push -f"') && forbidHit(rules, 'FOO=1 nice -n 5 git push --mirror') && forbidHit(rules, ['bash', '-lc', 'git push -f']), 'compound, wrapped and argv forms');
+  });
+
+  it('Claude: prefix and anywhere rules that its matcher applies to every evasion', () => {
+    const r = deny('claude');
+    assert.equal(r.ok, true, JSON.stringify(r.errors));
+    const denyRules = JSON.parse(r.files.find((f) => f.path === 'settings.json').content).permissions.deny;
+    for (const rule of ['Bash(git push --force *)', 'Bash(*git* push* --force)', 'Bash(*git* push* --force *)', 'Bash(git push +*)', 'Bash(*git* push* +*)', 'Bash(*docker* compose* down* -v *)']) assert.ok(denyRules.includes(rule), rule);
+    for (const c of EVASIONS) assert.ok(denyRules.some((x) => claudeDenies(x, c)), `claude lets through: ${c}`);
+    for (const c of LEGIT) assert.ok(!denyRules.some((x) => claudeDenies(x, c)), `claude denies: ${c} (${denyRules.filter((x) => claudeDenies(x, c))})`);
+  });
+
+  it('Codex and Gemini keep the prefix forms; the rest is a forbid gap, or the guard hook on Codex', () => {
+    const noGuard = { ...golden, hooks: undefined };
+    const codex = deny('codex', 'laptop', { ...noGuard, accept_gaps: noGuard.accept_gaps.filter((g) => !(g.engine === 'codex' && g.field === 'forbid')) });
+    assert.ok(codex.errors.some((e) => e.field === 'forbid' && /anywhere/.test(e.message) && /\["git","push"\]/.test(e.message)), JSON.stringify(codex.errors));
+    const guarded = deny('codex');
+    assert.equal(guarded.ok, true, JSON.stringify(guarded.errors));
+    assert.match(guarded.files.find((f) => f.path === 'rules/harness.rules').content, /pattern = \["git", "push", \["--force", "-f", "--mirror"\]\],\n {4}decision = "forbidden"/);
+    assert.ok(!guarded.accepted.some((a) => /anywhere/.test(a.message)), 'the guard covers it');
+    assert.ok(guarded.warnings.some((w) => w.rule === 'hook-trust'), 'Codex skips a hook until it is trusted');
+    const gemini = deny('gemini');
+    assert.ok(gemini.accepted.some((a) => a.field === 'forbid' && /anywhere/.test(a.message)), JSON.stringify(gemini.accepted));
+    assert.ok(gemini.warnings.some((w) => w.rule === 'hooks-not-emitted'));
+  });
+
+  it('hooks.forbid_guard emits the guard and its rule list and registers it for the shell tool; the copy denies the evasions', () => {
+    for (const [engine, home] of [['claude', '$HOME/.claude/hooks/harness'], ['codex', '$HOME/.codex/hooks/harness']]) {
+      const r = deny(engine, 'ci');
+      const file = (p) => r.files.find((f) => f.path === p);
+      const reg = engine === 'claude' ? JSON.parse(file('settings.json').content).hooks : JSON.parse(file('hooks.json').content).hooks;
+      assert.deepEqual(reg.PreToolUse[0].matcher, 'Bash');
+      assert.equal(reg.PreToolUse[0].hooks[0].command, `node "${home}/forbid-guard.mjs" "${home}/forbid.json"`);
+      assert.equal(file('hooks/forbid-guard.mjs').content, fs.readFileSync(path.join(ROOT, 'tools/guards/forbid-guard.mjs'), 'utf8'));
+      const rules = JSON.parse(file('hooks/forbid.json').content).rules;
+      assert.ok(rules.some((x) => x.command[0] === 'psql'), 'unattended, the ask is a denial the guard enforces too');
+      const dir = path.join(TMP, `guard-${engine}`);
+      for (const f of r.files.filter((x) => x.path.startsWith('hooks/'))) {
+        fs.mkdirSync(path.dirname(path.join(dir, f.path)), { recursive: true });
+        fs.writeFileSync(path.join(dir, f.path), f.content);
+      }
+      const hook = (input) => spawnSync(process.execPath, [path.join(dir, 'hooks/forbid-guard.mjs'), path.join(dir, 'hooks/forbid.json')], { input: typeof input === 'string' ? input : JSON.stringify(input), encoding: 'utf8' });
+      for (const c of EVASIONS) {
+        const h = hook({ tool_name: 'Bash', tool_input: { command: c } });
+        assert.equal(h.status, 2, `${engine}: ${c}`);
+        assert.match(h.stderr, /forbidden by the operator's policy/);
+      }
+      for (const c of LEGIT) assert.equal(hook({ tool_name: 'Bash', tool_input: { command: c } }).status, 0, `${engine}: ${c}`);
+      assert.equal(hook({ tool_name: 'Read', tool_input: { file_path: 'x' } }).status, 0);
+      assert.equal(hook('not json').status, 2, 'fail closed');
+    }
+    assert.equal(deny('claude', 'laptop', { ...golden, hooks: undefined }).files.find((f) => f.path === 'hooks/forbid.json'), undefined);
+  });
+
+  it('an example of a flags-anywhere rule is checked with the anywhere matcher', () => {
+    const p = { ...golden, forbid: [{ command: ['git', 'push'], flags_anywhere: ['-f'], examples: ['git push origin main -f', 'git push origin main'] }] };
+    const r = compilePolicy(p, { profile: 'laptop', engine: 'claude' });
+    assert.ok(r.errors.some((e) => e.rule === 'example-matches' && /"git push origin main"/.test(e.message)), JSON.stringify(r.errors));
+    assert.ok(!r.errors.some((e) => e.rule === 'example-matches' && /-f"/.test(e.message)));
+  });
+});
+
+describe('review finding 15: roles narrow a profile\'s allowlist and egress per run', () => {
+  const tally = load(path.join(ROOT, 'examples/tally/_operator/agent-policy.yaml'));
+  const file = (r, p) => r.files.find((f) => f.path === p);
+  const json = (r, p) => JSON.parse(file(r, p).content);
+
+  it('the Tally evaluator (Gemini) is read-only: no write, push, PR or interpreter allow, and its write tools are denied', () => {
+    const r = compilePolicy(tally, { profile: 'ci', engine: 'gemini' });
+    assert.equal(r.ok, true, JSON.stringify(r.errors));
+    const policy = file(r, 'roles/evaluator/policies/harness.toml').content;
+    const allows = policy.split('[[rule]]').filter((b) => /decision = "allow"/.test(b));
+    assert.ok(allows.length > 0);
+    for (const b of allows) assert.doesNotMatch(b, /write_file|replace|git push|gh pr|"node"|"pnpm"\n/, b);
+    assert.match(policy, /toolName = \["write_file", "replace"\]\ndecision = "deny"/);
+    assert.deepEqual(json(r, 'roles/evaluator/settings.json').tools.allowed.filter((t) => /push|gh pr|node/.test(t)), []);
+    assert.equal(json(r, 'roles/evaluator/runner.json').role, 'evaluator');
+    assert.ok(r.accepted.filter((a) => a.role === 'evaluator').every((a) => !/never writes/.test(a.reason)), 'no accepted gap leans on a claim the output contradicts');
+  });
+
+  it('the Tally reader is read-only on Claude (the runner\'s allowlist and an Edit deny) and on Codex (the read-only sandbox)', () => {
+    const c = compilePolicy(tally, { profile: 'ci', engine: 'claude' });
+    assert.equal(c.ok, true, JSON.stringify(c.errors));
+    for (const role of ['author', 'reader']) assert.equal(json(c, `roles/${role}/settings.json`).permissions.allow, undefined, 'unattended, the allowlist is the runner\'s, so a role can narrow it');
+    assert.ok(!c.files.some((f) => f.path === 'settings.json' || f.path === 'roles/evaluator/runner.json'), 'every unattended run is a role; the evaluator runs on Gemini');
+    const args = json(c, 'roles/reader/runner.json').args;
+    const allowed = args[args.indexOf('--allowedTools') + 1].split(',');
+    assert.ok(allowed.includes('Bash(git log *)') && !allowed.some((t) => /git push|gh pr|Edit|node|pnpm/.test(t)), allowed.join());
+    assert.ok(args[args.indexOf('--disallowedTools') + 1].split(',').includes('Edit(**)'));
+    assert.ok(json(c, 'roles/author/runner.json').args.join(' ').includes('Bash(git push *)'), 'the author keeps the profile\'s allowlist');
+    const x = compilePolicy(tally, { profile: 'ci', engine: 'codex' });
+    assert.equal(x.ok, true, JSON.stringify(x.errors));
+    const cfg = file(x, 'roles/reader/ci.config.toml').content;
+    assert.match(cfg, /extends = ":read-only"/);
+    assert.doesNotMatch(cfg, /"\." = "write"/);
+    assert.equal(file(x, 'roles/evaluator/ci.config.toml'), undefined, 'the evaluator runs on Gemini only');
+  });
+
+  it('a role only narrows: an allow or a domain the profile does not grant is an error, and so is a write in a read-only role', () => {
+    const roles = (role) => ({ ...tally, roles: { r: role } });
+    const wider = compilePolicy(roles({ allow: [{ command: ['curl'] }] }), { profile: 'ci', engine: 'claude' });
+    assert.ok(wider.errors.some((e) => e.rule === 'role-narrows' && /curl/.test(e.message)), JSON.stringify(wider.errors));
+    const domain = compilePolicy(roles({ egress: { allow_domains: ['pastebin.com'] } }), { profile: 'ci', engine: 'claude' });
+    assert.ok(domain.errors.some((e) => e.rule === 'role-narrows' && /pastebin/.test(e.message)), JSON.stringify(domain.errors));
+    const narrower = compilePolicy(roles({ allow: [{ command: ['git', 'log'] }, { command: ['gh', 'pr', 'view'] }], egress: { allow_domains: ['api.github.com'] } }), { profile: 'ci', engine: 'claude' });
+    assert.equal(narrower.ok, true, JSON.stringify(narrower.errors));
+    assert.ok(json(narrower, 'roles/r/runner.json').args.includes('Bash(git log *),Bash(gh pr view *),WebFetch(domain:api.github.com)'));
+    const ro = compilePolicy(roles({ read_only: true, allow: [{ write: 'docs/**' }] }), { profile: 'ci', engine: 'claude' });
+    assert.ok(ro.errors.some((e) => e.rule === 'role-read-only'), JSON.stringify(ro.errors));
+    const codexEscape = compilePolicy({ ...roles({ read_only: true, engines: ['codex'] }), accept_gaps: [...tally.accept_gaps, { engine: 'codex', field: 'allow', reason: 'test' }] }, { profile: 'ci', engine: 'codex' });
+    assert.ok(codexEscape.errors.some((e) => e.rule === 'role-read-only' && /outside the sandbox/.test(e.message)), JSON.stringify(codexEscape.errors));
+  });
+
+  it('roles compile for the unattended tier only, and a role names only roles the policy has', () => {
+    const w = compilePolicy(tally, { profile: 'workstation', engine: 'claude' });
+    assert.ok(!w.files.some((f) => f.path.startsWith('roles/')));
+    assert.ok(w.notes.some((n) => /roles compile for the unattended tier/.test(n)));
   });
 });

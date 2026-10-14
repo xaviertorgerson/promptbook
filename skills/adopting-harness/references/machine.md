@@ -79,14 +79,17 @@ characters) beside solo makes 7,276, inside the headroom. Re-run the check when 
 ## Policy compile checklist
 
 - Every tier compiles for every engine listed in its profile, or the compile fails; an
-  unrepresentable deny is an error unless `accept_gaps` names it with the operator's reason.
+  unrepresentable deny is an error unless `accept_gaps` names it with the operator's reason; a
+  bypass-tier profile's gaps are accepted only by an entry whose `profiles` names it.
 - No output sets a "disable all hooks" switch; no output removes or loosens a project deny.
 - Unattended tiers emit nothing into settings that would loosen a project; the runner passes the
   no-prompt mode, the allowlist and the budget.
 - An `allow` or `ask` that a `forbid` covers is a warning (it never takes effect); fix the policy.
 - The bypass tier names its preconditions in the profile's `requires` (production unreachable by
-  network ACL: `prod-unreachable-from-this-host`; non-root in a container: `non-root-container`); the
-  compile refuses the tier without them and the operator confirms they hold on that machine.
+  network ACL: `prod-unreachable-from-this-host`, probed against `requires_config.prod_hosts`;
+  non-root in a container: `non-root-container`); the compile refuses the tier without them, and
+  `harness check-requires --policy <file> --profile <p>` proves they hold on that machine (`harness
+  run` repeats the probes before each run and refuses to start when one fails).
 
 ## Runtime pins
 

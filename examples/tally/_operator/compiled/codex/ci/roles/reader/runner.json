@@ -1,0 +1,21 @@
+{
+  "generated_by": "harness compile-policy",
+  "source": "agent-policy.yaml",
+  "engine": "codex",
+  "profile": "ci",
+  "tier": "unattended",
+  "role": "reader",
+  "args": [
+    "--json"
+  ],
+  "caps": {
+    "max_turns": 120,
+    "max_budget_usd": 4,
+    "timeout_seconds": 5400
+  },
+  "enforcement": {
+    "max_turns": "harness-run",
+    "max_budget_usd": "none",
+    "timeout_seconds": "harness-run"
+  }
+}

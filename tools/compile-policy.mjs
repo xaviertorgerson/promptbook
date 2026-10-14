@@ -63,7 +63,7 @@ export function main(argv = process.argv.slice(2)) {
   }
 
   if (argv.includes('--json')) {
-    console.log(JSON.stringify({ ...result, diff }, null, 2));
+    console.log(JSON.stringify({ ...result, files: result.files.map(({ data, ...f }) => f), diff }, null, 2));
     return result.ok ? 0 : 1;
   }
   for (const e of result.errors) {

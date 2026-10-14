@@ -2,16 +2,20 @@
   "tier": "unattended",
   "warnings": [
     {
-      "rule": "dropped",
-      "message": "ask write infra/** dropped on codex: Codex has no ask for writes or tools"
+      "rule": "hook-trust",
+      "message": "Codex skips a new or changed user hook until it is reviewed and trusted (/hooks; trust is recorded against the hook's hash): trust the harness forbid guard once on this machine, or flags-anywhere forbids hold only in their prefix form until then"
     },
     {
-      "rule": "dropped",
-      "message": "ask tool web-search dropped on codex: Codex has no ask for writes or tools"
+      "rule": "allow-interpreter",
+      "message": "allow command [\"pnpm\"] not emitted on codex: an execpolicy allow runs outside the sandbox, and an interpreter runs any script there (deny_read and egress hold only inside it); the command runs sandboxed instead"
     },
     {
       "rule": "merge-mcp",
       "message": "merge mcp_servers.{prod-db}.disabled_tools into the existing server entries"
+    },
+    {
+      "rule": "spend-unmetered",
+      "message": "codex reports no cost: max_usd 5 is not metered; the run is bounded by max_turns 200 and a hard kill at max_minutes 60"
     }
   ],
   "accepted": [
@@ -21,14 +25,24 @@
       "reason": "the write deny downgrades sandboxed commands only; apply_patch is covered by the project hook"
     },
     {
-      "field": "sandbox",
-      "message": "fail_if_unavailable has no documented Codex key",
-      "reason": "the devbox image fails to start without its sandbox; on the desk, Codex commands read the gh and npm credentials as they did before the masks"
+      "field": "ask",
+      "message": "unattended, an ask is a denial; write infra/**: a filesystem \"read\" downgrade covers sandboxed commands, not the apply_patch tool",
+      "reason": "unattended, infra/** is read-only for sandboxed commands and apply_patch there is refused by the project hook; a web search reads public pages and writes nothing"
     },
     {
-      "field": "budgets",
-      "message": "max_turns, max_usd have no documented codex exec flag (a runner timeout enforces max_minutes only)",
-      "reason": "the runner enforces turns and spend from its own logs"
+      "field": "ask",
+      "message": "unattended, an ask is a denial; tool web-search has no documented Codex key",
+      "reason": "unattended, infra/** is read-only for sandboxed commands and apply_patch there is refused by the project hook; a web search reads public pages and writes nothing"
+    },
+    {
+      "field": "allow",
+      "message": "allow rules run outside the sandbox, past deny_read and egress: [\"git\", [\"status\", \"log\", \"diff\"]]",
+      "reason": "git status, log and diff read the forge's object store outside the sandbox; nothing they print is a secret the policy denies"
+    },
+    {
+      "field": "sandbox",
+      "message": "fail_if_unavailable has no documented Codex key",
+      "reason": "on the desk, Codex commands read the gh and npm credentials as they did before the masks; elsewhere the launcher refuses to start Codex without its sandbox"
     }
   ],
   "notes": []

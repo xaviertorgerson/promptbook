@@ -17,5 +17,5 @@ egress:
 budgets:
   autonomous: { max_usd: 20 }
 accept_gaps:
-  - { engine: claude, field: sandbox, reason: "the devbox runs agents in a rootless container that refuses to start unconfined" }
-  - { engine: claude, field: egress, reason: "WebFetch under bypass reaches unlisted domains; the tailnet ACL keeps production unreachable" }
+  - { engine: claude, field: sandbox, profiles: [devbox], reason: "the devbox runs agents in a rootless container that refuses to start unconfined" }
+  - { engine: claude, field: egress, profiles: [devbox], reason: "WebFetch under bypass reaches unlisted domains; the tailnet ACL keeps production unreachable" }

@@ -2,25 +2,45 @@
   "tier": "unattended",
   "warnings": [
     {
-      "rule": "dropped",
-      "message": "ask write deploy/** dropped on codex: Codex has no ask for writes or tools"
+      "rule": "hook-trust",
+      "message": "Codex skips a new or changed user hook until it is reviewed and trusted (/hooks; trust is recorded against the hook's hash): trust the harness forbid guard once on this machine, or flags-anywhere forbids hold only in their prefix form until then",
+      "role": "reader"
+    },
+    {
+      "rule": "allow-unsandboxed",
+      "message": "allow [\"git\", [\"status\", \"log\", \"diff\", \"show\"]] not emitted on codex: an execpolicy allow runs outside the sandbox, past deny_read and egress; the commands run sandboxed instead (accept_gaps {engine: codex, field: allow, profiles: [ci]} emits them)",
+      "role": "reader"
+    },
+    {
+      "rule": "spend-unmetered",
+      "message": "codex reports no cost: max_usd 4 is not metered; the run is bounded by max_turns 120 and a hard kill at max_minutes 90",
+      "role": "reader"
     }
   ],
   "accepted": [
     {
       "field": "forbid",
       "message": "write **/.git/hooks/**: a filesystem \"read\" downgrade covers sandboxed commands, not the apply_patch tool",
-      "reason": "the .git/hooks write deny downgrades sandboxed commands only; the product's walls (L2 hook deny) refuse apply_patch there"
+      "reason": "Codex runs only the reader on ci, in the :read-only sandbox; apply_patch, which no documented rule holds to it, is refused by the product's walls (L2 hook deny) under .git/hooks, and the reader's checkout is a throwaway worktree the coordinator discards",
+      "role": "reader"
+    },
+    {
+      "field": "forbid",
+      "message": "write **: a filesystem \"read\" downgrade covers sandboxed commands, not the apply_patch tool",
+      "reason": "Codex runs only the reader on ci, in the :read-only sandbox; apply_patch, which no documented rule holds to it, is refused by the product's walls (L2 hook deny) under .git/hooks, and the reader's checkout is a throwaway worktree the coordinator discards",
+      "role": "reader"
+    },
+    {
+      "field": "ask",
+      "message": "unattended, an ask is a denial; write deploy/**: a filesystem \"read\" downgrade covers sandboxed commands, not the apply_patch tool",
+      "reason": "unattended, the deploy/** ask is a denial: the path is read-only for sandboxed commands, and the product's walls (L2 hook deny) refuse apply_patch there",
+      "role": "reader"
     },
     {
       "field": "sandbox",
       "message": "fail_if_unavailable has no documented Codex key",
-      "reason": "the launcher refuses to start Codex where its sandbox is unavailable"
-    },
-    {
-      "field": "budgets",
-      "message": "max_turns, max_usd have no documented codex exec flag (a runner timeout enforces max_minutes only)",
-      "reason": "the runner stops a Codex run at the turn and spend caps from its own run records, and at max_minutes by timeout"
+      "reason": "the launcher refuses to start Codex where its sandbox is unavailable",
+      "role": "reader"
     }
   ],
   "notes": []

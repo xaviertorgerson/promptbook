@@ -1,0 +1,7 @@
+# flags_anywhere qualifies a command rule; a write or tool rule has no argv to search.
+policy_version: 1
+profiles:
+  laptop: { tier: auto-edit }
+deny_read: ["~/.ssh/**"]
+forbid:
+  - { write: "deploy/**", flags_anywhere: [--force] }

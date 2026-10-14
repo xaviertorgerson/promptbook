@@ -53,6 +53,48 @@ denyMessage = "no force-push of shared branches"
 
 [[rule]]
 toolName = "run_shell_command"
+commandPrefix = "git push --mirror"
+decision = "deny"
+priority = 900
+denyMessage = "no force-push of shared branches"
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "git push +"
+decision = "deny"
+priority = 900
+denyMessage = "no force-push of shared branches"
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "docker compose down -v"
+decision = "deny"
+priority = 900
+denyMessage = "the stack's volumes hold its only data"
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "docker compose down --volumes"
+decision = "deny"
+priority = 900
+denyMessage = "the stack's volumes hold its only data"
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "docker-compose down -v"
+decision = "deny"
+priority = 900
+denyMessage = "the stack's volumes hold its only data"
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "docker-compose down --volumes"
+decision = "deny"
+priority = 900
+denyMessage = "the stack's volumes hold its only data"
+
+[[rule]]
+toolName = "run_shell_command"
 commandPrefix = "herdr workspace close"
 decision = "deny"
 priority = 900

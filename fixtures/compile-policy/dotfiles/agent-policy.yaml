@@ -47,4 +47,4 @@ sandbox: { enabled: true, fail_if_unavailable: true }
 budgets:
   autonomous: { max_usd: 20 }
 accept_gaps:
-  - { engine: claude, field: egress, reason: "WebFetch under bypass reaches unlisted domains; the tailnet ACL keeps production unreachable from the devbox" }
+  - { engine: claude, field: egress, profiles: [workstation], reason: "WebFetch under bypass reaches unlisted domains; the tailnet ACL keeps production unreachable from the devbox" }

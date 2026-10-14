@@ -104,9 +104,12 @@ The measured matrix (Claude Code 2.1.296, 2026-10-13; agentic-template ADR-0021 
 | L2 | ship `ask` hooks as conveniences for interactive users | rely on an `ask` as protection; rely on a project `defaultMode` (the flag and user defaults outrank it) | express every guardrail behind ENG-3, ENG-4 and ENG-5 as a hook `deny` or a `permissions.deny` rule; keep branch protection as the backstop; deny Bash redirects into protected paths |
 | L4 | set caps per run and per grant | auto-approve asks; run unattended without a pinned mode | launch every unattended run with `--permission-mode dontAsk` plus `--allowedTools` and turn and budget caps; report `permission_denials` as questions for a human |
 
-The policy compiler's contract (`tools/compile-policy.mjs`) is to refuse an L1 tier that sets
-`disableAllHooks` or drops a project deny (HAR-2). Only managed settings can force hooks on; on a shared machine, put the bypass and hook locks
-there. Codex and Gemini were not measured: their adapters compile the same intent (forbidden prefix
+L1 cannot remove an L2 deny: deny rules merge across scopes and a deny wins in every mode, and
+project hooks run in every mode, so the one thing L1 could do to a wall is turn hooks off (ADR-0021).
+The policy compiler (`tools/compile-policy.mjs`) refuses a policy whose `x-` extension disables
+hooks and checks every compiled output's keys for `disableAllHooks` and its equivalents (HAR-2); it
+reads no L2 input, so it neither sees nor could drop a project's denies. Only managed settings can
+force hooks on; on a shared machine, put the bypass and hook locks there. Codex and Gemini were not measured: their adapters compile the same intent (forbidden prefix
 rules, hooks) and stay marked unverified until a probe runs.
 
 ## Cloud sessions and CI see only L2

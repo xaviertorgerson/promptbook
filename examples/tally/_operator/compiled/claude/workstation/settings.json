@@ -34,7 +34,16 @@
       "Read(~/.ssh/**)",
       "Read(~/.config/shell/secrets.sh)",
       "Bash(git push --force *)",
+      "Bash(*git* push* --force)",
+      "Bash(*git* push* --force *)",
       "Bash(git push -f *)",
+      "Bash(*git* push* -f)",
+      "Bash(*git* push* -f *)",
+      "Bash(git push --mirror *)",
+      "Bash(*git* push* --mirror)",
+      "Bash(*git* push* --mirror *)",
+      "Bash(git push +*)",
+      "Bash(*git* push* +*)",
       "Bash(rm -rf / *)",
       "Bash(dropdb *)",
       "Bash(docker volume rm *)",
@@ -63,5 +72,18 @@
       ],
       "strictAllowlist": true
     }
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/harness/forbid-guard.mjs\" \"$HOME/.claude/hooks/harness/forbid.json\""
+          }
+        ]
+      }
+    ]
   }
 }

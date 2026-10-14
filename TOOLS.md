@@ -12,6 +12,8 @@ harness <command> [args]          # package.json bin: tools/cli.mjs; or pnpm <co
   lint            skills against the authoring rules                tools/lint-skills.mjs
   simulate        the runtime contracts under faults                tools/simulate.mjs
   compile-policy  agent-policy.yaml into one engine's settings      tools/compile-policy.mjs
+  run             an engine under its runner.json and its caps      tools/run.mjs
+  check-requires  probe this host for a profile's requires          tools/check-requires.mjs
   lock            pin or verify toolkit.lock                        tools/lock.mjs
   grant           verify a grant before acting under it             tools/grant.mjs
   eval-routing    routing evals through a model command             tools/eval-routing.mjs
@@ -171,8 +173,31 @@ on disk beside what it wrote, not only on stderr:
 | Engine | Files |
 |---|---|
 | claude | `settings.json` (permissions allow/deny/ask, `defaultMode` per tier, `auto` for the auto tier, `sandbox` with `allowUnsandboxedCommands: false` under a bypass that relies on it and `credentials` masks with `network.tlsTerminate`), `runner.json` (unattended: `--permission-mode dontAsk --allowedTools … --max-turns --max-budget-usd`) |
-| codex | `config.toml` (or `<profile>.config.toml` unattended: a `harness` permission profile, approval policy, network domains), `rules/harness.rules` (`prefix_rule` allow / prompt / forbidden with justification and match examples), `runner.json` |
-| gemini | `settings.json` (`defaultApprovalMode`, `tools.sandbox`, `tools.allowed`), `policies/harness.toml` (user-tier `[[rule]]` deny / ask_user / allow), `runner.json` |
+
+Every `runner.json` carries `caps` (`max_turns`, `max_budget_usd`, `timeout_seconds`, null where the
+tier's budget sets none) and `enforcement`, which says per cap who enforces it: `engine` (a flag or
+setting the compile emits), `harness-run`, or `none` (said in a `spend-unmetered` warning). Codex and
+Gemini report no cost, so an unattended profile on either needs `budgets.unattended.max_minutes` for
+a hard kill; no `accept_gaps` entry waives an unattended cap.
+| codex | `config.toml` (or `<profile>.config.toml` unattended: a `harness` permission profile, approval policy, network domains), `rules/harness.rules` (`prefix_rule` prompt / forbidden with justification and match examples; `allow` only where the profile accepts the `allow` gap, since an allow runs outside the sandbox, and never for an interpreter), `runner.json` |
+| gemini | `settings.json` (`defaultApprovalMode`, `tools.sandbox`, `tools.allowed`, `model.maxSessionTurns`), `policies/harness.toml` (user-tier `[[rule]]` deny / ask_user / allow), `runner.json` |
+
+When the policy names `roles`, an unattended compile writes one file set per role that runs on the
+engine under `roles/<role>/` (each `runner.json` names its `role`; the guard hook below stays at the
+top, shared), and `report.json` tags each warning and accepted gap with its role. A role only
+narrows the profile (`role-narrows`); `read_only` drops write allows and denies writes. Settings are
+machine-wide on every engine, so a role whose settings differ runs from its own config home
+(`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, its container); on Claude everything a role narrows is also in
+its runner's flags, since an unattended compile keeps the allowlist out of `settings.json`.
+
+With `hooks.forbid_guard`, the Claude and Codex outputs also carry `hooks/forbid-guard.mjs` (a copy
+of `tools/guards/forbid-guard.mjs`, Node builtins only) and `hooks/forbid.json` (the command forbids,
+and unattended the command asks), registered as a `PreToolUse` hook for the shell tool (Claude in
+`settings.json`, Codex in `hooks.json`). The guard splits the command as a shell would (compound
+commands, substitutions, `sh -c`, wrappers, a program by path) and exits 2 on a match; it fails
+closed on input it cannot read. A `flags_anywhere` forbid compiles to prefix and anywhere rules on
+Claude and to its prefix form on Codex and Gemini, where the rest is the guard's (Codex) or a
+`forbid` gap.
 
 A profile's own `sandbox` and `egress` are merged key by key over the top-level ones before
 compiling (the merged egress still needs a default, and a deny default its allow list:
@@ -183,12 +208,17 @@ prints the `accept_gaps` stanza that would accept it (credential masks on Codex 
 warning; an unrepresentable ask or allow is dropped with a warning; on any error
 nothing is written. Refused outright: the bypass tier (`autonomous`) without a `requires` list naming
 its outside preconditions, or without `sandbox.enabled`, `sandbox.fail_if_unavailable` and
-`egress.default: deny` unless the missing field's gap is accepted by name (`accept_gaps` sandbox or
-egress, with a reason) (HAR-4); `requires` goes into `runner.json` and the notes for the launcher;
+`egress.default: deny` unless the missing field's gap is accepted for that profile by name
+(`accept_gaps` sandbox or egress with `profiles: [<it>]` and a reason; an entry without `profiles`
+never covers a bypass-tier profile) (HAR-4); `requires` (with `requires_config`) goes into `runner.json` and the notes, for `harness run` and
+`harness check-requires` to probe;
 an unattended tier without turn and spend caps (HAR-3); any `x-` extension that disables hooks (HAR-2); an `examples` entry its rule does
 not match. No output may carry `disableAllHooks`, `hooksConfig.enabled: false`, `disableYoloMode`,
-`tools.exclude`, a full-access mode, or a bypass key outside the bypass tier (checked on every
-compile). Unattended, an `ask` compiles to a denial. `--diff <settings.json|settings.json.tmpl>`
+`tools.exclude`, a full-access mode, or a bypass key outside the bypass tier: every compile checks
+the parsed output's keys and mode values (never the text, so a forbid on `codex --yolo` compiles), and
+a hit is a `walls-only` error like any other refusal. Unattended, an `ask` compiles to a denial,
+never dropped: where an engine has no deny for it (a Codex write or tool ask), the compile fails until
+the `ask` gap is accepted for the profile. `--diff <settings.json|settings.json.tmpl>`
 compares the Claude output with a hand-written file.
 
 Goldens: `fixtures/compile-policy/golden/expected/<engine>-<profile>/`, each with its `report.json`
@@ -211,6 +241,41 @@ it is by an owner, the issued fields equal the issuing commit's (`issued-fields-
 `narrowed[]` was only appended to (`narrowing-append-only`), and a commit `source` names exists
 (`source-resolves`). The grant in force (issued minus narrowing) is `effectiveGrant()` in
 `tools/lib/grant.mjs`, which the simulator uses too.
+
+## run
+
+`harness run --runner <runner.json> [--report <file>] [--grace <s>] -- <engine command...>` launches
+one engine command under the `runner.json` compile-policy wrote: it appends the runner's `args` and
+enforces the caps marked `enforcement: harness-run`.
+
+| Engine | `max_turns` | `max_budget_usd` | `timeout_seconds` |
+|---|---|---|---|
+| claude | engine (`--max-turns`); checked after the run against the result's `num_turns` | engine (`--max-budget-usd`, may overshoot by one response); checked after the run against `total_cost_usd` | harness run |
+| codex | harness run: tool actions counted from `codex exec --json` (`--json` is in the runner's args) | **none**: Codex reports tokens, not cost (the run report records the tokens) | harness run |
+| gemini | engine (`model.maxSessionTurns`; headless exit 53) | **none**: no cost reported | harness run |
+
+The timeout is a hard kill: SIGTERM to the run's process group, SIGKILL `--grace` seconds later
+(default 10). A run stopped at the timeout exits 124; one stopped at, or reporting a result past, a
+cap exits 125; otherwise the engine's own exit code passes through. An unattended runner without
+its caps, or without a timeout on an engine that meters no spend, is refused (exit 1), as is a file
+compile-policy did not write. `--report` writes `{role, argv, caps, enforcement, exit_code, signal,
+stopped_by, stopped_by_engine, turns, cost_usd, usage, duration_ms}`, the fields a run record needs.
+A role's run takes its own `roles/<role>/runner.json`.
+
+## check-requires
+
+`harness check-requires --policy <agent-policy.yaml> --profile <p> [--json]` probes this host for
+the profile's `requires`, by name: `prod-unreachable-from-this-host` (a TCP connect to every
+`requires_config.prod_hosts` entry, `host[:port]`, 443 by default, must fail within
+`requires_config.connect_timeout_ms`, 3000 by default; a host that does not resolve counts as
+unreachable, so list addresses to probe the route rather than the resolver; no hosts listed fails),
+`non-root` (uid not 0), `container` (`/.dockerenv`, `/run/.containerenv`, `$container`, or a
+container cgroup in `/proc/1/cgroup`), `non-root-container` (both), `sandbox-available` (bubblewrap
+runs on Linux, `sandbox-exec` on macOS). An unknown name fails closed, and so does a bypass-tier
+profile that names none. Exit 0 when every probe passes, 1 when one fails. `harness run` runs the
+same probes on the `requires` and `requires_config` in a `runner.json` and refuses to start the run
+when one fails; compile-policy warns `requires-unknown` and `requires-unprobed` for a name with no
+probe and for `prod-unreachable-from-this-host` without `prod_hosts`.
 
 ## lock
 

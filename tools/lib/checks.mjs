@@ -92,6 +92,7 @@ export const CHECKS = {
     const out = [];
     const key = (r) => JSON.stringify(r.command ?? r.write ?? [r.tool, r.domain ?? null]);
     const covers = (deny, other) => {
+      if (deny.flags_anywhere) return false; // it denies only the commands that carry its flags
       if (deny.command && other.command) {
         if (deny.command.length > other.command.length) return false;
         return deny.command.every((tok, i) => {
@@ -127,6 +128,15 @@ CHECKS['credential-not-denied'] = ({ data }) => {
     const hit = typeof c?.path === 'string' && denies.find(([, re]) => re.test(c.path));
     return hit ? [{ rule: 'credential-not-denied', pointer: `${ptr}/credentials/${i}/path`, message: `${c.path} is masked and deny_read names it (${hit[0]}): a denied file is never readable, masked or not; drop the mask, or take the path out of deny_read to let sandboxed commands use it masked` }] : [];
   }));
+};
+
+// The profile names a policy cites resolve: an accept_gaps entry scoped to a profile that does not
+// exist accepts nothing, which the operator meant to accept somewhere.
+CHECKS['policy-names-resolve'] = ({ data }) => {
+  const known = new Set(Object.keys(data?.profiles ?? {}));
+  return (Array.isArray(data?.accept_gaps) ? data.accept_gaps : []).flatMap((g, i) => (Array.isArray(g?.profiles) ? g.profiles : [])
+    .map((n, j) => [n, j]).filter(([n]) => !known.has(n))
+    .map(([n, j]) => ({ rule: 'gap-profiles-exist', pointer: `/accept_gaps/${i}/profiles/${j}`, message: `"${n}" is not a profile (profiles: ${[...known].join(', ')})` })));
 };
 
 // toolkit.lock kinds and layers agree: harness and skill-library are L3 kinds, the others L4 ones.

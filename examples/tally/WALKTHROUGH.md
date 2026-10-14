@@ -28,9 +28,9 @@ node tools/cli.mjs compile-policy examples/tally/_operator/agent-policy.yaml --p
 |---|---|---|
 | dana | owner, engineer, operator | a human: the three gates, the grants, the L1 policy |
 | coordinator | orchestrator, under GRANT-1 and GRANT-2 | Claude on the devbox (`devbox` profile, bypass tier) in a terminal multiplexer |
-| tally-coder | coder | Claude, headless, one run per dispatch (`ci` profile: `dontAsk`, allow list, caps) |
-| tally-evaluator | evaluator | Gemini, headless (`ci` profile): a different model family from the author |
-| tally-reader | read-only helper | Claude at a smaller model, low effort |
+| tally-coder | coder | Claude, headless, one run per dispatch (`ci` profile, role `author`: `dontAsk`, allow list, caps) |
+| tally-evaluator | evaluator | Gemini, headless (`ci` profile, role `evaluator`: read-only, git reads and the test commands only): a different model family from the author |
+| tally-reader | read-only helper | Claude at a smaller model, low effort (`ci` profile, role `reader`: read-only, git reads only) |
 | merge | merge | the forge's merge agent, the only automation that lands on `main` |
 
 ## Where each layer shows up

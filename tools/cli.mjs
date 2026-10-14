@@ -16,6 +16,8 @@ export const COMMANDS = {
   lint: { script: 'lint-skills.mjs', about: 'lint skills against the authoring rules' },
   simulate: { script: 'simulate.mjs', about: 'simulate the runtime contracts under faults' },
   'compile-policy': { script: 'compile-policy.mjs', about: 'compile agent-policy.yaml into an engine\'s settings' },
+  run: { script: 'run.mjs', about: 'launch an engine under its compiled runner.json and its caps' },
+  'check-requires': { script: 'check-requires.mjs', about: 'probe this host for a profile\'s requires' },
   lock: { script: 'lock.mjs', about: 'pin or verify toolkit.lock' },
   grant: { script: 'grant.mjs', about: 'verify a grant: provenance, owners, narrowing (grant verify)' },
   'eval-routing': { script: 'eval-routing.mjs', about: 'run routing evals through a model command' },
