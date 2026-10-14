@@ -37,6 +37,11 @@ Fixes from an independent review of 0.1.0 (workflow, authority, trace, simulator
   commit that hold them (`docs/adr-permission-precedence`, `c177fa1`), not master.
 - The README no longer claims that no file outside `adapters/` names an engine; it says where engine
   names appear and why.
+- delegating-authority lists every never-grantable id `authority.yaml` holds (`promote-integration`,
+  `answer-input-request` were missing); a docs test keeps the two in step. Version labels in the
+  skills' references state the current contract and machine versions (a docs test checks every
+  "`<name>` contract X.Y.Z" label). The Tally walkthrough no longer files routine dispatch under
+  `select-tasks`: dispatching ready work in priority order is mechanical.
 
 ## [0.1.0] - 2026-10-13
 

@@ -270,7 +270,7 @@ commit that names its id). A coordinator derives the state before each delegated
 may hold several grants (a work grant and a merge grant, revocable alone): each action is exercised
 under the grant that delegates it, and the workers cap is the smallest `max_workers` among the live
 grants that dispatch work, so a merge-only grant's `max_workers` bounds its merges, not the epic's
-workers (`authority.yaml` 1.2.0 lifecycle.limits). **Swap story.** Lets a
+workers (`authority.yaml` lifecycle.limits, since 1.2.0). **Swap story.** Lets a
 coordinator (stagehand, a CI orchestrator, a future agent) stand in for named human decisions with an
 auditable, expiring record instead of a remembered chat line. **Compat.** stagehand's
 project-delegation grants map field by field ([adapters/herdr](adapters/herdr/README.md)); the
@@ -525,7 +525,7 @@ means what is `state-machines/attention.yaml`; what a human may delegate is
 `state-machines/authority.yaml`. The invariant that ties them: **status is a commit by an authorized
 role; a runtime signal is a hint that changes attention at most.**
 
-Landing (workflow 1.2.0, authority 1.1.0). `land` (→ `merged`), `integrate` (→ `integrated`) and
+Landing (workflow since 1.2.0, authority since 1.1.0). `land` (→ `merged`), `integrate` (→ `integrated`) and
 `return-to-human` are the merge role's, or the orchestrator's under a live `merge` grant whose repo,
 strategy and exact target match — the target being the task's `lands_to`, else the protected branch
 (a runtime with no separate merge role). `promote` (`integrated` → `merged`) is a human's, after the

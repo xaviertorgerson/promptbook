@@ -2,7 +2,7 @@
 
 ## toolkit.lock
 
-Shape (`toolkit-lock` contract 1.1.0): `lock_version: 1`, optional `generated_at`, `generated_by`,
+Shape (`toolkit-lock` contract 1.2.0): `lock_version: 1`, optional `generated_at`, `generated_by`,
 and `entries[]` of `{name, layer, kind, source, path, ref, commit, tree, version, autoUpdate,
 mirrored}`. Names are unique; exactly one L3 entry is the harness (`kind: harness`, or no kind);
 other L3 entries are `kind: skill-library`; L4 entries are engine-binding, stack-pack, runtime or

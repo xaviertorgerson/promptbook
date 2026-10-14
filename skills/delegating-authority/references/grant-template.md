@@ -4,7 +4,7 @@ A blank grant with every field explained. Placeholders in `<...>` do not validat
 human's words, then run `node tools/validate.mjs --contract grant <file>` if the validator is available.
 
 ```yaml
-# A blank grant (grant contract 1.0.0). Delete what the human did not say; never add what they did not say.
+# A blank grant (grant contract 1.1.0). Delete what the human did not say; never add what they did not say.
 id: GRANT-<n>                       # never reused
 granted_by: <human handle>          # the human who holds the authority (owner or engineer)
 granted_to:

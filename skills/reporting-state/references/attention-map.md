@@ -1,4 +1,4 @@
-# Attention map (from the harness `attention` machine 1.0.0)
+# Attention map (from the harness `attention` machine 1.3.0)
 
 Columns: the signal value as the source writes it · suggested attention (— means none until you
 inspect) · reconcile action · note. `signals.<role>.source` takes the value in the heading.
@@ -62,6 +62,9 @@ is the evidence · **ignore** = no change.
 | advanced | — | inspect | the task left ready/in-progress; its status says what comes next |
 | stalled | needs-human | record | the task did not move, or another was claimed; the loop stops |
 | failed | needs-human | record | |
+| needs-human | needs-human | record | a denied tool call left the task where it was (dontAsk): allow the tool or answer the checkpoint |
+| verdict | — | inspect | an evaluator judged the criteria: evidence for independent-verification; it moves nothing |
+| read | — | ignore | a reader or helper answered another session's question; the task's own record is unchanged |
 
 ## CI check (`source: ci`)
 

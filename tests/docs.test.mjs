@@ -52,3 +52,41 @@ describe('the README\'s claims', () => {
     for (const entry of unreleased.split('\n').filter((l) => /^- \*\*/.test(l))) assert.match(entry, /^- \*\*(?:additive|behavioral|breaking)\*\* — /, entry);
   });
 });
+
+describe('version labels', () => {
+  it('every "<contract> contract X.Y.Z", "<machine> machine X.Y.Z" and "(workflow X.Y.Z)" label states the current version', async () => {
+    const { registry } = await import('../tools/lib/registry.mjs');
+    const { parse } = await import('yaml');
+    const reg = registry();
+    const current = new Map(reg.contracts().map((c) => [c, reg.version(c)]));
+    for (const m of ['workflow', 'attention', 'authority']) current.set(m, String(parse(fs.readFileSync(path.join(ROOT, 'state-machines', `${m}.yaml`), 'utf8')).version));
+    const LABELS = [
+      /`?\b([a-z][a-z-]*?)(?:\.yaml|\.schema\.json)?`? (?:contract|machine) (\d+\.\d+\.\d+)/g,
+      /\b(workflow|authority|attention) (\d+\.\d+\.\d+)/g,
+      /`([a-z][a-z-]*)\.(?:yaml|schema\.json)` (\d+\.\d+\.\d+)/g,
+    ];
+    const stale = [];
+    for (const f of docs.filter((x) => x.endsWith('.md') && !x.endsWith('CHANGELOG.md'))) {
+      const text = fs.readFileSync(f, 'utf8').replace(/\s+/g, ' ');
+      for (const re of LABELS) for (const m of text.matchAll(re)) {
+        const since = /\bsince $/.test(text.slice(Math.max(0, m.index - 6), m.index));
+        if (current.has(m[1]) && current.get(m[1]) !== m[2] && !since) stale.push(`${rel(f)}: "${m[0]}" (now ${current.get(m[1])})`);
+      }
+      assert.doesNotMatch(text, /\bcontracts \d+\.\d+\.\d+/, `${rel(f)} labels every contract with one version`);
+    }
+    assert.deepEqual(stale, []);
+  });
+});
+
+describe('the delegating-authority skill', () => {
+  it('lists exactly authority.yaml\'s never-grantable ids, in its summary and its reference table', async () => {
+    const { parse } = await import('yaml');
+    const ids = parse(fs.readFileSync(path.join(ROOT, 'state-machines/authority.yaml'), 'utf8')).never_grantable.map((x) => x.id).sort();
+    const skill = fs.readFileSync(path.join(ROOT, 'skills/delegating-authority/SKILL.md'), 'utf8');
+    const summary = skill.split(/^## Never delegable$/m)[1].split(/^## /m)[0];
+    assert.deepEqual([...summary.matchAll(/`([a-z-]+)`/g)].map((m) => m[1]).sort(), ids);
+    const ref = fs.readFileSync(path.join(ROOT, 'skills/delegating-authority/references/authority.md'), 'utf8');
+    const table = ref.split(/^## Never grantable$/m)[1].split(/^## /m)[0];
+    assert.deepEqual([...table.matchAll(/^\| `([a-z-]+)` \|/gm)].map((m) => m[1]).sort(), ids);
+  });
+});

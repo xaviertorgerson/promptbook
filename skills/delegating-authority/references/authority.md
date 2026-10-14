@@ -1,4 +1,4 @@
-# Authority rules (excerpt of the harness `authority` machine and `grant` contract 1.0.0)
+# Authority rules (excerpt of the harness `authority` machine 1.3.0 and `grant` contract 1.1.0)
 
 ## Default
 
@@ -33,10 +33,12 @@ integration branch and leave integration → default branch to a human.
 | `spec-approval` | the plan is the human's; delegating it removes the human from the plan |
 | `production-release` | customers see it; automating that gate is a human config change in the forge, not a delegation |
 | `answer-permission-prompt` | approving a tool call the policy asks about is the checkpoint itself |
+| `answer-input-request` | a remote agent's or a tool's request for input is a question for a human; forward it verbatim |
 | `change-policy` | walls (deny rules, hooks, branch protection) change only by a reviewed human commit |
 | `force-push-shared` | destroys others' history |
 | `destructive-data` | dropping databases, deleting volumes, wiping backups |
 | `widen-grant` | widening is a new grant from the human; a holder may only narrow its own |
+| `promote-integration` | an integration branch reaches the protected branch only by a human's merge (workflow `promote`) |
 
 Policy denies (the operator's policy, project walls) beat any grant.
 

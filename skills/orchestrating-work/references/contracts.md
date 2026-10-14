@@ -1,4 +1,4 @@
-# Contract excerpts (harness 0.1.0, contracts 1.0.0)
+# Contract excerpts (harness 0.1.0; each contract at the version its section names)
 
 The minimum of the harness contracts this skill reads and writes, so it works when installed alone.
 Field names are exact. The full schemas are `schemas/*.schema.json` in the harness.

@@ -65,8 +65,9 @@ workers a grant covers (orchestrating-work); permission policy or walls (adoptin
 
 Run `references/check.md` in order; stop at the first "no":
 
-1. **Never delegable?** spec approval, production release, answering a permission prompt, changing
-   policy or walls, force-pushing a shared branch, destructive data actions, widening a grant → no.
+1. **Never delegable?** spec approval, production release, answering a permission prompt or an
+   input request, changing policy or walls, force-pushing a shared branch, destructive data
+   actions, widening a grant, promoting an integration branch to the protected branch → no.
 2. **A policy or repository wall forbids it?** Walls beat every grant → no.
 3. **A live grant?** `granted_at` ≤ now < `expires_at`, no `revoked_at`, `granted_to` matches you.
 4. **The action is listed** in its current `actions` (narrowing already removed what it removed).
@@ -95,8 +96,9 @@ A "no" at 3–7 means ask the human. Never fill a gap by inference.
 
 ## Never delegable
 
-`spec-approval` · `production-release` · `answer-permission-prompt` · `change-policy` ·
-`force-push-shared` · `destructive-data` · `widen-grant`. Why each is in `references/authority.md`.
+`spec-approval` · `production-release` · `answer-permission-prompt` · `answer-input-request` ·
+`change-policy` · `force-push-shared` · `destructive-data` · `widen-grant` · `promote-integration`.
+Why each is in `references/authority.md`.
 
 ## Outputs
 
