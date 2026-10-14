@@ -29,7 +29,8 @@ const TMP = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'harness-code
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 const rel = (f) => (f.startsWith(ROOT) ? path.relative(ROOT, f) : f);
-const errorOf = (r) => (r.error ? String(r.error) : `${r.stderr}${r.stdout}`.split('\n').filter((l) => /error|caused by|^\s{2,}\S/i.test(l)).join('\n').slice(0, 2000));
+// The error lines of a run, without the backtrace frames ("  3: <unknown>").
+const errorOf = (r) => (r.error ? String(r.error) : `${r.stderr}${r.stdout}`.split('\n').filter((l) => /error|caused by|^\s{2,}\S/i.test(l) && !/^\s*\d+: /.test(l)).join('\n').slice(0, 2000));
 
 // A config as the only file of a fresh CODEX_HOME, run from there so no project layer joins it.
 function loadConfig(text) {
@@ -92,6 +93,18 @@ describe('the real Codex CLI loads what compile-policy writes', () => {
     assert.ok(configs.length >= 7 && rulesFiles.length >= 7, `${configs.length} configs, ${rulesFiles.length} rules files committed`);
   });
 
+  it('reads the scratch CODEX_HOME: a config it cannot parse fails the load', (t) => {
+    const bad = loadConfig('approval_policy = [\n');
+    assert.equal(bad.status, 1, 'a load that ignores CODEX_HOME would pass every config below');
+    // Why the compiler keeps these shapes out of config.toml; reported, not asserted, so a Codex
+    // that starts accepting them shows up here without failing the suite.
+    const shapes = { 'a glob with read access': 'default_permissions = "p"\n[permissions.p]\nextends = ":workspace"\n[permissions.p.filesystem.":workspace_roots"]\n"**/.git/hooks/**" = "read"\n', 'an mcp_servers table without its transport': '[mcp_servers.prod-db]\ndisabled_tools = ["execute"]\n' };
+    for (const [what, text] of Object.entries(shapes)) {
+      const r = loadConfig(text);
+      t.diagnostic(`${what}: ${r.status === 0 ? 'now loads' : `refused (${errorOf(r).split('\n').filter((l) => !/^(Error|Caused by)/.test(l.trim())).map((l) => l.trim()).join(' ')})`}`);
+    }
+  });
+
   for (const f of configs) {
     it(`codex features list loads ${rel(f)}`, () => {
       const r = loadConfig(fs.readFileSync(f, 'utf8'));
@@ -127,7 +140,7 @@ describe('the real Codex CLI loads what compile-policy writes', () => {
     assert.ok(n >= 40, `${n} files loaded`);
   });
 
-  it('mcp-restrictions.toml merged into a config that defines its servers loads; config.toml never holds the table', (t) => {
+  it('mcp-restrictions.toml merged into a config that defines its servers loads; config.toml never holds the table', () => {
     const withMcp = fresh.filter((f) => f.path.endsWith('mcp-restrictions.toml'));
     assert.ok(withMcp.length >= 5, `${withMcp.length} fragments`);
     for (const frag of withMcp) {
@@ -139,7 +152,5 @@ describe('the real Codex CLI loads what compile-policy writes', () => {
       const r = loadConfig(toToml({ ...cfg.data, mcp_servers: servers }));
       assert.equal(r.status, 0, `${frag.name}: ${errorOf(r)}`);
     }
-    const alone = loadConfig(withMcp[0].content);
-    t.diagnostic(`the fragment alone as config.toml: exit ${alone.status}${alone.status ? `, ${errorOf(alone).split('\n').find((l) => /invalid|error/i.test(l)) ?? ''}` : ''}`);
   });
 });
