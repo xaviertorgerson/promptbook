@@ -19,7 +19,26 @@ profiles:
   ci:
     tier: unattended
     engines: [claude, codex, gemini]
-    description: "headless runs the coordinator launches: authors (claude), readers (codex), the evaluator (gemini). No prompts, every ask a denial, the allow list is the boundary, caps from budgets.unattended"
+    description: "headless runs the coordinator launches, each in its role below: authors (claude), readers (claude or codex), the evaluator (gemini). No prompts, every ask a denial, the role's allow list is the boundary, caps from budgets.unattended"
+# Who runs headless on ci (WALKTHROUGH, Cast) and what each run may do. A role only narrows the
+# profile; ci compiles to one set of files per role under compiled/<engine>/ci/roles/.
+roles:
+  author:
+    description: "tally-coder: implements a task on its branch, pushes it and opens the draft PR"
+    engines: [claude]
+  reader:
+    description: "tally-reader: reads code and history for the coordinator; writes nothing"
+    engines: [claude, codex]
+    read_only: true
+    allow:
+      - { command: [git, [status, log, diff, show]] }
+  evaluator:
+    description: "tally-evaluator: re-runs the checks on a head and returns a verdict; writes nothing"
+    engines: [gemini]
+    read_only: true
+    allow:
+      - { command: [git, [status, log, diff, show]] }
+      - { command: [pnpm, [test, lint, typecheck]] }
 deny_read:
   - "**/.env"
   - "**/.env.*"
@@ -62,10 +81,11 @@ budgets:
 # until the degradation is accepted here with the reason it is safe on dana's machines.
 accept_gaps:
   - { engine: claude, field: egress, profiles: [devbox], reason: "under bypass on the devbox, WebFetch reaches unlisted domains; the devbox container's egress proxy enforces the same domain list for every process" }
+  - { engine: codex, field: forbid, profiles: [ci], reason: "Codex runs only the reader on ci, in the :read-only sandbox; apply_patch, which no documented rule holds to it, is refused by the product's walls (L2 hook deny) under .git/hooks, and the reader's checkout is a throwaway worktree the coordinator discards" }
   - { engine: codex, field: forbid, reason: "the .git/hooks write deny downgrades sandboxed commands only; the product's walls (L2 hook deny) refuse apply_patch there" }
   - { engine: codex, field: ask, profiles: [ci], reason: "unattended, the deploy/** ask is a denial: the path is read-only for sandboxed commands, and the product's walls (L2 hook deny) refuse apply_patch there" }
   - { engine: codex, field: sandbox, reason: "the launcher refuses to start Codex where its sandbox is unavailable" }
   - { engine: gemini, field: deny_read, reason: "Gemini runs only the evaluator, in the ci container, which mounts no secret files" }
-  - { engine: gemini, field: forbid, reason: "Gemini runs only the evaluator, whose forge token is read-only, so a force push spelled any way fails at the forge; shell redirection into .git/hooks is refused by the product's hook deny" }
+  - { engine: gemini, field: forbid, reason: "Gemini runs only the read-only evaluator: write_file and replace are denied, its shell runs only git reads and the test commands, its forge token cannot push, and a shell redirection is refused by the product's hook deny" }
   - { engine: gemini, field: egress, reason: "the ci container's egress proxy enforces the domain list" }
   - { engine: gemini, field: sandbox, reason: "the launcher refuses to start the evaluator outside its container" }

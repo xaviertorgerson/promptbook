@@ -7,5 +7,7 @@
     }
   ],
   "accepted": [],
-  "notes": []
+  "notes": [
+    "roles compile for the unattended tier only: a auto-edit session has no allowlist boundary for a role to narrow"
+  ]
 }

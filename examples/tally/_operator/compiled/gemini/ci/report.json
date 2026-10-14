@@ -3,41 +3,54 @@
   "warnings": [
     {
       "rule": "hooks-not-emitted",
-      "message": "the forbid guard is registered for Claude Code and Codex only; Gemini keeps each flags-anywhere forbid in its prefix form (adapters/gemini)"
+      "message": "the forbid guard is registered for Claude Code and Codex only; Gemini keeps each flags-anywhere forbid in its prefix form (adapters/gemini)",
+      "role": "evaluator"
     },
     {
       "rule": "spend-unmetered",
-      "message": "gemini reports no cost: max_usd 4 is not metered; the run is bounded by max_turns and a hard kill at max_minutes 90"
+      "message": "gemini reports no cost: max_usd 4 is not metered; the run is bounded by max_turns and a hard kill at max_minutes 90",
+      "role": "evaluator"
     }
   ],
   "accepted": [
     {
       "field": "deny_read",
       "message": "read denies reach only the file tools (read_file, read_many_files, glob, search_file_content; names unverified), not run_shell_command reads",
-      "reason": "Gemini runs only the evaluator, in the ci container, which mounts no secret files"
+      "reason": "Gemini runs only the evaluator, in the ci container, which mounts no secret files",
+      "role": "evaluator"
     },
     {
       "field": "forbid",
       "message": "command [\"git\",\"push\"] with --force | -f | --mirror | +* anywhere: commandPrefix matches the start of the command, so only the flag right after the words is denied, not the flags anywhere later in it",
-      "reason": "Gemini runs only the evaluator, whose forge token is read-only, so a force push spelled any way fails at the forge; shell redirection into .git/hooks is refused by the product's hook deny"
+      "reason": "Gemini runs only the read-only evaluator: write_file and replace are denied, its shell runs only git reads and the test commands, its forge token cannot push, and a shell redirection is refused by the product's hook deny",
+      "role": "evaluator"
     },
     {
       "field": "forbid",
       "message": "write **/.git/hooks/**: a deny reaches the file tools (write_file, replace) only, not shell redirection",
-      "reason": "Gemini runs only the evaluator, whose forge token is read-only, so a force push spelled any way fails at the forge; shell redirection into .git/hooks is refused by the product's hook deny"
+      "reason": "Gemini runs only the read-only evaluator: write_file and replace are denied, its shell runs only git reads and the test commands, its forge token cannot push, and a shell redirection is refused by the product's hook deny",
+      "role": "evaluator"
+    },
+    {
+      "field": "forbid",
+      "message": "write **: a deny reaches the file tools (write_file, replace) only, not shell redirection",
+      "reason": "Gemini runs only the read-only evaluator: write_file and replace are denied, its shell runs only git reads and the test commands, its forge token cannot push, and a shell redirection is refused by the product's hook deny",
+      "role": "evaluator"
     },
     {
       "field": "egress",
       "message": "the sandbox offers open or proxied profiles, not a domain list",
-      "reason": "the ci container's egress proxy enforces the domain list"
+      "reason": "the ci container's egress proxy enforces the domain list",
+      "role": "evaluator"
     },
     {
       "field": "sandbox",
       "message": "fail_if_unavailable has no Gemini key",
-      "reason": "the launcher refuses to start the evaluator outside its container"
+      "reason": "the launcher refuses to start the evaluator outside its container",
+      "role": "evaluator"
     }
   ],
   "notes": [
-    "run gemini non-interactively; ask_user rules are denials there"
+    "role evaluator: run gemini non-interactively; ask_user rules are denials there"
   ]
 }

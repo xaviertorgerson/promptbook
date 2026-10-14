@@ -3,40 +3,44 @@
   "warnings": [
     {
       "rule": "hook-trust",
-      "message": "Codex skips a new or changed user hook until it is reviewed and trusted (/hooks; trust is recorded against the hook's hash): trust the harness forbid guard once on this machine, or flags-anywhere forbids hold only in their prefix form until then"
-    },
-    {
-      "rule": "allow-interpreter",
-      "message": "allow command [\"pnpm\"] not emitted on codex: an execpolicy allow runs outside the sandbox, and an interpreter runs any script there (deny_read and egress hold only inside it); the command runs sandboxed instead"
-    },
-    {
-      "rule": "allow-interpreter",
-      "message": "allow command [\"node\"] not emitted on codex: an execpolicy allow runs outside the sandbox, and an interpreter runs any script there (deny_read and egress hold only inside it); the command runs sandboxed instead"
+      "message": "Codex skips a new or changed user hook until it is reviewed and trusted (/hooks; trust is recorded against the hook's hash): trust the harness forbid guard once on this machine, or flags-anywhere forbids hold only in their prefix form until then",
+      "role": "reader"
     },
     {
       "rule": "allow-unsandboxed",
-      "message": "allow [\"git\", [\"status\", \"log\", \"diff\", \"show\", \"branch\", \"add\", \"commit\", \"fetch\", \"pull\", \"push\", \"switch\", \"checkout\", \"worktree\"]], [\"gh\", \"pr\", [\"create\", \"view\", \"ready\", \"comment\"]] not emitted on codex: an execpolicy allow runs outside the sandbox, past deny_read and egress; the commands run sandboxed instead (accept_gaps {engine: codex, field: allow, profiles: [ci]} emits them)"
+      "message": "allow [\"git\", [\"status\", \"log\", \"diff\", \"show\"]] not emitted on codex: an execpolicy allow runs outside the sandbox, past deny_read and egress; the commands run sandboxed instead (accept_gaps {engine: codex, field: allow, profiles: [ci]} emits them)",
+      "role": "reader"
     },
     {
       "rule": "spend-unmetered",
-      "message": "codex reports no cost: max_usd 4 is not metered; the run is bounded by max_turns and a hard kill at max_minutes 90"
+      "message": "codex reports no cost: max_usd 4 is not metered; the run is bounded by max_turns and a hard kill at max_minutes 90",
+      "role": "reader"
     }
   ],
   "accepted": [
     {
       "field": "forbid",
       "message": "write **/.git/hooks/**: a filesystem \"read\" downgrade covers sandboxed commands, not the apply_patch tool",
-      "reason": "the .git/hooks write deny downgrades sandboxed commands only; the product's walls (L2 hook deny) refuse apply_patch there"
+      "reason": "Codex runs only the reader on ci, in the :read-only sandbox; apply_patch, which no documented rule holds to it, is refused by the product's walls (L2 hook deny) under .git/hooks, and the reader's checkout is a throwaway worktree the coordinator discards",
+      "role": "reader"
+    },
+    {
+      "field": "forbid",
+      "message": "write **: a filesystem \"read\" downgrade covers sandboxed commands, not the apply_patch tool",
+      "reason": "Codex runs only the reader on ci, in the :read-only sandbox; apply_patch, which no documented rule holds to it, is refused by the product's walls (L2 hook deny) under .git/hooks, and the reader's checkout is a throwaway worktree the coordinator discards",
+      "role": "reader"
     },
     {
       "field": "ask",
       "message": "unattended, an ask is a denial; write deploy/**: a filesystem \"read\" downgrade covers sandboxed commands, not the apply_patch tool",
-      "reason": "unattended, the deploy/** ask is a denial: the path is read-only for sandboxed commands, and the product's walls (L2 hook deny) refuse apply_patch there"
+      "reason": "unattended, the deploy/** ask is a denial: the path is read-only for sandboxed commands, and the product's walls (L2 hook deny) refuse apply_patch there",
+      "role": "reader"
     },
     {
       "field": "sandbox",
       "message": "fail_if_unavailable has no documented Codex key",
-      "reason": "the launcher refuses to start Codex where its sandbox is unavailable"
+      "reason": "the launcher refuses to start Codex where its sandbox is unavailable",
+      "role": "reader"
     }
   ],
   "notes": []

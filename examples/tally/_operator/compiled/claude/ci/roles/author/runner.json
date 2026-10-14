@@ -4,6 +4,7 @@
   "engine": "claude",
   "profile": "ci",
   "tier": "unattended",
+  "role": "author",
   "args": [
     "--permission-mode",
     "dontAsk",

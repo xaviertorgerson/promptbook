@@ -384,7 +384,7 @@ describe('review findings: the compiler never loosens a wall silently', () => {
 });
 
 describe('review finding 1: a Codex allow rule runs outside the sandbox', () => {
-  const tally = load(path.join(ROOT, 'examples/tally/_operator/agent-policy.yaml'));
+  const { roles, ...tally } = load(path.join(ROOT, 'examples/tally/_operator/agent-policy.yaml'));
   const codexRules = (r) => r.files.find((f) => f.path === 'rules/harness.rules').content;
 
   it('an interpreter allow is never emitted, accepted gap or not: it would void deny_read and egress for any script', () => {
@@ -437,7 +437,7 @@ describe('review finding 6: Claude\'s read and write denies without the sandbox'
 });
 
 describe('review finding 7: unattended, an ask Codex cannot represent is a denial, never dropped', () => {
-  const tally = load(path.join(ROOT, 'examples/tally/_operator/agent-policy.yaml'));
+  const { roles, ...tally } = load(path.join(ROOT, 'examples/tally/_operator/agent-policy.yaml'));
   const config = (r) => r.files.find((f) => f.path.endsWith('config.toml')).content;
   const noAskGap = { ...tally, accept_gaps: tally.accept_gaps.filter((g) => !(g.engine === 'codex' && g.field === 'ask')) };
 
@@ -465,7 +465,7 @@ describe('review finding 7: unattended, an ask Codex cannot represent is a denia
 });
 
 describe('review finding 12: unattended caps are never waived; runner.json carries them for harness run', () => {
-  const tally = load(path.join(ROOT, 'examples/tally/_operator/agent-policy.yaml'));
+  const { roles, ...tally } = load(path.join(ROOT, 'examples/tally/_operator/agent-policy.yaml'));
   const runner = (r) => JSON.parse(r.files.find((f) => f.path === 'runner.json').content);
 
   it('every runner.json carries caps and says who enforces each', () => {
@@ -580,5 +580,63 @@ describe('review finding 14: a forbid that matches its flags anywhere in the com
     const r = compilePolicy(p, { profile: 'laptop', engine: 'claude' });
     assert.ok(r.errors.some((e) => e.rule === 'example-matches' && /"git push origin main"/.test(e.message)), JSON.stringify(r.errors));
     assert.ok(!r.errors.some((e) => e.rule === 'example-matches' && /-f"/.test(e.message)));
+  });
+});
+
+describe('review finding 15: roles narrow a profile\'s allowlist and egress per run', () => {
+  const tally = load(path.join(ROOT, 'examples/tally/_operator/agent-policy.yaml'));
+  const file = (r, p) => r.files.find((f) => f.path === p);
+  const json = (r, p) => JSON.parse(file(r, p).content);
+
+  it('the Tally evaluator (Gemini) is read-only: no write, push, PR or interpreter allow, and its write tools are denied', () => {
+    const r = compilePolicy(tally, { profile: 'ci', engine: 'gemini' });
+    assert.equal(r.ok, true, JSON.stringify(r.errors));
+    const policy = file(r, 'roles/evaluator/policies/harness.toml').content;
+    const allows = policy.split('[[rule]]').filter((b) => /decision = "allow"/.test(b));
+    assert.ok(allows.length > 0);
+    for (const b of allows) assert.doesNotMatch(b, /write_file|replace|git push|gh pr|"node"|"pnpm"\n/, b);
+    assert.match(policy, /toolName = \["write_file", "replace"\]\ndecision = "deny"/);
+    assert.deepEqual(json(r, 'roles/evaluator/settings.json').tools.allowed.filter((t) => /push|gh pr|node/.test(t)), []);
+    assert.equal(json(r, 'roles/evaluator/runner.json').role, 'evaluator');
+    assert.ok(r.accepted.filter((a) => a.role === 'evaluator').every((a) => !/never writes/.test(a.reason)), 'no accepted gap leans on a claim the output contradicts');
+  });
+
+  it('the Tally reader is read-only on Claude (the runner\'s allowlist and an Edit deny) and on Codex (the read-only sandbox)', () => {
+    const c = compilePolicy(tally, { profile: 'ci', engine: 'claude' });
+    assert.equal(c.ok, true, JSON.stringify(c.errors));
+    for (const role of ['author', 'reader']) assert.equal(json(c, `roles/${role}/settings.json`).permissions.allow, undefined, 'unattended, the allowlist is the runner\'s, so a role can narrow it');
+    assert.ok(!c.files.some((f) => f.path === 'settings.json' || f.path === 'roles/evaluator/runner.json'), 'every unattended run is a role; the evaluator runs on Gemini');
+    const args = json(c, 'roles/reader/runner.json').args;
+    const allowed = args[args.indexOf('--allowedTools') + 1].split(',');
+    assert.ok(allowed.includes('Bash(git log *)') && !allowed.some((t) => /git push|gh pr|Edit|node|pnpm/.test(t)), allowed.join());
+    assert.ok(args[args.indexOf('--disallowedTools') + 1].split(',').includes('Edit(**)'));
+    assert.ok(json(c, 'roles/author/runner.json').args.join(' ').includes('Bash(git push *)'), 'the author keeps the profile\'s allowlist');
+    const x = compilePolicy(tally, { profile: 'ci', engine: 'codex' });
+    assert.equal(x.ok, true, JSON.stringify(x.errors));
+    const cfg = file(x, 'roles/reader/ci.config.toml').content;
+    assert.match(cfg, /extends = ":read-only"/);
+    assert.doesNotMatch(cfg, /"\." = "write"/);
+    assert.equal(file(x, 'roles/evaluator/ci.config.toml'), undefined, 'the evaluator runs on Gemini only');
+  });
+
+  it('a role only narrows: an allow or a domain the profile does not grant is an error, and so is a write in a read-only role', () => {
+    const roles = (role) => ({ ...tally, roles: { r: role } });
+    const wider = compilePolicy(roles({ allow: [{ command: ['curl'] }] }), { profile: 'ci', engine: 'claude' });
+    assert.ok(wider.errors.some((e) => e.rule === 'role-narrows' && /curl/.test(e.message)), JSON.stringify(wider.errors));
+    const domain = compilePolicy(roles({ egress: { allow_domains: ['pastebin.com'] } }), { profile: 'ci', engine: 'claude' });
+    assert.ok(domain.errors.some((e) => e.rule === 'role-narrows' && /pastebin/.test(e.message)), JSON.stringify(domain.errors));
+    const narrower = compilePolicy(roles({ allow: [{ command: ['git', 'log'] }, { command: ['gh', 'pr', 'view'] }], egress: { allow_domains: ['api.github.com'] } }), { profile: 'ci', engine: 'claude' });
+    assert.equal(narrower.ok, true, JSON.stringify(narrower.errors));
+    assert.ok(json(narrower, 'roles/r/runner.json').args.includes('Bash(git log *),Bash(gh pr view *),WebFetch(domain:api.github.com)'));
+    const ro = compilePolicy(roles({ read_only: true, allow: [{ write: 'docs/**' }] }), { profile: 'ci', engine: 'claude' });
+    assert.ok(ro.errors.some((e) => e.rule === 'role-read-only'), JSON.stringify(ro.errors));
+    const codexEscape = compilePolicy({ ...roles({ read_only: true, engines: ['codex'] }), accept_gaps: [...tally.accept_gaps, { engine: 'codex', field: 'allow', reason: 'test' }] }, { profile: 'ci', engine: 'codex' });
+    assert.ok(codexEscape.errors.some((e) => e.rule === 'role-read-only' && /outside the sandbox/.test(e.message)), JSON.stringify(codexEscape.errors));
+  });
+
+  it('roles compile for the unattended tier only, and a role names only roles the policy has', () => {
+    const w = compilePolicy(tally, { profile: 'workstation', engine: 'claude' });
+    assert.ok(!w.files.some((f) => f.path.startsWith('roles/')));
+    assert.ok(w.notes.some((n) => /roles compile for the unattended tier/.test(n)));
   });
 });

@@ -44,6 +44,7 @@ non-interactive mode `ask_user` is treated as `deny`.
 | `forbid: {write: glob}` | `[[rule]] toolName = [<the file-writing tools>], argsPattern = "<regex>", decision = "deny"` | Same partial caveat as `deny_read`. |
 | `forbid: {tool: web-fetch, domain}` | `[[rule]] toolName = "web_fetch", argsPattern = "<domain regex>", decision = "deny"` | |
 | `forbid: {tool: "mcp:server[:tool]"}` | `[[rule]] toolName = "mcp_<server>_*"` (or the tool), `decision = "deny"`; or `mcpServers.<s>.excludeTools` | Avoid underscores in server aliases (the engine splits on the first one). |
+| `roles.<r>` (unattended) | `roles/<r>/settings.json`, `policies/harness.toml`, `runner.json` | The policy files are user-tier and machine-wide, so a role runs from its own environment (the evaluator's container). `read_only`: a deny for the file-writing tools with no `argsPattern`; shell writes stay the usual `forbid` gap. |
 | `ask` | `[[rule]] ... decision = "ask_user"` | Denied when non-interactive. |
 | `allow` | `[[rule]] ... decision = "allow"` and `tools.allowed` | |
 | `egress.*` | — | **No equivalent**: the sandbox offers "open" or "proxied" profiles, not a domain list [sandbox][sandbox]. `default: deny` or any `deny_domains` → error unless accepted; with a proxy profile the operator's proxy enforces the list. |

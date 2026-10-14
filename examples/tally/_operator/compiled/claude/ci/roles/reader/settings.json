@@ -1,0 +1,63 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(**/secrets/**)",
+      "Read(~/.ssh/**)",
+      "Read(~/.config/shell/secrets.sh)",
+      "Bash(git push --force *)",
+      "Bash(*git* push* --force)",
+      "Bash(*git* push* --force *)",
+      "Bash(git push -f *)",
+      "Bash(*git* push* -f)",
+      "Bash(*git* push* -f *)",
+      "Bash(git push --mirror *)",
+      "Bash(*git* push* --mirror)",
+      "Bash(*git* push* --mirror *)",
+      "Bash(git push +*)",
+      "Bash(*git* push* +*)",
+      "Bash(rm -rf / *)",
+      "Bash(dropdb *)",
+      "Bash(docker volume rm *)",
+      "Edit(**/.git/hooks/**)",
+      "Edit(**)"
+    ],
+    "ask": [
+      "Bash(psql *)",
+      "Edit(deploy/**)"
+    ]
+  },
+  "sandbox": {
+    "enabled": true,
+    "failIfUnavailable": true,
+    "filesystem": {
+      "denyRead": [
+        "~/.ssh/**",
+        "~/.config/shell/secrets.sh"
+      ]
+    },
+    "network": {
+      "allowedDomains": [
+        "github.com",
+        "*.github.com",
+        "registry.npmjs.org",
+        "forge.example.com"
+      ],
+      "strictAllowlist": true
+    }
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/harness/forbid-guard.mjs\" \"$HOME/.claude/hooks/harness/forbid.json\""
+          }
+        ]
+      }
+    ]
+  }
+}

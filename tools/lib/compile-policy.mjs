@@ -93,6 +93,8 @@ class Context {
     this.source = source;
     this.profile = policy.profiles?.[profileName];
     this.tier = this.profile?.tier;
+    this.role = null; // the role an unattended compile narrows to (roles/<role>/), if any
+    this.readOnly = false;
     this.errors = [];
     this.warnings = [];
     this.accepted = [];
@@ -361,9 +363,12 @@ function emitClaude(ctx) {
   }
   if (sandboxOn && Object.keys(network).length) sandbox.network = network;
 
+  // Unattended, the allowlist is the run's boundary and the runner's (--allowedTools under dontAsk,
+  // ADR-0021): kept out of the machine's settings, where every run, whatever its role, would inherit
+  // it (an allow in settings applies under dontAsk too).
   const permissions = {};
   if (CLAUDE_MODE[tier]) permissions.defaultMode = CLAUDE_MODE[tier];
-  for (const k of ['allow', 'deny', 'ask']) if (perm[k].length) permissions[k] = perm[k];
+  for (const k of ['allow', 'deny', 'ask']) if (perm[k].length && !(k === 'allow' && tier === 'unattended')) permissions[k] = perm[k];
   const settings = { permissions };
   if (tier === BYPASS_TIER) settings.skipDangerousModePermissionPrompt = true;
   if (Object.keys(sandbox).length) settings.sandbox = sandbox;
@@ -419,6 +424,7 @@ function runnerFile(ctx, args, budget) {
     engine: ctx.engine,
     profile: ctx.profileName,
     tier: ctx.tier,
+    ...(ctx.role ? { role: ctx.role } : {}),
     ...(ctx.profile?.requires?.length ? { requires: ctx.profile.requires } : {}),
     ...(ctx.profile?.requires?.length && ctx.policy.requires_config ? { requires_config: ctx.policy.requires_config } : {}),
     args,
@@ -531,7 +537,8 @@ function emitCodex(ctx) {
   const escapes = commandAllows.filter((r) => !interpreters.includes(r));
   if (escapes.length) {
     const what = escapes.map((r) => starlark(r.command)).join(', ');
-    if (ctx.acceptedGap('allow')) {
+    if (ctx.readOnly && ctx.acceptedGap('allow')) ctx.error('role-read-only', `role ${ctx.role} is read-only, and an execpolicy allow runs outside the sandbox: ${what} could write past it (give the role an allow list without them)`);
+    else if (ctx.acceptedGap('allow')) {
       ctx.gap('allow', `allow rules run outside the sandbox, past deny_read and egress: ${what}`);
       for (const r of escapes) prefixRule(r, 'allow', 'allow');
     } else ctx.warn('allow-unsandboxed', `allow ${what} not emitted on codex: an execpolicy allow runs outside the sandbox, past deny_read and egress; the commands run sandboxed instead (accept_gaps {engine: codex, field: allow, profiles: [${ctx.profileName}]} emits them)`);
@@ -558,7 +565,7 @@ function emitCodex(ctx) {
 
   const profileTable = {
     description: `Compiled from ${ctx.source} (profile ${ctx.profileName}, tier ${tier}) by ${GENERATOR}`,
-    extends: CODEX_BASE[tier],
+    extends: ctx.readOnly ? ':read-only' : CODEX_BASE[tier],
   };
   const fsTable = { ...filesystem };
   if (Object.keys(roots).length) fsTable[':workspace_roots'] = roots;
@@ -751,6 +758,76 @@ export function effectivePolicy(policy, profileName) {
   };
 }
 
+// ------------------------------------------------------------------------------------- roles
+
+// Does the profile's pre-approval `a` already grant everything the role's `r` does?
+const domainWithin = (inner, outer) => {
+  const b = outer.replace(/^\*\*?\./, '');
+  const under = (x) => x === b || x.endsWith(`.${b}`);
+  if (inner === outer) return true;
+  if (!inner.startsWith('*')) return domainAdmits(outer, inner);
+  const ib = inner.replace(/^\*\*?\./, '');
+  if (outer.startsWith('**.')) return under(ib);
+  if (outer.startsWith('*.')) return inner.startsWith('*.') ? under(ib) : ib.endsWith(`.${b}`);
+  return false;
+};
+function ruleCovers(a, r) {
+  if (a.command && r.command) return expandCommand(r.command).every((argv) => expandCommand(a.command).some((pre) => commandMatches(pre, argv)));
+  if (a.write && r.write) return a.write === '**' || a.write === r.write;
+  if (a.tool && r.tool) return a.tool === r.tool && (a.tool !== 'web-fetch' || !a.domain || Boolean(r.domain && domainWithin(r.domain, a.domain)));
+  return false;
+}
+
+// The roles an unattended compile emits for this engine, or null when it compiles the profile alone
+// (no roles, or a tier with no allowlist boundary to narrow).
+function rolesFor(ctx) {
+  const all = Object.entries(ctx.policy.roles ?? {});
+  if (!all.length) return null;
+  if (ctx.tier !== 'unattended') {
+    ctx.notes.push(`roles compile for the unattended tier only: a ${ctx.tier} session has no allowlist boundary for a role to narrow`);
+    return null;
+  }
+  const here = all.filter(([, r]) => !r.engines || r.engines.includes(ctx.engine));
+  if (!here.length) ctx.error('role-engine', `the policy names roles and none runs on ${ctx.engine}: every unattended run is one of them, so name ${ctx.engine} in a role's engines or drop it from profile "${ctx.profileName}"`);
+  return here;
+}
+
+// The profile's policy narrowed to one role, in a context of its own; null when the role widens it.
+function roleContext(ctx, name, role) {
+  const p = ctx.policy;
+  const widens = [];
+  for (const r of role.allow ?? []) {
+    const viaEgress = r.tool === 'web-fetch' && r.domain && p.egress?.default === 'deny' && (p.egress.allow_domains ?? []).some((d) => domainWithin(r.domain, d));
+    if (!(p.allow ?? []).some((a) => ruleCovers(a, r)) && !viaEgress) widens.push(`allow ${describeRule(r)} is not in the profile's allow list`);
+  }
+  for (const d of role.egress?.allow_domains ?? []) {
+    if (p.egress?.default === 'deny' && !(p.egress.allow_domains ?? []).some((x) => domainWithin(d, x))) widens.push(`egress domain ${d} is not in the profile's egress allow list`);
+  }
+  for (const w of widens) ctx.error('role-narrows', `role ${name}: ${w}; a role only narrows the profile`);
+  if (role.read_only && (role.allow ?? []).some((r) => r.write)) ctx.error('role-read-only', `role ${name} is read-only and its allow list has a write`);
+  if (widens.length || (role.read_only && (role.allow ?? []).some((r) => r.write))) return null;
+  const narrowed = { ...p };
+  if (role.allow) narrowed.allow = role.allow;
+  if (role.egress) narrowed.egress = { ...p.egress, default: 'deny', allow_domains: role.egress.allow_domains };
+  if (role.read_only) {
+    narrowed.allow = (narrowed.allow ?? []).filter((r) => !r.write);
+    narrowed.forbid = [...p.forbid, { write: '**', reason: `role ${name} is read-only` }];
+    if (p.sandbox?.writable_roots) narrowed.sandbox = { ...p.sandbox, writable_roots: undefined };
+  }
+  const rctx = new Context(narrowed, ctx.profileName, ctx.engine, ctx.source);
+  rctx.role = name;
+  rctx.readOnly = role.read_only === true;
+  return rctx;
+}
+
+// A role compile's diagnostics, tagged with the role, into the profile's.
+function absorb(ctx, rctx, name) {
+  for (const e of rctx.errors) ctx.errors.push({ ...e, role: name, message: `role ${name}: ${e.message}` });
+  for (const w of rctx.warnings) ctx.warnings.push({ ...w, role: name });
+  for (const a of rctx.accepted) ctx.accepted.push({ ...a, role: name });
+  for (const n of rctx.notes) ctx.notes.push(`role ${name}: ${n}`);
+}
+
 // Compile one profile for one engine. The policy must already be schema-valid (the CLI validates it
 // first); `emit` replaces the engine emitters (tests only). Returns { ok, files: [{ path, content, kind }], errors, warnings, accepted, notes }; files is
 // empty whenever errors is not.
@@ -766,7 +843,23 @@ export function compilePolicy(policy, { profile, engine, source = 'agent-policy.
   preflight(ctx);
   let files = [];
   if (ctx.profile) {
-    files = emit[engine](ctx);
+    const roles = rolesFor(ctx);
+    if (!roles) files = emit[engine](ctx);
+    else {
+      // One file set per role under roles/<role>/; the guard hook is the profile's, shared by all.
+      const shared = (f) => f.path === 'hooks.json' || f.path.startsWith('hooks/');
+      const perRole = [];
+      let common = [];
+      for (const [name, role] of roles) {
+        const rctx = roleContext(ctx, name, role);
+        if (!rctx) continue;
+        const out = emit[engine](rctx);
+        absorb(ctx, rctx, name);
+        common = out.filter(shared);
+        perRole.push(...out.filter((f) => !shared(f)).map((f) => ({ ...f, path: `roles/${name}/${f.path}` })));
+      }
+      files = [...common, ...perRole];
+    }
     for (const b of unsafeKeys(files, { tier: ctx.tier })) ctx.error('walls-only', `the compile emitted a setting that removes a wall: ${b} (a compiler bug; nothing written)`);
   }
   const ok = ctx.errors.length === 0;
@@ -777,7 +870,7 @@ export function compilePolicy(policy, { profile, engine, source = 'agent-policy.
 // every warning (an ask or allow dropped, a mode degraded), every accepted gap with the degradation
 // it accepts and the operator's reason, and the notes for the launcher.
 export function renderReport(r) {
-  return `${JSON.stringify({ tier: r.tier, warnings: r.warnings, accepted: r.accepted.map(({ field, message, reason }) => ({ field, message, reason })), notes: r.notes }, null, 2)}\n`;
+  return `${JSON.stringify({ tier: r.tier, warnings: r.warnings, accepted: r.accepted.map(({ field, message, reason, role }) => ({ field, message, reason, ...(role ? { role } : {}) })), notes: r.notes }, null, 2)}\n`;
 }
 
 // ------------------------------------------------------------------------------------- diff

@@ -303,7 +303,13 @@ reports no cost the compile requires `budgets.unattended.max_minutes` for a hard
 `command` may add `flags_anywhere` (1.4.0): the words in order anywhere in the argv and one of the
 flags after them, so `git push origin main --force`, `git -C . push -f` and `env git push -f` are
 denied (`flags-anywhere-forbids-only`: never in an ask or allow, where it would widen a
-pre-approval). `hooks.forbid_guard` (1.4.0) has the compile emit the engine-neutral guard
+pre-approval). `roles` (1.4.0) names who runs headless (author, evaluator, reader, planner, merge, ...) and only
+narrows the profile per role: its own `allow` (each one the profile's allow already grants,
+`role-narrows`), its own `egress.allow_domains` (deny by default), `read_only` (every write allow
+dropped and every write denied), and the `engines` that run it. When a policy names roles, every
+unattended run is one of them: the unattended compile emits one file set per role under
+`roles/<role>/` (an engine no role names is `role-engine`), and an interactive or bypass tier,
+which has no allowlist boundary, ignores them. `hooks.forbid_guard` (1.4.0) has the compile emit the engine-neutral guard
 (`tools/guards/forbid-guard.mjs`) as a user-scope PreToolUse hook. A forbid is defense in depth on
 every engine (a command rule matches the text an agent writes, never every way to run a program);
 the project's hook deny and the sandbox are the wall. An `allow`

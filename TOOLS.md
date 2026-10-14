@@ -149,6 +149,14 @@ a hard kill; no `accept_gaps` entry waives an unattended cap.
 | codex | `config.toml` (or `<profile>.config.toml` unattended: a `harness` permission profile, approval policy, network domains), `rules/harness.rules` (`prefix_rule` prompt / forbidden with justification and match examples; `allow` only where the profile accepts the `allow` gap, since an allow runs outside the sandbox, and never for an interpreter), `runner.json` |
 | gemini | `settings.json` (`defaultApprovalMode`, `tools.sandbox`, `tools.allowed`, `model.maxSessionTurns`), `policies/harness.toml` (user-tier `[[rule]]` deny / ask_user / allow), `runner.json` |
 
+When the policy names `roles`, an unattended compile writes one file set per role that runs on the
+engine under `roles/<role>/` (each `runner.json` names its `role`; the guard hook below stays at the
+top, shared), and `report.json` tags each warning and accepted gap with its role. A role only
+narrows the profile (`role-narrows`); `read_only` drops write allows and denies writes. Settings are
+machine-wide on every engine, so a role whose settings differ runs from its own config home
+(`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, its container); on Claude everything a role narrows is also in
+its runner's flags, since an unattended compile keeps the allowlist out of `settings.json`.
+
 With `hooks.forbid_guard`, the Claude and Codex outputs also carry `hooks/forbid-guard.mjs` (a copy
 of `tools/guards/forbid-guard.mjs`, Node builtins only) and `hooks/forbid.json` (the command forbids,
 and unattended the command asks), registered as a `PreToolUse` hook for the shell tool (Claude in

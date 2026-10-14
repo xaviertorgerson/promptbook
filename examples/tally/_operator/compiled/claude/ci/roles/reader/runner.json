@@ -1,0 +1,30 @@
+{
+  "generated_by": "harness compile-policy",
+  "source": "agent-policy.yaml",
+  "engine": "claude",
+  "profile": "ci",
+  "tier": "unattended",
+  "role": "reader",
+  "args": [
+    "--permission-mode",
+    "dontAsk",
+    "--allowedTools",
+    "Bash(git status *),Bash(git log *),Bash(git diff *),Bash(git show *),WebFetch(domain:github.com),WebFetch(domain:*.github.com),WebFetch(domain:registry.npmjs.org),WebFetch(domain:forge.example.com)",
+    "--disallowedTools",
+    "Read(**/.env),Read(**/.env.*),Read(**/secrets/**),Read(~/.ssh/**),Read(~/.config/shell/secrets.sh),Bash(git push --force *),Bash(*git* push* --force),Bash(*git* push* --force *),Bash(git push -f *),Bash(*git* push* -f),Bash(*git* push* -f *),Bash(git push --mirror *),Bash(*git* push* --mirror),Bash(*git* push* --mirror *),Bash(git push +*),Bash(*git* push* +*),Bash(rm -rf / *),Bash(dropdb *),Bash(docker volume rm *),Edit(**/.git/hooks/**),Edit(**)",
+    "--max-turns",
+    "120",
+    "--max-budget-usd",
+    "4"
+  ],
+  "caps": {
+    "max_turns": 120,
+    "max_budget_usd": 4,
+    "timeout_seconds": 5400
+  },
+  "enforcement": {
+    "max_turns": "engine",
+    "max_budget_usd": "engine",
+    "timeout_seconds": "harness-run"
+  }
+}

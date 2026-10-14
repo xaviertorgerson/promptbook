@@ -1,31 +1,5 @@
 {
   "permissions": {
-    "allow": [
-      "Bash(git status *)",
-      "Bash(git log *)",
-      "Bash(git diff *)",
-      "Bash(git show *)",
-      "Bash(git branch *)",
-      "Bash(git add *)",
-      "Bash(git commit *)",
-      "Bash(git fetch *)",
-      "Bash(git pull *)",
-      "Bash(git push *)",
-      "Bash(git switch *)",
-      "Bash(git checkout *)",
-      "Bash(git worktree *)",
-      "Bash(gh pr create *)",
-      "Bash(gh pr view *)",
-      "Bash(gh pr ready *)",
-      "Bash(gh pr comment *)",
-      "Bash(pnpm *)",
-      "Bash(node *)",
-      "Edit(**)",
-      "WebFetch(domain:github.com)",
-      "WebFetch(domain:*.github.com)",
-      "WebFetch(domain:registry.npmjs.org)",
-      "WebFetch(domain:forge.example.com)"
-    ],
     "deny": [
       "Read(**/.env)",
       "Read(**/.env.*)",

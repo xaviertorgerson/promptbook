@@ -4,6 +4,7 @@
   "engine": "gemini",
   "profile": "ci",
   "tier": "unattended",
+  "role": "evaluator",
   "args": [],
   "caps": {
     "max_turns": 120,

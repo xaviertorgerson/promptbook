@@ -1,15 +1,5 @@
 {
   "permissions": {
-    "allow": [
-      "Bash(pnpm *)",
-      "Bash(git status *)",
-      "Bash(git log *)",
-      "Bash(git diff *)",
-      "Edit(**)",
-      "WebFetch(domain:github.com)",
-      "WebFetch(domain:*.github.com)",
-      "WebFetch(domain:registry.npmjs.org)"
-    ],
     "deny": [
       "Read(**/.env)",
       "Read(**/secrets/**)",

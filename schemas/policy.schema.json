@@ -42,6 +42,13 @@
       "type": "array",
       "items": { "$ref": "#/$defs/rule", "not": { "required": ["flags_anywhere"] }, "x-rules": { "not": "flags-anywhere-forbids-only" } }
     },
+    "roles": {
+      "description": "Who runs headless, and what each run may do (1.4.0): role name (author, evaluator, reader, planner, merge, ...) -> an overlay that only narrows the profile. When a policy names roles, every unattended run is one of them: an unattended compile emits one file set per role that runs on the engine (roles/<role>/), and an unattended profile's engine that no role names is a compile error. Interactive and bypass tiers have no allowlist boundary and ignore roles.",
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "$ref": "common.schema.json#/$defs/slug" },
+      "additionalProperties": { "$ref": "#/$defs/role" }
+    },
     "hooks": {
       "description": "Hooks the compile emits for the user scope (1.4.0). forbid_guard: the engine-neutral guard (tools/guards/forbid-guard.mjs) that denies a shell command any command forbid matches however it is spelled (compound, wrapped, sh -c), registered as a PreToolUse hook on engines that share that hook protocol. Defense in depth: the project's own hook deny stays the wall.",
       "type": "object",
@@ -139,6 +146,36 @@
           "minItems": 1,
           "uniqueItems": true,
           "items": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "role": {
+      "type": "object",
+      "properties": {
+        "description": { "type": "string" },
+        "engines": {
+          "description": "The engines that run this role (default: every engine the profile installs).",
+          "type": "array",
+          "minItems": 1,
+          "items": { "enum": ["claude", "codex", "gemini"] },
+          "uniqueItems": true
+        },
+        "read_only": {
+          "description": "The role writes nothing: every write allow is dropped and every write denied (Claude Edit(**), Codex the :read-only sandbox, Gemini its write tools).",
+          "type": "boolean"
+        },
+        "allow": {
+          "description": "The role's pre-approvals, replacing the profile's; each must be one the profile's allow already grants (role-narrows).",
+          "type": "array",
+          "items": { "$ref": "#/$defs/rule", "not": { "required": ["flags_anywhere"] }, "x-rules": { "not": "flags-anywhere-forbids-only" } }
+        },
+        "egress": {
+          "description": "The role's egress: deny by default, with these domains allowed; each must be one the profile's egress already allows (role-narrows).",
+          "type": "object",
+          "required": ["allow_domains"],
+          "properties": { "allow_domains": { "type": "array", "items": { "$ref": "#/$defs/domain" }, "uniqueItems": true } },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false

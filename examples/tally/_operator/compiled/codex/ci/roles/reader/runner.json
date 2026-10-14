@@ -4,6 +4,7 @@
   "engine": "codex",
   "profile": "ci",
   "tier": "unattended",
+  "role": "reader",
   "args": [
     "--json"
   ],
