@@ -3,10 +3,13 @@
 Placeholders: `<ID>` task id, `<branch>` the task's `branch`, `<base>` the target base branch,
 `<remote>` the forge remote (usually `origin`), `<me>` your agent identity.
 
-## 1. The claim (compare-and-swap)
+## 1. The claim (creating the task branch)
 
-The `owner`/`status` pair is the lock and a rejected push is the swap failing. Agents never push to
-the default branch, so the claim commit lives on the task branch, whose name is unique to the task.
+The task branch's existence on the remote is the lock: the claim commit (owner and status
+in-progress) is its first commit, pushed as a new ref, and a rejected push is the compare-and-swap
+failing. Agents never push to the default branch, so every in-flight status (in-progress, review,
+human-review) lives on the task branch; the default branch's copy says `ready` until the task lands,
+when the landing actor writes `merged` (or `integrated`) on the target.
 
 ```sh
 git fetch <remote> <base>
@@ -24,7 +27,11 @@ git push -u <remote> <branch>                       # never --force; rejected = 
   but your claim), re-fetch, pick the next dispatchable task. Never force, never rename the branch
   to get around it.
 - A dispatcher that reads only the default branch still sees the task `ready`; it must also check
-  for the task branch on the remote (`git ls-remote`) or an open PR before dispatching it.
+  for the task branch on the remote (`git ls-remote --heads`) or an open PR before dispatching it,
+  and read a claimed task's live status from that branch's head.
+- Never record an approval or a merge in the task file yourself: an approval is a forge review
+  (the reviewed head must not move), and only the landing actor writes `merged` or `integrated`, on
+  the target. After an approval, commit nothing more to the task branch: a commit voids it.
 - A human `owner` is never overwritten. Auto-dispatch claims only `owner: null`.
 
 ## 2. `## Working notes` (the living plan)

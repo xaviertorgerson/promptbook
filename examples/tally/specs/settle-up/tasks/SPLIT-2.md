@@ -68,5 +68,5 @@ folder with SPLIT-3, so they form one lane and SPLIT-3 waits for this one.
 - 2026-10-15 tally-coder — unique index on (household_id, idempotency_key) in migrations/0002 and a race test for AC-1; PR #2 at d8f03b7; status → review
 - 2026-10-15 tally-evaluator — verdict pass on d8f03b7 (k = 2): .agent/verdicts/SPLIT-2-d8f03b7.md
 - 2026-10-15 tally-coder — PR #2 marked ready: checks green, criteria met and in tests, the evaluator's pass on this head; status → human-review
-- 2026-10-15 coordinator — approve-pr under GRANT-2 (independent review and required checks on d8f03b7); status → merging
-- 2026-10-15 coordinator — integrated into integration/settle-up@9c4e7a1 by merge commit, merged checks green; status → integrated
+- 2026-10-15 coordinator — approve-pr under GRANT-2 at d8f03b7: a forge review (the reviewer's pass, the evaluator's verdict and required checks on that head), no commit on the task branch; status → merging
+- 2026-10-15 coordinator — integrated into integration/settle-up@9c4e7a1 by merge commit, merged checks green; status → integrated (this line and the one above are in the merge commit's copy of this file)

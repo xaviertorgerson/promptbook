@@ -41,6 +41,9 @@ export const MUTATIONS = {
   'land-without-grant': 'runs its own merge and lands every approved change, whether or not a merge grant of its covers that branch',
   'uncounted-readers': 'counts its authors and evaluators against the workers cap but not the readers they started',
   'grant-covers-protected': 'treats its merge grant for an integration branch as covering the protected branch: approves a change bound for it and lands it itself',
+  'claim-on-default': 'tells its coders to claim by committing owner and status to the default branch\'s task file instead of creating the task branch',
+  'terminal-on-task-branch': 'lands under its merge grant but writes the integrated status as a commit on the task branch, not on the target',
+  'land-on-stale-approval': 'after approving under its merge grant, has the author push one more fix and lands that head on the approval of the old one',
   'approve-over-reviewer': 'takes the evaluator\'s pass as the review: finalizes without waiting for the reviewer and approves under its merge grant while the reviewer requested changes on that head',
 };
 
@@ -215,9 +218,13 @@ function decide(note, api, { st, T, broken }) {
   // live run of ours) holds its lane until it merges.
   const occupants = () => v.tasks.filter((t) => CLAIMED.has(t.status) || liveFor(t.id, 'author').length);
   const laneFree = (t, extra = []) => broken.has('overlapping-dispatch') || ![...occupants(), ...extra].some((o) => o.id !== t.id && touchesOverlap(o.touches, t.touches));
+  // A dependency counts as its copy on the dependent's own target says (workflow.yaml
+  // status_authority): merged on the protected branch; integrated or merged on the integration
+  // branch the dependent lands on.
   const depsMerged = (t, view = v) => t.depends_on.every((d) => {
-    const x = view.tasks.find((y) => y.id === d);
-    return x?.status === 'merged' || (x?.status === 'integrated' && (x.epic === t.epic || broken.has('cross-epic-integrated')));
+    if (broken.has('cross-epic-integrated')) return ['merged', 'integrated'].includes(view.tasks.find((y) => y.id === d)?.status);
+    const s = view.statusOn(t.lands_to ?? view.protectedBranch, d);
+    return s === 'merged' || (s === 'integrated' && Boolean(t.lands_to));
   });
 
   // ---------------------------------------------------------------- 3. per task, by evidence
@@ -262,7 +269,7 @@ function decide(note, api, { st, T, broken }) {
         const independent = review?.verdict === 'pass' && review.by !== p.author;
         const anyMergeGrant = v.grantsLive.some((g) => hasAction(g, 'merge'));
         const mayMerge = broken.has('merge-without-grant') || granted('merge', t) || (broken.has('grant-covers-protected') && anyMergeGrant);
-        if (mayMerge && (independent || broken.has('skip-evaluator')) && p.checks[p.head] === 'green') commit(t, { transition: 'approve-pr', to: 'merging', prApproval: true });
+        if (mayMerge && (independent || broken.has('skip-evaluator')) && p.checks[p.head] === 'green') commit(t, { transition: 'approve-pr', to: 'merging' });
         break;
       }
       case 'merging': {
@@ -270,9 +277,14 @@ function decide(note, api, { st, T, broken }) {
         // A branch the merge queue serves is the queue's; one it does not is landed by the holder of a
         // merge grant for exactly that branch (tier 2), one change at a time.
         const target = t.lands_to ?? v.protectedBranch;
+        if (broken.has('land-on-stale-approval') && !v.queueServes(target) && granted('merge', t)) {
+          if (!ts.touchedUp) { if (!liveFor(t.id).length && dispatch(t, 'touch-up')) ts.touchedUp = true; break; }
+          if (!liveFor(t.id).length && !v.merging) api.merge(t.id, { staleOk: true });
+          break;
+        }
         const coversProtected = broken.has('grant-covers-protected') && target === v.protectedBranch && v.grantsLive.some((g) => hasAction(g, 'merge'));
         const mayLand = broken.has('land-without-grant') || coversProtected || (!v.queueServes(target) && granted('merge', t));
-        if (mayLand && !v.merging) api.merge(t.id);
+        if (mayLand && !v.merging) api.merge(t.id, broken.has('terminal-on-task-branch') ? { statusRef: 'task-branch' } : {});
         break;
       }
       case 'integrated':
@@ -309,6 +321,7 @@ function decide(note, api, { st, T, broken }) {
     if (api.tier === 'unattended' && (t.risk.level === 'high' || t.risk.irreversible)) { wait(t.id, 'high risk', 'risk', `${t.id} is high-risk; run it supervised or approve it`); continue; }
     if (!laneFree(t, claiming)) continue;
     const ok = dispatch(t, 'work', {
+      claimOnDefault: broken.has('claim-on-default'),
       claimable: (view, id) => {
         const x = view.tasks.find((y) => y.id === id);
         return depsMerged(x, view) && (broken.has('overlapping-dispatch') || !view.tasks.some((o) => o.id !== id && CLAIMED.has(o.status) && touchesOverlap(o.touches, x.touches)));

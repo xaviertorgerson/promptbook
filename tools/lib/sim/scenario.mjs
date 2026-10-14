@@ -78,7 +78,7 @@ export const FAULTS = {
 
 const TIERS = ['read-only', 'ask', 'auto-edit', 'auto', 'autonomous', 'unattended'];
 const SIZES = ['XS', 'S', 'M', 'L', 'XL'];
-const TASK_KEYS = new Set(['id', 'epic', 'priority', 'size', 'risk', 'touches', 'depends_on', 'criteria', 'budget', 'status', 'owner', 'title', 'lands_to']);
+const TASK_KEYS = new Set(['id', 'epic', 'priority', 'size', 'risk', 'touches', 'depends_on', 'criteria', 'budget', 'status', 'owner', 'title', 'lands_to', 'branch']);
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 
@@ -148,6 +148,8 @@ export function normalize(raw, { source = 'scenario' } = {}) {
       status: t.status ?? 'ready',
       owner: t.owner ?? null,
       lands_to: t.lands_to && t.lands_to !== sc.target ? t.lands_to : null,
+      // The task's branch (its file's `branch`): created on the remote by the claim.
+      branch: t.branch ?? `task/${String(t.id).toLowerCase()}`,
     };
   });
   for (const t of sc.tasks) for (const d of t.depends_on) if (!ids.has(d)) errors.push(`${t.id}.depends_on: no task ${d}`);
@@ -221,6 +223,7 @@ export function scenarioFromProject(root, config = {}) {
       status: d.status,
       owner: d.owner ?? null,
       ...(d.lands_to ? { lands_to: d.lands_to } : {}),
+      ...(d.branch ? { branch: d.branch } : {}),
     });
   }
   const known = new Set(tasks.map((t) => t.id));

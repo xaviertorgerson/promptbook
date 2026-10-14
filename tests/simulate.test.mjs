@@ -306,6 +306,9 @@ const MUTANTS = [
   { break: 'land-without-grant', scenario: 'integration-branch', over: { merge: { queue_targets: [] } }, caught: ['transitions-allowed', 'merge-requires-authority'], message: /orchestrator/ },
   { break: 'uncounted-readers', scenario: 'happy-path', over: { work: { helper_rate: 1 } }, caught: ['cap-workers'] },
   { break: 'grant-covers-protected', scenario: 'grant-expiry', over: { tasks: [...raw('grant-expiry').tasks, { id: 'GEX-6', size: 'S', touches: ['src/f/**'] }] }, caught: ['human-gates-by-humans', 'transitions-allowed', 'merge-requires-authority'], message: /GEX-6/ },
+  { break: 'claim-on-default', scenario: 'parallel-overlap', caught: ['one-owner-per-claimed-task', 'status-where-it-lives'], message: /not by creating task\/par-\d+ on the remote|on the protected branch/ },
+  { break: 'terminal-on-task-branch', scenario: 'integration-branch', over: { merge: { queue_targets: [] } }, caught: ['status-where-it-lives'], message: /→ integrated was written on task\/rat-\d+, not on the target integration\/rating/ },
+  { break: 'land-on-stale-approval', world: { forgeProtection: false }, scenario: 'integration-branch', caught: ['approval-bound-to-head', 'merge-requires-authority'], message: /a commit after the approval voids it|no approval of the landed head/ },
   { break: 'approve-over-reviewer', scenario: 'integration-branch', over: { reviewer: { reject_rate: 0.5 } }, caught: ['guards-hold', 'merge-requires-authority'], message: /independent-review/ },
   { world: { engine: 'bypass-skips-walls' }, label: 'engine binding: bypass skips walls (disableAllHooks)', scenario: 'wall-bypass', caught: ['walls-block'] },
   { world: { cas: false }, label: 'forge without compare-and-swap', scenario: 'parallel-overlap', caught: ['one-owner-per-claimed-task'] },
@@ -463,5 +466,46 @@ describe('simulate CLI', () => {
     assert.equal(cli('fixtures/scenarios/happy-path.yaml', '--break', 'nope').status, 2);
     assert.equal(cli('nope.yaml').status, 2);
     assert.equal(cli('fixtures/scenarios/happy-path.yaml', '--seeds', '9..1').status, 2);
+  });
+});
+
+describe('simulate: where status lives (workflow.yaml status_authority)', () => {
+  it('the workflow states the status authority the simulator models, and approve-pr is a forge event', () => {
+    const m = machines();
+    for (const id of ['claim-creates-the-branch', 'in-flight-status-on-the-task-branch', 'gate-events-are-forge-events', 'landing-writes-the-target', 'deps-read-the-dependents-target', 'humans-win-on-the-task-branch', 'merge-grants-never-target-the-protected-branch']) assert.ok(m.statusAuthority.has(id), id);
+    assert.equal(m.transitions.get('approve-pr').event, 'forge-approval');
+    for (const k of ['approval-bound-to-head', 'status-where-it-lives']) assert.ok(INVARIANTS[k], k);
+  });
+
+  it('a claim creates the task branch; in-flight status is on it; the default branch says ready until the task lands; approvals are events; landing writes the target', () => {
+    for (const r of runAll(loadScenario(path.join(SCEN, 'integration-branch.yaml')), 5, { trace: true })) {
+      assert.deepEqual(r.violations, []);
+      const commits = r.trace.flatMap((l) => (l.commits ?? []).map((c) => ({ ...c, t: l.t })));
+      const branchOf = (id) => r.world.meta.get(id).spec.branch;
+      for (const c of commits.filter((x) => x.transition === 'claim')) assert.ok(c.new_ref && c.ref === branchOf(c.task), `${c.task}: the claim is the new ref ${branchOf(c.task)}`);
+      for (const c of commits.filter((x) => ['open-draft', 'iterate', 'mark-pr-ready', 'return-to-human'].includes(x.transition))) assert.equal(c.ref, branchOf(c.task), `${c.task} ${c.transition}`);
+      for (const c of commits.filter((x) => x.transition === 'approve-pr')) assert.equal(c.event, 'forge-approval', `${c.task}: approve-pr is no commit`);
+      for (const c of commits.filter((x) => x.transition === 'integrate')) assert.equal(c.ref, 'integration/rating');
+      for (const c of commits.filter((x) => x.transition === 'land' || x.transition === 'promote')) assert.equal(c.ref, 'main');
+      assert.ok(commits.every((c) => c.ref !== 'main' || c.role === 'merge' || c.role === 'owner'), 'only the merge role and humans write main');
+      // The default branch's copy of an epic task said ready while it was in flight.
+      assert.equal(r.world.forge.target.files.get('RAT-1').status, 'merged');
+    }
+    const mid = runAll(loadScenario(path.join(SCEN, 'happy-path.yaml')), 1, { trace: false })[0];
+    assert.ok([...mid.world.forge.refs.values()].filter((x) => x.kind === 'task').length === 5, 'each task got its branch');
+  });
+
+  it('a rival\'s claim is a new-ref push the forge rejects: exactly one runtime creates each branch', () => {
+    for (const r of runAll(loadScenario(path.join(SCEN, 'parallel-overlap.yaml')), 5, { trace: true })) {
+      const rejected = r.trace.flatMap((l) => l.effects ?? []).filter((e) => e.push === 'rejected' && /exists$/.test(e.why ?? ''));
+      assert.ok(rejected.length > 0, 'a claim lost to an existing branch');
+      // A branch is created once while it lives; only a redo or respec (which delete it) frees it again.
+      const live = new Set();
+      for (const c of r.trace.flatMap((l) => l.commits ?? [])) {
+        const branch = r.world.meta.get(c.task).spec.branch;
+        if (c.new_ref) { assert.ok(!live.has(c.ref), `${c.ref} created while it existed`); live.add(c.ref); }
+        if (['redo', 'respec'].includes(c.transition)) live.delete(branch);
+      }
+    }
   });
 });

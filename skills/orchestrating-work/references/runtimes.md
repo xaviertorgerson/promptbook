@@ -34,5 +34,6 @@ Engine and product names live in `engine-notes.md`.
 | One developer supervising several tasks interactively with persistent review pairs | terminal multiplexer coordinator |
 | Long-running remote work with a service that hosts sessions and sandboxes | hosted service |
 
-A project may run two at once (a local coordinator plus forge-event review) only if the claim
-compare-and-swap is the single lock both respect.
+A project may run two at once (a local coordinator plus forge-event review) only if the claim, the
+task branch created on the remote as a new ref, is the single lock both respect: each reads the
+remote's branches before dispatching.

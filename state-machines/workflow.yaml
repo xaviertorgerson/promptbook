@@ -1,33 +1,91 @@
 # Workflow: the state machines whose status fields live in git.
 #
 # A transition is a commit to the artifact that holds the status (a task file, an epic spec.md, a
-# release record) by an actor this file lists for it. Nothing else moves a status: not a runtime
-# signal, not a CI result, not an idle agent (attention.yaml). CI results and reviews are evidence
-# a guard reads; the actor still makes the commit.
+# release record) by an actor this file lists for it, on the branch where that status lives
+# (status_authority below), or, for a gate, the forge event it names (an approval). Nothing else
+# moves a status: not a runtime signal, not a CI result, not an idle agent (attention.yaml). CI
+# results and reviews are evidence a guard reads; the actor still makes the commit.
 #
 # Source: agentic-template docs/workflow.md, docs/roles.md and docs/interjection.md (2026-10-13),
 # generalized. Authority for the orchestrator role, and every `grant:` below, is authority.yaml.
-version: 1.4.0
+version: 1.5.0
 contract: workflow
+
+# Where task status lives, and who writes it there. Agents never push to the protected (default)
+# branch, so a status kept on one shared ref cannot be claimed, advanced or landed by them; each
+# status therefore lives on the ref its writer may push. A reader that needs a task's live status
+# reads the task branch head; the default branch's copy is the last status landed there.
+status_authority:
+  - id: claim-creates-the-branch
+    text: >-
+      A claim is creating the task's branch (its task file's `branch`) on the remote. The claim
+      commit (owner and status in-progress) is the branch's first commit, pushed as a new ref; a
+      push of a ref that already exists is rejected, and that rejection is the compare-and-swap. A
+      task is claimed if and only if its branch exists on the remote (or an open PR exists for it):
+      a dispatcher reads the remote's heads (git ls-remote --heads, or the forge API) and the
+      default branch's task files.
+  - id: in-flight-status-on-the-task-branch
+    text: >-
+      in-progress, review and human-review (and a side state entered from them) are committed on
+      the task branch only. The default branch's copy keeps ready, or the last status that landed
+      there, until the task lands. A task with no branch has its status on the default branch's
+      copy (spec-draft, ready, and what humans park there).
+  - id: gate-events-are-forge-events
+    text: >-
+      approve-pr is a forge review approval, by a human, or by a merge grant's holder under the
+      grant, recorded in the runtime's task record (reviews and decisions), never a commit on the
+      task branch: the approved head must not move. It binds to the PR head and the task branch's
+      version; while it holds the task is merging. Any commit on the task branch after an approval
+      voids it, so nothing is committed there between the approval and the landing. Reviews (the
+      reviewer's) and verdicts (the evaluator's) bind to the head's code: a later commit that
+      changes anything but the task's own file (its status, sessions, agent log, working notes)
+      voids them, and that head needs review and evaluation again.
+  - id: landing-writes-the-target
+    text: >-
+      Only the landing actor writes merging -> merged or integrated, and it writes it on the
+      target: the merge role (onto the protected branch after a human's approval, or onto an
+      integration branch), or the orchestrator under a merge grant whose exact target is that
+      integration branch. The status flip is inside the merge (the merge or squash commit's
+      content), or an immediate follow-up commit on the target by the merge role
+      (chore(specs): <ID> -> merged). The merge role is the one automated role that writes the
+      protected branch. merged and integrated are never written on the task branch.
+  - id: deps-read-the-dependents-target
+    text: >-
+      deps-merged reads the dependency's task file on the branch the dependent lands on: merged on
+      the protected branch, or integrated (or merged) on the epic's integration branch.
+  - id: humans-win-on-the-task-branch
+    text: >-
+      A human's take-over, suspension or kick-back is an edit to the task branch head (before a
+      claim, to the default branch's task file); redo and respec hand the task back on the default
+      branch's copy and delete the task branch. An agent re-reads the task branch head before every
+      status write and yields to what it finds.
+  - id: merge-grants-never-target-the-protected-branch
+    text: >-
+      Automated landing under a grant is into a non-protected integration branch only; promotion to
+      the protected branch is a human's merge (promote). A merge grant's target never equals its
+      protected_branch (grant contract rule merge-target-not-protected).
 
 rules:
   - id: transitions-are-commits
     text: >-
-      A status changes only by a commit to its file, made by a role listed in the transition's `by`
-      (or by the orchestrator under a live grant naming the transition's `grant`). The commit
-      message or the agent-log line says which transition it is.
+      A status changes only by a commit to its file on the branch where it lives
+      (status_authority), made by a role listed in the transition's `by` (or by the orchestrator
+      under a live grant naming the transition's `grant`); approve-pr is the one transition made by
+      a forge event instead. The commit message or the agent-log line says which transition it is.
   - id: signals-never-advance
     text: >-
       Runtime signals (agent idle/blocked/done, A2A and MCP task states, headless result subtypes,
       CI conclusions) change attention at most, never status. See attention.yaml.
   - id: claim-is-compare-and-swap
     text: >-
-      A claim sets owner and status together in one commit on a fresh pull; a rejected push means
-      someone else won, so re-pull and take the next ready task. The owner/status pair is the lock.
+      A claim sets owner and status together in the first commit of the task's branch, pushed as a
+      new ref (status_authority claim-creates-the-branch); a rejected push means someone else won,
+      so take the next ready task. The branch's existence is the lock.
   - id: humans-win
     text: >-
-      Auto-dispatch claims only owner=null tasks. A human setting owner (take-over) or status
-      (suspend, kick back) wins; a running agent commits its progress and yields.
+      Auto-dispatch claims only tasks with no branch on the remote and owner=null. A human setting
+      owner (take-over) or status (suspend, kick back) on the task branch wins; a running agent
+      commits its progress and yields.
   - id: kickback-carries-a-reason
     text: >-
       A move to an earlier stage carries kickback_reason in the frontmatter or as the first new
@@ -87,8 +145,8 @@ guards:
   criteria-ears:            { checks: "Every acceptance criterion is AC-n and matches an EARS pattern (ears-lint)." }
   no-blocking-question:     { checks: "No unchecked Open question is marked blocking." }
   requirements-cited:       { checks: "The task cites at least one REQ/NFR of its epic (trace check; warning in legacy adoption)." }
-  deps-merged:              { checks: "Every depends_on task is merged, or integrated and in the dependent's own epic (it builds on that epic's integration branch)." }
-  owner-free:               { checks: "owner is null, or the claimant is a human taking over." }
+  deps-merged:              { checks: "Every depends_on task's file, read on the branch the dependent lands on (status_authority), says merged; or, on the dependent's own integration branch, integrated." }
+  owner-free:               { checks: "No branch exists for the task on the remote and owner is null, or the claimant is a human taking over." }
   draft-pr-open:            { checks: "A draft PR exists for the task branch." }
   criteria-named-in-tests:  { checks: "Every AC id appears in a test name (ears-coverage)." }
   checks-green:             { checks: "The required checks on the PR head passed." }
@@ -117,12 +175,12 @@ machines:
     states:
       spec-draft:   { holder: planner,  means: "Drafted; open questions or unconfirmed criteria. Not buildable." }
       ready:        { holder: null,     means: "Criteria confirmed, epic approved; claimable once depends_on are merged." }
-      in-progress:  { holder: coder,    means: "Claimed (owner set); a branch and worktree exist; first pass underway." }
+      in-progress:  { holder: coder,    means: "Claimed: the task branch exists on the remote with owner set on its head; a worktree exists; first pass underway." }
       review:       { holder: coder,    means: "Draft PR open; checks and the reviewer run; the coder iterates." }
       human-review: { holder: engineer, means: "The PR is ready; the human approval gate." }
-      merging:      { holder: merge,    means: "Approved; the merge agent (or the orchestrator under a merge grant) is landing it. Transient." }
-      integrated:   { holder: null,     means: "Landed on its epic's integration branch (lands_to); not yet on the protected branch. A human's merge of that branch makes it merged." }
-      merged:       { holder: null,     means: "Landed on the protected branch. Terminal." }
+      merging:      { holder: merge,    means: "Approved: the task branch head holds a valid forge approval (no commit records it). The merge agent (or the orchestrator under a merge grant, for an integration branch) is landing it. Transient." }
+      integrated:   { holder: null,     means: "Landed on its epic's integration branch (lands_to), whose copy of the task file says so; not yet on the protected branch. A human's merge of that branch makes it merged." }
+      merged:       { holder: null,     means: "Landed on the protected branch, whose copy of the task file says so. Terminal." }
       blocked:      { holder: null,     means: "An external dependency stops it." }
       needs-input:  { holder: owner,    means: "A decision is required and must not be guessed." }
       suspended:    { holder: owner,    means: "A human parked it with a handoff note." }
@@ -130,12 +188,12 @@ machines:
       - { id: mark-ready,        from: spec-draft,   to: ready,        by: [planner, owner, engineer], guards: [epic-approved, criteria-ears, no-blocking-question, requirements-cited] }
       - { id: ask,               from: spec-draft,   to: needs-input,  by: [planner, owner, engineer] }
       - { id: claim,             from: ready,        to: in-progress,  by: [coder, engineer, owner], grant: select-tasks, guards: [deps-merged, owner-free], sets: [owner],
-          note: "Dispatching the highest-priority ready task is mechanical, not select-tasks: the owner ordered the work at spec-approval. A coordinator choosing, reordering or adding work needs the grant." }
+          note: "The new-ref push that creates the task branch (status_authority). Dispatching the highest-priority ready task is mechanical, not select-tasks: the owner ordered the work at spec-approval. A coordinator choosing, reordering or adding work needs the grant." }
       - { id: open-draft,        from: in-progress,  to: review,       by: [coder, engineer], guards: [draft-pr-open] }
       - { id: mark-pr-ready,     from: review,       to: human-review, by: [coder, engineer], grant: finalize, guards: [checks-green, criteria-met, criteria-named-in-tests, pr-ready, independent-verification],
           note: "In agentic-template the coder does this when the deterministic gates pass; a runtime whose default is human finalization (stagehand) needs the finalize grant. Every task waits for the evaluator's pass on the current head; a runtime that has a reviewer waits for its review too, since a changes-requested found after this point needs a human to send the task back." }
       - { id: iterate,           from: review,       to: in-progress,  by: [coder, engineer] }
-      - { id: approve-pr,        from: human-review, to: merging,      by: [owner, engineer], gate: pr-approval, grant: merge, guards: [checks-green],
+      - { id: approve-pr,        from: human-review, to: merging,      by: [owner, engineer], gate: pr-approval, grant: merge, guards: [checks-green], event: forge-approval,
           grant_guards: [lands-on-integration, independent-review, independent-verification, checks-green] }
       - { id: land,              from: merging,      to: merged,       by: [merge], guards: [lands-on-protected, mechanical-only, merged-checks-green],
           note: "The merge role, after a human's approval. Never grantable: a merge grant never targets the protected branch (authority.yaml merge.scope_rule)." }

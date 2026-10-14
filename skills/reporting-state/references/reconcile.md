@@ -3,8 +3,10 @@
 ## Sources of evidence, in order of authority
 
 1. Human messages: authorization and intent. They outrank conflicting stale observations.
-2. Git and the forge: commits, branches, PR heads, reviews, checks.
-3. The task file: status, owner, open questions, agent log, working notes.
+2. Git and the forge: commits, branches (a task branch on the remote is a claim), PR heads, reviews,
+   approvals, checks.
+3. The task file: status, owner, open questions, agent log, working notes; a claimed task's on its
+   branch head, a landed one's on its target, the rest on the default branch.
 4. The worker's latest answer or return: its conclusions, to verify when consequential.
 5. Runtime signals: observations only.
 

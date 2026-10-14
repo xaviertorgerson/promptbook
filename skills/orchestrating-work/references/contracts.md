@@ -9,9 +9,10 @@ Field names are exact. The full schemas are `schemas/*.schema.json` in the harne
 |---|---|
 | `id`, `epic` | equal the file name and folder |
 | `status` | spec-draft, ready, in-progress, review, human-review, merging, integrated, merged; side states blocked, needs-input, suspended |
-| `owner` | null = claimable by auto-dispatch; set = held. The owner/status pair is the claim lock |
+| `owner` | null = claimable by auto-dispatch; set = held. Set by the claim commit, the first commit of the task's `branch`, pushed as a new ref: the branch's existence on the remote is the claim lock |
+| `branch` | the task branch; while it exists the task is claimed and its live status is on its head (the default branch's copy says `ready` until the task lands) |
 | `priority` | P0..P3, the owner's order |
-| `depends_on` | task ids that must be `merged` before a claim; `integrated` is enough for a dependency in the same epic (it builds on that epic's integration branch) |
+| `depends_on` | task ids whose file must say `merged` on the branch this task lands on, before a claim; on the epic's integration branch this task lands on, `integrated` is enough |
 | `lands_to` | the epic's integration branch when the task lands there; absent: the protected branch |
 | `touches` | path globs the task expects to modify; overlapping tasks are one lane |
 | `size` | XS..XL; drives budget and model routing |
@@ -25,17 +26,19 @@ Field names are exact. The full schemas are `schemas/*.schema.json` in the harne
 
 | Transition | From → to | By | Grant that lets a coordinator do it |
 |---|---|---|---|
-| claim | ready → in-progress | coder, engineer, owner | `select-tasks` (only to choose, reorder or add work; dispatching in the owner's order is mechanical) |
+| claim | ready → in-progress | coder, engineer, owner | `select-tasks` (only to choose, reorder or add work; dispatching in the owner's order is mechanical). The new-ref push that creates the task branch |
 | open-draft | in-progress → review | coder, engineer | — |
 | mark-pr-ready | review → human-review | coder, engineer | `finalize`; guard `independent-verification`: every task needs the evaluator's pass on the current head |
-| approve-pr | human-review → merging | owner, engineer (gate) | `merge`, with the reviewer's pass (`independent-review`), the evaluator's verdict and required checks, all on the current head |
-| land | merging → merged | merge | `merge` (repo, strategy and exact target match; the target is the protected branch) |
-| integrate | merging → integrated | merge | `merge` (the target is the task's `lands_to`) |
+| approve-pr | human-review → merging | owner, engineer (gate) | `merge`, for an integration branch only, with the reviewer's pass (`independent-review`), the evaluator's verdict and required checks, all on the current head. A forge approval, never a commit |
+| land | merging → merged | merge | never: the merge role writes `merged` on the protected branch, after a human's approval |
+| integrate | merging → integrated | merge | `merge` (the target is the task's `lands_to`); `integrated` is written on that branch, in the merge |
 | promote | integrated → merged | owner, engineer | never (a human merged the integration branch) |
 | block / need-input | → blocked / needs-input | coder, planner, engineer, owner | — (must carry a reason) |
 
-Rules: a status changes only by a commit from a listed role; runtime signals never advance it; a
-human setting `owner` or `status` wins and a running agent yields; a kick-back carries a reason.
+Rules: a status changes only by a commit from a listed role, on the branch where it lives (the
+task branch while it exists; `merged` and `integrated` on the target, by the landing actor), or by
+the forge approval that is approve-pr; runtime signals never advance it; a human setting `owner` or
+`status` on the task branch wins and a running agent yields; a kick-back carries a reason.
 
 ## Mode guards (added to transitions; modes never add states)
 

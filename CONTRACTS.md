@@ -153,8 +153,10 @@ template epics validate unchanged.
 
 ### task
 
-**Purpose.** One unit of work, the coordination substrate: the frontmatter is the kanban column and
-the claim lock; the body is the contract the coder builds against. **Schema** `task.schema.json`
+**Purpose.** One unit of work, the coordination substrate: the frontmatter is the kanban column, the
+`branch` it names is the claim lock (a claim creates it on the remote; while it exists the live
+status is on its head, and the default branch's copy says `ready` until the task lands:
+`workflow.yaml` `status_authority`); the body is the contract the coder builds against. **Schema** `task.schema.json`
 1.3.0. Required (agentic-template's fields, same meaning): `id`, `epic`, `status`, `priority`, `cuj`,
 `guiding_docs`, `branch`, `depends_on`, `owner`. Optional template fields: `parent`, `size`,
 `kickback_reason`. **Optional harness fields:**
@@ -501,24 +503,29 @@ CUJ-2 of template-migration, which the spec's Tasks table attributes to TMIG-1 a
 sequenceDiagram
   autonumber
   participant H as Human (owner / engineer)
-  participant G as git (task file)
+  participant D as git: default branch
+  participant B as git: task branch
+  participant F as forge (PR)
   participant C as Coordinator (loop / CI / stagehand)
   participant A as Agent (engine)
   participant R as Runtime records
-  H->>G: approve spec (gate 1) — tasks become ready
-  C->>G: claim: owner + status ready→in-progress in one commit (CAS)
+  H->>D: approve spec (gate 1) — tasks become ready on the default branch
+  C->>D: fetch task files; ls-remote: a task with no branch is unclaimed
+  A->>B: claim: the branch's first commit, owner + ready→in-progress, pushed as a new ref (CAS)
   C->>R: task-record (attention working), grant if delegated
   C->>A: dispatch: task file + guiding_docs, budget
   A-->>R: signals (Herdr state, A2A/MCP task state) — attention only
-  A->>G: commits, draft PR, agent-log handoff, status → review
+  A->>B: commits, agent-log handoff, status → review; draft PR
   A-->>C: return (summary, artifacts, criteria met/unmet, decisions needed)
   C->>R: run-record line (outcome, subtype, cost), task-record reconciled
   alt criteria met and gates green
-    A->>G: status → human-review
-    H->>G: approve PR (gate 2) — or a merge grant with independent review + checks
-    C->>G: merge agent (or the orchestrator under the merge grant) lands; status → merged
-    Note over C,G: lands_to integration/epic: status → integrated, and a human's merge of that branch → merged
-    H->>G: approve production release (gate 3)
+    F-->>R: reviewer's review and evaluator's verdict, each bound to the head
+    A->>B: status → human-review
+    H->>F: approve PR (gate 2): a forge review of the head, not a commit; or a merge grant's holder, for an integration branch
+    C->>R: the approval in reviews/decisions
+    C->>D: merge role lands; the merge carries status → merged on the protected branch
+    Note over C,D: lands_to integration/epic: the merge writes integrated there; a human's merge of that branch, then promote → merged
+    H->>F: approve production release (gate 3)
   else needs-human
     C->>H: next_action (question, permission, budget)
   end
@@ -527,7 +534,12 @@ sequenceDiagram
 The three human gates and every transition are in `state-machines/workflow.yaml`; which signal
 means what is `state-machines/attention.yaml`; what a human may delegate is
 `state-machines/authority.yaml`. The invariant that ties them: **status is a commit by an authorized
-role; a runtime signal is a hint that changes attention at most.**
+role on the branch where it lives (or, for approve-pr, a forge event); a runtime signal is a hint
+that changes attention at most.** Where it lives is `workflow.yaml` `status_authority` (workflow
+1.5.0): a claim creates the task branch (the rejected new-ref push is the compare-and-swap);
+in-flight status is on the task branch; approvals are forge events bound to the head, voided by any
+commit after them; only the landing actor writes `merged` or `integrated`, on the target;
+`deps-merged` reads the dependent's own target.
 
 Landing (workflow since 1.2.0, authority since 1.1.0). `land` (→ `merged`, the protected branch) is the
 merge role's alone, after a human's approval (never grantable since workflow 1.4.0). `integrate` (→

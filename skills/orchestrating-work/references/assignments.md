@@ -17,8 +17,10 @@ Plan: {approval_path}
   - research-plan-implement: implement the approved plan in the task's Working notes;
   - under a grant with approve-plan: propose the plan to the coordinator, or implement {approved_plan}.
 
-Claim the task in your first commit (owner + status in one commit on a fresh pull; a rejected push
-means someone else has it: stop and say so). Implement against the acceptance criteria, verify, open
+Claim the task by creating {branch} on the remote: its first commit sets owner and status
+in-progress, pushed as a new ref, never to the default branch (a rejected push, or a branch that
+already exists, means someone else has it: stop and say so). Every later status change is a commit
+on {branch}. Implement against the acceptance criteria, verify, open
 a draft PR, append your handoff to the agent log with your session id. Do not start other agents.
 Hand back: a return object (summary, artifacts, attention, decisions_needed, criteria met/unmet,
 verification). If you hit a decision the spec does not answer, stop and ask; do not guess.

@@ -24,6 +24,10 @@ Treat merge authority as tiers, each granted explicitly and revocably:
   branch only to say its target is not it, and the grant contract rejects one whose target is.
   Branch protection, required reviews from code owners (agents are never code owners) and required
   checks enforce this, not prose.
+- **An approval is a forge event, and landing writes the target.** Approving a PR (a human's, or a
+  grant holder's) is a review on the forge bound to the head, never a commit on the task branch: a
+  commit after it voids it. The landing actor writes `merged` (or `integrated`) on the branch it
+  lands on, inside the merge; the task branch never says so.
 - **A merge queue re-runs CI on the merged result**, landing one change at a time; a clean base and a
   clean PR can still merge red.
 - **Conflicts split two ways.** Mechanical (lockfiles, generated files, one-sided hunks) may be
@@ -48,11 +52,12 @@ Treat merge authority as tiers, each granted explicitly and revocably:
 
 ## Contracts used
 
-`grant` (scope, actions incl. `merge{repo,target,strategy}`, limits, expiry, revocable),
-`state-machines/authority.yaml`, `state-machines/workflow.yaml` (`human-review` → `merging` →
-`merged` by `land`; with `lands_to: integration/<epic>`, `merging` → `integrated` by `integrate` at
-tier 2, then `promote` → `merged` by the human at tier 3; the orchestrator lands only under a live
-merge grant for that exact target), `task` (`lands_to`), `run-record` (who merged what, under which
+`grant` (scope, actions incl. `merge{repo,target,protected_branch,strategy}`, limits, expiry,
+revocable), `state-machines/authority.yaml`, `state-machines/workflow.yaml` (`status_authority`;
+`human-review` → `merging` by the approval, a forge event; → `merged` by `land`, the merge role's,
+written on the protected branch; with `lands_to: integration/<epic>`, `merging` → `integrated` by
+`integrate` at tier 2, written on that branch, then `promote` → `merged` by the human at tier 3; the
+orchestrator integrates only under a live merge grant for that exact target), `task` (`lands_to`), `run-record` (who merged what, under which
 grant).
 
 ## Anti-patterns
@@ -62,6 +67,8 @@ grant).
 - Resolving a semantic conflict by picking one side.
 - Merging on the PR's own CI run instead of the merged result.
 - Counting reviewer passes as approval.
+- Recording an approval as a commit on the PR's branch, which moves the head it approved.
+- Writing `merged` on the task branch, where the protected branch never sees it.
 
 ## Revisit when
 

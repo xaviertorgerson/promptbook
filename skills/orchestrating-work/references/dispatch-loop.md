@@ -8,8 +8,10 @@ are mechanical; judgment is needed only to read answers and decide what a human 
 on start, on wake, on a human message:
   grants   = live(load(".orchestrator/grants/*.yaml"), now)   # granted_at <= now < expires_at, not revoked
   records  = load(".orchestrator/tasks/*.yaml")
-  evidence = { tasks: pull_and_read("specs/*/tasks/*.md"),
-               forge: branches, PR heads, reviews, checks,
+  evidence = { tasks: fetch_and_read("specs/*/tasks/*.md" on the default branch),
+               claims: ls_remote_heads(),             # a task branch on the remote is a claim
+               live: each claimed task's file on its branch head,   # where in-flight status lives
+               forge: PR heads, reviews, approvals, checks,
                runtime: live workers, sessions, pending wakes or a snapshot }
   for r in records: reconcile(r, evidence)        # recovery.md; save each changed record
   for wake in pending: handle(wake); ack(wake)    # reporting-state; never redispatch on a wake alone
@@ -27,13 +29,13 @@ on start, on wake, on a human message:
 
 ```
 next_dispatchable(tasks, records):
-  merged    = { t.id | t.status == merged }
-  integrated = { t.id | t.status == integrated }                # on its epic's integration branch
-  in_flight = { r.task_id | r.state.name == working }
+  claimed   = { t.id | t.branch in claims or open_pr(t) }
+  in_flight = claimed | { r.task_id | r.state.name == working }
   busy      = union(t.touches for t in tasks if t.id in in_flight)
   candidates = [ t for t in tasks
-                 if t.status == ready and t.owner is null
-                 and all(d in merged or (d in integrated and epic(d) == epic(t))
+                 if t.status == ready and t.owner is null and t.id not in claimed
+                 and all(status_on(target(t), d) == merged                  # the default branch's copy
+                         or (t.lands_to and status_on(t.lands_to, d) == integrated)
                          for d in t.depends_on)
                  and epic(t).status in {approved, in-progress}
                  and mode_guard_holds(t)                     # contracts.md, Mode guards

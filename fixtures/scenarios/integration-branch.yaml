@@ -12,6 +12,8 @@ policy:
   forbid:
     - { command: [git, push, [--force, -f]] }
 merge: { queue_targets: [main] }
+# The reviewer passes every head here; its findings are what tests/simulate.test.mjs varies.
+reviewer: { reject_rate: 0 }
 grant:
   id: GRANT-1
   granted_by: owner

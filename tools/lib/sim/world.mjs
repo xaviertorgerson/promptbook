@@ -3,11 +3,16 @@ import { Heap, makeRng, round } from './util.mjs';
 
 // The simulated world: everything except the supervisor policy under test.
 //
-//   forge      task files on one shared ref with compare-and-swap pushes (a push whose base is not
-//              the ref's head is rejected, as git rejects a non-fast-forward push; the actor re-pulls
-//              and re-validates), pull requests with heads, check runs, reviews and approvals, a
-//              protected target branch and per-epic integration branches (a task's lands_to), each
-//              admitting a merge only with an approval for the head.
+//   forge      remote refs, each holding its own copy of the task files (workflow.yaml
+//              status_authority): the protected branch (the default branch's copy says ready, or
+//              the last status landed there), each epic's integration branch (a task's lands_to),
+//              and one branch per claimed task. A claim is the push that creates the task's branch, a
+//              new ref the forge rejects when it exists (the compare-and-swap); in-flight status is
+//              committed on that branch, each push compare-and-swap on its ref; approve-pr is a
+//              forge event bound to the PR head and the branch's version, never a commit; landing
+//              writes merged or integrated on the target inside the merge. Pull requests carry
+//              heads, check runs, reviews and approvals; each target admits a merge only with a
+//              valid approval of the head.
 //   runtime    per runtime: sessions (authors, evaluators, their helpers), the runner's per-run caps,
 //              the engine's permission decisions, Herdr-style signals (lossy, duplicable), task records.
 //   actors     authors (coder role), evaluators (evaluator role), CI, the merge queue (merge role,
@@ -71,11 +76,24 @@ export class World {
     this.prSeq = 0;
     this.artifacts = { runRecords: [], returns: [], grants: [] };
 
-    this.forge = { version: 0, tasks: new Map(), prs: new Map(), decisions: [], target: { name: sc.target, version: 0, landed: [] }, branches: new Map() };
-    this.forge.branches.set(sc.target, this.forge.target);
+    // refs: name -> { name, kind: protected | integration | task, version, files: Map(task -> file),
+    // landed }. tasks: each task's effective record (where its status lives now), kept current by
+    // refresh(); the invariants and the supervisor's snapshot read it.
+    const target = { name: sc.target, kind: 'protected', version: 0, files: new Map(), landed: [] };
+    this.forge = { changes: 0, refs: new Map([[sc.target, target]]), target, tasks: new Map(), prs: new Map(), decisions: [] };
     this.meta = new Map();
+    const file = (t, over = {}) => ({ status: t.status, owner: t.owner, prior: null, kickback_reason: null, lastTransition: null, changedAt: 0, approved: false, ...over });
     for (const t of sc.tasks) {
-      this.forge.tasks.set(t.id, { id: t.id, status: t.status, owner: t.owner, prior: null, kickback_reason: null, lastTransition: null, changedAt: 0 });
+      this.forge.tasks.set(t.id, { id: t.id });
+      // Where a scenario's status lives: a claimed task (or one parked with an owner) on its branch,
+      // an integrated one on its integration branch; the default branch's copy says ready.
+      const onBranch = this.m.claimed.has(t.status) || (this.m.sideStates.has(t.status) && t.owner);
+      if (onBranch || t.status === 'integrated') target.files.set(t.id, file(t, { status: 'ready', owner: null }));
+      else target.files.set(t.id, file(t));
+      if (onBranch) {
+        const status = t.status === 'merging' ? 'human-review' : t.status;
+        this.forge.refs.set(t.branch, { name: t.branch, kind: 'task', task: t.id, version: 1, files: new Map([[t.id, file(t, { status, approved: t.status === 'merging' })]]) });
+      }
       const factor = sc.faults.budget_exhaustion?.tasks.includes(t.id) ? sc.faults.budget_exhaustion.factor : 1;
       this.meta.set(t.id, { spec: t, workTotal: this.rng.between(sc.work.minutes[t.size]) * factor, workDone: 0, lastReturn: null, crashes: 0, asked: false, askResolved: false, questionAsked: false, questionAnswered: false, mergeAttempted: false, rejections: 0, spend: 0, runs: 0 });
     }
@@ -89,11 +107,12 @@ export class World {
       pr.reviews.push({ head, verdict: 'pass', by: 'prior-reviewer', role: 'reviewer', at: 0 });
       pr.reviews.push({ head, verdict: 'pass', by: 'prior-evaluator', role: 'evaluator', at: 0 });
       if (t.status !== 'review') pr.ready = true;
-      if (['merging', 'integrated'].includes(t.status)) pr.approval = { head, by: 'prior-human', actorKind: 'human', role: 'owner', grant: null, at: 0 };
+      if (['merging', 'integrated'].includes(t.status)) pr.approval = { head, branchVersion: this.forge.refs.get(t.branch)?.version ?? null, by: 'prior-human', actorKind: 'human', role: 'owner', grant: null, at: 0 };
       if (t.status === 'integrated') {
         const branch = this.branchOf(t.id);
         pr.merged = { head, at: 0, version: (branch.version += 1), target: branch.name };
         branch.landed.push(t.id);
+        branch.files.set(t.id, file(t));
       }
       this.meta.get(t.id).lastReturn = { head, criteria: { met: [...t.criteria], unmet: [] } };
     }
@@ -128,7 +147,10 @@ export class World {
     // Owners a project queue already carries (agents of an earlier run) are adopted by the main runtime.
     // A project queue may carry the owners of an earlier run; adopt_owners hands those claims to the
     // main runtime's coder, so the simulation resumes them instead of leaving them to a human.
-    if (sc.adopt_owners) for (const t of this.forge.tasks.values()) if (t.owner && !this.coders.has(t.owner)) t.owner = this.runtimes.get('main').coder;
+    if (sc.adopt_owners) {
+      for (const ref of this.forge.refs.values()) for (const f of ref.files.values()) if (f.owner && !this.coders.has(f.owner)) f.owner = this.runtimes.get('main').coder;
+    }
+    for (const t of sc.tasks) this.refresh(t.id);
 
     this.human = { inbox: new Map(), raises: new Map(), conflicts: new Map(), lastDecision: new Map(), promoted: new Set() };
     this.merge = { busy: false, queue: [], state: new Map() };
@@ -184,7 +206,7 @@ export class World {
     if (ev.task) line.task = ev.task;
     if (ev.detail) Object.assign(line, ev.detail);
     if (ev.note) line.note = ev.note;
-    if (ev.commits.length) line.commits = ev.commits.map(({ commit: c, before, after }) => ({ id: c.id, task: c.task, transition: c.transition, from: before.status, to: after.status, owner: after.owner, by: c.actor, role: c.role, ...(c.grant ? { grant: c.grant } : {}), ...(c.trigger ? { trigger: c.trigger.kind } : {}) }));
+    if (ev.commits.length) line.commits = ev.commits.map(({ commit: c, before, after, ref, newRef }) => ({ id: c.id, task: c.task, transition: c.transition, from: before.status, to: after.status, owner: after.owner, by: c.actor, role: c.role, ...(c.forgeEvent ? { event: 'forge-approval' } : { ref, ...(newRef ? { new_ref: true } : {}) }), ...(c.grant ? { grant: c.grant } : {}), ...(c.trigger ? { trigger: c.trigger.kind } : {}) }));
     if (ev.effects.length) line.effects = ev.effects;
     if (ev.violations.length) line.violations = ev.violations.map((v) => v.invariant);
     return line;
@@ -237,7 +259,7 @@ export class World {
   // stopped once nothing changes between two of them.
   checkin(rt) {
     const live = [...this.sessions.values()].filter((x) => x.state === 'running' || x.state === 'blocked').length;
-    const fingerprint = `${this.forge.version}:${live}:${this.human.inbox.size}:${this.merge.queue.length}:${this.merge.busy}:${rt.mergingTask ?? ''}:${this.forge.decisions.length}`;
+    const fingerprint = `${this.forge.changes}:${live}:${this.human.inbox.size}:${this.merge.queue.length}:${this.merge.busy}:${rt.mergingTask ?? ''}:${this.forge.decisions.length}`;
     const pending = this.heap.items.some((e) => e.kind !== 'checkin');
     this.handle(rt, { kind: 'checkin' });
     if (pending || fingerprint !== rt.lastCheckin) {
@@ -267,7 +289,7 @@ export class World {
       answerPrompt: (id, decision) => this.answerPrompt(id, decision, { actor: rt.name, kind: 'agent', role: 'orchestrator' }),
       // The orchestrator's own merge (rebase, merged checks, land or hand back), for a branch no merge
       // queue serves; its authority is judged on the grant as it stood when it decided.
-      merge: (task) => this.orchestratorMerge(rt, task, note),
+      merge: (task, opts) => this.orchestratorMerge(rt, task, note, opts),
       // A raw land through the forge with no status commit and no merged checks (the land-directly mutation).
       land: (task) => this.landAttempt(task, { actor: rt.name, role: 'orchestrator', kind: 'agent', injected: false }),
     };
@@ -300,6 +322,9 @@ export class World {
       target: { version: this.forge.target.version, landed: [...this.forge.target.landed] },
       protectedBranch: this.sc.target,
       queueServes: (branch) => this.queueServes(branch),
+      // A task's status as the given branch's copy of its file says it (deps-merged reads the
+      // dependent's target): an integration branch shows what landed there, else the protected copy.
+      statusOn: (branch, task) => this.statusOn(branch, task),
       merging: rt.mergingTask ?? null,
     };
   }
@@ -349,8 +374,75 @@ export class World {
   // The branch a task's PR targets: the protected target, or its epic's integration branch.
   branchOf(task) {
     const name = landingTarget(this.sc, this.meta.get(task).spec);
-    if (!this.forge.branches.has(name)) this.forge.branches.set(name, { name, version: 0, landed: [], integration: true });
-    return this.forge.branches.get(name);
+    if (!this.forge.refs.has(name)) this.forge.refs.set(name, { name, kind: 'integration', version: 0, files: new Map(), landed: [], integration: true });
+    return this.forge.refs.get(name);
+  }
+
+  taskBranch(task) { return this.meta.get(task).spec.branch; }
+
+  branchRef(task) { return this.forge.refs.get(this.taskBranch(task)) ?? null; }
+
+  statusOn(branch, task) {
+    const ref = this.forge.refs.get(branch);
+    const own = ref && ref !== this.forge.target ? ref.files.get(task) : null;
+    return (own ?? this.forge.target.files.get(task))?.status ?? null;
+  }
+
+  // Where a task's status lives now (workflow.yaml status_authority): merged on the protected
+  // branch; else integrated on its integration branch (unless a newer task branch reopened it);
+  // else its task branch's head, merging while it holds an approval; else the protected copy.
+  effective(task) {
+    const P = this.forge.target.files.get(task);
+    if (P.status === 'merged') return { file: P, home: this.forge.target.name };
+    const spec = this.meta.get(task).spec;
+    const integ = spec.lands_to ? this.forge.refs.get(spec.lands_to)?.files.get(task) : null;
+    const ref = this.branchRef(task);
+    const B = ref?.files.get(task);
+    if (integ && ['integrated', 'merged'].includes(integ.status) && !(B && B.changedAt > integ.changedAt)) return { file: integ, home: spec.lands_to };
+    if (B) return { file: B.approved && B.status === 'human-review' ? { ...B, status: 'merging', lastTransition: 'approve-pr', changedAt: B.approvedAt } : B, home: ref.name };
+    return { file: P, home: this.forge.target.name };
+  }
+
+  refresh(task) {
+    const { file: f, home } = this.effective(task);
+    Object.assign(this.forge.tasks.get(task), { id: task, status: f.status, owner: f.owner, prior: f.prior, kickback_reason: f.kickback_reason, lastTransition: f.lastTransition, changedAt: f.changedAt, home, branch: this.taskBranch(task), claimed: Boolean(this.branchRef(task)) });
+  }
+
+  // An approval counts for the PR head and the task branch's version it judged: any commit after it
+  // (code or status) voids it, as a forge that dismisses stale approvals does.
+  approvalValid(task) {
+    const pr = this.forge.prs.get(task);
+    const ref = this.branchRef(task);
+    return Boolean(pr?.approval && pr.approval.head === pr.head && ref && pr.approval.branchVersion === ref.version);
+  }
+
+  // The ref a commit for this transition goes to: a claim creates the task branch; landing writes
+  // the target (land, promote: the protected branch; integrate: the integration branch); redo and
+  // respec hand the task back on the protected copy and delete its branch; everything else is
+  // committed where the status lives: the task branch while it exists, else the protected copy.
+  refFor(c) {
+    const branch = this.taskBranch(c.task);
+    const exists = this.forge.refs.has(branch);
+    switch (c.transition) {
+      case 'claim': return { ref: branch, newRef: true };
+      case 'land': case 'promote': return { ref: this.forge.target.name };
+      case 'integrate': return { ref: this.branchOf(c.task).name };
+      case 'redo': case 'respec': return { ref: this.forge.target.name, deleteRef: exists ? branch : null };
+      default: return { ref: exists ? branch : this.forge.target.name };
+    }
+  }
+
+  // A code push to the PR: a commit on the task branch (created by the push when a claim did not
+  // create it), so it moves the version an approval is bound to.
+  codePush(task) {
+    let ref = this.branchRef(task);
+    if (!ref) {
+      ref = { name: this.taskBranch(task), kind: 'task', task, version: 0, files: new Map([[task, { ...this.forge.target.files.get(task) }]]) };
+      this.forge.refs.set(ref.name, ref);
+    }
+    ref.version += 1;
+    this.forge.changes += 1;
+    this.refresh(task);
   }
 
   queueServes(branch) {
@@ -358,49 +450,70 @@ export class World {
   }
 
   newPr(task, author, head) {
-    const pr = { number: (this.prSeq += 1), task, author, head, base: this.branchOf(task).version, ready: false, checks: new Map(), reviews: [], approval: null, coverage: new Map(), merged: null };
+    const pr = { number: (this.prSeq += 1), task, author, head, base: this.branchOf(task).landed.length, ready: false, checks: new Map(), reviews: [], approval: null, coverage: new Map(), merged: null };
     this.forge.prs.set(task, pr);
     return pr;
   }
 
-  // Push a commit to the task file. It reaches the forge after a latency and is accepted only if no
-  // other commit landed since the actor's pull (compare-and-swap); a rejected actor re-pulls and
-  // re-validates with c.retry() before pushing again, or yields with c.onReject().
+  // Push a commit to a task file on a ref (refFor). It reaches the forge after a latency and is
+  // accepted only if the ref did not move since the actor's pull (compare-and-swap on that ref), or,
+  // for a claim, only if the task's branch does not exist yet (a new-ref push); a rejected actor
+  // re-pulls and re-validates with c.retry() before pushing again, or yields with c.onReject().
+  // c.fixedRef keeps a ref the caller chose (the mutations that write status in the wrong place).
   push(c) {
     c.id ??= `c${(this.commitSeq += 1)}`;
-    c.base = this.forge.version;
+    if (!c.fixedRef) Object.assign(c, { ref: undefined, newRef: false, deleteRef: null }, this.refFor(c));
+    c.base = c.newRef ? null : this.forge.refs.get(c.ref)?.version ?? null;
     c.decidedAt ??= this.t;
     c.decidedMs ??= this.startMs + this.t * 60000;
-    this.at(this.rng.between(this.sc.latency.push), 'push', { actor: c.actor, task: c.task, detail: { commit: c.id, transition: c.transition } }, () => this.applyPush(c));
+    this.at(this.rng.between(this.sc.latency.push), 'push', { actor: c.actor, task: c.task, detail: { commit: c.id, transition: c.transition, ref: c.ref } }, () => this.applyPush(c));
+  }
+
+  reject(c, t, why) {
+    this.stats.pushesRejected += 1;
+    this.effect({ push: 'rejected', commit: c.id, by: c.actor, ref: c.ref, why });
+    const valid = c.retry ? c.retry(t) : t.status === c.from && t.owner === c.expectOwner;
+    if (valid) this.push(c);
+    else c.onReject?.(t);
   }
 
   applyPush(c) {
     const f = this.forge;
     const t = f.tasks.get(c.task);
-    if (this.cas && c.base !== f.version) {
-      this.stats.pushesRejected += 1;
-      this.effect({ push: 'rejected', commit: c.id, by: c.actor });
-      const valid = c.retry ? c.retry(t) : t.status === c.from && t.owner === c.expectOwner;
-      if (valid) this.push(c);
-      else c.onReject?.(t);
-      return;
-    }
+    let ref = f.refs.get(c.ref);
+    if (c.newRef && ref && this.cas) { this.reject(c, t, `${c.ref} exists`); return; }
+    if (!c.newRef && !ref) { this.reject(c, t, `${c.ref} does not exist`); return; }
+    if (!c.newRef && this.cas && c.base !== ref.version) { this.reject(c, t, `${c.ref} moved`); return; }
     const before = { status: t.status, owner: t.owner, prior: t.prior };
-    t.status = c.to;
-    if (c.owner !== undefined) t.owner = c.owner;
+    const branchBefore = Boolean(this.branchRef(c.task));
+    if (c.newRef) {
+      ref = { name: c.ref, kind: 'task', task: c.task, version: 0, files: new Map() };
+      f.refs.set(c.ref, ref);
+    }
+    const cur = ref.files.get(c.task) ?? { ...f.target.files.get(c.task) };
+    const next = { ...cur, status: c.to, lastTransition: c.transition, changedAt: this.t, approved: false };
+    if (c.owner !== undefined) next.owner = c.owner;
     const side = this.m.sideStates;
-    if (side.has(c.to) && !side.has(before.status)) t.prior = before.status;
-    else if (!side.has(c.to)) t.prior = null;
-    if (c.reason) t.kickback_reason = c.reason;
-    t.lastTransition = c.transition;
-    t.changedAt = this.t;
-    f.version += 1;
+    if (side.has(c.to) && !side.has(before.status)) next.prior = before.status;
+    else if (!side.has(c.to)) next.prior = null;
+    if (c.reason) next.kickback_reason = c.reason;
+    ref.files.set(c.task, next);
+    ref.version += 1;
+    if (c.deleteRef) f.refs.delete(c.deleteRef);
+    f.changes += 1;
+    this.refresh(c.task);
     const pr = f.prs.get(c.task);
-    if (c.prApproval && pr) pr.approval = { head: pr.head, by: c.actor, actorKind: c.actorKind, role: c.role, grant: c.grant ?? null, grantLive: c.grantLive ?? null, grantSnapshot: c.grantSnapshot ?? null, decidedMs: c.decidedMs, at: this.t };
     if (c.prReady && pr) pr.ready = true;
+    if (c.deleteRef && pr) pr.ready = false;
     if (c.actorKind === 'human') this.human.lastDecision.set(c.task, this.t);
-    this.ev.commits.push({ commit: c, before, after: { status: t.status, owner: t.owner }, appliedAt: this.t });
+    this.ev.commits.push({ commit: c, before, after: { status: t.status, owner: t.owner }, appliedAt: this.t, ref: c.ref, newRef: Boolean(c.newRef), branchBefore });
     c.onAccept?.(t);
+    this.afterChange(c, t, before);
+  }
+
+  // What every accepted change tells the others: the status webhook, the human's review or conflict
+  // item, the merge queue, and the human's integration item once nothing on that branch is in flight.
+  afterChange(c, t, before) {
     this.webhook({ what: 'status', task: c.task, value: t.status });
     if (t.status === 'human-review') this.humanNotify({ kind: c.transition === 'return-to-human' ? 'conflict' : 'review', task: c.task, ref: c.reason ?? null });
     if (t.status === 'merging') this.mergeEnqueue(c.task);
@@ -412,21 +525,53 @@ export class World {
     }
   }
 
+  // approve-pr: a forge review approval (a human's, or the orchestrator's under a merge grant), never
+  // a commit, so the head it approves does not move. It is bound to the PR head and the task
+  // branch's version; the task is merging while it holds (effective()).
+  approve(c) {
+    c.id ??= `a${(this.commitSeq += 1)}`;
+    c.decidedAt ??= this.t;
+    c.decidedMs ??= this.startMs + this.t * 60000;
+    this.at(this.rng.between(this.sc.latency.push), 'approve', { actor: c.actor, task: c.task, detail: { approval: c.id } }, () => {
+      const t = this.forge.tasks.get(c.task);
+      const pr = this.forge.prs.get(c.task);
+      const ref = this.branchRef(c.task);
+      if (t.status !== 'human-review' || !pr || !ref) {
+        this.effect({ approve: 'refused', task: c.task, by: c.actor, why: `${c.task} is ${t.status}` });
+        c.onReject?.(t);
+        return;
+      }
+      const before = { status: t.status, owner: t.owner, prior: t.prior };
+      pr.approval = { head: pr.head, branchVersion: ref.version, by: c.actor, actorKind: c.actorKind, role: c.role, grant: c.grant ?? null, grantLive: c.grantLive ?? null, grantSnapshot: c.grantSnapshot ?? null, decidedMs: c.decidedMs, at: this.t };
+      pr.approvals = [...(pr.approvals ?? []), { ...pr.approval, grantSnapshot: undefined }];
+      const file = ref.files.get(c.task);
+      file.approved = true;
+      file.approvedAt = this.t;
+      this.forge.changes += 1;
+      this.refresh(c.task);
+      if (c.actorKind === 'human') this.human.lastDecision.set(c.task, this.t);
+      this.ev.commits.push({ commit: { ...c, forgeEvent: true }, before, after: { status: t.status, owner: t.owner }, appliedAt: this.t, ref: null, newRef: false, branchBefore: true });
+      this.effect({ approved: c.task, head: pr.head, by: c.actor, ...(c.grant ? { grant: c.grant } : {}) });
+      this.afterChange(c, t, before);
+    });
+  }
+
   // A merge into the branch the task lands on (the protected target or its epic's integration
-  // branch). Branch protection admits it only with an approval recorded for the PR's current head and
-  // green checks on that head; with protection off (a misconfigured forge) it admits anything, and
-  // only the invariants stand between the change and the branch.
+  // branch). Branch protection admits it only with a valid approval of the PR's current head (the
+  // approval's head and the task branch's version) and green checks on that head; with protection
+  // off (a misconfigured forge) it admits anything, and only the invariants stand between the change
+  // and the branch.
   landAttempt(task, who, onLanded) {
     const pr = this.forge.prs.get(task);
     const branch = this.branchOf(task);
-    const approved = pr?.approval && pr.approval.head === pr.head;
+    const approved = this.approvalValid(task);
     const green = pr?.checks.get(pr?.head) === 'green';
     const admit = !this.forgeProtection || (approved && green);
-    const entry = { task, head: pr?.head ?? null, target: branch.name, by: who.actor, role: who.role, actorKind: who.kind, injected: Boolean(who.injected), grantLive: who.grantLive ?? null, grantSnapshot: who.grantSnapshot ?? null, approval: pr?.approval ? { ...pr.approval } : null, mergeState: this.merge.state.get(task) ?? null, coverage: [...(pr?.coverage.get(pr?.head) ?? [])], admitted: Boolean(admit) };
+    const entry = { task, head: pr?.head ?? null, target: branch.name, by: who.actor, role: who.role, actorKind: who.kind, injected: Boolean(who.injected), grantLive: who.grantLive ?? null, grantSnapshot: who.grantSnapshot ?? null, approval: pr?.approval ? { ...pr.approval } : null, branchVersion: this.branchRef(task)?.version ?? null, mergeState: this.merge.state.get(task) ?? null, coverage: [...(pr?.coverage.get(pr?.head) ?? [])], admitted: Boolean(admit) };
     this.ev.lands.push(entry);
     if (!admit || !pr) {
       this.stats.landsRejected += 1;
-      this.effect({ land: 'rejected', task, by: who.actor, why: !pr ? 'no PR' : !approved ? 'no approval for this head' : 'checks not green' });
+      this.effect({ land: 'rejected', task, by: who.actor, why: !pr ? 'no PR' : !approved ? 'no valid approval of this head' : 'checks not green' });
       this.webhook({ what: 'push-rejected', task });
       return false;
     }
@@ -435,6 +580,32 @@ export class World {
     this.stats.mergesLanded += 1;
     this.effect({ land: branch.integration ? 'integrated' : 'merged', task, head: pr.head, by: who.actor, target: branch.name });
     onLanded?.();
+    return true;
+  }
+
+  // Landing proper (land or integrate): the forge's merge, whose content carries the task file with
+  // the terminal status flipped, written on the target by the landing actor (workflow.yaml
+  // status_authority). statusRef: 'task-branch' is the broken binding that writes it on the task
+  // branch instead (a separate commit after the merge).
+  landMerge(task, who, transition, { statusRef = 'target' } = {}) {
+    const t = this.forge.tasks.get(task);
+    const before = { status: t.status, owner: t.owner, prior: t.prior };
+    const to = transition === 'integrate' ? 'integrated' : 'merged';
+    if (statusRef === 'task-branch') {
+      if (!this.landAttempt(task, who.lander)) return false;
+      who.push({ task, transition, from: 'merging', to, expectOwner: t.owner, fixedRef: true, ref: this.taskBranch(task), retry: (x) => x.status === 'merging' });
+      return true;
+    }
+    if (!this.landAttempt(task, who.lander)) return false;
+    const target = this.branchOf(task);
+    const src = this.branchRef(task)?.files.get(task) ?? this.forge.target.files.get(task);
+    target.files.set(task, { ...src, status: to, prior: null, approved: false, lastTransition: transition, changedAt: this.t });
+    target.version += 1;
+    this.forge.changes += 1;
+    this.refresh(task);
+    const c = { id: `c${(this.commitSeq += 1)}`, task, transition, from: 'merging', to, expectOwner: t.owner, merge: true, ref: target.name, decidedAt: this.t, decidedMs: this.startMs + this.t * 60000, ...who.commitAs };
+    this.ev.commits.push({ commit: c, before, after: { status: t.status, owner: t.owner }, appliedAt: this.t, ref: target.name, newRef: false, branchBefore: Boolean(this.branchRef(task)) });
+    this.afterChange(c, t, before);
     return true;
   }
 
@@ -454,10 +625,13 @@ export class World {
   // The supervisor dispatches an author. A work run on a ready task starts with the claim (the
   // coder's compare-and-swap); claimable(view) is the dispatcher's own precondition, re-checked by
   // the author on a fresh pull whenever the claim push is rejected.
-  dispatch(rt, taskId, { mode = 'work', caps = {}, claimable = () => true } = {}) {
+  dispatch(rt, taskId, { mode = 'work', caps = {}, claimable = () => true, claimOnDefault = false } = {}) {
     const t = this.forge.tasks.get(taskId);
     const s = this.newSession(rt, { task: taskId, kind: 'author', role: 'coder', owner: rt.coder, mode, caps });
     s.claimable = claimable;
+    // The broken assignment the claim-on-default mutation hands out: claim by committing the task
+    // file on the default branch, as a shared-ref claim would, instead of creating the task branch.
+    s.claimOnDefault = claimOnDefault;
     this.meta.get(taskId).runs += 1;
     this.ev.dispatches.push({ runtime: rt.name, task: taskId, kind: 'author', mode, session: s.id });
     this.effect({ dispatch: s.id, task: taskId, mode, caps: { max_turns: s.caps.max_turns, max_usd: s.caps.max_usd, max_depth: s.caps.max_depth } });
@@ -494,6 +668,7 @@ export class World {
     }
     this.authorCommit(s, 'claim', 'in-progress', {
       owner: s.owner,
+      ...(s.claimOnDefault ? { fixedRef: true, ref: this.forge.target.name, newRef: false } : {}),
       retry: (task) => task.status === 'ready' && task.owner === null && s.claimable(this.snapshot(rt), s.task),
       onReject: () => {
         this.stats.claimsLost += 1;
@@ -512,6 +687,20 @@ export class World {
       return;
     }
     s.claimed = true;
+    if (s.mode === 'touch-up') {
+      // A new head pushed to an approved PR with no status commit (the land-on-stale-approval
+      // mutation's step): the approval it had is void from here on.
+      const pr = this.forge.prs.get(s.task);
+      const head = this.rng.hex(7);
+      pr.coverage.set(head, new Set(pr.coverage.get(pr.head) ?? []));
+      pr.head = head;
+      this.codePush(s.task);
+      this.effect({ pushed: head, pr: pr.number, after: 'approval' });
+      this.ciRun(s.task, head);
+      this.reviewerRun(s.task, head);
+      this.authorEnd(s, { outcome: 'advanced', subtype: 'success', exit: 0, reason: null, ret: this.authorReturn(s, 'complete', 'Pushed a small fix to the approved PR.', [], { unmet: [], head }) });
+      return;
+    }
     if (s.mode === 'finalize') {
       this.authorCommit(s, 'mark-pr-ready', 'human-review', { prReady: true, onAccept: () => this.authorEnd(s, { outcome: 'advanced', subtype: 'success', exit: 0, reason: null, ret: this.authorReturn(s, 'complete', 'Marked the PR ready for review.') }) });
       return;
@@ -729,10 +918,11 @@ export class World {
     const head = this.rng.hex(7);
     if (!pr) pr = this.newPr(s.task, s.owner, head);
     pr.head = head;
-    pr.base = this.branchOf(s.task).version;
+    pr.base = this.branchOf(s.task).landed.length;
     pr.ready = false;
     pr.approval = null;
     pr.coverage.set(head, covered);
+    this.codePush(s.task);
     this.effect({ pushed: head, pr: pr.number, covered: [...covered] });
     this.ciRun(s.task, head);
     this.reviewerRun(s.task, head);
@@ -894,18 +1084,22 @@ export class World {
     const task = this.merge.queue.shift();
     if (this.forge.tasks.get(task).status !== 'merging') { this.mergeNext(); return; }
     this.merge.busy = true;
+    const as = { actor: 'merge-bot', actorKind: 'agent', role: 'merge' };
     const who = {
       actor: 'merge-bot',
       role: 'merge',
-      push: (c) => this.push({ ...c, actor: 'merge-bot', actorKind: 'agent', role: 'merge' }),
+      push: (c) => this.push({ ...c, ...as }),
       lander: { actor: 'merge-bot', role: 'merge', kind: 'agent', injected: false },
+      commitAs: as,
     };
     this.mergeProcess(task, who, () => { this.merge.busy = false; this.mergeNext(); });
   }
 
   // The orchestrator merges a change itself (a runtime with no merge role for that branch), one at a
-  // time. What it may do is judged on the grant as it stood when it decided to merge.
-  orchestratorMerge(rt, task, note) {
+  // time. What it may do is judged on the grant as it stood when it decided to merge. opts carry the
+  // broken bindings the mutations need: staleOk (land on an approval a later commit voided) and
+  // statusRef (where the landing writes the terminal status).
+  orchestratorMerge(rt, task, note, opts = {}) {
     if (rt.mergingTask || this.forge.tasks.get(task)?.status !== 'merging') return false;
     rt.mergingTask = task;
     const ms = this.startMs + this.t * 60000;
@@ -913,22 +1107,25 @@ export class World {
     const g = grantFor(rt.grants, 'merge', this.sc, this.meta.get(task).spec, ms);
     const live = grantLiveAt(g, ms);
     const grant = { grant: live ? g.id : null, grantSnapshot: g ? structuredClone(g) : null, grantLive: live };
+    const as = { actor: rt.name, actorKind: 'agent', role: 'orchestrator', runtime: rt.name, decidedMs: ms, trigger: note ? { kind: note.kind, value: note.value ?? note.what ?? null } : null, ...grant };
     const who = {
       actor: rt.name,
       role: 'orchestrator',
-      push: (c) => this.push({ ...c, actor: rt.name, actorKind: 'agent', role: 'orchestrator', runtime: rt.name, decidedMs: ms, trigger: note ? { kind: note.kind, value: note.value ?? note.what ?? null } : null, ...grant }),
+      push: (c) => this.push({ ...c, ...as }),
       lander: { actor: rt.name, role: 'orchestrator', kind: 'agent', injected: false, ...grant },
+      commitAs: as,
     };
     this.effect({ merge: 'orchestrator', task, grant: grant.grant });
-    this.mergeProcess(task, who, () => { rt.mergingTask = null; this.webhook({ what: 'merge-done', task }); });
+    this.mergeProcess(task, who, () => { rt.mergingTask = null; this.webhook({ what: 'merge-done', task }); }, opts);
     return true;
   }
 
   // Rebase onto the branch the task lands on, classify conflicts, re-run the checks on the merged
   // result, then land (land -> merged on the protected target, integrate -> integrated on an
-  // integration branch) or hand back to a human. Never resolves a semantic conflict (a broken merge
-  // queue, mergeBot 'resolve-semantic', does).
-  mergeProcess(task, who, done) {
+  // integration branch), the status flip inside the merge, or hand back to a human on the task
+  // branch. Never resolves a semantic conflict (a broken merge queue, mergeBot 'resolve-semantic',
+  // does) and never lands on a void approval (a commit after it): that goes back to the human too.
+  mergeProcess(task, who, done, { staleOk = false, statusRef = 'target' } = {}) {
     const branch = this.branchOf(task);
     this.at(this.rng.between(this.sc.merge.minutes), 'merge', { actor: who.actor, task, detail: { step: 'rebase', target: branch.name } }, () => {
       const pr = this.forge.prs.get(task);
@@ -944,26 +1141,24 @@ export class World {
         const t = this.forge.tasks.get(task);
         // Someone else landed it, or a human moved it, while this merge ran: nothing to commit.
         if (t.status !== 'merging') { done(); return; }
-        const commit = (transition, to, extra) => who.push({ task, transition, from: 'merging', to, expectOwner: t.owner, retry: (x) => x.status === 'merging', onReject: done, ...extra });
+        const handBack = (reason) => who.push({ task, transition: 'return-to-human', from: 'merging', to: 'human-review', expectOwner: t.owner, retry: (x) => x.status === 'merging', onReject: done, onAccept: done, reason });
         const resolves = who.role === 'merge' && this.mergeBot !== 'correct';
         if ((conflict === 'semantic' || mergedChecks === 'red') && !resolves) {
-          commit('return-to-human', 'human-review', { reason: conflict === 'semantic' ? 'semantic conflict with a change that landed first' : 'checks failed on the merged result', onAccept: done });
+          handBack(conflict === 'semantic' ? 'semantic conflict with a change that landed first' : 'checks failed on the merged result');
           return;
         }
+        if (!staleOk && !this.approvalValid(task)) { handBack('the approval is stale: the task branch moved after it'); return; }
         const integrate = Boolean(branch.integration);
-        commit(integrate ? 'integrate' : 'land', integrate ? 'integrated' : 'merged', {
-          onAccept: () => {
-            if (!this.landAttempt(task, who.lander)) this.effect({ warning: `${integrate ? 'integrated' : 'merged'} status without a landed change` });
-            this.webhook({ what: integrate ? 'integrated' : 'merged', task });
-            done();
-          },
-        });
+        if (this.landMerge(task, who, integrate ? 'integrate' : 'land', { statusRef })) this.webhook({ what: integrate ? 'integrated' : 'merged', task });
+        else if (this.forge.tasks.get(task).status === 'merging') { handBack('the forge refused the merge'); return; }
+        done();
       });
     });
   }
 
   // Tier 3: the human merges an integration branch into the protected target once nothing on it is in
-  // flight, then records each task it carried as merged (promote).
+  // flight (the merge carries each task file as the integration branch has it, integrated), then
+  // records each task it carried as merged on the protected branch (promote).
   mergeIntegration(branchName) {
     const h = this.sc.human;
     const onBranch = [...this.forge.tasks.values()].filter((x) => this.branchOf(x.id).name === branchName);
@@ -972,10 +1167,14 @@ export class World {
     if (!ready.length || h.on_integration !== 'merge') return;
     this.stats.humanActions += 1;
     this.effect({ human: 'merged the integration branch', branch: branchName, into: this.sc.target, tasks: ready.map((x) => x.id) });
+    const integ = this.forge.refs.get(branchName);
     for (const x of ready) {
       const pr = this.forge.prs.get(x.id);
+      this.forge.target.files.set(x.id, { ...integ.files.get(x.id) });
       this.forge.target.version += 1;
       this.forge.target.landed.push(x.id);
+      this.forge.changes += 1;
+      this.refresh(x.id);
       this.human.promoted.add(x.id);
       this.stats.mergesLanded += 1;
       this.ev.lands.push({ task: x.id, head: pr.head, target: this.sc.target, via: branchName, by: h.name, role: 'owner', actorKind: 'human', injected: false, grantLive: null, grantSnapshot: null, approval: { head: pr.head, by: h.name, actorKind: 'human', role: 'owner' }, mergeState: null, coverage: [...(pr.coverage.get(pr.head) ?? [])], admitted: true });
@@ -1055,7 +1254,10 @@ export class World {
       case 'review':
         if (t.status !== 'human-review' || t.lastTransition === 'return-to-human') return;
         if (this.mergeGrantCovers(item.task)) { this.effect({ human: 'skipped review: a live merge grant covers it' }); return; }
-        if (pr && pr.checks.get(pr.head) === 'green') this.humanCommit(item.task, 'approve-pr', 'merging', { prApproval: true, retry: (x) => x.status === 'human-review' });
+        if (pr && pr.checks.get(pr.head) === 'green') {
+          this.stats.humanActions += 1;
+          this.approve({ task: item.task, transition: 'approve-pr', from: 'human-review', to: 'merging', expectOwner: t.owner, actor: h.name, actorKind: 'human', role: 'owner' });
+        }
         else this.humanCommit(item.task, 'redo', 'ready', { owner: null, reason: 'checks are not green on the head' });
         return;
       case 'integration':
@@ -1140,7 +1342,9 @@ export class World {
     // The grant the transition's action is delegated by (finalize, merge), recorded with the commit.
     const g = grantFor(rt.grants, this.m.transitions.get(c.transition)?.grant, this.sc, this.meta.get(taskId).spec, ms);
     const live = grantLiveAt(g, ms);
-    this.push({
+    // approve-pr is a forge review approval, never a commit (unless a broken policy asks for one).
+    const send = this.m.transitions.get(c.transition)?.event && !c.asCommit ? (x) => this.approve(x) : (x) => this.push(x);
+    send({
       task: taskId,
       from: t.status,
       expectOwner: t.owner,

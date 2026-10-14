@@ -59,10 +59,12 @@ deploying a merged build (releasing-changes).
    listed); `limits` and `stop_when` are not breached; branch protection on the target does not
    require a human code-owner approval (if it does, the grant cannot satisfy it: ask). Any miss is
    tier 0.
-5. **Record the approval transition.** `approve-pr` (`human-review` → `merging`): by the owner or
-   engineer who approved (cite the approval and its head in the agent-log line), or by the
-   coordinator under the grant (cite the grant id, the reviewer's pass and the evaluator's verdict on
-   the head). One commit on the task branch.
+5. **Record the approval, never as a commit.** `approve-pr` (`human-review` → `merging`) is the
+   forge review approval itself: the owner's or engineer's, or the coordinator's under the grant
+   (citing the grant id, the reviewer's pass and the evaluator's verdict on the head). Record it in
+   the task record's `reviews` (head, role, outcome) and, under a grant, `decisions` (source: the
+   grant id). Do not commit it to the task branch: the approved head must not move, and any commit
+   after the approval voids it.
 6. **Update and classify.** Fetch the target, merge it into the PR's head in a clean checkout
    (never your primary checkout), and classify any conflicts with references/conflict-classes.md.
    **Any semantic conflict:** abort the merge, label the PR for a human merge, comment naming the
@@ -80,11 +82,15 @@ deploying a merged build (releasing-changes).
    one change at a time: re-run the full required checks on the merged result and merge only on
    green, with the approved strategy, through the forge's PR merge (never a direct push, never
    auto-merge on the protected branch). A clean base plus a clean PR can still merge red.
-9. **Record the land**, only on a green merged result: one commit naming the merge commit, the
-   target, the strategy, the tier and the grant id if any. Into the protected branch: `land`
-   (`merging` → `merged`). Into the epic's integration branch (the task's `lands_to`): `integrate`
-   (`merging` → `integrated`); the task becomes `merged` only through `promote`, a human's, after the
-   human merges the integration branch (step 10). `land` belongs to the merge role alone, after a
+9. **Record the land on the target**, only on a green merged result: the status flip is part of
+   the merge (prepare the task file's `status` and agent-log line on the merge result, so the merge
+   or squash commit carries them), or, where the forge cannot, an immediate follow-up commit on the
+   target by the merge role (`chore(specs): <ID> → merged`), naming the merge commit, the strategy,
+   the tier and the grant id if any. Never on the task branch: the target is where the status
+   lives once landed. Into the protected branch: `land` (`merging` → `merged`). Into the epic's
+   integration branch (the task's `lands_to`): `integrate` (`merging` → `integrated`); the task
+   becomes `merged` only through `promote`, a human's, after the human merges the integration branch
+   (step 10). `land` belongs to the merge role alone, after a
    human's approval; `integrate` to the merge role, or to the coordinator under a live merge grant
    whose repo, strategy and exact target match (a runtime with no separate merge role). On red merged checks: `return-to-human` with the
    failure, and the author gets it back through the human. Append the land record

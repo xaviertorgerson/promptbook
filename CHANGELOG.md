@@ -29,6 +29,18 @@ Fixes from an independent review of 0.1.0 (workflow, authority, trace, simulator
   as orchestrating-work says, and the runtime refuses a reader when every slot is taken; a guard
   the simulator has no evidence model for throws instead of passing; new mutation
   `uncounted-readers` (caught by `cap-workers`).
+- **behavioral** — workflow 1.5.0 `status_authority`: a claim creates the task branch on the remote
+  (the rejected new-ref push is the compare-and-swap; a task is claimed iff its branch or an open PR
+  exists); in-flight status lives on the task branch and the default branch's copy says `ready`
+  until the task lands; approve-pr is a forge event bound to the PR head and the branch's version
+  (any later commit voids it), never a commit; only the landing actor writes `merged` or
+  `integrated`, on the target, inside the merge; `deps-merged` reads the dependent's own target;
+  humans win by editing the task branch head. The simulator models remote refs to match, with two
+  new invariants (`approval-bound-to-head`, `status-where-it-lives`), a claim check in
+  `one-owner-per-claimed-task`, and three new mutations (`claim-on-default`,
+  `terminal-on-task-branch`, `land-on-stale-approval`); task records carry reviews, verdicts and
+  approvals bound to heads. Skills (implementing-task, landing-changes, orchestrating-work,
+  managing-worktrees, reporting-state), the playbook and the Tally example say the same.
 - **breaking** — grant 2.0.0, authority 1.3.0, workflow 1.4.0: a merge grant names the repository's
   `protected_branch` and its `target` may never be it (`merge-target-not-protected`). `land` onto
   the protected branch is the merge role's alone, after a human's approval, and never grantable; a
