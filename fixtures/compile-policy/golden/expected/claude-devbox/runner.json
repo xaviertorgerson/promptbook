@@ -8,6 +8,13 @@
     "prod-unreachable-from-this-host",
     "non-root-container"
   ],
+  "requires_config": {
+    "prod_hosts": [
+      "10.20.0.5:5432",
+      "prod.internal.example.com"
+    ],
+    "connect_timeout_ms": 2000
+  },
   "args": [
     "--max-budget-usd",
     "20"

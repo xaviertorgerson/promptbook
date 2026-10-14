@@ -50,6 +50,9 @@ sandbox:
   enabled: true
   fail_if_unavailable: true
   writable_roots: ["~/.cache/pnpm"]
+requires_config:
+  prod_hosts: ["10.20.0.5:5432", "prod.internal.example.com"]
+  connect_timeout_ms: 2000
 budgets:
   unattended: { max_turns: 200, max_usd: 5, max_minutes: 60 }
   autonomous: { max_usd: 20 }

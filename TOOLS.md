@@ -13,6 +13,7 @@ harness <command> [args]          # package.json bin: tools/cli.mjs; or pnpm <co
   simulate        the runtime contracts under faults                tools/simulate.mjs
   compile-policy  agent-policy.yaml into one engine's settings      tools/compile-policy.mjs
   run             an engine under its runner.json and its caps      tools/run.mjs
+  check-requires  probe this host for a profile's requires          tools/check-requires.mjs
   lock            pin or verify toolkit.lock                        tools/lock.mjs
   eval-routing    routing evals through a model command             tools/eval-routing.mjs
   import-evals    an agentic-template evals.md into the eval files  tools/import-evals.mjs
@@ -159,7 +160,8 @@ nothing is written. Refused outright: the bypass tier (`autonomous`) without a `
 its outside preconditions, or without `sandbox.enabled`, `sandbox.fail_if_unavailable` and
 `egress.default: deny` unless the missing field's gap is accepted for that profile by name
 (`accept_gaps` sandbox or egress with `profiles: [<it>]` and a reason; an entry without `profiles`
-never covers a bypass-tier profile) (HAR-4); `requires` goes into `runner.json` and the notes for the launcher;
+never covers a bypass-tier profile) (HAR-4); `requires` (with `requires_config`) goes into `runner.json` and the notes, for `harness run` and
+`harness check-requires` to probe;
 an unattended tier without turn and spend caps (HAR-3); any `x-` extension that disables hooks (HAR-2); an `examples` entry its rule does
 not match. No output may carry `disableAllHooks`, `hooksConfig.enabled: false`, `disableYoloMode`,
 `tools.exclude`, a full-access mode, or a bypass key outside the bypass tier: every compile checks
@@ -192,6 +194,21 @@ cap exits 125; otherwise the engine's own exit code passes through. An unattende
 its caps, or without a timeout on an engine that meters no spend, is refused (exit 1), as is a file
 compile-policy did not write. `--report` writes `{argv, caps, enforcement, exit_code, signal,
 stopped_by, stopped_by_engine, turns, cost_usd, usage, duration_ms}`, the fields a run record needs.
+
+## check-requires
+
+`harness check-requires --policy <agent-policy.yaml> --profile <p> [--json]` probes this host for
+the profile's `requires`, by name: `prod-unreachable-from-this-host` (a TCP connect to every
+`requires_config.prod_hosts` entry, `host[:port]`, 443 by default, must fail within
+`requires_config.connect_timeout_ms`, 3000 by default; a host that does not resolve counts as
+unreachable, so list addresses to probe the route rather than the resolver; no hosts listed fails),
+`non-root` (uid not 0), `container` (`/.dockerenv`, `/run/.containerenv`, `$container`, or a
+container cgroup in `/proc/1/cgroup`), `non-root-container` (both), `sandbox-available` (bubblewrap
+runs on Linux, `sandbox-exec` on macOS). An unknown name fails closed, and so does a bypass-tier
+profile that names none. Exit 0 when every probe passes, 1 when one fails. `harness run` runs the
+same probes on the `requires` and `requires_config` in a `runner.json` and refuses to start the run
+when one fails; compile-policy warns `requires-unknown` and `requires-unprobed` for a name with no
+probe and for `prod-unreachable-from-this-host` without `prod_hosts`.
 
 ## lock
 

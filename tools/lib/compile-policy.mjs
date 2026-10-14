@@ -1,3 +1,4 @@
+import { PROBES } from './requires.mjs';
 import { toToml } from './toml.mjs';
 
 // The L1 policy compiler: agent-policy.yaml (schemas/policy.schema.json) -> one engine's settings,
@@ -163,7 +164,13 @@ function preflight(ctx) {
     }
     const req = ctx.profile.requires ?? [];
     if (!req.length) ctx.error('bypass-requires', `profile "${ctx.profileName}" is the bypass tier (${BYPASS_TIER}) and names no preconditions; set requires: [prod-unreachable-from-this-host, ...] (HAR-4). The compiler cannot see a network ACL or a container, so it will not assume one`);
-    else ctx.notes.push(`bypass tier ${ctx.profileName} requires: ${req.join(', ')} (the launcher checks each before starting; the policy cannot)`);
+    else ctx.notes.push(`bypass tier ${ctx.profileName} requires: ${req.join(', ')} (harness check-requires probes each on the host; harness run refuses the profile's runs until they pass)`);
+  }
+  for (const name of ctx.profile.requires ?? []) {
+    if (!PROBES[name]) ctx.warn('requires-unknown', `requires ${name} has no probe (${Object.keys(PROBES).join(', ')}): harness check-requires and harness run fail closed on it`);
+  }
+  if ((ctx.profile.requires ?? []).includes('prod-unreachable-from-this-host') && !p.requires_config?.prod_hosts?.length) {
+    ctx.warn('requires-unprobed', 'requires prod-unreachable-from-this-host and requires_config.prod_hosts lists no production host: harness check-requires and harness run fail closed until it does');
   }
   if (ctx.tier === 'unattended') {
     const b = p.budgets?.unattended ?? {};
@@ -360,6 +367,7 @@ function runnerFile(ctx, args, budget) {
     profile: ctx.profileName,
     tier: ctx.tier,
     ...(ctx.profile?.requires?.length ? { requires: ctx.profile.requires } : {}),
+    ...(ctx.profile?.requires?.length && ctx.policy.requires_config ? { requires_config: ctx.policy.requires_config } : {}),
     args,
     caps: capsOf(ctx, budget),
     enforcement: ENFORCES[ctx.engine],

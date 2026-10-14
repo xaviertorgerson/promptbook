@@ -79,8 +79,10 @@ fan-out script install only those; re-run the check when a pin moves.
   no-prompt mode, the allowlist and the budget.
 - An `allow` or `ask` that a `forbid` covers is a warning (it never takes effect); fix the policy.
 - The bypass tier names its preconditions in the profile's `requires` (production unreachable by
-  network ACL: `prod-unreachable-from-this-host`; non-root in a container: `non-root-container`); the
-  compile refuses the tier without them and the operator confirms they hold on that machine.
+  network ACL: `prod-unreachable-from-this-host`, probed against `requires_config.prod_hosts`;
+  non-root in a container: `non-root-container`); the compile refuses the tier without them, and
+  `harness check-requires --policy <file> --profile <p>` proves they hold on that machine (`harness
+  run` repeats the probes before each run and refuses to start when one fails).
 
 ## Runtime pins
 

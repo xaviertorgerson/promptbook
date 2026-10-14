@@ -292,10 +292,12 @@ cannot also be masked (`credential-not-denied`). **Migration:** the dotfiles' to
 `x-claude: { default_mode: { workstation: auto } }` (read by their `settings.json.tmpl` to put
 Claude in auto mode while the profile said auto-edit) becomes `profiles.workstation.tier: auto`;
 Codex compiles exactly as it did, so drop the `x-claude` key and the template's lookup. A profile may name `requires`: preconditions the operator keeps outside the
-policy (`prod-unreachable-from-this-host`, `non-root-container`); the bypass tier (autonomous)
-must name them (a validation warning, a compile error) and the compiler passes them to the launcher
-in `runner.json`, with the run's `caps` and who enforces each (`engine`, `harness-run`, or `none`);
-`harness run` is that launcher. An unattended tier's caps are never waivable: on an engine that
+policy, each a named probe of the host (`prod-unreachable-from-this-host` against
+`requires_config.prod_hosts` (1.4.0), `non-root`, `container`, `non-root-container`,
+`sandbox-available`; an unknown name fails closed); the bypass tier (autonomous) must name them (a
+validation warning, a compile error), `harness check-requires` probes them, and the compiler passes
+them, with `requires_config`, to the launcher in `runner.json`, with the run's `caps` and who enforces each (`engine`, `harness-run`, or `none`);
+`harness run` is that launcher, and it refuses to start a run until the probes pass. An unattended tier's caps are never waivable: on an engine that
 reports no cost the compile requires `budgets.unattended.max_minutes` for a hard kill. A rule has exactly one matcher: `command` (argv prefix, with alternatives),
 `write` (path glob) or `tool` (web-fetch with a domain, web-search, `mcp:server[:tool]`). An `allow`
 or `ask` that a `forbid` covers is a warning (it never takes effect). `accept_gaps` records the

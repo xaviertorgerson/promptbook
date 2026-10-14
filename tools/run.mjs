@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
-import { exitCodeOf, EXIT, refuseRunner, runEngine } from './lib/run.mjs';
+import { exitCodeOf, EXIT, refusePreconditions, refuseRunner, runEngine } from './lib/run.mjs';
 
 const USAGE = `Launch an engine under its compiled runner.json (harness compile-policy --out <dir>).
 
@@ -15,8 +15,10 @@ The runner's args (mode, allowlist, the engine's own cap flags) are appended to 
 caps the runner marks enforcement: harness-run are enforced here: timeout_seconds on every engine
 (a hard kill of the run's process group), max_turns on codex (tool actions counted from
 codex exec --json); claude's reported cost and turns are checked against the caps after the run.
-An unattended runner without its caps is refused. adapters/<engine>/README.md says what each engine
-enforces itself and what nobody enforces.
+An unattended runner without its caps is refused, and so is a run whose profile names requires
+until every probe passes (harness check-requires; a bypass-tier runner that names none is refused
+outright). adapters/<engine>/README.md says what each engine enforces itself and what nobody
+enforces.
 
 Exit: the engine's code; 124 stopped at the timeout; 125 stopped at, or reported past, a cap;
 1 refused to start; 2 usage error.`;
@@ -41,7 +43,7 @@ export async function main(argv = process.argv.slice(2)) {
     console.error(`harness run: refused: ${runnerPath} is not JSON (${e.message})`);
     return EXIT.refused;
   }
-  const refusal = refuseRunner(runner);
+  const refusal = refuseRunner(runner) ?? (await refusePreconditions(runner));
   if (refusal) {
     console.error(`harness run: refused: ${runnerPath}: ${refusal}`);
     return EXIT.refused;

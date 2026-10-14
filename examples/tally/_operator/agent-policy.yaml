@@ -47,6 +47,10 @@ egress:
 sandbox:
   enabled: true
   fail_if_unavailable: true
+# What the devbox's requires are probed against (harness check-requires; harness run refuses the
+# devbox's runs until they pass): production's database and API, which the tailnet ACL drops.
+requires_config:
+  prod_hosts: ["10.40.0.12:5432", "api.tally.example.com:443"]
 budgets:
   unattended: { max_turns: 120, max_usd: 4, max_minutes: 90 }
   autonomous: { max_usd: 20 }

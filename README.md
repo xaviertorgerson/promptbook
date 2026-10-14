@@ -65,7 +65,7 @@ simulation of the workflow for testing a binding.
 | `state-machines/` | `workflow`, `attention` and `authority` |
 | `adapters/` | thin, documented mappings to engines, runtimes and CI |
 | `skills/` | portable skills (gerund names, core frontmatter only) with `evals/` |
-| `tools/` | `validate` (and `trace`), `simulate`, `compile-policy`, `lock`, `lint-skills`, `eval-routing`, `import-evals` (Node 22; [TOOLS.md](TOOLS.md)) |
+| `tools/` | `validate` (and `trace`), `simulate`, `compile-policy`, `run`, `check-requires`, `lock`, `lint-skills`, `eval-routing`, `import-evals` (Node 22; [TOOLS.md](TOOLS.md)) |
 | `tests/`, `fixtures/` | `node --test` suites and valid/invalid examples per contract |
 | [`examples/`](examples/tally/WALKTHROUGH.md) | a worked product run through every contract: Tally, from brief to the human merging its integration branch |
 | `CHANGELOG.md` | every change, marked additive, behavioral or breaking |

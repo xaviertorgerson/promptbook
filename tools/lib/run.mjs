@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { ENGINES, ENFORCES, GENERATOR } from './compile-policy.mjs';
+import { preconditionFailures } from './requires.mjs';
 
 // harness run: launch one engine command under a compiled runner.json. It appends the runner's args
 // (the engine's own flags: mode, allowlist, the caps it enforces itself) and enforces the caps the
@@ -44,6 +45,13 @@ const killGroup = (child, signal) => {
     if (e.code !== 'ESRCH') throw e; // already gone
   }
 };
+
+// The runner's named preconditions, probed on this host (harness check-requires): a bypass run, or
+// any run whose profile names requires, starts only when every probe passes (HAR-4).
+export async function refusePreconditions(runner, env) {
+  const failures = await preconditionFailures(runner, env);
+  return failures.length ? `the profile's preconditions do not hold here: ${failures.join('; ')}` : null;
+}
 
 // Run `command` (argv) under `runner`. Resolves to the run's report; `log` receives one-line notes.
 export function runEngine(runner, command, { graceSeconds = 10, log = () => {}, stdout = process.stdout } = {}) {

@@ -57,9 +57,9 @@ Rules about the agent setup itself, held by whoever configures L1, L2 and L4. Me
 | Id | Invariant | Enforced by |
 |---|---|---|
 | HAR-1 | Anything an agent must never do is a deny (hook or permission rule), not an ask | review of every guardrail change: "is this a deny?" |
-| HAR-2 | The personal layer never disables hooks and never removes the project's deny rules | policy compiler refuses such a tier (contract of `tools/compile-policy.mjs`) |
+| HAR-2 | The personal layer never disables hooks and never removes the project's deny rules | deny rules merge across scopes and win in every mode, so L1 cannot remove an L2 deny; the policy compiler refuses a policy that disables hooks and checks every compiled output for a hooks-off key |
 | HAR-3 | Unattended runs pin the engine's no-prompt mode plus an explicit tool allowlist, and turn and spend caps | runtime launch flags; the run record shows mode and caps |
-| HAR-4 | Bypass defaults only where production is unreachable at the network level and the agent is non-root in a sandbox | the policy tier's `requires`; network ACLs |
+| HAR-4 | Bypass defaults only where production is unreachable at the network level and the agent is non-root in a sandbox | the profile's `requires`, probed by `harness check-requires` and by `harness run` before each run; network ACLs |
 | HAR-5 | No agent holds a long-lived credential or deploys to production | per-role scoped tokens; the forge's protected production environment |
 | HAR-6 | Third-party skills, plugins and MCP servers are pinned by commit or hash, with auto-update off | `toolkit.lock` drift check in CI |
 

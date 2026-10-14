@@ -8,6 +8,12 @@
     "prod-unreachable-from-this-host",
     "non-root-container"
   ],
+  "requires_config": {
+    "prod_hosts": [
+      "10.40.0.12:5432",
+      "api.tally.example.com:443"
+    ]
+  },
   "args": [
     "--max-budget-usd",
     "20"
