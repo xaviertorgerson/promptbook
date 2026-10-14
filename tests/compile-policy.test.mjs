@@ -462,10 +462,12 @@ describe('review finding 7: unattended, an ask Codex cannot represent is a denia
     const p = { policy_version: 1, profiles: { ci: { tier: 'unattended' } }, deny_read: ['~/.ssh/**'], forbid: [], ask: [{ tool: 'web-fetch', domain: 'docs.example.com' }, { tool: 'mcp:db:query' }, { tool: 'web-search' }], budgets: { unattended: { max_turns: 5, max_usd: 1, max_minutes: 10 } }, sandbox: { enabled: true } };
     const r = compilePolicy(p, { profile: 'ci', engine: 'codex' });
     assert.ok(r.errors.some((e) => e.field === 'ask' && /web-search/.test(e.message)), JSON.stringify(r.errors));
-    const ok = compilePolicy({ ...p, ask: p.ask.slice(0, 2) }, { profile: 'ci', engine: 'codex' });
+    assert.ok(r.errors.some((e) => e.field === 'ask' && /mcp:db:query: Codex loads an mcp_servers entry only with its transport/.test(e.message)), 'config.toml cannot carry the MCP deny: an ask gap');
+    const ok = compilePolicy({ ...p, ask: p.ask.slice(0, 2), accept_gaps: [{ engine: 'codex', field: 'ask', profiles: ['ci'], reason: 'the launcher merges mcp-restrictions.toml into the db entry' }] }, { profile: 'ci', engine: 'codex' });
     assert.equal(ok.ok, true, JSON.stringify(ok.errors));
     assert.match(config(ok), /"docs\.example\.com" = "deny"/);
-    assert.match(config(ok), /disabled_tools = \["query"\]/);
+    assert.doesNotMatch(config(ok), /mcp_servers/);
+    assert.match(ok.files.find((f) => f.path === 'mcp-restrictions.toml').content, /\[mcp_servers\.db\]\ndisabled_tools = \["query"\]/);
     const interactive = compilePolicy({ ...p, profiles: { ci: { tier: 'ask' } } }, { profile: 'ci', engine: 'codex' });
     assert.ok(interactive.warnings.some((w) => w.rule === 'dropped' && /web-search/.test(w.message)), 'an interactive ask is still a convenience');
   });
@@ -730,5 +732,57 @@ describe('Codex filesystem entries: a glob takes deny only (Codex 0.162.1 refuse
       }
     }
     assert.ok(checked > 40, `${checked} entries checked`);
+  });
+});
+
+describe('Codex MCP tool denies: config.toml loads standalone, and the deny is never dropped', () => {
+  const base = { policy_version: 1, profiles: { box: { tier: 'ask' }, ci: { tier: 'unattended' } }, deny_read: ['**/.env'], forbid: [{ tool: 'mcp:prod-db:execute' }, { tool: 'mcp:prod-db:drop' }, { tool: 'mcp:docs:write' }], budgets: { unattended: { max_turns: 5, max_usd: 1, max_minutes: 10 } } };
+  const accept = (field = 'forbid') => ({ accept_gaps: [{ engine: 'codex', field, reason: 'the dotfiles merge mcp-restrictions.toml into each server entry they define' }] });
+  const codex = (p, profile = 'box') => compilePolicy({ ...base, ...p }, { profile, engine: 'codex' });
+  const file = (r, p) => r.files.find((f) => f.path === p);
+
+  it('an MCP tool forbid is a forbid gap: Codex refuses an mcp_servers entry without its transport, which the policy does not hold', () => {
+    const r = codex({});
+    assert.equal(r.ok, false);
+    assert.deepEqual(r.files, []);
+    const e = r.errors.filter((x) => x.field === 'forbid');
+    assert.equal(e.length, 3, JSON.stringify(r.errors));
+    assert.match(e[0].message, /tool mcp:prod-db:execute: Codex loads an mcp_servers entry only with its transport \(command or url\)/);
+    assert.match(e[0].stanza, /engine: codex, field: forbid, profiles: \[box\]/);
+  });
+
+  it('accepted, the denies go to mcp-restrictions.toml per server, config.toml holds no mcp_servers table, and a note says how to merge', () => {
+    const r = codex(accept());
+    assert.equal(r.ok, true, JSON.stringify(r.errors));
+    const cfg = r.files.find((f) => f.path === 'config.toml');
+    assert.equal(cfg.data.mcp_servers, undefined);
+    assert.doesNotMatch(cfg.content, /mcp_servers/);
+    const frag = file(r, 'mcp-restrictions.toml');
+    assert.equal(frag.kind, 'mcp-fragment');
+    assert.deepEqual(frag.data, { mcp_servers: { 'prod-db': { disabled_tools: ['execute', 'drop'] }, docs: { disabled_tools: ['write'] } } });
+    assert.match(frag.content, /^# Not a config\.toml/m);
+    assert.equal(r.accepted.filter((a) => a.field === 'forbid' && /holds only once merged into the entry that defines (prod-db|docs)/.test(a.message)).length, 3, JSON.stringify(r.accepted));
+    assert.ok(r.notes.some((n) => /^mcp-restrictions\.toml: merge each mcp_servers\.<id>\.disabled_tools \(prod-db, docs\)/.test(n)), JSON.stringify(r.notes));
+    assert.ok(!r.warnings.some((w) => w.rule === 'merge-mcp'));
+  });
+
+  it('unattended, an MCP tool ask is the same deny under the ask gap; interactive, it is dropped with a warning', () => {
+    const p = { forbid: [], ask: [{ tool: 'mcp:db:query' }] };
+    assert.ok(codex(p, 'ci').errors.some((e) => e.field === 'ask' && /mcp:db:query/.test(e.message)));
+    const r = codex({ ...p, ...accept('ask') }, 'ci');
+    assert.equal(r.ok, true, JSON.stringify(r.errors));
+    assert.deepEqual(file(r, 'mcp-restrictions.toml').data, { mcp_servers: { db: { disabled_tools: ['query'] } } });
+    const interactive = codex(p);
+    assert.equal(interactive.ok, true, JSON.stringify(interactive.errors));
+    assert.equal(file(interactive, 'mcp-restrictions.toml'), undefined);
+    assert.ok(interactive.warnings.some((w) => w.rule === 'dropped' && /mcp:db:query/.test(w.message)));
+  });
+
+  it('a role\'s MCP denies are the role\'s own fragment, beside its config', () => {
+    const p = { ...base, ...accept(), profiles: { ci: { tier: 'unattended' } }, roles: { reader: { read_only: true, engines: ['codex'] } } };
+    const r = compilePolicy(p, { profile: 'ci', engine: 'codex' });
+    assert.equal(r.ok, true, JSON.stringify(r.errors));
+    assert.ok(file(r, 'roles/reader/mcp-restrictions.toml') && !file(r, 'mcp-restrictions.toml'));
+    assert.equal(file(r, 'roles/reader/ci.config.toml').data.mcp_servers, undefined);
   });
 });

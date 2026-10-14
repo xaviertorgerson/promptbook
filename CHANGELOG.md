@@ -14,6 +14,12 @@ Fixes from an independent review of 0.1.0 (workflow, authority, trace, simulator
 
 ### Changed
 
+- **behavioral** — `compile-policy` (Codex): an MCP tool deny (`forbid`, and unattended an `ask`) is
+  no longer a `[mcp_servers.<id>] disabled_tools` table in `config.toml`, which Codex 0.162.1
+  refuses to load without the server's transport (`command` or `url`), which the policy does not
+  hold. It is written to `mcp-restrictions.toml`, to be merged into the entries that define those
+  servers, with a report note; since it holds only once merged, it is now a `forbid` (or `ask`) gap
+  that fails the compile until accepted. The `merge-mcp` warning is gone.
 - **behavioral** — `compile-policy` (Codex): a write deny on a glob no longer emits
   `"<glob>" = "read"`, which Codex 0.162.1 refuses to load (a glob takes only `deny`). `**` is the
   workspace root `"."`; `**/<literal>/**` and `**/<literal>` are emitted as `<literal>/**` /

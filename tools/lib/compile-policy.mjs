@@ -542,8 +542,10 @@ function emitCodex(ctx) {
       }
     } else if (r.tool === 'web-fetch' && r.domain) setDomain(r.domain, 'deny');
     else if (r.tool.startsWith('mcp:') && r.tool.split(':')[2]) {
+      // Codex refuses to load an mcp_servers entry with no transport ("invalid transport in
+      // `mcp_servers.<id>`"), and the policy defines no server, so the deny cannot sit in config.toml.
       const [, s, t] = r.tool.split(':');
-      (mcp[s] ??= { disabled_tools: [] }).disabled_tools.push(t);
+      if (ctx.gap(field, `${as}${describeRule(r)}: Codex loads an mcp_servers entry only with its transport (command or url), which the policy does not define, so config.toml cannot carry disabled_tools; the deny is in mcp-restrictions.toml and holds only once merged into the entry that defines ${s}`)) (mcp[s] ??= { disabled_tools: [] }).disabled_tools.push(t);
     } else ctx.gap(field, `${as}${describeRule(r)} has no documented Codex key${r.tool.startsWith('mcp:') ? ' (omit the server from config.toml instead)' : ''}`);
   };
   for (const r of p.forbid) deny(r, 'forbid');
@@ -603,15 +605,18 @@ function emitCodex(ctx) {
   if (CODEX_APPROVAL[tier]) config.approval_policy = CODEX_APPROVAL[tier];
   config.permissions = { harness: profileTable };
   if (network) config.features = { network_proxy: true };
-  if (Object.keys(mcp).length) {
-    config.mcp_servers = mcp;
-    ctx.warn('merge-mcp', `merge mcp_servers.{${Object.keys(mcp).join(',')}}.disabled_tools into the existing server entries`);
-  }
   const header = `# Compiled from ${ctx.source} (profile ${ctx.profileName}, tier ${tier}) by ${GENERATOR}.\n# A fragment: merge into ~/.codex/config.toml; recompile rather than edit.\n`;
   const configName = tier === 'unattended' ? `${ctx.profileName}.config.toml` : 'config.toml';
   const rulesText = `# Compiled from ${ctx.source} (profile ${ctx.profileName}, tier ${tier}) by ${GENERATOR}.\n# Most restrictive decision wins: forbidden > prompt > allow. Check: codex execpolicy check --rules <this file> -- <cmd>\n\n${rules.map(renderPrefixRule).join('\n')}`;
+  // The MCP tool denies, kept out of config.toml so it loads standalone: each table is merged into
+  // the entry that defines its server, and skipped where no entry does (no server, no tool to call).
+  const servers = Object.keys(mcp);
+  if (servers.length) ctx.notes.push(`mcp-restrictions.toml: merge each mcp_servers.<id>.disabled_tools (${servers.join(', ')}) into the config entry that defines that server; never add a table for a server no entry defines (Codex refuses an entry without command or url)`);
+  const mcpData = { mcp_servers: mcp };
+  const mcpHeader = `# Compiled from ${ctx.source} (profile ${ctx.profileName}, tier ${tier}) by ${GENERATOR}.\n# Not a config.toml: Codex refuses an [mcp_servers.<id>] table without command or url. Merge each\n# disabled_tools list into the entry that defines that server; skip a server no entry defines.\n`;
   return [
     { path: configName, content: `${header}\n${toToml(config)}`, kind: 'settings-fragment', data: config },
+    ...(servers.length ? [{ path: 'mcp-restrictions.toml', content: `${mcpHeader}\n${toToml(mcpData)}`, kind: 'mcp-fragment', data: mcpData }] : []),
     { path: 'rules/harness.rules', content: rulesText, kind: 'rules', data: rules },
     jsonFile('runner.json', runnerFile(ctx, runnerArgs, budget), 'runner'),
     ...(guard ? [jsonFile('hooks.json', { description: `harness forbid guard, compiled from ${ctx.source} (profile ${ctx.profileName})`, hooks: guardRegistration('codex') }, 'settings-fragment'), ...guardFiles(ctx)] : []),

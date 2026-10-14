@@ -28,6 +28,3 @@ enabled = true
 
 [features]
 network_proxy = true
-
-[mcp_servers.prod-db]
-disabled_tools = ["execute"]

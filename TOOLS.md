@@ -179,7 +179,7 @@ tier's budget sets none) and `enforcement`, which says per cap who enforces it: 
 setting the compile emits), `harness-run`, or `none` (said in a `spend-unmetered` warning). Codex and
 Gemini report no cost, so an unattended profile on either needs `budgets.unattended.max_minutes` for
 a hard kill; no `accept_gaps` entry waives an unattended cap.
-| codex | `config.toml` (or `<profile>.config.toml` unattended: a `harness` permission profile, approval policy, network domains), `rules/harness.rules` (`prefix_rule` prompt / forbidden with justification and match examples; `allow` only where the profile accepts the `allow` gap, since an allow runs outside the sandbox, and never for an interpreter), `runner.json` |
+| codex | `config.toml` (or `<profile>.config.toml` unattended: a `harness` permission profile, approval policy, network domains), `mcp-restrictions.toml` (MCP tool denies, to merge into the entries that define those servers: a server table without its transport does not load), `rules/harness.rules` (`prefix_rule` prompt / forbidden with justification and match examples; `allow` only where the profile accepts the `allow` gap, since an allow runs outside the sandbox, and never for an interpreter), `runner.json` |
 | gemini | `settings.json` (`defaultApprovalMode`, `tools.sandbox`, `tools.allowed`, `model.maxSessionTurns`), `policies/harness.toml` (user-tier `[[rule]]` deny / ask_user / allow), `runner.json` |
 
 When the policy names `roles`, an unattended compile writes one file set per role that runs on the
