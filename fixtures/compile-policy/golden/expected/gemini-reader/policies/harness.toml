@@ -4,28 +4,28 @@
 
 [[rule]]
 toolName = ["read_file", "read_many_files", "glob", "search_file_content"]
-argsPattern = "\"[A-Za-z_]*paths?\":\\[?(?:\"[^\"]*\",)*\"(?:[^\"]*/)?\\.env\""
+argsPattern = "\"[A-Za-z_]*paths?\":[^\\x00]*\"(?:[^\"]*/|)\\.env\""
 decision = "deny"
 priority = 900
 denyMessage = "deny_read **/.env (agent-policy.yaml)"
 
 [[rule]]
 toolName = ["read_file", "read_many_files", "glob", "search_file_content"]
-argsPattern = "\"[A-Za-z_]*paths?\":\\[?(?:\"[^\"]*\",)*\"(?:[^\"]*/)?secrets/[^\"]*\""
+argsPattern = "\"[A-Za-z_]*paths?\":[^\\x00]*\"(?:[^\"]*/|)secrets/[^\"]*\""
 decision = "deny"
 priority = 900
 denyMessage = "deny_read **/secrets/** (agent-policy.yaml)"
 
 [[rule]]
 toolName = ["read_file", "read_many_files", "glob", "search_file_content"]
-argsPattern = "\"[A-Za-z_]*paths?\":\\[?(?:\"[^\"]*\",)*\"[^\"]*/\\.ssh/[^\"]*\""
+argsPattern = "\"[A-Za-z_]*paths?\":[^\\x00]*\"[^\"]*/\\.ssh/[^\"]*\""
 decision = "deny"
 priority = 900
 denyMessage = "deny_read ~/.ssh/** (agent-policy.yaml)"
 
 [[rule]]
 toolName = ["read_file", "read_many_files", "glob", "search_file_content"]
-argsPattern = "\"[A-Za-z_]*paths?\":\\[?(?:\"[^\"]*\",)*\"/etc/shadow\""
+argsPattern = "\"[A-Za-z_]*paths?\":[^\\x00]*\"/etc/shadow\""
 decision = "deny"
 priority = 900
 denyMessage = "deny_read /etc/shadow (agent-policy.yaml)"
@@ -102,14 +102,14 @@ denyMessage = "closing a workspace can end a worktree group"
 
 [[rule]]
 toolName = ["write_file", "replace"]
-argsPattern = "\"[A-Za-z_]*paths?\":\\[?(?:\"[^\"]*\",)*\"(?:[^\"]*/)?\\.git/hooks/[^\"]*\""
+argsPattern = "\"[A-Za-z_]*paths?\":[^\\x00]*\"(?:[^\"]*/|)\\.git/hooks/[^\"]*\""
 decision = "deny"
 priority = 900
 denyMessage = "hooks run on every commit"
 
 [[rule]]
 toolName = "web_fetch"
-argsPattern = "https?://(?:[^/\"]*\\.)?internal\\.example\\.com(?:[:/\"]|$)"
+argsPattern = "https?://(?:[^/\"]*\\.|)internal\\.example\\.com(?:[:/\"]|$)"
 decision = "deny"
 priority = 900
 denyMessage = "internal hosts are not for agents"
@@ -128,7 +128,7 @@ priority = 500
 
 [[rule]]
 toolName = ["write_file", "replace"]
-argsPattern = "\"[A-Za-z_]*paths?\":\\[?(?:\"[^\"]*\",)*\"(?:[^\"]*/)?infra/[^\"]*\""
+argsPattern = "\"[A-Za-z_]*paths?\":[^\\x00]*\"(?:[^\"]*/|)infra/[^\"]*\""
 decision = "ask_user"
 priority = 500
 
@@ -163,6 +163,6 @@ priority = 100
 
 [[rule]]
 toolName = "web_fetch"
-argsPattern = "https?://(?:[^/\"]*\\.)?github\\.com(?:[:/\"]|$)"
+argsPattern = "https?://(?:[^/\"]*\\.|)github\\.com(?:[:/\"]|$)"
 decision = "allow"
 priority = 100

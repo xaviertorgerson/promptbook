@@ -14,6 +14,12 @@ Fixes from an independent review of 0.1.0 (workflow, authority, trace, simulator
 
 ### Changed
 
+- **behavioral** — `compile-policy` (Gemini): `argsPattern` (read denies, write denies, fetch
+  domains) no longer quantifies a group. Gemini CLI 0.64.0 drops a rule whose pattern fails its
+  ReDoS check, printing an error but still loading the rest, so each golden lost 8 of its 25 or 26
+  rules, 6 of them denies. Path patterns now read the arguments as Gemini serializes them (each
+  top-level pair between NULs), and the compiler refuses (`gemini-drops`) any pattern the same
+  check rejects.
 - **behavioral** — `compile-policy` (Codex): an MCP tool deny (`forbid`, and unattended an `ask`) is
   no longer a `[mcp_servers.<id>] disabled_tools` table in `config.toml`, which Codex 0.162.1
   refuses to load without the server's transport (`command` or `url`), which the policy does not

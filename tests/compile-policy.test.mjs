@@ -7,7 +7,7 @@ import { after, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
 import { forbidHit } from '../tools/guards/forbid-guard.mjs';
-import { codexReadKey, codexTakesAccess, commandMatches, compilePolicy, coversInterpreter, diffClaudeSettings, ENGINES, expandCommand, globArgsPattern, parseSettingsTemplate, renderDiff, renderReport, unsafeKeys } from '../tools/lib/compile-policy.mjs';
+import { codexReadKey, codexTakesAccess, commandMatches, compilePolicy, coversInterpreter, diffClaudeSettings, ENGINES, expandCommand, geminiDropsPattern, globArgsPattern, parseSettingsTemplate, renderDiff, renderReport, unsafeKeys } from '../tools/lib/compile-policy.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FIX = path.join(ROOT, 'fixtures/compile-policy');
@@ -272,14 +272,48 @@ describe('compile-policy contract', () => {
     });
   });
 
+  // Gemini 0.64.0 matches argsPattern against stableStringify(args): keys sorted, each top-level
+  // pair between NUL characters.
+  const geminiArgs = (args) => `{${Object.keys(args).sort().map((k) => `\0${JSON.stringify(k)}:${JSON.stringify(args[k])}\0`).join(',')}}`;
+
   it('Gemini: read denies match path arguments, single or listed, and nothing else', () => {
     const re = new RegExp(globArgsPattern('**/.env'));
-    assert.ok(re.test(JSON.stringify({ file_path: '/w/app/.env' })));
-    assert.ok(re.test(JSON.stringify({ paths: ['/w/a.ts', '/w/.env'] })));
-    assert.ok(!re.test(JSON.stringify({ file_path: '/w/.envrc' })));
+    for (const ser of [JSON.stringify, geminiArgs]) {
+      assert.ok(re.test(ser({ file_path: '/w/app/.env' })));
+      assert.ok(re.test(ser({ file_path: '.env' })));
+      assert.ok(re.test(ser({ paths: ['/w/a.ts', '/w/.env'] })));
+      assert.ok(re.test(ser({ paths: ['/w/a]b.ts', 'x:y', '/w/.env'] })), 'no earlier entry hides a later one');
+      assert.ok(!re.test(ser({ file_path: '/w/.envrc' })));
+      assert.ok(!re.test(ser({ file_path: '/w/x.env' })));
+    }
     const home = new RegExp(globArgsPattern('~/.ssh/**'));
-    assert.ok(home.test(JSON.stringify({ absolute_path: '/home/u/.ssh/id_ed25519' })));
+    assert.ok(home.test(geminiArgs({ absolute_path: '/home/u/.ssh/id_ed25519' })));
+    const hooks = new RegExp(globArgsPattern('**/.git/hooks/**'));
+    assert.ok(hooks.test(geminiArgs({ content: 'x', file_path: '/w/.git/hooks/pre-commit' })));
+    assert.ok(!hooks.test(geminiArgs({ file_path: '/w/README.md', new_string: 'run ".git/hooks/pre-commit" by hand', old_string: 'x' })), 'a later field in its own pair is not a path');
     assert.deepEqual(expandCommand(['git', 'push', ['--force', '-f']]), [['git', 'push', '--force'], ['git', 'push', '-f']]);
+  });
+
+  it('Gemini: no argsPattern the compiler writes is one Gemini drops as a potential ReDoS', () => {
+    for (const re of ['(?:[^"]*/)?\\.env', '\\[?(?:"[^"]*",)*"x"', 'https?://(?:[^/"]*\\.)?example\\.com']) assert.ok(geminiDropsPattern(re), re);
+    for (const re of [globArgsPattern('**/.env'), globArgsPattern('src/**/gen/*.ts'), 'https?://(?:[^/"]*\\.|)example\\.com(?:[:/"]|$)']) assert.ok(!geminiDropsPattern(re), re);
+    const policies = [golden, load(path.join(ROOT, 'examples/tally/_operator/agent-policy.yaml')), load(path.join(FIX, 'dotfiles/agent-policy.yaml'))];
+    let n = 0;
+    for (const p of policies) {
+      for (const profile of Object.keys(p.profiles)) {
+        for (const f of compilePolicy(p, { profile, engine: 'gemini' }).files.filter((x) => x.path.endsWith('harness.toml'))) {
+          for (const r of f.data.filter((x) => x.argsPattern)) {
+            n += 1;
+            assert.ok(!geminiDropsPattern(r.argsPattern), `${profile}/${f.path}: ${r.argsPattern}`);
+          }
+        }
+      }
+    }
+    assert.ok(n >= 20, `${n} patterns checked`);
+    const domain = compilePolicy(golden, { profile: 'laptop', engine: 'gemini' }).files.find((f) => f.path.endsWith('harness.toml')).data.find((r) => r.toolName === 'web_fetch' && r.decision === 'deny');
+    const fetch = new RegExp(domain.argsPattern);
+    for (const url of ['https://internal.example.com/x', 'https://a.b.internal.example.com']) assert.ok(fetch.test(geminiArgs({ prompt: `read ${url}` })), url);
+    assert.ok(!fetch.test(geminiArgs({ prompt: 'read https://notinternal.example.com.evil.org' })));
   });
 });
 

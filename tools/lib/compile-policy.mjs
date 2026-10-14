@@ -629,24 +629,34 @@ const GEMINI_MODE = { 'read-only': 'plan', ask: 'default', 'auto-edit': 'auto_ed
 
 const reEscape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-// A path glob as a regex over the JSON-serialized tool arguments: a string field whose name holds
-// "path" ({"file_path":"/abs/.env"}), or one entry of such an array ({"paths":["a","/abs/.env"]}).
+// Gemini drops a policy rule whose argsPattern fails its ReDoS check (isSafeRegExp in the 0.64.0
+// policy loader: over 2048 characters, or a "(" whose text before the next ")" holds a quantifier,
+// the "?" of "(?:" included, with any later ")" followed by one), so no pattern here quantifies a
+// group: an optional directory is (?:dir/|), never (?:dir/)?. Every pattern is checked against the
+// same test before it is written.
+const GEMINI_UNSAFE_REGEX = /\([^)]*[*+?{].*\)[*+?{]/;
+export const geminiDropsPattern = (re) => re.length > 2048 || GEMINI_UNSAFE_REGEX.test(re);
+
+// A path glob as a regex over the tool arguments as Gemini serializes them (stableStringify: keys
+// sorted, each top-level pair between NUL characters): a string field whose name holds "path"
+// ({"file_path":"/abs/.env"}), or one entry of such an array ({"paths":["a","/abs/.env"]}). [^\x00]*
+// stays inside the pair; without the NULs it reads on to later pairs, which can only deny more.
 export function globArgsPattern(glob) {
   let body;
   let g = glob;
-  if (isHome(g)) { body = '[^"]*/'; g = g.slice(2); } else if (isAbsolute(g)) { body = '/'; g = g.slice(1); } else body = g.startsWith('**/') ? '' : '(?:[^"]*/)?';
+  if (isHome(g)) { body = '[^"]*/'; g = g.slice(2); } else if (isAbsolute(g)) { body = '/'; g = g.slice(1); } else body = g.startsWith('**/') ? '' : '(?:[^"]*/|)';
   for (let i = 0; i < g.length; i += 1) {
     const c = g[i];
     if (c === '*' && g[i + 1] === '*') {
-      if (g[i + 2] === '/') { body += '(?:[^"]*/)?'; i += 2; } else { body += '[^"]*'; i += 1; }
+      if (g[i + 2] === '/') { body += '(?:[^"]*/|)'; i += 2; } else { body += '[^"]*'; i += 1; }
     } else if (c === '*') body += '[^/"]*';
     else if (c === '?') body += '[^/"]';
     else body += reEscape(c);
   }
-  return `"[A-Za-z_]*paths?":\\[?(?:"[^"]*",)*"${body}"`;
+  return `"[A-Za-z_]*paths?":[^\\x00]*"${body}"`;
 }
 
-const domainArgsPattern = (d) => (d.startsWith('**.') ? `https?://(?:[^/"]*\\.)?${reEscape(d.slice(3))}(?:[:/"]|$)` : d.startsWith('*.') ? `https?://[^/"]+\\.${reEscape(d.slice(2))}(?:[:/"]|$)` : `https?://${reEscape(d)}(?:[:/"]|$)`);
+const domainArgsPattern = (d) => (d.startsWith('**.') ? `https?://(?:[^/"]*\\.|)${reEscape(d.slice(3))}(?:[:/"]|$)` : d.startsWith('*.') ? `https?://[^/"]+\\.${reEscape(d.slice(2))}(?:[:/"]|$)` : `https?://${reEscape(d)}(?:[:/"]|$)`);
 
 function emitGemini(ctx) {
   const { policy: p, tier } = ctx;
@@ -716,6 +726,7 @@ function emitGemini(ctx) {
   const budget = p.budgets?.[tier] ?? {};
   if (budget.max_turns) settings.model = { maxSessionTurns: budget.max_turns };
 
+  for (const r of rules.filter((x) => x.argsPattern && geminiDropsPattern(x.argsPattern))) ctx.error('gemini-drops', `argsPattern ${r.argsPattern} fails Gemini's ReDoS check, so Gemini would load the policy without this rule (a compiler bug; nothing written)`);
   const header = `# Compiled from ${ctx.source} (profile ${ctx.profileName}, tier ${tier}) by ${GENERATOR}.\n# User-tier policy (~/.gemini/policies/); the workspace tier is disabled upstream. Tool names other than\n# read_file, glob, write_file, replace and run_shell_command are unverified (adapters/gemini).\n`;
   return [
     jsonFile('settings.json', settings, 'settings-fragment'),

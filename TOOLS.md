@@ -216,7 +216,8 @@ an unattended tier without turn and spend caps (HAR-3); any `x-` extension that 
 not match. No output may carry `disableAllHooks`, `hooksConfig.enabled: false`, `disableYoloMode`,
 `tools.exclude`, a full-access mode, or a bypass key outside the bypass tier: every compile checks
 the parsed output's keys and mode values (never the text, so a forbid on `codex --yolo` compiles), and
-a hit is a `walls-only` error like any other refusal. Unattended, an `ask` compiles to a denial,
+a hit is a `walls-only` error like any other refusal; so is a Gemini `argsPattern` the Gemini loader
+would drop as a potential ReDoS (`gemini-drops`). Unattended, an `ask` compiles to a denial,
 never dropped: where an engine has no deny for it (a Codex write or tool ask), the compile fails until
 the `ask` gap is accepted for the profile. `--diff <settings.json|settings.json.tmpl>`
 compares the Claude output with a hand-written file.
