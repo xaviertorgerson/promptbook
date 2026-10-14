@@ -17,6 +17,7 @@ extends = ":workspace"
 "**/.env.*" = "deny"
 "**/secrets/**" = "deny"
 "**/.git/hooks/**" = "read"
+"deploy/**" = "read"
 "." = "write"
 
 [permissions.harness.network]

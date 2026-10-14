@@ -434,3 +434,31 @@ describe('review finding 6: Claude\'s read and write denies without the sandbox'
     assert.ok(!compilePolicy(golden, { profile: 'laptop', engine: 'claude' }).warnings.some((w) => w.rule === 'sandbox-may-fall-back'));
   });
 });
+
+describe('review finding 7: unattended, an ask Codex cannot represent is a denial, never dropped', () => {
+  const tally = load(path.join(ROOT, 'examples/tally/_operator/agent-policy.yaml'));
+  const config = (r) => r.files.find((f) => f.path.endsWith('config.toml')).content;
+  const noAskGap = { ...tally, accept_gaps: tally.accept_gaps.filter((g) => !(g.engine === 'codex' && g.field === 'ask')) };
+
+  it('an ask on writes fails closed until accepted, then downgrades the path to read', () => {
+    const refused = compilePolicy(noAskGap, { profile: 'ci', engine: 'codex' });
+    assert.equal(refused.ok, false, 'the deploy/** ask was dropped, so the workspace "." = "write" let it through');
+    assert.ok(refused.errors.some((e) => e.field === 'ask' && /deploy\/\*\*/.test(e.message) && /denial/.test(e.message)), JSON.stringify(refused.errors));
+    const r = compilePolicy({ ...noAskGap, accept_gaps: [...noAskGap.accept_gaps, { engine: 'codex', field: 'ask', profiles: ['ci'], reason: 'apply_patch into deploy/ is refused by the product hook' }] }, { profile: 'ci', engine: 'codex' });
+    assert.equal(r.ok, true, JSON.stringify(r.errors));
+    assert.match(config(r), /"deploy\/\*\*" = "read"/);
+    assert.ok(!r.warnings.some((w) => w.rule === 'dropped' && /^ask/.test(w.message)), JSON.stringify(r.warnings));
+  });
+
+  it('an ask on a tool with a Codex key becomes its deny; one without fails closed', () => {
+    const p = { policy_version: 1, profiles: { ci: { tier: 'unattended' } }, deny_read: ['~/.ssh/**'], forbid: [], ask: [{ tool: 'web-fetch', domain: 'docs.example.com' }, { tool: 'mcp:db:query' }, { tool: 'web-search' }], budgets: { unattended: { max_turns: 5, max_usd: 1, max_minutes: 10 } }, sandbox: { enabled: true }, accept_gaps: [{ engine: 'codex', field: 'budgets', reason: 'the runner caps the run' }] };
+    const r = compilePolicy(p, { profile: 'ci', engine: 'codex' });
+    assert.ok(r.errors.some((e) => e.field === 'ask' && /web-search/.test(e.message)), JSON.stringify(r.errors));
+    const ok = compilePolicy({ ...p, ask: p.ask.slice(0, 2) }, { profile: 'ci', engine: 'codex' });
+    assert.equal(ok.ok, true, JSON.stringify(ok.errors));
+    assert.match(config(ok), /"docs\.example\.com" = "deny"/);
+    assert.match(config(ok), /disabled_tools = \["query"\]/);
+    const interactive = compilePolicy({ ...p, profiles: { ci: { tier: 'ask' } } }, { profile: 'ci', engine: 'codex' });
+    assert.ok(interactive.warnings.some((w) => w.rule === 'dropped' && /web-search/.test(w.message)), 'an interactive ask is still a convenience');
+  });
+});

@@ -2,10 +2,6 @@
   "tier": "unattended",
   "warnings": [
     {
-      "rule": "dropped",
-      "message": "ask write deploy/** dropped on codex: Codex has no ask for writes or tools"
-    },
-    {
       "rule": "allow-interpreter",
       "message": "allow command [\"pnpm\"] not emitted on codex: an execpolicy allow runs outside the sandbox, and an interpreter runs any script there (deny_read and egress hold only inside it); the command runs sandboxed instead"
     },
@@ -23,6 +19,11 @@
       "field": "forbid",
       "message": "write **/.git/hooks/**: a filesystem \"read\" downgrade covers sandboxed commands, not the apply_patch tool",
       "reason": "the .git/hooks write deny downgrades sandboxed commands only; the product's walls (L2 hook deny) refuse apply_patch there"
+    },
+    {
+      "field": "ask",
+      "message": "unattended, an ask is a denial; write deploy/**: a filesystem \"read\" downgrade covers sandboxed commands, not the apply_patch tool",
+      "reason": "unattended, the deploy/** ask is a denial: the path is read-only for sandboxed commands, and the product's walls (L2 hook deny) refuse apply_patch there"
     },
     {
       "field": "sandbox",

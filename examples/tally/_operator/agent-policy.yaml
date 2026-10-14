@@ -55,6 +55,7 @@ budgets:
 accept_gaps:
   - { engine: claude, field: egress, profiles: [devbox], reason: "under bypass on the devbox, WebFetch reaches unlisted domains; the devbox container's egress proxy enforces the same domain list for every process" }
   - { engine: codex, field: forbid, reason: "the .git/hooks write deny downgrades sandboxed commands only; the product's walls (L2 hook deny) refuse apply_patch there" }
+  - { engine: codex, field: ask, profiles: [ci], reason: "unattended, the deploy/** ask is a denial: the path is read-only for sandboxed commands, and the product's walls (L2 hook deny) refuse apply_patch there" }
   - { engine: codex, field: sandbox, reason: "the launcher refuses to start Codex where its sandbox is unavailable" }
   - { engine: codex, field: budgets, reason: "the runner stops a Codex run at the turn and spend caps from its own run records, and at max_minutes by timeout" }
   - { engine: gemini, field: deny_read, reason: "Gemini runs only the evaluator, in the ci container, which mounts no secret files" }

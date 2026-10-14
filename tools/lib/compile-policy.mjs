@@ -404,21 +404,24 @@ function emitCodex(ctx) {
     if (isWindowsPath(g)) { ctx.gap('deny_read', `"${g}" is a Windows path`); continue; }
     setPath(g, 'deny');
   }
-  for (const r of p.forbid) {
-    if (r.command && globToken(r) && !ctx.gap('forbid', `${describeRule(r)}: execpolicy matches * and ? literally, so the forbid would block less than it says`)) continue;
-    if (r.command) prefixRule(r, 'forbidden', 'forbid');
+  // A wall on Codex, or (unattended) an ask, which nobody answers there: a denial (ADR-0021), written
+  // as one so no approval policy can turn it into a yes, and never dropped. `field` names the gap.
+  const deny = (r, field) => {
+    const as = field === 'ask' ? 'unattended, an ask is a denial; ' : '';
+    if (r.command && globToken(r) && !ctx.gap(field, `${as}${describeRule(r)}: execpolicy matches * and ? literally, so the deny would block less than it says`)) return;
+    if (r.command) prefixRule(field === 'ask' ? { ...r, reason: `ask in an unattended tier is a denial${r.reason ? `: ${r.reason}` : ''}` } : r, 'forbidden', field);
     else if (r.write) {
-      if (ctx.gap('forbid', `write ${r.write}: a filesystem "read" downgrade covers sandboxed commands, not the apply_patch tool`)) setPath(r.write, 'read');
+      if (ctx.gap(field, `${as}write ${r.write}: a filesystem "read" downgrade covers sandboxed commands, not the apply_patch tool`)) setPath(r.write, 'read');
     } else if (r.tool === 'web-fetch' && r.domain) setDomain(r.domain, 'deny');
     else if (r.tool.startsWith('mcp:') && r.tool.split(':')[2]) {
       const [, s, t] = r.tool.split(':');
       (mcp[s] ??= { disabled_tools: [] }).disabled_tools.push(t);
-    } else ctx.gap('forbid', `${describeRule(r)} has no documented Codex key${r.tool.startsWith('mcp:') ? ' (omit the server from config.toml instead)' : ''}`);
-  }
-  // Unattended, nobody answers a prompt: an ask is a denial (ADR-0021), written as one so no
-  // approval policy can turn it into a yes.
+    } else ctx.gap(field, `${as}${describeRule(r)} has no documented Codex key${r.tool.startsWith('mcp:') ? ' (omit the server from config.toml instead)' : ''}`);
+  };
+  for (const r of p.forbid) deny(r, 'forbid');
   for (const r of p.ask ?? []) {
-    if (r.command) prefixRule(tier === 'unattended' ? { ...r, reason: `ask in an unattended tier is a denial${r.reason ? `: ${r.reason}` : ''}` } : r, tier === 'unattended' ? 'forbidden' : 'prompt', 'ask');
+    if (tier === 'unattended') deny(r, 'ask');
+    else if (r.command) prefixRule(r, 'prompt', 'ask');
     else ctx.drop('ask', r, 'Codex has no ask for writes or tools');
   }
   // An execpolicy allow runs the command outside the sandbox without prompting, past every deny_read
