@@ -30,13 +30,6 @@ prefix_rule(
 )
 
 prefix_rule(
-    pattern = ["pnpm"],
-    decision = "allow",
-    justification = "allow in agent-policy.yaml",
-    match = ["pnpm"],
-)
-
-prefix_rule(
     pattern = ["git", ["status", "log", "diff"]],
     decision = "allow",
     justification = "allow in agent-policy.yaml",

@@ -8,6 +8,18 @@
     {
       "rule": "dropped",
       "message": "ask write deploy/** dropped on codex: Codex has no ask for writes or tools"
+    },
+    {
+      "rule": "allow-interpreter",
+      "message": "allow command [\"pnpm\"] not emitted on codex: an execpolicy allow runs outside the sandbox, and an interpreter runs any script there (deny_read and egress hold only inside it); the command runs sandboxed instead"
+    },
+    {
+      "rule": "allow-interpreter",
+      "message": "allow command [\"node\"] not emitted on codex: an execpolicy allow runs outside the sandbox, and an interpreter runs any script there (deny_read and egress hold only inside it); the command runs sandboxed instead"
+    },
+    {
+      "rule": "allow-unsandboxed",
+      "message": "allow [\"git\", [\"status\", \"log\", \"diff\", \"show\", \"branch\", \"add\", \"commit\", \"fetch\", \"pull\", \"push\", \"switch\", \"checkout\", \"worktree\"]], [\"gh\", \"pr\", [\"create\", \"view\", \"ready\", \"comment\"]] not emitted on codex: an execpolicy allow runs outside the sandbox, past deny_read and egress; the commands run sandboxed instead (accept_gaps {engine: codex, field: allow, profiles: [workstation]} emits them)"
     }
   ],
   "accepted": [

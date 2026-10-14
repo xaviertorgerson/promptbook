@@ -10,6 +10,10 @@
       "message": "ask tool web-search dropped on codex: Codex has no ask for writes or tools"
     },
     {
+      "rule": "allow-interpreter",
+      "message": "allow command [\"pnpm\"] not emitted on codex: an execpolicy allow runs outside the sandbox, and an interpreter runs any script there (deny_read and egress hold only inside it); the command runs sandboxed instead"
+    },
+    {
       "rule": "merge-mcp",
       "message": "merge mcp_servers.{prod-db}.disabled_tools into the existing server entries"
     }
@@ -19,6 +23,11 @@
       "field": "forbid",
       "message": "write **/.git/hooks/**: a filesystem \"read\" downgrade covers sandboxed commands, not the apply_patch tool",
       "reason": "the write deny downgrades sandboxed commands only; apply_patch is covered by the project hook"
+    },
+    {
+      "field": "allow",
+      "message": "allow rules run outside the sandbox, past deny_read and egress: [\"git\", [\"status\", \"log\", \"diff\"]]",
+      "reason": "git status, log and diff read the forge's object store outside the sandbox; nothing they print is a secret the policy denies"
     },
     {
       "field": "sandbox",

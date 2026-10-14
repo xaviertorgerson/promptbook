@@ -35,31 +35,3 @@ prefix_rule(
     justification = "a database shell is a human checkpoint",
     match = ["psql app_feat_split_4_revoke_link"],
 )
-
-prefix_rule(
-    pattern = ["git", ["status", "log", "diff", "show", "branch", "add", "commit", "fetch", "pull", "push", "switch", "checkout", "worktree"]],
-    decision = "allow",
-    justification = "allow in agent-policy.yaml",
-    match = ["git status", "git push origin feat/split-2-save-once"],
-)
-
-prefix_rule(
-    pattern = ["gh", "pr", ["create", "view", "ready", "comment"]],
-    decision = "allow",
-    justification = "allow in agent-policy.yaml",
-    match = ["gh pr create --draft --base integration/settle-up"],
-)
-
-prefix_rule(
-    pattern = ["pnpm"],
-    decision = "allow",
-    justification = "allow in agent-policy.yaml",
-    match = ["pnpm"],
-)
-
-prefix_rule(
-    pattern = ["node"],
-    decision = "allow",
-    justification = "allow in agent-policy.yaml",
-    match = ["node"],
-)

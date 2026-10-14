@@ -59,6 +59,7 @@ accept_gaps:
   - { engine: codex, field: forbid, profiles: [devbox, laptop, desk, reader, ci], reason: "the write deny downgrades sandboxed commands only; apply_patch is covered by the project hook" }
   - { engine: codex, field: sandbox, profiles: [devbox], reason: "the devbox image fails to start without its sandbox" }
   - { engine: codex, field: sandbox, reason: "on the desk, Codex commands read the gh and npm credentials as they did before the masks; elsewhere the launcher refuses to start Codex without its sandbox" }
+  - { engine: codex, field: allow, reason: "git status, log and diff read the forge's object store outside the sandbox; nothing they print is a secret the policy denies" }
   - { engine: codex, field: budgets, reason: "the runner enforces turns and spend from its own logs" }
   - { engine: codex, field: budgets, profiles: [devbox], reason: "the devbox's spend is watched by the operator, who is reachable" }
   - { engine: gemini, field: deny_read, profiles: [devbox, laptop, desk, reader, ci], reason: "Gemini runs in a container without the secret files mounted" }

@@ -6,7 +6,7 @@ import path from 'node:path';
 import { after, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
-import { commandMatches, compilePolicy, diffClaudeSettings, ENGINES, expandCommand, globArgsPattern, parseSettingsTemplate, renderDiff, renderReport, unsafeKeys } from '../tools/lib/compile-policy.mjs';
+import { commandMatches, compilePolicy, coversInterpreter, diffClaudeSettings, ENGINES, expandCommand, globArgsPattern, parseSettingsTemplate, renderDiff, renderReport, unsafeKeys } from '../tools/lib/compile-policy.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FIX = path.join(ROOT, 'fixtures/compile-policy');
@@ -170,7 +170,7 @@ describe('compile-policy contract', () => {
     for (const profile of Object.keys(golden.profiles)) {
       const text = compilePolicy(golden, { profile, engine: 'codex' }).files.find((f) => f.path === 'rules/harness.rules').content;
       const blocks = [...text.matchAll(/pattern = (\[.*\]),\n[\s\S]*?match = (\[.*\]),/g)];
-      assert.ok(blocks.length >= 5);
+      assert.ok(blocks.length >= 4, `${profile}: ${blocks.length} rules`);
       for (const [, pat, ex] of blocks) for (const e of JSON.parse(ex)) assert.ok(commandMatches(JSON.parse(pat), e.split(' ')), `${e} vs ${pat}`);
     }
   });
@@ -181,7 +181,7 @@ describe('compile-policy contract', () => {
     const rules = [...src.stdout.matchAll(/pattern = (\[[\s\S]*?\]),\n\s*decision = "(\w+)"/g)].map(([, pat, decision]) => ({ command: JSON.parse(pat), decision }));
     assert.ok(rules.length >= 15, `${rules.length} rules parsed`);
     const list = { allow: 'allow', prompt: 'ask', forbidden: 'forbid' };
-    const policy = { policy_version: 1, profiles: { box: { tier: 'ask' } }, deny_read: ['**/.env'], forbid: [], ask: [], allow: [] };
+    const policy = { policy_version: 1, profiles: { box: { tier: 'ask' } }, deny_read: ['**/.env'], forbid: [], ask: [], allow: [], accept_gaps: [{ engine: 'codex', field: 'allow', reason: 'herdr talks to its own server outside the sandbox' }] };
     for (const r of rules) policy[list[r.decision]].push({ command: r.command });
     const out = compilePolicy(policy, { profile: 'box', engine: 'codex' }).files.find((f) => f.path === 'rules/harness.rules').content;
     for (const r of rules) assert.ok(out.includes(`pattern = ${JSON.stringify(r.command).replace(/","/g, '", "').replace(/\["/g, '["').replace(/,\[/g, ', [')},\n    decision = "${r.decision}"`), `${JSON.stringify(r.command)} → ${r.decision}`);
@@ -379,5 +379,35 @@ describe('review findings: the compiler never loosens a wall silently', () => {
     const p = review('gap-scope-sandbox.yaml');
     const r = compilePolicy({ ...p, accept_gaps: [{ ...p.accept_gaps[0], profiles: ['contianer'] }] }, { profile: 'devbox', engine: 'claude' });
     assert.ok(r.errors.some((e) => e.rule === 'gap-profiles-exist' && /contianer/.test(e.message)), JSON.stringify(r.errors));
+  });
+});
+
+describe('review finding 1: a Codex allow rule runs outside the sandbox', () => {
+  const tally = load(path.join(ROOT, 'examples/tally/_operator/agent-policy.yaml'));
+  const codexRules = (r) => r.files.find((f) => f.path === 'rules/harness.rules').content;
+
+  it('an interpreter allow is never emitted, accepted gap or not: it would void deny_read and egress for any script', () => {
+    for (const p of [tally, { ...tally, accept_gaps: [...tally.accept_gaps, { engine: 'codex', field: 'allow', reason: 'test' }] }]) {
+      const r = compilePolicy(p, { profile: 'ci', engine: 'codex' });
+      assert.equal(r.ok, true, JSON.stringify(r.errors));
+      const text = codexRules(r);
+      assert.doesNotMatch(text, /pattern = \["node"\]/);
+      assert.doesNotMatch(text, /pattern = \["pnpm"\]/, '[pnpm] covers pnpm exec');
+      for (const cmd of ['node', 'pnpm']) assert.ok(r.warnings.some((w) => w.rule === 'allow-interpreter' && w.message.includes(`["${cmd}"]`)), cmd);
+    }
+  });
+
+  it('any other command allow is dropped, so the command runs sandboxed, unless the allow gap is accepted for the profile', () => {
+    const r = compilePolicy(tally, { profile: 'ci', engine: 'codex' });
+    assert.doesNotMatch(codexRules(r), /decision = "allow"/);
+    assert.ok(r.warnings.some((w) => w.rule === 'allow-unsandboxed' && /"gh", "pr"/.test(w.message)), JSON.stringify(r.warnings));
+    const accepted = compilePolicy({ ...tally, accept_gaps: [...tally.accept_gaps, { engine: 'codex', field: 'allow', profiles: ['ci'], reason: 'git and gh need the forge credential outside the sandbox' }] }, { profile: 'ci', engine: 'codex' });
+    assert.match(codexRules(accepted), /pattern = \["gh", "pr", \["create", "view", "ready", "comment"\]\],\n {4}decision = "allow"/);
+    assert.ok(accepted.accepted.some((a) => a.field === 'allow' && /outside the sandbox/.test(a.message) && /forge credential/.test(a.reason)), JSON.stringify(accepted.accepted));
+  });
+
+  it('interpreters: shells, language runtimes, package runners and the package managers that cover them', () => {
+    for (const c of [['sh'], ['bash'], ['zsh'], ['node'], ['python3'], ['python3.12'], ['ruby'], ['perl'], ['npx'], ['deno'], ['bun'], ['pnpm'], ['npm'], ['pnpm', 'exec'], ['npm', 'exec'], ['pnpm', 'dlx'], ['/usr/bin/env'], [['node', 'git']]]) assert.ok(coversInterpreter(c), JSON.stringify(c));
+    for (const c of [['git', 'status'], ['gh', 'pr'], ['pnpm', 'test'], ['npm', 'ci'], ['make']]) assert.ok(!coversInterpreter(c), JSON.stringify(c));
   });
 });

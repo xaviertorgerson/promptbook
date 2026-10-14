@@ -10,6 +10,14 @@
       "message": "ask tool web-search dropped on codex: Codex has no ask for writes or tools"
     },
     {
+      "rule": "allow-interpreter",
+      "message": "allow command [\"pnpm\"] not emitted on codex: an execpolicy allow runs outside the sandbox, and an interpreter runs any script there (deny_read and egress hold only inside it); the command runs sandboxed instead"
+    },
+    {
+      "rule": "allow-unsandboxed",
+      "message": "allow [\"git\", [\"status\", \"log\", \"diff\"]] not emitted on codex: an execpolicy allow runs outside the sandbox, past deny_read and egress; the commands run sandboxed instead (accept_gaps {engine: codex, field: allow, profiles: [devbox]} emits them)"
+    },
+    {
       "rule": "merge-mcp",
       "message": "merge mcp_servers.{prod-db}.disabled_tools into the existing server entries"
     }

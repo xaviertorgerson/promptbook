@@ -333,6 +333,24 @@ function runnerFile(ctx, args, budget) {
 
 // ------------------------------------------------------------------------------------- codex
 
+// Commands that run whatever code they are handed: shells, language runtimes, package runners, and
+// the package managers whose bare prefix covers their exec subcommand. An execpolicy allow runs
+// outside the sandbox, so allowing one of these lets any script read what deny_read names and reach
+// any host.
+const INTERPRETERS = new Set(['sh', 'bash', 'zsh', 'dash', 'ksh', 'fish', 'node', 'nodejs', 'deno', 'bun', 'bunx', 'ruby', 'perl', 'php', 'lua', 'npx', 'pnpx', 'tsx', 'ts-node', 'env', 'xargs', 'sudo', 'eval', 'exec']);
+const PACKAGE_EXEC = { pnpm: ['exec', 'dlx'], npm: ['exec', 'x'], yarn: ['exec', 'dlx'], bun: ['x', 'run'] };
+const isInterpreter = (t) => INTERPRETERS.has(t) || /^python[0-9.]*$/.test(t);
+
+// Does an allow's argv prefix (any expansion) cover an interpreter invocation?
+export function coversInterpreter(command) {
+  return expandCommand(command).some((argv) => {
+    const head = argv[0].split('/').at(-1);
+    if (isInterpreter(head)) return true;
+    const sub = PACKAGE_EXEC[head];
+    return Boolean(sub) && (argv.length === 1 || sub.includes(argv[1]));
+  });
+}
+
 const CODEX_BASE = { 'read-only': ':read-only', ask: ':workspace', 'auto-edit': ':workspace', auto: ':workspace', autonomous: ':workspace', unattended: ':workspace' };
 const CODEX_APPROVAL = { ask: 'on-request', 'auto-edit': 'on-request', auto: 'on-request', autonomous: 'never', unattended: 'never' };
 
@@ -392,8 +410,23 @@ function emitCodex(ctx) {
     if (r.command) prefixRule(tier === 'unattended' ? { ...r, reason: `ask in an unattended tier is a denial${r.reason ? `: ${r.reason}` : ''}` } : r, tier === 'unattended' ? 'forbidden' : 'prompt', 'ask');
     else ctx.drop('ask', r, 'Codex has no ask for writes or tools');
   }
+  // An execpolicy allow runs the command outside the sandbox without prompting, past every deny_read
+  // entry and the egress list (both are enforced by the sandbox alone). Dropped, the command still
+  // runs, sandboxed; emitted only where the operator accepts that escape for the profile, and never
+  // for an interpreter.
+  const commandAllows = (p.allow ?? []).filter((r) => r.command);
+  const interpreters = commandAllows.filter((r) => coversInterpreter(r.command));
+  for (const r of interpreters) ctx.warn('allow-interpreter', `allow ${describeRule(r)} not emitted on codex: an execpolicy allow runs outside the sandbox, and an interpreter runs any script there (deny_read and egress hold only inside it); the command runs sandboxed instead`);
+  const escapes = commandAllows.filter((r) => !interpreters.includes(r));
+  if (escapes.length) {
+    const what = escapes.map((r) => starlark(r.command)).join(', ');
+    if (ctx.acceptedGap('allow')) {
+      ctx.gap('allow', `allow rules run outside the sandbox, past deny_read and egress: ${what}`);
+      for (const r of escapes) prefixRule(r, 'allow', 'allow');
+    } else ctx.warn('allow-unsandboxed', `allow ${what} not emitted on codex: an execpolicy allow runs outside the sandbox, past deny_read and egress; the commands run sandboxed instead (accept_gaps {engine: codex, field: allow, profiles: [${ctx.profileName}]} emits them)`);
+  }
   for (const r of p.allow ?? []) {
-    if (r.command) prefixRule(r, 'allow', 'allow');
+    if (r.command) continue;
     else if (r.write) {
       if (r.write === '**') setPath('.', 'write');
       else if (!hasGlob(r.write)) setPath(r.write, 'write');
