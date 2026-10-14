@@ -147,7 +147,16 @@ setting the compile emits), `harness-run`, or `none` (said in a `spend-unmetered
 Gemini report no cost, so an unattended profile on either needs `budgets.unattended.max_minutes` for
 a hard kill; no `accept_gaps` entry waives an unattended cap.
 | codex | `config.toml` (or `<profile>.config.toml` unattended: a `harness` permission profile, approval policy, network domains), `rules/harness.rules` (`prefix_rule` prompt / forbidden with justification and match examples; `allow` only where the profile accepts the `allow` gap, since an allow runs outside the sandbox, and never for an interpreter), `runner.json` |
-| gemini | `settings.json` (`defaultApprovalMode`, `tools.sandbox`, `tools.allowed`), `policies/harness.toml` (user-tier `[[rule]]` deny / ask_user / allow), `runner.json` |
+| gemini | `settings.json` (`defaultApprovalMode`, `tools.sandbox`, `tools.allowed`, `model.maxSessionTurns`), `policies/harness.toml` (user-tier `[[rule]]` deny / ask_user / allow), `runner.json` |
+
+With `hooks.forbid_guard`, the Claude and Codex outputs also carry `hooks/forbid-guard.mjs` (a copy
+of `tools/guards/forbid-guard.mjs`, Node builtins only) and `hooks/forbid.json` (the command forbids,
+and unattended the command asks), registered as a `PreToolUse` hook for the shell tool (Claude in
+`settings.json`, Codex in `hooks.json`). The guard splits the command as a shell would (compound
+commands, substitutions, `sh -c`, wrappers, a program by path) and exits 2 on a match; it fails
+closed on input it cannot read. A `flags_anywhere` forbid compiles to prefix and anywhere rules on
+Claude and to its prefix form on Codex and Gemini, where the rest is the guard's (Codex) or a
+`forbid` gap.
 
 A profile's own `sandbox` and `egress` are merged key by key over the top-level ones before
 compiling (the merged egress still needs a default, and a deny default its allow list:

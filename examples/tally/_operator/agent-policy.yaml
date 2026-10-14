@@ -27,11 +27,15 @@ deny_read:
   - "~/.ssh/**"
   - "~/.config/shell/secrets.sh"
 forbid:
-  - { command: [git, push, [--force, -f]], reason: no force-push of shared branches, examples: [git push --force origin integration/settle-up, git push -f] }
+  - { command: [git, push], flags_anywhere: [--force, -f, --mirror, "+*"], reason: no force-push of shared branches, examples: [git push --force origin integration/settle-up, git push -f, git push origin integration/settle-up -f, git push origin +integration/settle-up] }
   - { command: [rm, -rf, /], reason: never wipe the root }
   - { command: [dropdb], reason: no destructive data actions }
   - { command: [docker, volume, rm], reason: volumes hold the only copy of local data, examples: [docker volume rm tally_pgdata] }
   - { write: "**/.git/hooks/**", reason: hooks run on every commit }
+# The guard hook denies a forbidden command however it is spelled (compound, wrapped, sh -c), on
+# the engines that share the hook protocol; the product's own hook deny (L2) stays the wall.
+hooks:
+  forbid_guard: true
 ask:
   - { command: [psql], reason: a database shell is a human checkpoint, examples: [psql app_feat_split_4_revoke_link] }
   - { write: "deploy/**", reason: deploy configuration is reviewed live }
@@ -62,6 +66,6 @@ accept_gaps:
   - { engine: codex, field: ask, profiles: [ci], reason: "unattended, the deploy/** ask is a denial: the path is read-only for sandboxed commands, and the product's walls (L2 hook deny) refuse apply_patch there" }
   - { engine: codex, field: sandbox, reason: "the launcher refuses to start Codex where its sandbox is unavailable" }
   - { engine: gemini, field: deny_read, reason: "Gemini runs only the evaluator, in the ci container, which mounts no secret files" }
-  - { engine: gemini, field: forbid, reason: "the evaluator never writes; shell redirection into .git/hooks is refused by the product's hook deny" }
+  - { engine: gemini, field: forbid, reason: "Gemini runs only the evaluator, whose forge token is read-only, so a force push spelled any way fails at the forge; shell redirection into .git/hooks is refused by the product's hook deny" }
   - { engine: gemini, field: egress, reason: "the ci container's egress proxy enforces the domain list" }
   - { engine: gemini, field: sandbox, reason: "the launcher refuses to start the evaluator outside its container" }

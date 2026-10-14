@@ -78,6 +78,7 @@ export const CHECKS = {
     const out = [];
     const key = (r) => JSON.stringify(r.command ?? r.write ?? [r.tool, r.domain ?? null]);
     const covers = (deny, other) => {
+      if (deny.flags_anywhere) return false; // it denies only the commands that carry its flags
       if (deny.command && other.command) {
         if (deny.command.length > other.command.length) return false;
         return deny.command.every((tok, i) => {

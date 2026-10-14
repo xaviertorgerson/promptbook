@@ -299,7 +299,14 @@ validation warning, a compile error), `harness check-requires` probes them, and 
 them, with `requires_config`, to the launcher in `runner.json`, with the run's `caps` and who enforces each (`engine`, `harness-run`, or `none`);
 `harness run` is that launcher, and it refuses to start a run until the probes pass. An unattended tier's caps are never waivable: on an engine that
 reports no cost the compile requires `budgets.unattended.max_minutes` for a hard kill. A rule has exactly one matcher: `command` (argv prefix, with alternatives),
-`write` (path glob) or `tool` (web-fetch with a domain, web-search, `mcp:server[:tool]`). An `allow`
+`write` (path glob) or `tool` (web-fetch with a domain, web-search, `mcp:server[:tool]`). A forbid's
+`command` may add `flags_anywhere` (1.4.0): the words in order anywhere in the argv and one of the
+flags after them, so `git push origin main --force`, `git -C . push -f` and `env git push -f` are
+denied (`flags-anywhere-forbids-only`: never in an ask or allow, where it would widen a
+pre-approval). `hooks.forbid_guard` (1.4.0) has the compile emit the engine-neutral guard
+(`tools/guards/forbid-guard.mjs`) as a user-scope PreToolUse hook. A forbid is defense in depth on
+every engine (a command rule matches the text an agent writes, never every way to run a program);
+the project's hook deny and the sandbox are the wall. An `allow`
 or `ask` that a `forbid` covers is a warning (it never takes effect). `accept_gaps` records the
 degradations the operator accepts; an entry's `profiles` (1.4.0) scopes it, and an entry without
 `profiles` covers every profile except a bypass-tier one, whose gaps are accepted only by an entry

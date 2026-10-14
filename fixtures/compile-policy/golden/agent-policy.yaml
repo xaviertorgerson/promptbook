@@ -28,7 +28,9 @@ deny_read:
   - /etc/shadow
 forbid:
   - { command: [rm, -rf, /], reason: never wipe the root }
-  - { command: [git, push, [--force, -f]], reason: no force-push of shared branches, examples: [git push --force origin main, git push -f] }
+  - { command: [git, push], flags_anywhere: [--force, -f, --mirror, "+*"], reason: no force-push of shared branches, examples: [git push --force origin main, git push -f, git push origin main -f, git -C . push origin +main] }
+  - { command: [docker, compose, down], flags_anywhere: [-v, --volumes], reason: the stack's volumes hold its only data }
+  - { command: [docker-compose, down], flags_anywhere: [-v, --volumes], reason: the stack's volumes hold its only data }
   - { command: [herdr, workspace, close], reason: closing a workspace can end a worktree group, examples: [herdr workspace close w2] }
   - { write: "**/.git/hooks/**", reason: hooks run on every commit }
   - { tool: web-fetch, domain: "**.internal.example.com", reason: internal hosts are not for agents }
@@ -42,6 +44,8 @@ allow:
   - { command: [git, [status, log, diff]], examples: [git status, git log --oneline] }
   - { write: "**" }
   - { tool: web-fetch, domain: "**.github.com" }
+hooks:
+  forbid_guard: true
 egress:
   default: deny
   allow_domains: ["**.github.com", registry.npmjs.org]

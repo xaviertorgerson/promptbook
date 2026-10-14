@@ -1,0 +1,9 @@
+# flags_anywhere widens a match, which only a wall may do: an allow that matched "git push" with any
+# of these flags anywhere would pre-approve more than it names.
+policy_version: 1
+profiles:
+  laptop: { tier: auto-edit }
+deny_read: ["~/.ssh/**"]
+forbid: []
+allow:
+  - { command: [git, push], flags_anywhere: [--set-upstream] }

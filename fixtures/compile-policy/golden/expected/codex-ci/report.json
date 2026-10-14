@@ -2,6 +2,10 @@
   "tier": "unattended",
   "warnings": [
     {
+      "rule": "hook-trust",
+      "message": "Codex skips a new or changed user hook until it is reviewed and trusted (/hooks; trust is recorded against the hook's hash): trust the harness forbid guard once on this machine, or flags-anywhere forbids hold only in their prefix form until then"
+    },
+    {
       "rule": "allow-interpreter",
       "message": "allow command [\"pnpm\"] not emitted on codex: an execpolicy allow runs outside the sandbox, and an interpreter runs any script there (deny_read and egress hold only inside it); the command runs sandboxed instead"
     },

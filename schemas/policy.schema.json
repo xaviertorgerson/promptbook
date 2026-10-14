@@ -35,12 +35,18 @@
     "ask": {
       "description": "Human checkpoints: prompt a person at a terminal. Unattended they are denials; never count them as protection.",
       "type": "array",
-      "items": { "$ref": "#/$defs/rule" }
+      "items": { "$ref": "#/$defs/rule", "not": { "required": ["flags_anywhere"] }, "x-rules": { "not": "flags-anywhere-forbids-only" } }
     },
     "allow": {
       "description": "Pre-approvals: run without asking. Never loosens a forbid or deny_read (deny wins on every engine).",
       "type": "array",
-      "items": { "$ref": "#/$defs/rule" }
+      "items": { "$ref": "#/$defs/rule", "not": { "required": ["flags_anywhere"] }, "x-rules": { "not": "flags-anywhere-forbids-only" } }
+    },
+    "hooks": {
+      "description": "Hooks the compile emits for the user scope (1.4.0). forbid_guard: the engine-neutral guard (tools/guards/forbid-guard.mjs) that denies a shell command any command forbid matches however it is spelled (compound, wrapped, sh -c), registered as a PreToolUse hook on engines that share that hook protocol. Defense in depth: the project's own hook deny stays the wall.",
+      "type": "object",
+      "properties": { "forbid_guard": { "type": "boolean" } },
+      "additionalProperties": false
     },
     "egress": { "$ref": "#/$defs/egress" },
     "sandbox": { "$ref": "#/$defs/sandbox" },
@@ -244,6 +250,13 @@
           "minItems": 1,
           "items": { "$ref": "#/$defs/argvToken" }
         },
+        "flags_anywhere": {
+          "description": "With command, in forbid only (1.4.0): the rule matches when the command words appear in that order anywhere in the argv (options, wrappers and a program path between or before them allowed: git -C . push, env git push) and any token after the last word is one of these flags. A flag matches a token exactly; one ending in * matches every token it begins (+* is a forced refspec). Combined short flags (-uf) are tokens of their own: list them.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[^\\s*?]+\\*?$" }
+        },
         "write": { "$ref": "#/$defs/pathGlob" },
         "tool": {
           "description": "web-fetch, web-search, or mcp:<server>[:<tool>].",
@@ -269,7 +282,8 @@
         { "required": ["tool"] }
       ],
       "dependentSchemas": {
-        "domain": { "required": ["tool"], "properties": { "tool": { "const": "web-fetch" } } }
+        "domain": { "required": ["tool"], "properties": { "tool": { "const": "web-fetch" } } },
+        "flags_anywhere": { "x-rule": "flags-anywhere-needs-command", "required": ["command"] }
       }
     }
   }

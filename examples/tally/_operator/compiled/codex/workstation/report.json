@@ -2,6 +2,10 @@
   "tier": "auto-edit",
   "warnings": [
     {
+      "rule": "hook-trust",
+      "message": "Codex skips a new or changed user hook until it is reviewed and trusted (/hooks; trust is recorded against the hook's hash): trust the harness forbid guard once on this machine, or flags-anywhere forbids hold only in their prefix form until then"
+    },
+    {
       "rule": "degraded",
       "message": "Codex has no \"edits free, commands ask\" mode: auto-edit compiles like ask (approval_policy on-request)"
     },

@@ -1,0 +1,60 @@
+{
+  "generated_by": "harness compile-policy",
+  "source": "agent-policy.yaml",
+  "profile": "devbox",
+  "tier": "autonomous",
+  "rules": [
+    {
+      "command": [
+        "rm",
+        "-rf",
+        "/"
+      ],
+      "reason": "never wipe the root"
+    },
+    {
+      "command": [
+        "git",
+        "push"
+      ],
+      "flags_anywhere": [
+        "--force",
+        "-f",
+        "--mirror",
+        "+*"
+      ],
+      "reason": "no force-push of shared branches"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "down"
+      ],
+      "flags_anywhere": [
+        "-v",
+        "--volumes"
+      ],
+      "reason": "the stack's volumes hold its only data"
+    },
+    {
+      "command": [
+        "docker-compose",
+        "down"
+      ],
+      "flags_anywhere": [
+        "-v",
+        "--volumes"
+      ],
+      "reason": "the stack's volumes hold its only data"
+    },
+    {
+      "command": [
+        "herdr",
+        "workspace",
+        "close"
+      ],
+      "reason": "closing a workspace can end a worktree group"
+    }
+  ]
+}

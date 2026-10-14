@@ -2,6 +2,10 @@
   "tier": "unattended",
   "warnings": [
     {
+      "rule": "hooks-not-emitted",
+      "message": "the forbid guard is registered for Claude Code and Codex only; Gemini keeps each flags-anywhere forbid in its prefix form (adapters/gemini)"
+    },
+    {
       "rule": "spend-unmetered",
       "message": "gemini reports no cost: max_usd 4 is not metered; the run is bounded by max_turns and a hard kill at max_minutes 90"
     }
@@ -14,8 +18,13 @@
     },
     {
       "field": "forbid",
+      "message": "command [\"git\",\"push\"] with --force | -f | --mirror | +* anywhere: commandPrefix matches the start of the command, so only the flag right after the words is denied, not the flags anywhere later in it",
+      "reason": "Gemini runs only the evaluator, whose forge token is read-only, so a force push spelled any way fails at the forge; shell redirection into .git/hooks is refused by the product's hook deny"
+    },
+    {
+      "field": "forbid",
       "message": "write **/.git/hooks/**: a deny reaches the file tools (write_file, replace) only, not shell redirection",
-      "reason": "the evaluator never writes; shell redirection into .git/hooks is refused by the product's hook deny"
+      "reason": "Gemini runs only the evaluator, whose forge token is read-only, so a force push spelled any way fails at the forge; shell redirection into .git/hooks is refused by the product's hook deny"
     },
     {
       "field": "egress",

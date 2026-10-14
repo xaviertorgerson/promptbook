@@ -2,7 +2,7 @@
 # Most restrictive decision wins: forbidden > prompt > allow. Check: codex execpolicy check --rules <this file> -- <cmd>
 
 prefix_rule(
-    pattern = ["git", "push", ["--force", "-f"]],
+    pattern = ["git", "push", ["--force", "-f", "--mirror"]],
     decision = "forbidden",
     justification = "no force-push of shared branches",
     match = ["git push --force origin integration/settle-up", "git push -f"],

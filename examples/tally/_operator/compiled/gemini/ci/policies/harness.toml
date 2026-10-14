@@ -53,6 +53,20 @@ denyMessage = "no force-push of shared branches"
 
 [[rule]]
 toolName = "run_shell_command"
+commandPrefix = "git push --mirror"
+decision = "deny"
+priority = 900
+denyMessage = "no force-push of shared branches"
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "git push +"
+decision = "deny"
+priority = 900
+denyMessage = "no force-push of shared branches"
+
+[[rule]]
+toolName = "run_shell_command"
 commandPrefix = "rm -rf /"
 decision = "deny"
 priority = 900

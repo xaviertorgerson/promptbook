@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import { forbidHit } from '../guards/forbid-guard.mjs';
 import { PROBES } from './requires.mjs';
 import { toToml } from './toml.mjs';
 
@@ -51,7 +53,37 @@ const domainForms = (d) => (d.startsWith('**.') ? [d.slice(3), `*.${d.slice(3)}`
 // literal, so a forbid using one would block less on those engines than it says.
 const globToken = (r) => Boolean(r.command?.flat().some((t) => /[*?]/.test(t)));
 
-const describeRule = (r) => (r.command ? `command ${JSON.stringify(r.command)}` : r.write ? `write ${r.write}` : `tool ${r.tool}${r.domain ? ` domain ${r.domain}` : ''}`);
+const describeRule = (r) => (r.command ? `command ${JSON.stringify(r.command)}${r.flags_anywhere ? ` with ${r.flags_anywhere.join(' | ')} anywhere` : ''}` : r.write ? `write ${r.write}` : `tool ${r.tool}${r.domain ? ` domain ${r.domain}` : ''}`);
+
+// A flags-anywhere rule's flags an exact-token matcher can carry (one ending in * is a prefix).
+const literalFlags = (r) => r.flags_anywhere.filter((f) => !f.endsWith('*'));
+// The prefix form of a flags-anywhere rule: its words, then one of its literal flags.
+const prefixForm = (r) => {
+  const flags = literalFlags(r);
+  return flags.length ? [...r.command, flags.length > 1 ? flags : flags[0]] : null;
+};
+
+// The guard hook (hooks.forbid_guard): tools/guards/forbid-guard.mjs, copied beside the settings
+// with the compiled rule list and registered for the shell tool from the engine's home.
+const GUARD_SOURCE = new URL('../guards/forbid-guard.mjs', import.meta.url);
+const GUARD_HOME = { claude: '$HOME/.claude/hooks/harness', codex: '$HOME/.codex/hooks/harness' };
+
+// The command rules the guard denies: every command forbid, and unattended every command ask (a
+// denial there).
+function guardFiles(ctx) {
+  const lists = [...ctx.policy.forbid, ...(ctx.tier === 'unattended' ? ctx.policy.ask ?? [] : [])];
+  const rules = lists.filter((r) => r.command).map(({ command, flags_anywhere: f, reason }) => ({ command, ...(f ? { flags_anywhere: f } : {}), ...(reason ? { reason } : {}) }));
+  const list = { generated_by: GENERATOR, source: ctx.source, profile: ctx.profileName, tier: ctx.tier, rules };
+  return [
+    { path: 'hooks/forbid-guard.mjs', content: fs.readFileSync(GUARD_SOURCE, 'utf8'), kind: 'hook' },
+    { ...jsonFile('hooks/forbid.json', list, 'rules') },
+  ];
+}
+
+const guardRegistration = (engine) => {
+  const home = GUARD_HOME[engine];
+  return { PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: `node "${home}/forbid-guard.mjs" "${home}/forbid.json"`, ...(engine === 'codex' ? { statusMessage: 'harness forbid guard' } : {}) }] }] };
+};
 
 class Context {
   constructor(policy, profileName, engine, source) {
@@ -123,7 +155,8 @@ function preflight(ctx) {
   for (const list of ['forbid', 'ask', 'allow']) {
     (p[list] ?? []).forEach((r, i) => {
       for (const ex of r.examples ?? []) {
-        if (!r.command || !commandMatches(r.command, ex.trim().split(/\s+/))) ctx.error('example-matches', `${list}/${i}: example "${ex}" does not match ${describeRule(r)}`);
+        const hit = r.flags_anywhere ? forbidHit([r], ex) : r.command && commandMatches(r.command, ex.trim().split(/\s+/));
+        if (!hit) ctx.error('example-matches', `${list}/${i}: example "${ex}" does not match ${describeRule(r)}`);
       }
     });
   }
@@ -201,7 +234,24 @@ function claudePath(ctx, glob, list) {
   return isAbsolute(glob) ? `/${glob}` : glob;
 }
 
+// A flags-anywhere forbid on Claude: per expansion and flag, the prefix form (the flag right after
+// the words, as a plain rule compiles) and the anywhere form, a * after each word so options,
+// wrappers and a path can sit before or between them; an exact flag ends the command or is
+// followed by a space, a flag ending in * is a prefix.
+function claudeAnywhere(rule) {
+  const out = [];
+  for (const words of expandCommand(rule.command)) {
+    const anywhere = `*${words.join('* ')}*`;
+    for (const f of rule.flags_anywhere) {
+      if (f.endsWith('*')) out.push(`Bash(${words.join(' ')} ${f})`, `Bash(${anywhere} ${f})`);
+      else out.push(`Bash(${words.join(' ')} ${f} *)`, `Bash(${anywhere} ${f})`, `Bash(${anywhere} ${f} *)`);
+    }
+  }
+  return out;
+}
+
 function claudeRules(ctx, rule, list) {
+  if (rule.flags_anywhere) return claudeAnywhere(rule);
   if (rule.command) {
     const hasStar = globToken(rule);
     if (hasStar && list === 'allow') {
@@ -317,6 +367,8 @@ function emitClaude(ctx) {
   const settings = { permissions };
   if (tier === BYPASS_TIER) settings.skipDangerousModePermissionPrompt = true;
   if (Object.keys(sandbox).length) settings.sandbox = sandbox;
+  const guard = p.hooks?.forbid_guard === true;
+  if (guard) settings.hooks = guardRegistration('claude');
 
   // Headless runs: the runner's flags. Unattended pins dontAsk and the allowlist (ADR-0021).
   const budget = p.budgets?.[tier] ?? {};
@@ -333,6 +385,7 @@ function emitClaude(ctx) {
   return [
     jsonFile('settings.json', settings, 'settings-fragment'),
     jsonFile('runner.json', runner, 'runner'),
+    ...(guard ? guardFiles(ctx) : []),
   ];
 }
 
@@ -408,6 +461,8 @@ export function renderPrefixRule(r) {
 
 function emitCodex(ctx) {
   const { policy: p, tier } = ctx;
+  const guard = p.hooks?.forbid_guard === true;
+  if (guard) ctx.warn('hook-trust', 'Codex skips a new or changed user hook until it is reviewed and trusted (/hooks; trust is recorded against the hook\'s hash): trust the harness forbid guard once on this machine, or flags-anywhere forbids hold only in their prefix form until then');
   if (tier === 'auto-edit') ctx.warn('degraded', 'Codex has no "edits free, commands ask" mode: auto-edit compiles like ask (approval_policy on-request)');
   if (tier === 'auto') ctx.warn('degraded', 'Codex has no classifier-reviewed mode: auto compiles to approval_policy on-request on the workspace sandbox (sandboxed work runs without asking; anything outside it prompts)');
   const filesystem = {};
@@ -441,6 +496,16 @@ function emitCodex(ctx) {
   const deny = (r, field) => {
     const as = field === 'ask' ? 'unattended, an ask is a denial; ' : '';
     if (r.command && globToken(r) && !ctx.gap(field, `${as}${describeRule(r)}: execpolicy matches * and ? literally, so the deny would block less than it says`)) return;
+    if (r.flags_anywhere) {
+      const pattern = prefixForm(r);
+      if (pattern) {
+        const examples = (r.examples ?? []).filter((ex) => commandMatches(pattern, ex.trim().split(/\s+/)));
+        prefixRule({ ...r, command: pattern, examples: examples.length ? examples : undefined }, 'forbidden', field);
+      }
+      if (guard) return;
+      ctx.gap(field, `${as}${describeRule(r)}: execpolicy matches an argv prefix token by token, so only "${pattern ? expandCommand(pattern).map((a) => a.join(' ')).join('", "') : r.command.flat().join(' ')}" is denied, not the flags anywhere later in the command${r.flags_anywhere.some((f) => f.endsWith('*')) ? ' nor a token a * flag begins' : ''} (hooks.forbid_guard covers it)`);
+      return;
+    }
     if (r.command) prefixRule(field === 'ask' ? { ...r, reason: `ask in an unattended tier is a denial${r.reason ? `: ${r.reason}` : ''}` } : r, 'forbidden', field);
     else if (r.write) {
       if (ctx.gap(field, `${as}write ${r.write}: a filesystem "read" downgrade covers sandboxed commands, not the apply_patch tool`)) setPath(r.write, 'read');
@@ -514,6 +579,7 @@ function emitCodex(ctx) {
     { path: configName, content: `${header}\n${toToml(config)}`, kind: 'settings-fragment', data: config },
     { path: 'rules/harness.rules', content: rulesText, kind: 'rules', data: rules },
     jsonFile('runner.json', runnerFile(ctx, runnerArgs, budget), 'runner'),
+    ...(guard ? [jsonFile('hooks.json', { description: `harness forbid guard, compiled from ${ctx.source} (profile ${ctx.profileName})`, hooks: guardRegistration('codex') }, 'settings-fragment'), ...guardFiles(ctx)] : []),
   ];
 }
 
@@ -554,7 +620,9 @@ function emitGemini(ctx) {
     rules.push(out);
   };
   const toolRule = (list, r) => {
-    if (r.command) {
+    if (r.flags_anywhere) {
+      for (const words of expandCommand(r.command)) for (const f of r.flags_anywhere) rule(list, { toolName: 'run_shell_command', commandPrefix: `${words.join(' ')} ${f.replace(/\*$/, '')}` }, r);
+    } else if (r.command) {
       for (const argv of expandCommand(r.command)) {
         rule(list, { toolName: 'run_shell_command', commandPrefix: argv.join(' ') }, r);
         if (list === 'allow') allowed.push(`run_shell_command(${argv.join(' ')})`);
@@ -583,8 +651,10 @@ function emitGemini(ctx) {
   if (p.deny_read.length && ctx.gap('deny_read', `read denies reach only the file tools (${GEMINI_READ_TOOLS.join(', ')}; names unverified), not run_shell_command reads`)) {
     for (const g of p.deny_read) rule('forbid', { toolName: GEMINI_READ_TOOLS, argsPattern: globArgsPattern(g) }, { reason: `deny_read ${g} (${ctx.source})` });
   }
+  if (p.hooks?.forbid_guard) ctx.warn('hooks-not-emitted', 'the forbid guard is registered for Claude Code and Codex only; Gemini keeps each flags-anywhere forbid in its prefix form (adapters/gemini)');
   for (const r of p.forbid) {
     if (r.command && globToken(r) && !ctx.gap('forbid', `${describeRule(r)}: commandPrefix matches * and ? literally, so the forbid would block less than it says`)) continue;
+    if (r.flags_anywhere && !ctx.gap('forbid', `${describeRule(r)}: commandPrefix matches the start of the command, so only the flag right after the words is denied, not the flags anywhere later in it`)) continue;
     if (r.write && !ctx.gap('forbid', `write ${r.write}: a deny reaches the file tools (${GEMINI_WRITE_TOOLS.join(', ')}) only, not shell redirection`)) continue;
     toolRule('forbid', r);
   }

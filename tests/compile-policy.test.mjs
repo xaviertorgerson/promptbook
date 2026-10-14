@@ -6,6 +6,7 @@ import path from 'node:path';
 import { after, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
+import { forbidHit } from '../tools/guards/forbid-guard.mjs';
 import { commandMatches, compilePolicy, coversInterpreter, diffClaudeSettings, ENGINES, expandCommand, globArgsPattern, parseSettingsTemplate, renderDiff, renderReport, unsafeKeys } from '../tools/lib/compile-policy.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -495,5 +496,89 @@ describe('review finding 12: unattended caps are never waived; runner.json carri
       assert.ok(r.errors.some((e) => e.rule === 'unattended-caps' && /max_minutes/.test(e.message)), `${engine}: ${JSON.stringify(r.errors)}`);
     }
     assert.equal(compilePolicy(p, { profile: 'ci', engine: 'claude' }).ok, true, 'Claude caps turns and spend itself');
+  });
+});
+
+describe('review finding 14: a forbid that matches its flags anywhere in the command', () => {
+  // Claude Code's Bash rule matching as the permissions page states it: compound commands are split
+  // and each part matched, a leading VAR=value and the fixed wrappers are stripped, * stands for any
+  // text, and a trailing " *" that is the rule's only wildcard also matches the bare command.
+  const CLAUDE_WRAPPERS = /^(?:(?:timeout\s+\S+|time|nice|nohup|stdbuf(?:\s+-\S+)*|command|builtin|noglob|xargs)\s+)+/;
+  const claudeDenies = (rule, cmd) => {
+    const m = /^Bash\((.*)\)$/.exec(rule);
+    if (!m) return false;
+    const pat = m[1];
+    const stars = (pat.match(/\*/g) ?? []).length;
+    const body = pat.split('*').map((x) => x.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('.*');
+    const re = new RegExp(`^${stars === 1 && pat.endsWith(' *') ? `${body.slice(0, -3)}(?: .*)?` : body}$`);
+    return cmd.split(/&&|\|\||[;|&\n]/).map((x) => x.trim().replace(/^(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)+/, '').replace(CLAUDE_WRAPPERS, '')).some((part) => re.test(part));
+  };
+  const EVASIONS = ['git push origin main --force', 'git push -u -f origin main', 'git push origin +main', 'git -C . push -f', 'env git push -f', 'docker compose -f x.yml down -v', 'docker-compose down -v'];
+  const LEGIT = ['git push origin feat/settle-up', 'git push --follow-tags', 'git push origin feat/fix-flaky', 'git push --force-with-lease origin feat/x', 'docker compose down', 'docker compose -f x.yml down', 'docker compose up -d'];
+  const deny = (engine, profile = 'laptop', p = golden) => compilePolicy(p, { profile, engine });
+
+  it('the engine-neutral matcher denies the reviewer\'s evasions and leaves ordinary pushes alone', () => {
+    const rules = golden.forbid.filter((r) => r.command);
+    for (const c of EVASIONS) assert.ok(forbidHit(rules, c), c);
+    for (const c of LEGIT) assert.equal(forbidHit(rules, c), null, c);
+    assert.ok(forbidHit(rules, 'bash -lc "cd app && git push -f"') && forbidHit(rules, 'FOO=1 nice -n 5 git push --mirror') && forbidHit(rules, ['bash', '-lc', 'git push -f']), 'compound, wrapped and argv forms');
+  });
+
+  it('Claude: prefix and anywhere rules that its matcher applies to every evasion', () => {
+    const r = deny('claude');
+    assert.equal(r.ok, true, JSON.stringify(r.errors));
+    const denyRules = JSON.parse(r.files.find((f) => f.path === 'settings.json').content).permissions.deny;
+    for (const rule of ['Bash(git push --force *)', 'Bash(*git* push* --force)', 'Bash(*git* push* --force *)', 'Bash(git push +*)', 'Bash(*git* push* +*)', 'Bash(*docker* compose* down* -v *)']) assert.ok(denyRules.includes(rule), rule);
+    for (const c of EVASIONS) assert.ok(denyRules.some((x) => claudeDenies(x, c)), `claude lets through: ${c}`);
+    for (const c of LEGIT) assert.ok(!denyRules.some((x) => claudeDenies(x, c)), `claude denies: ${c} (${denyRules.filter((x) => claudeDenies(x, c))})`);
+  });
+
+  it('Codex and Gemini keep the prefix forms; the rest is a forbid gap, or the guard hook on Codex', () => {
+    const noGuard = { ...golden, hooks: undefined };
+    const codex = deny('codex', 'laptop', { ...noGuard, accept_gaps: noGuard.accept_gaps.filter((g) => !(g.engine === 'codex' && g.field === 'forbid')) });
+    assert.ok(codex.errors.some((e) => e.field === 'forbid' && /anywhere/.test(e.message) && /\["git","push"\]/.test(e.message)), JSON.stringify(codex.errors));
+    const guarded = deny('codex');
+    assert.equal(guarded.ok, true, JSON.stringify(guarded.errors));
+    assert.match(guarded.files.find((f) => f.path === 'rules/harness.rules').content, /pattern = \["git", "push", \["--force", "-f", "--mirror"\]\],\n {4}decision = "forbidden"/);
+    assert.ok(!guarded.accepted.some((a) => /anywhere/.test(a.message)), 'the guard covers it');
+    assert.ok(guarded.warnings.some((w) => w.rule === 'hook-trust'), 'Codex skips a hook until it is trusted');
+    const gemini = deny('gemini');
+    assert.ok(gemini.accepted.some((a) => a.field === 'forbid' && /anywhere/.test(a.message)), JSON.stringify(gemini.accepted));
+    assert.ok(gemini.warnings.some((w) => w.rule === 'hooks-not-emitted'));
+  });
+
+  it('hooks.forbid_guard emits the guard and its rule list and registers it for the shell tool; the copy denies the evasions', () => {
+    for (const [engine, home] of [['claude', '$HOME/.claude/hooks/harness'], ['codex', '$HOME/.codex/hooks/harness']]) {
+      const r = deny(engine, 'ci');
+      const file = (p) => r.files.find((f) => f.path === p);
+      const reg = engine === 'claude' ? JSON.parse(file('settings.json').content).hooks : JSON.parse(file('hooks.json').content).hooks;
+      assert.deepEqual(reg.PreToolUse[0].matcher, 'Bash');
+      assert.equal(reg.PreToolUse[0].hooks[0].command, `node "${home}/forbid-guard.mjs" "${home}/forbid.json"`);
+      assert.equal(file('hooks/forbid-guard.mjs').content, fs.readFileSync(path.join(ROOT, 'tools/guards/forbid-guard.mjs'), 'utf8'));
+      const rules = JSON.parse(file('hooks/forbid.json').content).rules;
+      assert.ok(rules.some((x) => x.command[0] === 'psql'), 'unattended, the ask is a denial the guard enforces too');
+      const dir = path.join(TMP, `guard-${engine}`);
+      for (const f of r.files.filter((x) => x.path.startsWith('hooks/'))) {
+        fs.mkdirSync(path.dirname(path.join(dir, f.path)), { recursive: true });
+        fs.writeFileSync(path.join(dir, f.path), f.content);
+      }
+      const hook = (input) => spawnSync(process.execPath, [path.join(dir, 'hooks/forbid-guard.mjs'), path.join(dir, 'hooks/forbid.json')], { input: typeof input === 'string' ? input : JSON.stringify(input), encoding: 'utf8' });
+      for (const c of EVASIONS) {
+        const h = hook({ tool_name: 'Bash', tool_input: { command: c } });
+        assert.equal(h.status, 2, `${engine}: ${c}`);
+        assert.match(h.stderr, /forbidden by the operator's policy/);
+      }
+      for (const c of LEGIT) assert.equal(hook({ tool_name: 'Bash', tool_input: { command: c } }).status, 0, `${engine}: ${c}`);
+      assert.equal(hook({ tool_name: 'Read', tool_input: { file_path: 'x' } }).status, 0);
+      assert.equal(hook('not json').status, 2, 'fail closed');
+    }
+    assert.equal(deny('claude', 'laptop', { ...golden, hooks: undefined }).files.find((f) => f.path === 'hooks/forbid.json'), undefined);
+  });
+
+  it('an example of a flags-anywhere rule is checked with the anywhere matcher', () => {
+    const p = { ...golden, forbid: [{ command: ['git', 'push'], flags_anywhere: ['-f'], examples: ['git push origin main -f', 'git push origin main'] }] };
+    const r = compilePolicy(p, { profile: 'laptop', engine: 'claude' });
+    assert.ok(r.errors.some((e) => e.rule === 'example-matches' && /"git push origin main"/.test(e.message)), JSON.stringify(r.errors));
+    assert.ok(!r.errors.some((e) => e.rule === 'example-matches' && /-f"/.test(e.message)));
   });
 });

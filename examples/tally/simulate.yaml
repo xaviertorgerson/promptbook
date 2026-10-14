@@ -24,7 +24,7 @@ strategy: merge
 policy:
   tier: unattended
   forbid:
-    - { command: [git, push, [--force, -f]] }
+    - { command: [git, push, [--force, -f, --mirror]] }
     - { command: [rm, -rf, /] }
     - { command: [dropdb] }
     - { command: [docker, volume, rm] }
