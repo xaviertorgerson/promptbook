@@ -89,6 +89,10 @@ Fixes from an independent review of 0.1.0 (workflow, authority, trace, simulator
 
 ### Added
 
+- **additive** — `tests/gemini-load.test.mjs`: the real Gemini CLI (`GEMINI_BIN`, or `gemini` on
+  `PATH`; skipped without one) loads every committed Gemini `settings.json` and `policies/harness.toml`
+  and each fresh compile of the fixture policies with `gemini mcp list` in a scratch
+  `GEMINI_CLI_HOME`, and fails on any refused setting or dropped rule in its output.
 - **additive** — `tests/codex-load.test.mjs`: the real Codex CLI (`CODEX_BIN`, or `codex` on `PATH`;
   skipped without one) loads every committed Codex `config.toml` (goldens, the Tally example, the
   dotfiles' compiled output when present) with `codex features list` in a scratch `CODEX_HOME`,

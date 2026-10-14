@@ -228,7 +228,9 @@ Goldens: `fixtures/compile-policy/golden/expected/<engine>-<profile>/`, each wit
 test; stagehand's `herdr.rules` round-trips through the Codex compiler when the checkout is present.
 `tests/codex-load.test.mjs` loads every committed and freshly compiled Codex config and rules file
 in the real Codex CLI (`CODEX_BIN=<codex>`, or `codex` on `PATH`; skipped without one), as
-adapters/codex/README.md describes.
+adapters/codex/README.md describes; `tests/gemini-load.test.mjs` does the same for Gemini's
+settings and policy files (`GEMINI_BIN=<gemini>`, or `gemini` on `PATH`), as adapters/gemini/README.md
+describes.
 
 ## grant
 
