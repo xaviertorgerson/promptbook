@@ -26,7 +26,10 @@ from its path in the project layout, else from its name's suffix (`*.grant.yaml`
 `harness trace <root>`
 is `validate --trace <root>`; `--readiness <dir>` writes each epic's report with the root's `HEAD` as
 `source_commit`, and `--no-timestamp` leaves it and `generated_at` out for a report committed with
-the plan; `--tests <glob>` picks the test files, `--test-pattern <regex>` adds a
+the plan; `--readiness <dir> --check` writes nothing and fails (exit 1) when a committed report is
+missing, stale against the plan, timestamped, or names no epic, printing the first differing line
+and the command that regenerates it (CI runs it so "never hand-edited" holds); `--tests <glob>`
+picks the test files (an explicit glob that matches nothing is an error), `--test-pattern <regex>` adds a
 way to read test names beyond the built-in JS/TS, Go, Python, JUnit/Kotlin, Rust and Ruby readers
 (fixtures: `fixtures/test-names/`). A commented-out, skipped or todo test, and a Rust `fn` with no
 test attribute, name nothing (CONTRACTS.md, Test names).

@@ -43,7 +43,8 @@ planning-work); verifying built work (verifying-work).
    `node tools/validate.mjs --trace <root> --readiness <root>/specs`; add `--tests "<glob>"` when
    test files live outside the default globs). It writes `specs/<epic>/readiness.md` for every epic,
    with the project's current commit; never edit that file by hand, regenerate it. When the report
-   is committed with the plan, add `--no-timestamp`: it then changes only when the plan does.
+   is committed with the plan, add `--no-timestamp`: it then changes only when the plan does, and
+   CI's `--readiness specs --check` fails when the committed report no longer matches the plan.
 3. **Otherwise, run the manual trace** in `references/readiness-checklist.md`, part A: the same
    rules, ids, severities and blocking flags as the tool. Then write `specs/<epic>/readiness.md` from
    `references/readiness-template.readiness.md` with `generator: manual/checking-plan-readiness@0.1.0`, the

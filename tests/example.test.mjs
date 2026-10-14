@@ -72,6 +72,12 @@ describe('the worked example: Tally', () => {
     assert.deepEqual(e.criteria_evidence.toSorted((a, b) => key(a).localeCompare(key(b))), want.toSorted((a, b) => key(a).localeCompare(key(b))));
   });
 
+  it('its committed readiness report is the one the plan generates now (trace --readiness --check)', () => {
+    const r = harness('trace', rel(EX), '--readiness', rel(path.join(EX, 'specs')), '--check');
+    assert.equal(r.status, 0, r.stdout);
+    assert.match(r.stdout, /readiness 1\/1 report\(s\) current/);
+  });
+
   it('simulates the queue as it stands, 50 seeds, with no invariant violated', () => {
     const r = harness('simulate', '--project', rel(EX), '--seeds', '1..50', '--no-trace', '--json');
     assert.equal(r.status, 0, r.stdout.slice(0, 2000));

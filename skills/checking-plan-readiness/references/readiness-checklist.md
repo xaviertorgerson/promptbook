@@ -32,7 +32,7 @@ requirement, requirement → journey, UX, ADR satisfies) is a warning even on an
 | `task-cites-requirement` | a task lists ≥1 REQ/NFR in `requirements` (an id only in prose is a warning with the fix) | missing-link (harness) | yes |
 | `criterion-named-in-test` | a task in review or later has every AC id in a test name: `<TASK> AC-n`, or a bare `AC-n` when no other task of the epic has that id | error | yes |
 | `ambiguous-criterion-id` | a test name carries a bare AC id several tasks of the epic share; it counts for none of them | warning | — |
-| `tests-exist` | some test file exists (else criterion coverage is not checked) | warning | — |
+| `tests-exist` | some test file exists; none while a task is at review or later (or a `--tests` glob that matches nothing) is an error | warning; error | yes, when an error |
 | `task-index-agrees` | the spec's Tasks table and the task files agree (ids and CUJs) | warning | — |
 | `journey-has-task` | every journey is served by a task's `cuj` | missing-link | yes |
 | `journey-has-requirement` | every journey is served by a REQ/NFR (CUJ column, or a task citing both) | missing-link (harness) | yes |

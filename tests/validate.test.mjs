@@ -472,6 +472,31 @@ describe('trace graph', () => {
     assert.deepEqual(r.epics[0].coverage.criteria, { covered: 2, total: 2 });
   });
 
+  it('no test file and a task at review or later is a blocking error, never a ready verdict', () => {
+    const dir = project('complete');
+    fs.rmSync(path.join(dir, 'tests'), { recursive: true });
+    const r = trace(dir);
+    const exist = r.gaps.find((g) => g.rule === 'tests-exist');
+    assert.equal(exist.severity, 'error');
+    assert.match(exist.message, /INV-1 is at review or later/);
+    assert.deepEqual(r.gaps.filter((g) => g.rule === 'criterion-named-in-test').map((g) => [g.subject, g.severity, g.blocks_readiness]), [['INV-1 AC-1', 'error', true], ['INV-1 AC-2', 'error', true]]);
+    assert.equal(r.epics[0].verdict, 'not-ready');
+    const early = project('complete', { 'specs/invoicing/tasks/INV-1.md': (t) => t.replace('status: review', 'status: ready').replace(/owner: .*/, 'owner: null') });
+    fs.rmSync(path.join(early, 'tests'), { recursive: true });
+    assert.equal(trace(early).gaps.find((g) => g.rule === 'tests-exist').severity, 'warning', 'before review, no tests is a warning');
+  });
+
+  it('an explicit --tests glob that matches nothing is an error, whatever the statuses', () => {
+    const r = trace(path.join(FIX, 'trace/complete'), { testGlobs: ['test/**/*.ts'] });
+    const exist = r.gaps.find((g) => g.rule === 'tests-exist');
+    assert.equal(exist.severity, 'error');
+    assert.match(exist.message, /--tests test\/\*\*\/\*\.ts matched no file/);
+    assert.equal(r.epics[0].verdict, 'not-ready');
+    const cli = spawnSync(process.execPath, [path.join(ROOT, 'tools/validate.mjs'), '--trace', path.join(FIX, 'trace/complete'), '--tests', 'test/**/*.ts'], { encoding: 'utf8' });
+    assert.equal(cli.status, 1, cli.stdout);
+    assert.match(cli.stdout, /NOT-READY/);
+  });
+
   it('an epic mode is the default for its tasks; a task mode overrides it (info)', () => {
     const dir = project('complete', {
       'specs/invoicing/spec.md': (t) => t.replace('owner: maria\n', 'owner: maria\nmode: research-plan-implement\n'),
@@ -575,10 +600,12 @@ describe('trace graph', () => {
     assert.equal(r.epics[0].verdict, 'not-ready');
   });
 
-  it('smoke: wt-stack-drift (specs, no product docs) reports gaps as legacy warnings and does not crash', { skip: !fs.existsSync(STACK_DRIFT) }, () => {
+  it('smoke: wt-stack-drift (specs, no product docs, no tests) reports gaps as legacy warnings, and its merged and human-review tasks as untested', { skip: !fs.existsSync(STACK_DRIFT) }, () => {
     const r = trace(STACK_DRIFT);
     assert.equal(r.adoption, 'legacy');
-    assert.equal(r.counts.error, 0, JSON.stringify(r.gaps.filter((g) => g.severity === 'error'), null, 2));
+    const errors = r.gaps.filter((g) => g.severity === 'error');
+    assert.deepEqual([...new Set(errors.map((g) => g.rule))].sort(), ['criterion-named-in-test', 'tests-exist'], JSON.stringify(errors, null, 2));
+    assert.deepEqual([...new Set(errors.filter((g) => g.rule === 'criterion-named-in-test').map((g) => g.subject.split(' ')[0]))].sort(), ['BILL-1', 'BILL-2']);
     assert.ok(r.gaps.some((g) => g.rule === 'brief-exists' && g.severity === 'warning'));
     assert.ok(r.gaps.some((g) => g.rule === 'rules-skipped' && g.severity === 'info'));
     const tm = r.epics.find((e) => e.epic === 'template-migration');
@@ -622,11 +649,51 @@ describe('trace graph', () => {
     assert.equal(r.status, 'PASS', JSON.stringify(errorsOf(r)));
   });
 
-  it('the CLI exits 0 on the smoke project and 1 on the broken one',{ skip: !fs.existsSync(STACK_DRIFT) }, () => {
+  it('--readiness <dir> --check regenerates each committed report, writes nothing, and fails on a stale, hand-edited, timestamped, missing or orphan one', () => {
+    const dir = project('complete');
+    const cli = (...a) => spawnSync(process.execPath, [path.join(ROOT, 'tools/validate.mjs'), '--trace', dir, ...a], { encoding: 'utf8' });
+    const specs = path.join(dir, 'specs');
+    const file = path.join(specs, 'invoicing/readiness.md');
+    const check = () => cli('--readiness', specs, '--check');
+    const status = () => JSON.parse(cli('--readiness', specs, '--check', '--json').stdout).readiness_check.map((c) => [c.epic, c.status]);
+
+    assert.equal(check().status, 1, 'no committed report yet');
+    assert.deepEqual(status(), [['invoicing', 'missing']]);
+    assert.ok(!fs.existsSync(file), '--check writes nothing');
+    assert.equal(cli('--readiness', specs, '--no-timestamp').status, 0);
+    const ok = check();
+    assert.equal(ok.status, 0, ok.stdout);
+    assert.match(ok.stdout, /readiness 1\/1 report\(s\) current/);
+
+    const committed = fs.readFileSync(file, 'utf8');
+    fs.writeFileSync(file, committed.replace('**ready**', '**ready** (signed off)'));
+    const edited = check();
+    assert.equal(edited.status, 1);
+    assert.match(edited.stdout, /readiness .*invoicing\/readiness\.md: stale — differs from the plan at line \d+/);
+    assert.match(edited.stdout, /regenerate: node tools\/validate\.mjs --trace .* --readiness .* --no-timestamp/);
+
+    fs.writeFileSync(file, committed);
+    fs.writeFileSync(path.join(specs, 'invoicing/tasks/INV-2.md'), taskText('INV-2'));
+    assert.deepEqual(status(), [['invoicing', 'stale']], 'the plan changed, the report did not');
+    fs.rmSync(path.join(specs, 'invoicing/tasks/INV-2.md'));
+
+    assert.equal(cli('--readiness', specs).status, 0, 'a timestamped report');
+    assert.deepEqual(status(), [['invoicing', 'timestamped']]);
+    const reports = path.join(dir, 'reports');
+    assert.equal(cli('--readiness', reports, '--no-timestamp').status, 0);
+    fs.mkdirSync(path.join(reports, 'billing'));
+    fs.writeFileSync(path.join(reports, 'billing/readiness.md'), committed);
+    const orphan = JSON.parse(cli('--readiness', reports, '--check', '--json').stdout).readiness_check.map((c) => [c.epic, c.status]);
+    assert.deepEqual(orphan.sort(), [['billing', 'orphan'], ['invoicing', 'ok']]);
+    assert.equal(cli('--check').status, 2, '--check without --readiness is a usage error');
+  });
+
+  it('the CLI exits 1 on the smoke project (a merged task, no test file) and on the broken one', { skip: !fs.existsSync(STACK_DRIFT) }, () => {
     const cli = (...a) => spawnSync(process.execPath, [path.join(ROOT, 'tools/validate.mjs'), ...a], { encoding: 'utf8' });
-    const ok = cli('--trace', STACK_DRIFT);
-    assert.equal(ok.status, 0, ok.stdout + ok.stderr);
-    assert.match(ok.stdout, /legacy adoption/);
+    const smoke = cli('--trace', STACK_DRIFT);
+    assert.equal(smoke.status, 1, smoke.stdout + smoke.stderr);
+    assert.match(smoke.stdout, /legacy adoption/);
+    assert.match(smoke.stdout, /error {3}tests-exist \(blocks readiness\)/);
     const bad = cli('--trace', path.join(FIX, 'trace/broken'));
     assert.equal(bad.status, 1);
     const strict = cli('--trace', STACK_DRIFT, '--strict');

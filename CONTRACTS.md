@@ -192,7 +192,9 @@ named in a test, each `{covered,total}`), `gaps[]` (`traceGap`); a `ready` verdi
 no gap that blocks readiness. Written by `validate.mjs --trace <root> --readiness <dir>`; never
 hand-edited. `generated_at` and `source_commit` change on every check whatever the plan says, so
 `--no-timestamp` leaves both out (1.2.0: `generated_at` is optional) and a report committed with the
-plan changes only when the plan does; its own commit dates it. **Compat.** New.
+plan changes only when the plan does; its own commit dates it. `--readiness <dir> --check`
+regenerates each committed report in that form and fails on one that is missing, differs from the
+plan (a hand edit, or a plan change not regenerated), is timestamped, or has no epic; CI runs it. **Compat.** New.
 
 ### task-record
 
@@ -440,7 +442,8 @@ flowchart LR
 | `one-way-door-decided` | no ADR the epic cites (header, ADR column, `satisfies`, a task's guiding doc) is a one-way door still proposed | see below; blocks readiness |
 | `ready-task-unblocked` | a `ready` task has no unchecked Open question that says it blocks | error (warning in legacy adoption); blocks readiness |
 | `task-size-fits` | no task is `XL`: an error from `ready` on, a warning before | see below |
-| `persona-has-journey`, `persona-in-brief`, `nfr-has-decision`, `task-index-agrees`, `cites-current-decision`, `decision-link-agrees`, `tests-exist` | consistency | warning |
+| `tests-exist` | some test file matches; an explicit `--tests` glob that matches nothing, or no test file while a task is at review or later, is an error (and that task's criteria are uncovered) | warning; error, blocks readiness |
+| `persona-has-journey`, `persona-in-brief`, `nfr-has-decision`, `task-index-agrees`, `cites-current-decision`, `decision-link-agrees` | consistency | warning |
 | `task-mode-overrides-epic` | a task's `mode` differs from its epic's | info |
 
 **Severity policy.** A broken reference or an invalid artifact is always an error. A *missing* link
@@ -452,7 +455,9 @@ layer): the product-layer rules are skipped (reported once as `info`), and every
 introduced — persona links, task → requirement, requirement → journey, UX, ADR `satisfies` — is a
 warning even on an approved epic, so adopting the harness never turns a green build red. Gaps that
 keep an epic from `ready` are marked `blocks_readiness` in either mode. With no test files at all,
-criterion coverage is a single `tests-exist` warning, as `ears-coverage.mjs` does in status mode.
+criterion coverage is a single `tests-exist` warning while no task claims to be tested; once a task is
+at review or later it is an error and each of that task's criteria is uncovered, so a merged task
+with no test never reads ready.
 `--strict` makes warnings fail; `--readiness <dir>` writes each epic's `readiness.md`
 (`--no-timestamp`: without `generated_at` and `source_commit`).
 
@@ -479,9 +484,10 @@ criteria, and `--json` lists each criterion's evidence (`epics[].criteria_eviden
 bare, ambiguous or none). A bare id unique in its epic still counts when another epic has the same
 id, so a project with several epics should qualify every name.
 
-On `wt-stack-drift` (two epics, no product docs, no tests) the check reports legacy adoption, 0
-errors, and 32 warnings: tasks that cite no requirement (with the exact `requirements: [REQ-2]` fix
-where one is named in prose), requirements no task implements, journeys no requirement serves, and
+On `wt-stack-drift` (two epics, no product docs, no tests) the check reports legacy adoption, 31
+warnings and 7 errors: rating-engine's BILL-1 (merged) and BILL-2 (human-review) have no test file
+naming their six criteria (`tests-exist`, `criterion-named-in-test`). The warnings are tasks that
+cite no requirement (with the exact `requirements: [REQ-2]` fix where one is named in prose), requirements no task implements, journeys no requirement serves, and
 CUJ-2 of template-migration, which the spec's Tasks table attributes to TMIG-1 and TMIG-3 while their
 `cuj:` frontmatter does not.
 

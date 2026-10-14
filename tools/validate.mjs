@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { registry } from './lib/registry.mjs';
-import { renderReadiness, trace } from './lib/trace.mjs';
+import { checkReadiness, renderReadiness, trace } from './lib/trace.mjs';
 import { validateFile, validatePath } from './lib/validate.mjs';
 
 const USAGE = `Validate harness artifacts against their contracts.
@@ -19,6 +19,9 @@ const USAGE = `Validate harness artifacts against their contracts.
                                                      the root's HEAD as source_commit (in a git repo)
       [--no-timestamp]                               omit generated_at and source_commit, so a
                                                      committed report changes only with the plan
+      [--check]                                      with --readiness: write nothing; fail when a
+                                                     committed report is missing, stale, timestamped
+                                                     or has no epic (regenerate with --no-timestamp)
       [--strict]                                     warnings fail too
   node tools/validate.mjs --list                     list contracts, versions and artifact paths
   options: --json (machine-readable), --quiet (failures only), --warnings (print warnings)
@@ -67,9 +70,13 @@ if (flag('--trace')) {
   for (const p of patterns) { try { new RegExp(p); } catch (e) { fail(`--test-pattern ${p}: ${e.message}`); } }
   const result = trace(root, { ...(tests.length ? { testGlobs: tests } : {}), testPatterns: patterns });
   const strict = flag('--strict');
-  const failed = result.counts.error > 0 || (strict && result.counts.warning > 0);
   const [out] = values('--readiness');
-  if (out) {
+  if (flag('--check') && !out) fail('--check compares committed readiness reports: give --readiness <dir>');
+  const checked = flag('--check') ? checkReadiness(result, out) : null;
+  const stale = checked?.filter((c) => c.status !== 'ok') ?? [];
+  const failed = result.counts.error > 0 || (strict && result.counts.warning > 0) || stale.length > 0;
+  if (checked) result.readiness_check = checked.map((c) => ({ ...c, file: path.relative(process.cwd(), c.file) || c.file }));
+  else if (out) {
     // Both change on every check whatever the plan says; --no-timestamp leaves them out so a
     // committed report does not dirty the tree (its own commit dates it).
     const stable = flag('--no-timestamp');
@@ -94,7 +101,12 @@ if (flag('--trace')) {
     console.log(`epic ${e.epic} [${e.epic_status}, ${e.mode}] — ${e.verdict.toUpperCase()}: ${e.counts.error} error(s), ${e.counts.warning} warning(s); journeys ${c.journeys.covered}/${c.journeys.total}, requirements ${c.requirements.covered}/${c.requirements.total}, tasks citing a requirement ${c.tasks.covered}/${c.tasks.total}, criteria in tests ${c.criteria.covered}/${c.criteria.total}`);
     e.gaps.forEach(show);
   }
-  console.log(`${failed ? 'FAIL' : 'PASS'} trace: ${result.counts.error} error(s), ${result.counts.warning} warning(s), ${result.counts.info} info${strict ? ' (strict)' : ''}`);
+  const why = { missing: 'no committed report', stale: 'differs from the plan', timestamped: 'carries generated_at or source_commit', orphan: 'no epic of that name' };
+  for (const c of result.readiness_check ?? []) {
+    console.log(`readiness ${c.file}: ${c.status}${c.status === 'ok' ? '' : ` — ${why[c.status]}${c.line ? ` at line ${c.line}\n          expected: ${c.expected}\n          found:    ${c.found}` : ''}`}`);
+  }
+  if (stale.length) console.log(`regenerate: node tools/validate.mjs --trace ${root} --readiness ${out} --no-timestamp`);
+  console.log(`${failed ? 'FAIL' : 'PASS'} trace: ${result.counts.error} error(s), ${result.counts.warning} warning(s), ${result.counts.info} info${strict ? ' (strict)' : ''}${checked ? `; readiness ${checked.length - stale.length}/${checked.length} report(s) current` : ''}`);
   process.exit(failed ? 1 : 0);
 }
 
