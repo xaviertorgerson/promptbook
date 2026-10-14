@@ -2,9 +2,10 @@
 
 Where each harness contract lands when the engine is Codex (CLI, IDE, app), and how
 `agent-policy.yaml` compiles to `config.toml` plus execpolicy rules. Verified against the docs on
-2026-10-13. Codex docs moved from `developers.openai.com/codex/*` to `learn.chatgpt.com/docs/*`
-(302 redirects); citations use the current host. Some pages could not be fetched (sandbox and
-approvals, the full config reference); those claims are marked *unverified*.
+2026-10-13, and every compiled config and rules file is loaded by Codex 0.162.1 (below). Codex docs
+moved from `developers.openai.com/codex/*` to `learn.chatgpt.com/docs/*` (302 redirects); citations
+use the current host. Some pages could not be fetched (sandbox and approvals, the full config
+reference, refused again on 2026-10-13); those claims are marked *unverified*.
 
 ## Where artifacts land
 
@@ -52,6 +53,22 @@ approvals, the full config reference); those claims are marked *unverified*.
 silent drop; the only way past it is an `accept_gaps` entry with a reason, which the compiler prints.
 Unrepresentable `ask` rules are dropped with a warning. Each compiled rule carries its
 `justification` and `match` examples so `codex execpolicy check --rules <file> -- <cmd>` proves it.
+
+**Loaded by the real CLI.** A key the docs allow can still be one Codex refuses to load, and a
+refused `config.toml` loses every wall in it, not only the bad entry. `tests/codex-load.test.mjs`
+(`CODEX_BIN=<codex> pnpm test`, or `codex` on `PATH`; skipped otherwise) copies each committed Codex
+config (the goldens, the Tally example, the dotfiles' compiled output when present) and each fresh
+compile of the fixture policies, as written and with every gap accepted, into a scratch
+`CODEX_HOME` as `config.toml` and runs `codex features list` (exit 1, "failed to load
+configuration", on a bad one); it runs `codex execpolicy check` on every rules file, which parses
+the file and checks each rule's `match` examples, and requires the committed ones to forbid
+`git push --force origin main`; and it loads each `mcp-restrictions.toml` merged into a server entry
+with a `command`. Measured with Codex 0.162.1 on 2026-10-13. Neither `features list` nor
+`codex doctor` reads `hooks.json` (a malformed one passes both), so the hook registration is
+checked against the hooks page only. `codex doctor` also reports a startup warning for every
+unbounded `**` deny on Linux ("Non-macOS sandboxing does not support unbounded `**` natively; set
+`glob_scan_max_depth`"): the deny loads and applies; the compiler sets no depth, which is the
+operator's trade between scan time and coverage.
 
 ## Plugin manifest skeleton
 

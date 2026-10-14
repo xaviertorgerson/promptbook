@@ -83,6 +83,12 @@ Fixes from an independent review of 0.1.0 (workflow, authority, trace, simulator
 
 ### Added
 
+- **additive** — `tests/codex-load.test.mjs`: the real Codex CLI (`CODEX_BIN`, or `codex` on `PATH`;
+  skipped without one) loads every committed Codex `config.toml` (goldens, the Tally example, the
+  dotfiles' compiled output when present) with `codex features list` in a scratch `CODEX_HOME`,
+  every rules file with `codex execpolicy check` (the committed ones must forbid a force-push), each
+  fresh compile of the fixture policies as written and with every gap accepted, and each
+  `mcp-restrictions.toml` merged into a defined server.
 - **additive** — `harness grant verify <file> [--git]`: a grant's provenance and narrowing, checked
   before acting under it (owners from CODEOWNERS or `--owners`, the committing human, issued fields
   as first committed, append-only narrowing, a source commit that exists). The Tally example gains

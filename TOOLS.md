@@ -225,6 +225,9 @@ Goldens: `fixtures/compile-policy/golden/expected/<engine>-<profile>/`, each wit
 (`UPDATE_GOLDEN=1` rewrites).
 `fixtures/compile-policy/dotfiles/agent-policy.yaml` restates the user's Claude settings for the diff
 test; stagehand's `herdr.rules` round-trips through the Codex compiler when the checkout is present.
+`tests/codex-load.test.mjs` loads every committed and freshly compiled Codex config and rules file
+in the real Codex CLI (`CODEX_BIN=<codex>`, or `codex` on `PATH`; skipped without one), as
+adapters/codex/README.md describes.
 
 ## grant
 
