@@ -24,7 +24,7 @@ L1 (dotfiles) and L4 (agentic-template's `.claude/` plugin) implement it.
 
 ## Policy compilation (`agent-policy.yaml` → settings.json)
 
-The compiler (`tools/compile-policy.mjs`, a later deliverable) emits a user-scope settings fragment for
+The compiler (`tools/compile-policy.mjs`) emits a user-scope settings fragment for
 L1 and never touches project settings. Rules:
 
 | Policy field | Claude Code key | Mapping |

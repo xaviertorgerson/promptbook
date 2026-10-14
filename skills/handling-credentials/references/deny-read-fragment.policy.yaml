@@ -27,7 +27,7 @@ deny_read:
   - "~/.claude/.credentials.json"
   - "~/.config/shell/secrets.sh"
 forbid:
-  - { command: [git, push, [--force, -f]], reason: no force-push of shared branches }
+  - { command: [git, push], flags_anywhere: [--force, -f, --mirror, "+*"], reason: "no force-push of shared branches, however the command is spelled" }
   - { command: [printenv], reason: never echo the environment; test presence instead }
   - { write: "**/.env", reason: secrets never written by an agent }
   - { tool: "mcp:production-db", reason: production-capable servers never in an agent session }

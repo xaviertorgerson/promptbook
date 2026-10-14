@@ -291,41 +291,54 @@ engine with no classifier mode (Codex on-request, Gemini auto_edit). A profile m
 cannot also be masked (`credential-not-denied`). **Migration:** the dotfiles' top-level
 `x-claude: { default_mode: { workstation: auto } }` (read by their `settings.json.tmpl` to put
 Claude in auto mode while the profile said auto-edit) becomes `profiles.workstation.tier: auto`;
-Codex compiles exactly as it did, so drop the `x-claude` key and the template's lookup. A profile may name `requires`: preconditions the operator keeps outside the
-policy, each a named probe of the host (`prod-unreachable-from-this-host` against
-`requires_config.prod_hosts` (1.4.0), `non-root`, `container`, `non-root-container`,
-`sandbox-available`; an unknown name fails closed); the bypass tier (autonomous) must name them (a
-validation warning, a compile error), `harness check-requires` probes them, and the compiler passes
-them, with `requires_config`, to the launcher in `runner.json`, with the run's `caps` and who enforces each (`engine`, `harness-run`, or `none`);
-`harness run` is that launcher, and it refuses to start a run until the probes pass. An unattended tier's caps are never waivable: on an engine that
-reports no cost the compile requires `budgets.unattended.max_minutes` for a hard kill. A rule has exactly one matcher: `command` (argv prefix, with alternatives),
-`write` (path glob) or `tool` (web-fetch with a domain, web-search, `mcp:server[:tool]`). A forbid's
-`command` may add `flags_anywhere` (1.4.0): the words in order anywhere in the argv and one of the
-flags after them, so `git push origin main --force`, `git -C . push -f` and `env git push -f` are
-denied (`flags-anywhere-forbids-only`: never in an ask or allow, where it would widen a
-pre-approval). `roles` (1.4.0) names who runs headless (author, evaluator, reader, planner, merge, ...) and only
+Codex compiles exactly as it did, so drop the `x-claude` key and the template's lookup.
+
+A rule has exactly one matcher: `command` (argv prefix, with alternatives), `write` (path glob) or
+`tool` (web-fetch with a domain, web-search, `mcp:server[:tool]`). A forbid's `command` may add
+`flags_anywhere` (1.4.0): the words in order anywhere in the argv and one of the flags after them,
+so `git push origin main --force`, `git -C . push -f` and `env git push -f` are denied
+(`flags-anywhere-forbids-only`: never in an ask or allow, where it would widen a pre-approval).
+`hooks.forbid_guard` (1.4.0) has the compile emit the engine-neutral guard
+(`tools/guards/forbid-guard.mjs`) as a user-scope PreToolUse hook. A forbid is defense in depth on
+every engine (a command rule matches the text an agent writes, never every way to run a program);
+the project's hook deny and the sandbox are the wall. An `allow` or `ask` that a `forbid` covers is
+a warning (it never takes effect).
+
+A profile may name `requires`: preconditions the operator keeps outside the policy, each a named
+probe of the host (`prod-unreachable-from-this-host` against `requires_config.prod_hosts` (1.4.0),
+`non-root`, `container`, `non-root-container`, `sandbox-available`; an unknown name fails closed).
+The bypass tier (autonomous) must name them (a validation warning, a compile error); `harness
+check-requires` probes them, and the compiler passes them with `requires_config` to the launcher in
+`runner.json`, with the run's `caps` and who enforces each (`engine`, `harness-run` or `none`).
+`harness run` is that launcher: it refuses to start a run until the probes pass. An unattended
+tier's caps are never waivable: on an engine that reports no cost the compile requires
+`budgets.unattended.max_minutes` for a hard kill.
+
+`roles` (1.4.0) names who runs headless (author, evaluator, reader, planner, merge, ...) and only
 narrows the profile per role: its own `allow` (each one the profile's allow already grants,
 `role-narrows`), its own `egress.allow_domains` (deny by default), `read_only` (every write allow
 dropped and every write denied), and the `engines` that run it. When a policy names roles, every
 unattended run is one of them: the unattended compile emits one file set per role under
-`roles/<role>/` (an engine no role names is `role-engine`), and an interactive or bypass tier,
-which has no allowlist boundary, ignores them. `hooks.forbid_guard` (1.4.0) has the compile emit the engine-neutral guard
-(`tools/guards/forbid-guard.mjs`) as a user-scope PreToolUse hook. A forbid is defense in depth on
-every engine (a command rule matches the text an agent writes, never every way to run a program);
-the project's hook deny and the sandbox are the wall. An `allow`
-or `ask` that a `forbid` covers is a warning (it never takes effect). `accept_gaps` records the
-degradations the operator accepts; an entry's `profiles` (1.4.0) scopes it, and an entry without
-`profiles` covers every profile except a bypass-tier one, whose gaps are accepted only by an entry
-that names it (`gap-profiles-exist` checks the names). **Swap story.** One policy, three engines: the compiler emits
-Claude settings, Codex config + execpolicy rules, Gemini settings + policy TOML; per-engine maps and
-gaps are in `adapters/{claude,codex,gemini}/README.md`. **Fail closed:** an unrepresentable deny is
-a compile error unless accepted with a reason; an unrepresentable ask is dropped with a warning. The
-bypass tier also needs the policy's own isolation (`sandbox.enabled`, `fail_if_unavailable`,
-`egress.default: deny`) or, where the host is isolated another way, that field's gap accepted for
-that profile by name; its `requires` is never waivable. Where its own sandbox is on, the compile also
-forbids an unsandboxed retry of a command the sandbox blocked (Claude
-`sandbox.allowUnsandboxedCommands: false`), which bypass would otherwise run without a prompt; that
-is decided from the profile's merged sandbox alone, never from another profile's accepted gap.
+`roles/<role>/` (an engine no role names is `role-engine`); an interactive or bypass tier, which has
+no allowlist boundary, ignores them.
+
+`accept_gaps` records the degradations the operator accepts; an entry's `profiles` (1.4.0) scopes
+it, an entry without `profiles` covers every profile except a bypass-tier one, whose gaps are
+accepted only by an entry that names it (`gap-profiles-exist` checks the names), and the first entry
+that covers a profile wins. **Swap story.** One policy, three engines: the compiler emits Claude
+settings, Codex config + execpolicy rules, Gemini settings + policy TOML; per-engine maps and gaps
+are in `adapters/{claude,codex,gemini}/README.md`. **Fail closed:** an unrepresentable deny is a
+compile error unless accepted with a reason (Claude's read and write denies without the sandbox are
+a `sandbox` gap: they do not bind a script). An unrepresentable ask or allow is dropped with a
+warning in an interactive tier; a Codex command allow, which runs outside the sandbox, is dropped
+unless the `allow` gap is accepted, and an interpreter never emitted; unattended, an ask is a
+denial, and one an engine cannot deny fails closed. The bypass tier also needs the policy's own
+isolation (`sandbox.enabled`, `fail_if_unavailable`, `egress.default: deny`) or, where the host is
+isolated another way, that field's gap accepted for that profile by name; its `requires` is never
+waivable. Where its own sandbox is on, the compile also forbids an unsandboxed retry of a command
+the sandbox blocked (Claude `sandbox.allowUnsandboxedCommands: false`), which bypass would otherwise
+run without a prompt; that is decided from the profile's merged sandbox alone, never from another
+profile's accepted gap.
 **Compat.** The dotfiles' `settings.json.tmpl` is restated as the valid fixture.
 
 ### toolkit-lock
