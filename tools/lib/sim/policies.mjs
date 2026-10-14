@@ -39,6 +39,7 @@ export const MUTATIONS = {
   'cross-epic-integrated': 'treats a dependency integrated on another epic\'s integration branch as merged, and claims the dependent before that branch reached the protected branch',
   'finalize-unverified': 'marks a PR ready (finalize) on green checks and covered criteria without waiting for the evaluator\'s verdict on the head',
   'land-without-grant': 'runs its own merge and lands every approved change, whether or not a merge grant of its covers that branch',
+  'uncounted-readers': 'counts its authors and evaluators against the workers cap but not the readers they started',
 };
 
 const PRIORITY = { P0: 0, P1: 1, P2: 2, P3: 3 };
@@ -68,6 +69,7 @@ function decide(note, api, { st, T, broken }) {
   const cfg = api.config;
   const tasks = new Map(v.tasks.map((t) => [t.id, t]));
   const live = v.sessions.filter((s) => LIVE.has(s.state));
+  const counted = broken.has('uncounted-readers') ? live.filter((s) => s.kind !== 'helper') : live;
   const liveFor = (id, kind) => live.filter((s) => s.task === id && (!kind || s.kind === kind));
   const decidedSince = (id, t0) => v.decisions.some((d) => d.task === id && d.at >= t0);
   const pr = (id) => v.prs[id] ?? null;
@@ -174,7 +176,7 @@ function decide(note, api, { st, T, broken }) {
   }
   // A grant that dispatches work caps the workers; a merge-only grant caps nothing it does not run.
   const workerCap = broken.has('unbounded-workers') ? Infinity : Math.min(cfg.max_workers, ...v.grantsLive.filter(dispatches).map((g) => g.limits?.max_workers ?? Infinity));
-  let capacity = workerCap - live.length;
+  let capacity = workerCap - counted.length;
   const affordable = (t) => {
     const c = caps(t);
     if (broken.has('ignore-budget')) return c;

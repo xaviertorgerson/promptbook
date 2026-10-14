@@ -35,8 +35,8 @@ The coder never makes any of these. The evaluator never makes any of these.
 
 **A coordinator that presses merge itself** (a runtime with no separate merge role) records `land`,
 `integrate` or `return-to-human` in its own name under a live `merge` grant whose repo, strategy
-and exact target match: the target is the task's `lands_to`, else the protected branch (workflow
-contract 1.2.0). `deps-merged` counts an `integrated` dependency only for a dependent in the same
+and exact target match: the target is the task's `lands_to`, else the protected branch (workflow,
+since 1.2.0). `deps-merged` counts an `integrated` dependency only for a dependent in the same
 epic, which builds on the integration branch.
 
 ## The forge controls that make the tiers real

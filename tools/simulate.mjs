@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parse } from 'yaml';
 import { INVARIANTS } from './lib/sim/invariants.mjs';
 import { MUTATIONS, orchestrating } from './lib/sim/policies.mjs';
@@ -19,6 +19,9 @@ faults, checking every invariant after every event.
       --seed <n>            one seed (default: the scenario's)
       --seeds <a..b>|<n>    a range of seeds, e.g. 1..50 or 50; the summary aggregates them
       --break <mutation>    run a deliberately broken supervisor policy (repeatable); --list shows them
+      --supervisor <module> run your own supervisor instead (a runtime's binding): the module's default
+                            export is a factory ({ runtime, sc }) => ({ name, onEvent(note, api) }),
+                            the shape orchestrating() returns (TOOLS.md, simulate)
       --engine <binding>    the engine's permission binding: ${Object.keys(ENGINES).join(', ')}
       --out <dir>           where traces go (default .sim-out/); --no-trace writes none
       --json                print the summary as JSON
@@ -37,8 +40,22 @@ function seedsOf(spec, fallback) {
   return a <= b ? Array.from({ length: b - a + 1 }, (_, i) => a + i) : null;
 }
 
-export function main(argv = process.argv.slice(2)) {
-  const VALUED = new Set(['--seed', '--seeds', '--break', '--engine', '--out', '--project', '--config']);
+// A supervisor module: its default export (or `supervisor`) is a factory ({ runtime, sc }) => policy,
+// where policy is { name, onEvent(note, api) }; an exported policy object is wrapped as a factory.
+export async function loadSupervisor(file) {
+  const mod = await import(pathToFileURL(path.resolve(file)).href);
+  const exp = mod.default ?? mod.supervisor;
+  const factory = typeof exp === 'function' ? exp : exp && typeof exp.onEvent === 'function' ? () => exp : null;
+  if (!factory) throw new Error(`${file}: export default a factory ({ runtime, sc }) => ({ name, onEvent(note, api) })`);
+  return (ctx) => {
+    const p = factory(ctx);
+    if (!p || typeof p.onEvent !== 'function') throw new Error(`${file}: the factory returned no onEvent(note, api)`);
+    return { name: p.name ?? path.basename(file), onEvent: p.onEvent.bind(p) };
+  };
+}
+
+export async function main(argv = process.argv.slice(2)) {
+  const VALUED = new Set(['--seed', '--seeds', '--break', '--engine', '--out', '--project', '--config', '--supervisor']);
   const value = (n) => { const i = argv.indexOf(n); return i === -1 ? undefined : argv[i + 1]; };
   const values = (n) => argv.flatMap((a, i) => (argv[i - 1] === n ? [a] : []));
   const usage = (m) => { console.error(`simulate: ${m}\n\n${USAGE}`); return 2; };
@@ -68,6 +85,13 @@ export function main(argv = process.argv.slice(2)) {
   }
   const breaks = values('--break');
   for (const b of breaks) if (!MUTATIONS[b]) return usage(`unknown mutation ${b} (known: ${Object.keys(MUTATIONS).join(', ')})`);
+  const supervisorFile = value('--supervisor');
+  if (supervisorFile && breaks.length) return usage('--supervisor and --break: --break breaks the built-in supervisor; give one');
+  let supervisor = null;
+  if (supervisorFile) {
+    if (!fs.existsSync(supervisorFile)) return usage(`no such supervisor module: ${supervisorFile}`);
+    try { supervisor = await loadSupervisor(supervisorFile); } catch (e) { return usage(e.message); }
+  }
   const engine = value('--engine') ?? 'correct';
   if (!ENGINES[engine]) return usage(`unknown engine binding ${engine}`);
   const seeds = value('--seeds') ? seedsOf(value('--seeds')) : seedsOf(value('--seed'), sc.seed);
@@ -78,14 +102,20 @@ export function main(argv = process.argv.slice(2)) {
   const summaries = [];
   const violations = [];
   for (const seed of seeds) {
-    const r = simulate(sc, { seed, policy: orchestrating({ break: breaks }), engine, trace: writeTrace });
+    let r;
+    try {
+      r = simulate(sc, { seed, policy: supervisor ?? orchestrating({ break: breaks }), engine, trace: writeTrace });
+    } catch (e) {
+      console.error(`simulate: ${e.message}`);
+      return 2;
+    }
     if (writeTrace) r.files = writeOutputs(r, out);
     summaries.push(r.summary);
     violations.push(...r.violations);
     if (!argv.includes('--json')) {
       const s = r.summary;
       console.log(`${s.violations ? 'FAIL' : 'PASS'} ${s.scenario} seed ${seed}: ${s.merged}/${s.tasks} merged, ${s.parked} parked, ${s.needs_human} needs-human, $${s.spend_usd}, ${s.events} events${s.makespan_minutes ? `, makespan ${(s.makespan_minutes / 60).toFixed(1)}h` : ''}${writeTrace ? ` — ${path.relative(process.cwd(), r.files.trace)}` : ''}`);
-      for (const v of r.violations.slice(0, 5)) console.log(`  ${v.invariant} @ event ${v.index} (${v.at})${v.task ? ` ${v.task}` : ''}: ${v.message}\n    reproduce: node tools/simulate.mjs ${project ? `--project ${project}` : file} --seed ${seed}${breaks.map((b) => ` --break ${b}`).join('')}${engine !== 'correct' ? ` --engine ${engine}` : ''}`);
+      for (const v of r.violations.slice(0, 5)) console.log(`  ${v.invariant} @ event ${v.index} (${v.at})${v.task ? ` ${v.task}` : ''}: ${v.message}\n    reproduce: node tools/simulate.mjs ${project ? `--project ${project}` : file} --seed ${seed}${breaks.map((b) => ` --break ${b}`).join('')}${supervisorFile ? ` --supervisor ${supervisorFile}` : ''}${engine !== 'correct' ? ` --engine ${engine}` : ''}`);
       if (r.violations.length > 5) console.log(`  … ${r.violations.length - 5} more in ${writeTrace ? path.relative(process.cwd(), r.files.summary) : 'the summary'}`);
     }
   }
@@ -107,4 +137,4 @@ export function main(argv = process.argv.slice(2)) {
   return violations.length ? 1 : 0;
 }
 
-if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) process.exit(main());
+if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) process.exitCode = await main();

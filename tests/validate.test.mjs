@@ -418,6 +418,12 @@ describe('state machines', () => {
     }
   });
 
+  it('a terminal state has no transition out of it', () => {
+    for (const [name, m] of Object.entries(load('workflow').machines)) {
+      for (const t of m.transitions) for (const from of [].concat(t.from)) assert.ok(!m.terminal.includes(from), `${name}.${t.id} leaves terminal ${from}`);
+    }
+  });
+
   it('the three human gates exist and only pr-approval is grantable, and only as merge', () => {
     const w = load('workflow');
     assert.deepEqual(Object.keys(w.gates).sort(), ['pr-approval', 'production-release', 'spec-approval']);

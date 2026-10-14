@@ -262,7 +262,7 @@ const MUTANTS = [
   { break: 'swallow-denials', scenario: 'unattended-ask', caught: ['asks-surface-to-human'] },
   { break: 'ignore-no-progress', scenario: 'wall-bypass', caught: ['no-progress-stops'] },
   { break: 'unbounded-workers', scenario: 'happy-path', caught: ['cap-workers'] },
-  { break: 'nested-helpers', scenario: 'happy-path', over: { work: { helper_rate: 1 } }, caught: ['cap-depth'] },
+  { break: 'nested-helpers', scenario: 'happy-path', over: { work: { helper_rate: 1 }, supervisor: { max_workers: 10 } }, caught: ['cap-depth'] },
   { break: 'redispatch-on-unknown', scenario: 'crash-lost-events', over: { faults: { ...raw('crash-lost-events').faults, unknown_signals: { rate: 1 } } }, caught: ['one-owner-per-claimed-task'] },
   { break: 'complete-on-idle', scenario: 'happy-path', caught: ['attention-consistent'] },
   { break: 'status-as-attention', scenario: 'happy-path', caught: ['attention-consistent'] },
@@ -271,6 +271,7 @@ const MUTANTS = [
   { break: 'cross-epic-integrated', scenario: 'integration-branch', caught: ['guards-hold'], message: /INV-1|claim: guard deps-merged/ },
   { break: 'finalize-unverified', scenario: 'integration-branch', caught: ['guards-hold'], message: /mark-pr-ready: guard independent-verification does not hold$/ },
   { break: 'land-without-grant', scenario: 'integration-branch', over: { merge: { queue_targets: [] } }, caught: ['transitions-allowed', 'merge-requires-authority'], message: /orchestrator/ },
+  { break: 'uncounted-readers', scenario: 'happy-path', over: { work: { helper_rate: 1 } }, caught: ['cap-workers'] },
   { world: { engine: 'bypass-skips-walls' }, label: 'engine binding: bypass skips walls (disableAllHooks)', scenario: 'wall-bypass', caught: ['walls-block'] },
   { world: { cas: false }, label: 'forge without compare-and-swap', scenario: 'parallel-overlap', caught: ['one-owner-per-claimed-task'] },
   { world: { mergeBot: 'resolve-semantic' }, label: 'merge queue resolves semantic conflicts', scenario: 'grant-expiry', caught: ['guards-hold', 'merge-requires-authority'] },
@@ -364,6 +365,20 @@ describe('simulate: determinism, inputs and outputs', () => {
     assert.ok(!('status' in reg().schema('grant').properties), 'the contract has no stored status');
   });
 
+  it('a guard the model has no evidence for is an error, never a pass', () => {
+    const c = new Checker({ machines: machines() });
+    const w = { forge: { tasks: new Map([['A-1', {}]]), prs: new Map() }, meta: new Map([['A-1', { spec: { criteria: [] } }]]) };
+    assert.throws(() => c.guardHolds(w, 'moon-in-phase', { task: 'A-1', transition: 'claim' }, { owner: null }), /no evidence model for guard moon-in-phase/);
+    assert.equal(c.guardHolds(w, 'epic-approved', { task: 'A-1', transition: 'mark-ready' }, { owner: null }), true, 'a planning guard the simulator does not model is listed, so it holds');
+  });
+
+  it('readers count toward the workers cap: the runtime refuses a helper when every slot is taken', () => {
+    const runs = runAll(scenario('happy-path', { work: { helper_rate: 1 } }), 10, { trace: true });
+    for (const r of runs) assert.deepEqual(r.violations, []);
+    assert.ok(runs.some((r) => r.trace.some((l) => (l.effects ?? []).some((e) => e.spawn === 'refused' && e.why === 'workers cap'))), 'a helper was refused at the cap');
+    assert.match(INVARIANTS['cap-workers'], /readers/);
+  });
+
   it('the invariants read the state machines: roles, gates and claimed statuses come from the YAML', () => {
     const m = machines();
     assert.equal(m.transitions.get('approve-pr').gate, 'pr-approval');
@@ -387,6 +402,23 @@ describe('simulate CLI', () => {
     assert.equal(bad.status, 1);
     assert.match(bad.stdout, /asks-surface-to-human @ event \d+/);
     assert.match(bad.stdout, /reproduce: node tools\/simulate\.mjs fixtures\/scenarios\/unattended-ask\.yaml --seed \d+ --break auto-approve-ask/);
+  });
+
+  it('--supervisor runs a runtime\'s own supervisor module against the invariants', () => {
+    const dir = path.join(TMP, 'supervisors');
+    fs.mkdirSync(dir, { recursive: true });
+    const policies = path.join(ROOT, 'tools/lib/sim/policies.mjs');
+    fs.writeFileSync(path.join(dir, 'ok.mjs'), `import { orchestrating } from ${JSON.stringify(policies)};\nexport default orchestrating();\n`);
+    fs.writeFileSync(path.join(dir, 'greedy.mjs'), `import { orchestrating } from ${JSON.stringify(policies)};\nconst inner = orchestrating({ break: ['unbounded-workers'] });\nexport default (ctx) => ({ ...inner(ctx), name: 'greedy' });\n`);
+    fs.writeFileSync(path.join(dir, 'empty.mjs'), 'export const nothing = 1;\n');
+    const ok = cli('fixtures/scenarios/happy-path.yaml', '--supervisor', path.join(dir, 'ok.mjs'), '--seeds', '1..3', '--no-trace');
+    assert.equal(ok.status, 0, ok.stdout + ok.stderr);
+    const bad = cli('fixtures/scenarios/happy-path.yaml', '--supervisor', path.join(dir, 'greedy.mjs'), '--seeds', '1..3', '--no-trace');
+    assert.equal(bad.status, 1, bad.stdout + bad.stderr);
+    assert.match(bad.stdout, /cap-workers @ event \d+/);
+    assert.match(bad.stdout, /reproduce: .* --supervisor .*greedy\.mjs/);
+    assert.equal(cli('fixtures/scenarios/happy-path.yaml', '--supervisor', path.join(dir, 'empty.mjs')).status, 2);
+    assert.equal(cli('fixtures/scenarios/happy-path.yaml', '--supervisor', path.join(dir, 'ok.mjs'), '--break', 'unbounded-workers').status, 2);
   });
 
   it('--list names every invariant and mutation; usage errors exit 2', () => {

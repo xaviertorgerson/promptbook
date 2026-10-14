@@ -7,7 +7,7 @@
 #
 # Source: agentic-template docs/workflow.md, docs/roles.md and docs/interjection.md (2026-10-13),
 # generalized. Authority for the orchestrator role, and every `grant:` below, is authority.yaml.
-version: 1.2.0
+version: 1.2.1
 contract: workflow
 
 rules:
@@ -187,12 +187,13 @@ machines:
     artifact: the forge's deployment record for one built artifact (one image, one sha)
     field: stage
     initial: built
-    terminal: [released, rolled-back]
+    # released is not terminal: roll-back leaves it. A release stays released until replaced.
+    terminal: [rolled-back]
     side_states: [held]
     states:
       built:       { holder: train, means: "CI built the artifact once." }
       staged:      { holder: train, means: "Deployed to a pre-production stage and dwelling." }
-      released:    { holder: owner, means: "Serving production." }
+      released:    { holder: owner, means: "Serving production, until a roll-back replaces it." }
       rolled-back: { holder: train, means: "Replaced by the previous release." }
       held:        { holder: owner, means: "A hold (an open hold issue, a red drill) stops the train." }
     transitions:

@@ -25,7 +25,17 @@ Fixes from an independent review of 0.1.0 (workflow, authority, trace, simulator
 - **behavioral** — attention 1.3.0, authority 1.3.0: a human answers an A2A `INPUT_REQUIRED` or an
   MCP `input_required`; no grant delegates it (`answer-input-request` is never grantable).
 
+- **behavioral** — `simulate`: readers (the helpers an author starts) count toward the workers cap,
+  as orchestrating-work says, and the runtime refuses a reader when every slot is taken; a guard
+  the simulator has no evidence model for throws instead of passing; new mutation
+  `uncounted-readers` (caught by `cap-workers`).
+- **behavioral** — workflow 1.2.1: `released` is not a terminal state (roll-back leaves it); a test
+  holds every terminal state to having no transition out.
+
 ### Added
+
+- **additive** — `simulate --supervisor <module>`: runs a runtime's own supervisor against every
+  invariant, so a binding can be tested; TOOLS.md documents the api it is given.
 
 - **additive** — `trace --readiness <dir> --check`: regenerates each committed readiness report in
   its `--no-timestamp` form and fails on one that is missing, stale, timestamped or names no epic.

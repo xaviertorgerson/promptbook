@@ -1,4 +1,4 @@
-import { grantFor, grantHas, grantLiveAt, landingTarget } from './authority.mjs';
+import { grantFor, grantHas, grantLiveAt, landingTarget, workerCap } from './authority.mjs';
 import { Heap, makeRng, round } from './util.mjs';
 
 // The simulated world: everything except the supervisor policy under test.
@@ -22,6 +22,9 @@ import { Heap, makeRng, round } from './util.mjs';
 export const RUNTIME_SIGNALS = new Set(['signal', 'ci', 'notice']);
 // A session's kind as a run record names its role: an evaluator's run ends in a verdict.
 const RUN_ROLE = { author: 'author', evaluator: 'evaluator', helper: 'reader' };
+// Every live session counts toward the workers cap: authors, evaluators and the readers (helpers)
+// an author starts (orchestrating-work, Hold the caps).
+export const WORKER_KINDS = new Set(['author', 'evaluator', 'helper']);
 
 const argvMatches = (rule, argv) => rule.command.length <= argv.length && rule.command.every((tok, i) => [].concat(tok).includes(argv[i]));
 export const ruleMatches = argvMatches;
@@ -279,7 +282,7 @@ export class World {
     for (const [id, pr] of this.forge.prs) {
       prs[id] = { head: pr.head, base: pr.base, author: pr.author, ready: pr.ready, checks: Object.fromEntries(pr.checks), reviews: pr.reviews.map((r) => ({ ...r })), approval: pr.approval ? { ...pr.approval } : null, coverage: [...(pr.coverage.get(pr.head) ?? [])], merged: pr.merged ? { ...pr.merged } : null };
     }
-    const sessions = [...this.sessions.values()].filter((s) => s.runtime === rt.name && (s.kind === 'author' || s.kind === 'evaluator')).map((s) => this.sessionView(s));
+    const sessions = [...this.sessions.values()].filter((s) => s.runtime === rt.name && WORKER_KINDS.has(s.kind)).map((s) => this.sessionView(s));
     return {
       t: this.t,
       tasks,
@@ -597,6 +600,7 @@ export class World {
     switch (step.what) {
       case 'helper': {
         if (s.caps.max_depth < s.depth + 1) { this.stats.helpersRefused += 1; this.effect({ spawn: 'refused', depth: s.depth + 1 }); break; }
+        if (this.atWorkerCap(rt)) { this.stats.helpersRefused += 1; this.effect({ spawn: 'refused', why: 'workers cap' }); break; }
         this.spawnHelper(rt, s, s.helperPlan);
         break;
       }
@@ -677,6 +681,7 @@ export class World {
       this.at(minutes / 2, 'session', { actor: h.id, task: h.task, detail: { step: 'nested-helper' } }, () => {
         if (h.state !== 'running') return;
         if (h.caps.max_depth < h.depth + 1) { this.stats.helpersRefused += 1; this.effect({ spawn: 'refused', depth: h.depth + 1 }); return; }
+        if (this.atWorkerCap(rt)) { this.stats.helpersRefused += 1; this.effect({ spawn: 'refused', why: 'workers cap' }); return; }
         const n = this.newSession(rt, { task: h.task, kind: 'helper', role: 'helper', owner: h.owner, mode: 'read', caps: h.caps, depth: h.depth + 1, parent: h.id });
         h.children.push(n.id);
         this.effect({ spawn: n.id, depth: n.depth });
@@ -691,6 +696,13 @@ export class World {
     h.state = 'ended';
     h.endedAt = this.t;
     for (const c of h.children) this.endHelper(this.sessions.get(c));
+  }
+
+  // The runtime holds the workers cap for the sessions its workers start: a helper is refused when
+  // every slot is taken (authority.yaml lifecycle.limits: limits are enforced by the runtime).
+  atWorkerCap(rt) {
+    const live = [...this.sessions.values()].filter((x) => x.runtime === rt.name && WORKER_KINDS.has(x.kind) && (x.state === 'running' || x.state === 'blocked')).length;
+    return live >= workerCap(rt.grants, this.startMs + this.t * 60000, this.sc.supervisor.max_workers);
   }
 
   pause(s) {

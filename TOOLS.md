@@ -101,7 +101,7 @@ spec gate).
 | `attention-consistent` | records carry attention only; needs-human names the next action; complete only when the human has nothing left |
 | `merge-requires-authority` | a change lands on a branch only by the merge role, a human, or the orchestrator under a merge grant live when it decided for that exact branch; an agent lands only with its `land`/`integrate` commit and after checks on the merged result of that head; with an approval of that head by a human or such a grant, plus `authority.yaml`'s `always_requires`, and never over a semantic conflict or red merged checks |
 | `lanes-disjoint` | claimed tasks never have overlapping `touches` |
-| `cap-workers`, `cap-depth`, `cap-run`, `cap-spend` | workers, delegation depth, per-run turns and spend, per-task and runtime budgets |
+| `cap-workers`, `cap-depth`, `cap-run`, `cap-spend` | workers (authors, evaluators and the readers they start; the runtime refuses a reader when every slot is taken), delegation depth, per-run turns and spend, per-task and runtime budgets |
 | `no-progress-stops` | after a stalled run or a ceiling, no rerun until a human decides |
 | `merged-criteria-covered` | a merged task has a test naming every criterion on the landed head |
 | `asks-surface-to-human` | only a human answers a prompt; unattended, an ask is a denial; every prompt and denial reaches the human as needs-human |
@@ -110,7 +110,8 @@ spec gate).
 | `contracts-valid` | every run-record, return, grant and task record produced validates |
 
 Transition tables, roles, gates, guards, side states, the merge requirements and the claimed statuses
-are read from `state-machines/*.yaml` and the task schema. `--break <mutation>` swaps in one of 19
+are read from `state-machines/*.yaml` and the task schema; a guard the simulator has no evidence
+model for is an error, never a pass. `--break <mutation>` swaps in one of 20
 deliberately broken supervisors (`--list` names them); the tests run each, plus four broken world
 bindings (bypass that skips walls, a forge without CAS, a merge queue that resolves semantic
 conflicts, no branch protection), and require the named invariant to catch it. Among them:
@@ -118,6 +119,17 @@ conflicts, no branch protection), and require the named invariant to catch it. A
 `guards-hold`, deps-merged), `finalize-unverified` (a risk-medium PR marked ready with no evaluator
 verdict: `guards-hold`, independent-verification) and `land-without-grant` (the orchestrator lands a
 change no merge grant of its covers: `transitions-allowed`, `merge-requires-authority`).
+
+`--supervisor <module>` replaces the built-in supervisor with a runtime's own, so a binding is tested
+against the same invariants: the module's default export is a factory `({ runtime, sc }) => ({ name,
+onEvent(note, api) })`, the shape `orchestrating()` in `tools/lib/sim/policies.mjs` returns. On every
+wake (`note`: `start`, `checkin`, `signal`, `ci`, `webhook`, `notice`) it reads `api.view()` (tasks
+with their specs, PRs, its sessions and ended runs, decisions, prompts, grants and `grantHas`,
+spend, records) and acts only through `api.dispatch(task, {mode, caps, claimable})`,
+`api.evaluate(task, {caps})`, `api.commit(task, {transition, to, …})` (as the orchestrator, under its
+grants), `api.record(task, {attention, summary, next_action, item, questions})`,
+`api.consume(session)`, `api.merge(task)` and `api.answerPrompt(id, decision)` (which the invariants
+catch: only a human answers). It cannot reach the forge or the human directly.
 
 Output: `.sim-out/<scenario>-seed<n>.jsonl` (one event per line: time, actor, task, the commits it
 applied, effects, violations), `.summary.json` (merged, parked, needs-human, spend, makespan,

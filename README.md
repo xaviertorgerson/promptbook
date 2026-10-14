@@ -54,8 +54,10 @@ including where every artifact goes and how existing repos move, is [LAYERS.md](
 **Runtimes.** A runtime (a CLI loop, forge-event CI agents, a terminal multiplexer with a coordinator,
 a hosted agent service) binds to the harness through `adapters/<name>/`. It reads `task` files, writes
 `task-record` and `run-record`, maps its own signals to the `attention` machine, honors `grant`s, and
-never advances workflow status on a runtime signal. `tools/simulate.mjs` drives a runtime-neutral
-simulation of the workflow for testing a binding.
+never advances workflow status on a runtime signal. `harness simulate --supervisor <module>` runs a
+runtime's own supervisor (its dispatch and authority decisions, written against the simulator's api)
+in the runtime-neutral simulation and checks it against every invariant; without the flag the
+simulation runs the `orchestrating-work` protocol as code.
 
 ## Repository map
 

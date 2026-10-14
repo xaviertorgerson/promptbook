@@ -90,3 +90,14 @@ describe('the delegating-authority skill', () => {
     assert.deepEqual([...table.matchAll(/^\| `([a-z-]+)` \|/gm)].map((m) => m[1]).sort(), ids);
   });
 });
+
+describe('TOOLS.md and the simulator agree', () => {
+  it('states the number of invariants and mutations the simulator has', async () => {
+    const { INVARIANTS } = await import('../tools/lib/sim/invariants.mjs');
+    const { MUTATIONS } = await import('../tools/lib/sim/policies.mjs');
+    const tools = fs.readFileSync(path.join(ROOT, 'TOOLS.md'), 'utf8').replace(/\s+/g, ' ');
+    assert.match(tools, new RegExp(`checks ${Object.keys(INVARIANTS).length} invariants`));
+    assert.match(tools, new RegExp(`one of ${Object.keys(MUTATIONS).length} deliberately broken supervisors`));
+    for (const k of Object.keys(INVARIANTS)) assert.ok(tools.includes(`\`${k}\``), `TOOLS.md lists ${k}`);
+  });
+});

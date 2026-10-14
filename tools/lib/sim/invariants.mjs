@@ -2,7 +2,7 @@ import { registry as sharedRegistry } from '../registry.mjs';
 import { grantHas, landingTarget, recordGrant, workerCap } from './authority.mjs';
 import { isHuman } from './machines.mjs';
 import { touchesOverlap } from './util.mjs';
-import { RUNTIME_SIGNALS, ruleMatches } from './world.mjs';
+import { RUNTIME_SIGNALS, ruleMatches, WORKER_KINDS } from './world.mjs';
 
 // The invariants checked after every event (and once at the end). Each is named, says which
 // contract rule it holds the world to, and reports { invariant, index, at, task, message } so a
@@ -18,7 +18,7 @@ export const INVARIANTS = {
   'attention-consistent': 'Task records carry attention only (working, needs-human, complete); needs-human names the next action; complete names none and is recorded only once the evidence shows nothing is left for the human (attention.yaml: idle-is-not-complete).',
   'merge-requires-authority': 'A change lands on a branch (the protected target, or an epic\'s integration branch) only by the merge role, a human, or the orchestrator under a merge grant live when it decided for that exact branch; an agent lands only together with its land or integrate commit and after checks on the merged result of that head; with an approval of the landed head by a human or by the orchestrator under such a grant, an independent passing review of that head and green checks; never over a semantic conflict or red merged checks (authority.yaml merge; playbook: landing-changes).',
   'lanes-disjoint': 'Claimed tasks (in-progress through merging) never have overlapping touches: overlapping tasks are one lane and run in sequence (playbook: single-writer).',
-  'cap-workers': 'Live workers per runtime never exceed the supervisor\'s max_workers, nor the limits.max_workers of any live grant that delegates dispatch (select-tasks, approve-plan, dispose-findings, finalize); a merge-only grant caps nothing (playbook: budgets-and-routing).',
+  'cap-workers': 'Live workers per runtime (authors, evaluators and the readers they start) never exceed the supervisor\'s max_workers, nor the limits.max_workers of any live grant that delegates dispatch (select-tasks, approve-plan, dispose-findings, finalize); a merge-only grant caps nothing (playbook: budgets-and-routing).',
   'cap-depth': 'No helper is spawned below the delegation depth cap; helpers do not spawn helpers by default (playbook: topologies).',
   'cap-run': 'Every run is dispatched with a turn and a spend cap within the policy\'s budgets, and the runner stops it there (HAR-3).',
   'cap-spend': 'Spend per task stays within its budget (plus human raises) and the runtime\'s total within its budget or grant (playbook: budgets-and-routing).',
@@ -59,7 +59,6 @@ export class Checker {
   // ------------------------------------------------------------------------------ evidence
 
   guardHolds(w, guard, c, before) {
-    const t = w.forge.tasks.get(c.task);
     const m = w.meta.get(c.task);
     const pr = w.forge.prs.get(c.task);
     const head = pr?.head;
@@ -87,7 +86,10 @@ export class Checker {
       case 'mechanical-only': return w.merge.state.get(c.task)?.conflict !== 'semantic';
       case 'merged-checks-green': return w.merge.state.get(c.task)?.mergedChecks === 'green';
       case 'question-answered': return m.questionAnswered || w.forge.decisions.some((d) => d.task === c.task && d.kind === 'question');
-      default: return UNMODELED.has(guard) || Boolean(t);
+      default:
+        // A guard the simulator does not know is a gap in the model, never a pass.
+        if (UNMODELED.has(guard)) return true;
+        throw new Error(`guards-hold: no evidence model for guard ${guard} (${c.transition}); add it to invariants.mjs or UNMODELED`);
     }
   }
 
@@ -212,7 +214,7 @@ export class Checker {
     // Caps.
     const ms = w.startMs + ev.at * 60000;
     for (const rt of w.runtimes.values()) {
-      const live = [...w.sessions.values()].filter((s) => s.runtime === rt.name && (s.kind === 'author' || s.kind === 'evaluator') && (s.state === 'running' || s.state === 'blocked'));
+      const live = [...w.sessions.values()].filter((s) => s.runtime === rt.name && WORKER_KINDS.has(s.kind) && (s.state === 'running' || s.state === 'blocked'));
       const cap = workerCap(rt.grants, ms, sc.supervisor.max_workers);
       if (live.length > cap) this.report(w, ev, 'cap-workers', null, `${rt.name}: ${live.length} live workers, cap ${cap}`, `workers-${rt.name}-${ev.index}`);
       const total = rt.spend.total;
