@@ -26,7 +26,7 @@ is the evidence · **ignore** = no change.
 |---|---|---|---|
 | TASK_STATE_UNSPECIFIED | — | inspect | |
 | TASK_STATE_SUBMITTED, TASK_STATE_WORKING | working | ignore | |
-| TASK_STATE_INPUT_REQUIRED | needs-human | inspect | a human (or the grant holder) answers, never a guess |
+| TASK_STATE_INPUT_REQUIRED | needs-human | inspect | a human answers, never a guess and never the coordinator: no grant delegates answering |
 | TASK_STATE_AUTH_REQUIRED | needs-human | record | credentials are always a human action |
 | TASK_STATE_COMPLETED | — | inspect | the remote task only; read its artifacts; the local status is unchanged |
 | TASK_STATE_FAILED | needs-human | inspect | decide retry, re-plan or park |
@@ -38,7 +38,7 @@ is the evidence · **ignore** = no change.
 | Value | Attention | Reconcile | Note |
 |---|---|---|---|
 | working | working | ignore | |
-| input_required | needs-human | inspect | waiting for elicitation or sampling; a human answers unless a grant covers it |
+| input_required | needs-human | inspect | waiting for elicitation or sampling; a human answers (no grant delegates it) |
 | completed | — | inspect | one tool call of the run, not the task |
 | failed | — | inspect | the agent may recover itself; inspect before raising |
 | cancelled | — | inspect | |

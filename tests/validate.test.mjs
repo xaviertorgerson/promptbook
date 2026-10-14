@@ -454,6 +454,12 @@ describe('state machines', () => {
     }
   });
 
+  it('an input request is a human\'s to answer: no attention note lets a grant answer it, and authority never grants it', () => {
+    const notes = Object.values(load('attention').sources).flatMap((s) => [s.signals, s.status, s.conclusion, s.derived].filter(Boolean)).flatMap((t) => Object.values(t).map((m) => m.note ?? ''));
+    for (const n of notes) assert.doesNotMatch(n, /grant (holder|covers)|unless a grant/i, n);
+    assert.ok(load('authority').never_grantable.some((x) => x.id === 'answer-input-request'));
+  });
+
   it('attention covers the Herdr, A2A and MCP Tasks vocabularies', () => {
     const s = load('attention').sources;
     assert.deepEqual(Object.keys(s.herdr.signals).sort(), ['blocked', 'done', 'idle', 'unknown', 'working']);

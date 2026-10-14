@@ -1,4 +1,4 @@
-# A long-running tool call (an MCP task) asked for elicitation; no grant covers it, so a human answers.
+# A long-running tool call (an MCP task) asked for elicitation. Answering is never delegated, so a human answers.
 task_id: BILL-14
 runtime: cli-loop
 objective: Import last month's usage export for the backfill

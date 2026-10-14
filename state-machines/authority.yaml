@@ -8,7 +8,7 @@
 #
 # Source: stagehand skills/orchestrating-development (SKILL.md "Authority and scope",
 # references/project-delegation.md), generalized; agentic-template docs/roles.md.
-version: 1.2.0
+version: 1.3.0
 contract: authority
 
 defaults:
@@ -28,6 +28,11 @@ never_grantable:
       forge (an environment's reviewers), not a delegation.
   - id: answer-permission-prompt
     why: Approving a tool call the policy asks about is the checkpoint itself.
+  - id: answer-input-request
+    why: >-
+      A remote agent's or a tool's request for input (A2A TASK_STATE_INPUT_REQUIRED, MCP Tasks
+      input_required) is a question for a human; the coordinator forwards it verbatim
+      (attention.yaml) and never answers it.
   - id: change-policy
     why: Walls (deny rules, hooks, branch protection) are changed by a human commit, reviewed.
   - id: force-push-shared
