@@ -11,7 +11,7 @@
     },
     {
       "rule": "spend-unmetered",
-      "message": "gemini reports no cost: max_usd 5 is not metered; the run is bounded by max_turns and a hard kill at max_minutes 60"
+      "message": "gemini reports no cost: max_usd 5 is not metered; the run is bounded by max_turns 200 and a hard kill at max_minutes 60"
     }
   ],
   "accepted": [

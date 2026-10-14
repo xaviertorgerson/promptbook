@@ -53,7 +53,7 @@
     },
     {
       "field": "budgets",
-      "message": "gemini reports no cost: max_usd 20 is not metered; the run is bounded by max_turns",
+      "message": "gemini reports no cost: max_usd 20 is not metered; the run is bounded by no other cap",
       "reason": "the devbox's spend is watched by the operator, who is reachable; neither engine reports cost"
     }
   ],

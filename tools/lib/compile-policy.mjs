@@ -9,10 +9,12 @@ import { toToml } from './toml.mjs';
 //
 //   fail closed   a deny the engine cannot represent (deny_read, forbid, egress, sandbox, budgets,
 //                 tier) is an error unless accept_gaps names {engine, field} with a reason; an ask or
-//                 allow it cannot represent is dropped with a warning (dropping one never loosens a
-//                 wall). An accept_gaps entry covers the profiles it names, or, naming none, every
-//                 profile but a bypass-tier one: the bypass tier's gaps are accepted for it by name.
-//                 On any error nothing is written.
+//                 allow it cannot represent is dropped with a warning, since dropping one never
+//                 loosens a wall, except where it would: unattended an ask is a denial and is never
+//                 dropped, and an allow that would run outside the sandbox (Codex) is emitted only
+//                 where its gap is accepted. An accept_gaps entry covers the profiles it names, or,
+//                 naming none, every profile but a bypass-tier one: the bypass tier's gaps are
+//                 accepted for it by name. On any error nothing is written.
 //   walls only    the compiler never emits a key that removes walls: disableAllHooks,
 //                 hooksConfig.enabled false, security.disableYoloMode overrides, tools.exclude,
 //                 :danger-full-access, a bypass mode or its prompt skip outside the bypass tier
@@ -76,7 +78,7 @@ function guardFiles(ctx) {
   const list = { generated_by: GENERATOR, source: ctx.source, profile: ctx.profileName, tier: ctx.tier, rules };
   return [
     { path: 'hooks/forbid-guard.mjs', content: fs.readFileSync(GUARD_SOURCE, 'utf8'), kind: 'hook' },
-    { ...jsonFile('hooks/forbid.json', list, 'rules') },
+    jsonFile('hooks/forbid.json', list, 'rules'),
   ];
 }
 
@@ -211,7 +213,7 @@ function preflight(ctx) {
     const b = p.budgets?.unattended ?? {};
     const missing = ['max_turns', 'max_usd'].filter((k) => b[k] === undefined);
     if (missing.length) ctx.error('unattended-caps', `the unattended tier runs with turn and spend caps (HAR-3): budgets.unattended lacks ${missing.join(', ')}`);
-    else if (!ENFORCES[ctx.engine].max_budget_usd.startsWith('engine') && b.max_minutes === undefined) {
+    else if (ENFORCES[ctx.engine].max_budget_usd === 'none' && b.max_minutes === undefined) {
       ctx.error('unattended-caps', `${ctx.engine} has no spend flag, so harness run bounds an unattended run's spend by a hard kill at budgets.unattended.max_minutes, which is not set (HAR-3; accept_gaps cannot waive it)`);
     }
   }
@@ -282,7 +284,7 @@ function emitClaude(ctx) {
   const partial = [...(p.deny_read.length ? ['deny_read'] : []), ...(p.forbid.some((r) => r.write) ? ['forbid write'] : [])];
   if (partial.length) {
     const scripts = (p.allow ?? []).filter((r) => r.command && coversInterpreter(r.command)).map((r) => starlark(r.command));
-    const why = `${partial.join(' and ')} reach Claude's file tools and the file commands it recognizes in Bash (cat, head, sed, tee, redirections), not a script that opens files itself${scripts.length ? ` (allowed here: ${scripts.join(', ')})` : ''}`;
+    const why = `${partial.join(' and ')} ${partial.length > 1 ? 'reach' : 'reaches'} Claude's file tools and the file commands it recognizes in Bash (cat, head, sed, tee, redirections), not a script that opens files itself${scripts.length ? ` (allowed here: ${scripts.join(', ')})` : ''}`;
     if (!sandboxOn) ctx.gap('sandbox', `${why}; without sandbox.enabled nothing binds every process`);
     else if (p.sandbox?.fail_if_unavailable !== true) ctx.warn('sandbox-may-fall-back', `sandbox.fail_if_unavailable is not true: where the sandbox cannot start, commands run unsandboxed, and ${why}`);
   }
@@ -410,7 +412,8 @@ export const ENFORCES = {
 function capsOf(ctx, budget) {
   if (budget.max_tokens) ctx.gap('budgets', 'max_tokens has no flag or setting, and harness run cannot meter tokens before a run ends');
   if (budget.max_usd && ENFORCES[ctx.engine].max_budget_usd === 'none') {
-    const msg = `${ctx.engine} reports no cost: max_usd ${budget.max_usd} is not metered; the run is bounded by max_turns${budget.max_minutes ? ` and a hard kill at max_minutes ${budget.max_minutes}` : ''}`;
+    const bounds = [budget.max_turns && `max_turns ${budget.max_turns}`, budget.max_minutes && `a hard kill at max_minutes ${budget.max_minutes}`].filter(Boolean);
+    const msg = `${ctx.engine} reports no cost: max_usd ${budget.max_usd} is not metered; the run is bounded by ${bounds.length ? bounds.join(' and ') : 'no other cap'}`;
     if (ctx.tier === 'unattended') ctx.warn('spend-unmetered', msg);
     else ctx.gap('budgets', msg);
   }
