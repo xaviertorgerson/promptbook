@@ -31,3 +31,24 @@ describe('citations', () => {
     assert.match(fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8'), /docs\/adr-permission-precedence`, commit `c177fa1`/);
   });
 });
+
+describe('the README\'s claims', () => {
+  const ENGINES = /\b(?:Claude|Codex|Gemini|Antigravity|Herdr|stagehand|GitHub|Forgejo)\b/;
+
+  it('the playbook\'s Practice sections name no engine, runtime or forge', () => {
+    for (const f of walk(path.join(ROOT, 'playbook')).filter((x) => x.endsWith('.md'))) {
+      const practice = fs.readFileSync(f, 'utf8').split(/^## /m).find((s) => s.startsWith('Practice'));
+      if (practice) assert.doesNotMatch(practice, ENGINES, `${rel(f)} Practice names an engine`);
+    }
+  });
+
+  it('no longer says that nothing outside adapters/ names an engine, and CHANGELOG.md exists in Keep a Changelog shape', () => {
+    const readme = fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8');
+    assert.doesNotMatch(readme, /No file outside `adapters\/` names/);
+    const log = fs.readFileSync(path.join(ROOT, 'CHANGELOG.md'), 'utf8');
+    assert.match(log, /^## \[Unreleased\]$/m);
+    assert.match(log, /^## \[0\.1\.0\] - 2026-10-13$/m);
+    const unreleased = log.split(/^## \[/m).find((s) => s.startsWith('Unreleased'));
+    for (const entry of unreleased.split('\n').filter((l) => /^- \*\*/.test(l))) assert.match(entry, /^- \*\*(?:additive|behavioral|breaking)\*\* — /, entry);
+  });
+});

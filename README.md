@@ -3,8 +3,12 @@
 The engine-neutral layer of a four-layer toolkit for agent-driven software work: a dated,
 evidence-cited **playbook**, the **standards** every project and every personal setup share, the
 **contracts** (schemas and state machines) that let engines, runtimes and methods be swapped, and
-portable **skills**, **evals** and **tools** that check all of it. No file outside `adapters/` names an
-engine, runtime, forge or stack, and the harness depends on nothing.
+portable **skills**, **evals** and **tools** that check all of it. The practices, the standards and
+the skills' instructions name no engine, runtime, forge or stack (the skill lint enforces it for
+skills). Names appear only where a binding or a fact needs them: `adapters/`, each skill's
+`references/engine-notes.md`, evidence lines that cite a vendor, the signal vocabularies
+`state-machines/attention.yaml` maps, optional contract fields that record which engine or runtime
+ran, and the policy compiler's per-engine emitters. The harness depends on nothing.
 
 The thesis, from the research behind it: make the harness, not the swarm, do the work. Keep one writer
 per change, parallel readers, and a separate judge. Keep state in files and git, load context only
