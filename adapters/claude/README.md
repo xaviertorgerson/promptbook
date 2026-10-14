@@ -104,3 +104,5 @@ and L1 policy, not to a skills package.
 [sbx]: https://code.claude.com/docs/en/sandboxing
 [plug]: https://code.claude.com/docs/en/plugins-reference
 [modes]: https://code.claude.com/docs/en/permission-modes
+
+> ADR-0021 is agentic-template's measured permission matrix (Claude Code 2.1.296), on branch `docs/adr-permission-precedence`, commit `c177fa1`, until it lands on master.

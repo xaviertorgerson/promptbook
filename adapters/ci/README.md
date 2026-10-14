@@ -53,3 +53,5 @@ pass.
 
 `--trace` exits 1 on any error; `--strict` makes warnings fail too, which is the switch a project
 flips once it has a `docs/product/brief.md` and has cleared its legacy warnings.
+
+> ADR-0021 is agentic-template's measured permission matrix (Claude Code 2.1.296), on branch `docs/adr-permission-precedence`, commit `c177fa1`, until it lands on master.

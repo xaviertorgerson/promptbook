@@ -77,3 +77,5 @@ the `.codex-plugin` field set follows a working port of a Claude plugin
 [config-ref]: https://learn.chatgpt.com/docs/config-file/config-reference
 [managed]: https://learn.chatgpt.com/docs/enterprise/managed-configuration
 [plugins]: https://developers.openai.com/plugins/build/plugins
+
+> ADR-0021 is agentic-template's measured permission matrix (Claude Code 2.1.296), on branch `docs/adr-permission-precedence`, commit `c177fa1`, until it lands on master.
