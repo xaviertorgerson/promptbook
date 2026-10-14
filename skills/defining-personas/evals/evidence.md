@@ -2,7 +2,7 @@
 
 ## 2026-10-13 · Routes on a 259-character description in the 8,000-character catalog
 - **Kind:** measured
-- **Source:** RR_MODEL=haiku RR_EFFORT=low node tools/cli.mjs eval-routing skills "$SKILLDEX/skills" --skill defining-personas --runner "node router.mjs" --json, run 3 times on 2026-10-13 at harness feat/reconcile-skills after 8816da6, with $SKILLDEX a clone of https://github.com/QuentinTorg/skilldex at fc572b6 and router.mjs the runner in skills/evaluating-skills/references/engine-notes.md; per-case results in skills/routing-results-2026-10-13.jsonl, the table in skills/ROUTING-RESULTS.md
+- **Source:** RR_MODEL=haiku RR_EFFORT=low node tools/cli.mjs eval-routing skills "$SKILLDEX/skills" --skill defining-personas --runner "node router.mjs" --json, run 3 times on 2026-10-13 at harness feat/reconcile-skills after 681794e, with $SKILLDEX a clone of https://github.com/QuentinTorg/skilldex at fc572b6 and router.mjs the runner in skills/evaluating-skills/references/engine-notes.md; per-case results in skills/routing-results-2026-10-13.jsonl, the table in skills/ROUTING-RESULTS.md
 - **Claim:** With all 28 descriptions cut to 7,899 characters and the 5 pinned Skilldex skills installed, this skill's own cases passed 27/27; precision 100%, recall 100% over every case in the catalog. The original 627-character description, same runner and cases: 27/27, precision 100%, recall 100%.
 - **Result:** Misses: none.
 - **Engine:** claude
@@ -42,6 +42,6 @@
 
 ## 2026-10-13 · Template validates and evidence tags survive parsing
 - **Kind:** measured
-- **Source:** node tools/validate.mjs --contract persona skills/defining-personas/references/personas-template.md (harness 4bdc755)
+- **Source:** node tools/validate.mjs --contract persona skills/defining-personas/references/personas-template.md (harness 9dfd497)
 - **Claim:** The template's two entries pass the persona contract; the Must never and Changes labels are ignored by the parser, and inline evidence tags stay inside the goal strings.
 - **Skill version:** 0.1.0

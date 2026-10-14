@@ -2,7 +2,7 @@
 
 ## 2026-10-13 · Routes on a 291-character description in the 8,000-character catalog
 - **Kind:** measured
-- **Source:** RR_MODEL=haiku RR_EFFORT=low node tools/cli.mjs eval-routing skills "$SKILLDEX/skills" --skill writing-commit-history --runner "node router.mjs" --json, run 3 times on 2026-10-13 at harness feat/reconcile-skills after 8816da6, with $SKILLDEX a clone of https://github.com/QuentinTorg/skilldex at fc572b6 and router.mjs the runner in skills/evaluating-skills/references/engine-notes.md; per-case results in skills/routing-results-2026-10-13.jsonl, the table in skills/ROUTING-RESULTS.md
+- **Source:** RR_MODEL=haiku RR_EFFORT=low node tools/cli.mjs eval-routing skills "$SKILLDEX/skills" --skill writing-commit-history --runner "node router.mjs" --json, run 3 times on 2026-10-13 at harness feat/reconcile-skills after 681794e, with $SKILLDEX a clone of https://github.com/QuentinTorg/skilldex at fc572b6 and router.mjs the runner in skills/evaluating-skills/references/engine-notes.md; per-case results in skills/routing-results-2026-10-13.jsonl, the table in skills/ROUTING-RESULTS.md
 - **Claim:** With all 28 descriptions cut to 7,899 characters and the 5 pinned Skilldex skills installed, this skill's own cases passed 33/33; precision 86%, recall 100% over every case in the catalog. The original 804-character description, same runner and cases: 33/33, precision 95%, recall 100%.
 - **Result:** Misses: none.
 - **Engine:** claude
@@ -25,7 +25,7 @@
 
 ## 2026-10-13 · Engineering invariant ENG-6
 - **Kind:** audit
-- **Source:** standards/engineering.md (harness @ 4bdc755)
+- **Source:** standards/engineering.md (harness @ 9dfd497)
 - **Claim:** Small commits, one logical change each, Conventional Commits, a body that says why, and no AI attribution are an invariant in every repository; today only review enforces it.
 - **Result:** The writing procedure restates ENG-6 and adds contract references (task, AC, REQ, ADR) so commits join the trace.
 - **Revisit:** when a commit-message lint becomes an L2 hook

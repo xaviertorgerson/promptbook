@@ -1,8 +1,8 @@
 # Harness review — 2026-10-13 — model-5.5
 
 - **Trigger:** model-5.5 released 2026-10-08
-- **Reviewed:** harness 0.2.0 @ 4bdc755; packs core-pack 1.0.0, cli-runtime 1.0.0 (from toolkit.lock)
-- **Suite:** 98f5e72; 336 routing cases, 84 scenarios, 22 real-failure tasks
+- **Reviewed:** harness 0.2.0 @ 9dfd497; packs core-pack 1.0.0, cli-runtime 1.0.0 (from toolkit.lock)
+- **Suite:** a17a854; 336 routing cases, 84 scenarios, 22 real-failure tasks
 - **Trials:** routing ×3; scenarios at their k; tasks ×3
 - **Spend cap / spent:** $60 / $41.20
 - **Noise (baseline vs baseline):** pass rate ±3 points; median cost ±$0.04

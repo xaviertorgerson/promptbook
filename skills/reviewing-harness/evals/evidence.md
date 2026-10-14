@@ -2,7 +2,7 @@
 
 ## 2026-10-13 · Routes on a 267-character description in the 8,000-character catalog
 - **Kind:** measured
-- **Source:** RR_MODEL=haiku RR_EFFORT=low node tools/cli.mjs eval-routing skills "$SKILLDEX/skills" --skill reviewing-harness --runner "node router.mjs" --json, run 3 times on 2026-10-13 at harness feat/reconcile-skills after 8816da6, with $SKILLDEX a clone of https://github.com/QuentinTorg/skilldex at fc572b6 and router.mjs the runner in skills/evaluating-skills/references/engine-notes.md; per-case results in skills/routing-results-2026-10-13.jsonl, the table in skills/ROUTING-RESULTS.md
+- **Source:** RR_MODEL=haiku RR_EFFORT=low node tools/cli.mjs eval-routing skills "$SKILLDEX/skills" --skill reviewing-harness --runner "node router.mjs" --json, run 3 times on 2026-10-13 at harness feat/reconcile-skills after 681794e, with $SKILLDEX a clone of https://github.com/QuentinTorg/skilldex at fc572b6 and router.mjs the runner in skills/evaluating-skills/references/engine-notes.md; per-case results in skills/routing-results-2026-10-13.jsonl, the table in skills/ROUTING-RESULTS.md
 - **Claim:** With all 28 descriptions cut to 7,899 characters and the 5 pinned Skilldex skills installed, this skill's own cases passed 33/33; precision 94%, recall 100% over every case in the catalog. The original 731-character description, same runner and cases: 33/33, precision 97%, recall 100%.
 - **Result:** Misses: none.
 - **Engine:** claude
@@ -49,7 +49,7 @@
 
 ## 2026-10-13 · Walls are excluded because evals do not sample rare events
 - **Kind:** audit
-- **Source:** playbook: harness-review (harness @ 4bdc755); agentic-template ADR-0021 on branch docs/adr-permission-precedence (commit c177fa1)
+- **Source:** playbook: harness-review (harness @ 9dfd497); agentic-template ADR-0021 on branch docs/adr-permission-precedence (commit c177fa1)
 - **Claim:** The playbook excludes deny hooks, branch protection and secret guards from removal; ADR-0021 measured that only denies hold in every permission mode, so a removed deny has no fallback.
 - **Result:** Step 6 and the walls list in references/components.md; scenario S2 at k=10.
 

@@ -2,7 +2,7 @@
 
 ## 2026-10-13 · Routes on a 290-character description in the 8,000-character catalog
 - **Kind:** measured
-- **Source:** RR_MODEL=haiku RR_EFFORT=low node tools/cli.mjs eval-routing skills "$SKILLDEX/skills" --skill mapping-journeys --runner "node router.mjs" --json, run 3 times on 2026-10-13 at harness feat/reconcile-skills after 8816da6, with $SKILLDEX a clone of https://github.com/QuentinTorg/skilldex at fc572b6 and router.mjs the runner in skills/evaluating-skills/references/engine-notes.md; per-case results in skills/routing-results-2026-10-13.jsonl, the table in skills/ROUTING-RESULTS.md
+- **Source:** RR_MODEL=haiku RR_EFFORT=low node tools/cli.mjs eval-routing skills "$SKILLDEX/skills" --skill mapping-journeys --runner "node router.mjs" --json, run 3 times on 2026-10-13 at harness feat/reconcile-skills after 681794e, with $SKILLDEX a clone of https://github.com/QuentinTorg/skilldex at fc572b6 and router.mjs the runner in skills/evaluating-skills/references/engine-notes.md; per-case results in skills/routing-results-2026-10-13.jsonl, the table in skills/ROUTING-RESULTS.md
 - **Claim:** With all 28 descriptions cut to 7,899 characters and the 5 pinned Skilldex skills installed, this skill's own cases passed 33/33; precision 97%, recall 100% over every case in the catalog. The original 717-character description, same runner and cases: 33/33, precision 100%, recall 100%.
 - **Result:** Misses: none.
 - **Engine:** claude
@@ -18,7 +18,7 @@
 
 ## 2026-10-13 · Both template epics' cuj.md validate unchanged
 - **Kind:** measured
-- **Source:** harness fixtures/valid/journey/real-rating-engine and real-template-migration (harness 4bdc755)
+- **Source:** harness fixtures/valid/journey/real-rating-engine and real-template-migration (harness 9dfd497)
 - **Claim:** The journey contract reads agentic-template's existing cuj.md files without edits, so the template is backward compatible.
 - **Skill version:** 0.1.0
 

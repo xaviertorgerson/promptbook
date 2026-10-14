@@ -61,7 +61,7 @@ for the human. They move separately: no row below moves a status on a signal.
 | 8 | Four tasks: SPLIT-1 the skeleton and root; SPLIT-2 and SPLIT-3 share `migrations/**`, so ordered; SPLIT-4 its own lane; `lands_to`, `risk`, `evaluator`, `budget` on each | planning-work | `specs/settle-up/tasks/SPLIT-{1..4}.md` | — | L2 |
 | 9 | Trace check at the gate: ready, 0 gaps, 17/17 criteria named in tests; the report is committed `--no-timestamp` and regenerated with the plan | checking-plan-readiness | `specs/settle-up/readiness.md` (generated) | `trace --readiness specs --check` in CI | L3 tool |
 | 10 | **Gate 1, spec-approval**: epic draft → approved → in-progress; tasks spec-draft → ready | — | `spec.md`, task files | spec-approval · dana | L2 |
-| 11 | Pin the harness (local, `main`@f88aec2) and Skilldex (`fc572b6`) | adopting-harness | `toolkit.lock` | `lock --check` in CI | L2 → L3 |
+| 11 | Pin the harness (local, `main`@74b79f3) and Skilldex (`fc572b6`) | adopting-harness | `toolkit.lock` | `lock --check` in CI | L2 → L3 |
 | 12 | Delegate: GRANT-1 (select-tasks, approve-plan, dispose-findings; 3 workers; SPLIT-1 excluded) and GRANT-2 (merge into `integration/settle-up` only); both expire 2026-10-27 | delegating-authority | `.orchestrator/grants/GRANT-{1,2}.yaml` | issued · dana | L4 |
 
 The L1 policy predates the epic: dana wrote it once for her machines (adopting-harness,

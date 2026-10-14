@@ -2,7 +2,7 @@
 
 ## 2026-10-13 · Routes on a 249-character description in the 8,000-character catalog
 - **Kind:** measured
-- **Source:** RR_MODEL=haiku RR_EFFORT=low node tools/cli.mjs eval-routing skills "$SKILLDEX/skills" --skill writing-tests --runner "node router.mjs" --json, run 3 times on 2026-10-13 at harness feat/reconcile-skills after 8816da6, with $SKILLDEX a clone of https://github.com/QuentinTorg/skilldex at fc572b6 and router.mjs the runner in skills/evaluating-skills/references/engine-notes.md; per-case results in skills/routing-results-2026-10-13.jsonl, the table in skills/ROUTING-RESULTS.md
+- **Source:** RR_MODEL=haiku RR_EFFORT=low node tools/cli.mjs eval-routing skills "$SKILLDEX/skills" --skill writing-tests --runner "node router.mjs" --json, run 3 times on 2026-10-13 at harness feat/reconcile-skills after 681794e, with $SKILLDEX a clone of https://github.com/QuentinTorg/skilldex at fc572b6 and router.mjs the runner in skills/evaluating-skills/references/engine-notes.md; per-case results in skills/routing-results-2026-10-13.jsonl, the table in skills/ROUTING-RESULTS.md
 - **Claim:** With all 28 descriptions cut to 7,899 characters and the 5 pinned Skilldex skills installed, this skill's own cases passed 36/36; precision 100%, recall 100% over every case in the catalog. The original 663-character description, same runner and cases: 36/36, precision 95%, recall 100%.
 - **Result:** Misses: none.
 - **Engine:** claude
@@ -30,7 +30,7 @@
 
 ## 2026-10-13 · The coverage readers see only JS/TS test calls
 - **Kind:** measured
-- **Source:** node -e probe of tools/lib/ears.mjs testNames/namedIn (harness @ 4bdc755)
+- **Source:** node -e probe of tools/lib/ears.mjs testNames/namedIn (harness @ 9dfd497)
 - **Claim:** The extractor finds AC-2 in `it('AC-2 …')` and `test('BILL-7 AC-2: …')`, but not in Go `t.Run("AC-2 …")`, JUnit `@DisplayName("AC-2 …")` or Python `test_ac_2_…`; the template's ears-coverage.mjs uses the same pattern.
 - **Result:** references/naming.md says which forms are checked automatically and tells the agent to report, not claim, coverage elsewhere.
 - **Revisit:** when the trace check reads other runners' names

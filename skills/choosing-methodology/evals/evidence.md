@@ -2,7 +2,7 @@
 
 ## 2026-10-13 · Routes on a 300-character description in the 8,000-character catalog
 - **Kind:** measured
-- **Source:** RR_MODEL=haiku RR_EFFORT=low node tools/cli.mjs eval-routing skills "$SKILLDEX/skills" --skill choosing-methodology --runner "node router.mjs" --json, run 3 times on 2026-10-13 at harness feat/reconcile-skills after 8816da6, with $SKILLDEX a clone of https://github.com/QuentinTorg/skilldex at fc572b6 and router.mjs the runner in skills/evaluating-skills/references/engine-notes.md; per-case results in skills/routing-results-2026-10-13.jsonl, the table in skills/ROUTING-RESULTS.md
+- **Source:** RR_MODEL=haiku RR_EFFORT=low node tools/cli.mjs eval-routing skills "$SKILLDEX/skills" --skill choosing-methodology --runner "node router.mjs" --json, run 3 times on 2026-10-13 at harness feat/reconcile-skills after 681794e, with $SKILLDEX a clone of https://github.com/QuentinTorg/skilldex at fc572b6 and router.mjs the runner in skills/evaluating-skills/references/engine-notes.md; per-case results in skills/routing-results-2026-10-13.jsonl, the table in skills/ROUTING-RESULTS.md
 - **Claim:** With all 28 descriptions cut to 7,899 characters and the 5 pinned Skilldex skills installed, this skill's own cases passed 38/39; precision 91%, recall 100% over every case in the catalog. The original 854-character description, same runner and cases: 39/39, precision 100%, recall 100%.
 - **Result:** Misses: "What research methodology should my survey study use?" 1/3 (got choosing-methodology).
 - **Engine:** claude
@@ -49,7 +49,7 @@
 
 ## 2026-10-13 · The harness defines modes as guards over one workflow
 - **Kind:** observed
-- **Source:** harness playbook/methodology/modes.md and state-machines/workflow.yaml (commit 4bdc755)
+- **Source:** harness playbook/methodology/modes.md and state-machines/workflow.yaml (commit 9dfd497)
 - **Claim:** A mode chooses skills and adds guards to transitions; it never adds states or removes an invariant; a mid-flight change is a kick-back to spec-draft with a reason.
 - **Result:** The skill implements that page; switching follows the workflow's respec transitions.
 

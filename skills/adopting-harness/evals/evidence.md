@@ -2,7 +2,7 @@
 
 ## 2026-10-13 · Routes on a 298-character description in the 8,000-character catalog
 - **Kind:** measured
-- **Source:** RR_MODEL=haiku RR_EFFORT=low node tools/cli.mjs eval-routing skills "$SKILLDEX/skills" --skill adopting-harness --runner "node router.mjs" --json, run 3 times on 2026-10-13 at harness feat/reconcile-skills after 8816da6, with $SKILLDEX a clone of https://github.com/QuentinTorg/skilldex at fc572b6 and router.mjs the runner in skills/evaluating-skills/references/engine-notes.md; per-case results in skills/routing-results-2026-10-13.jsonl, the table in skills/ROUTING-RESULTS.md
+- **Source:** RR_MODEL=haiku RR_EFFORT=low node tools/cli.mjs eval-routing skills "$SKILLDEX/skills" --skill adopting-harness --runner "node router.mjs" --json, run 3 times on 2026-10-13 at harness feat/reconcile-skills after 681794e, with $SKILLDEX a clone of https://github.com/QuentinTorg/skilldex at fc572b6 and router.mjs the runner in skills/evaluating-skills/references/engine-notes.md; per-case results in skills/routing-results-2026-10-13.jsonl, the table in skills/ROUTING-RESULTS.md
 - **Claim:** With all 28 descriptions cut to 7,899 characters and the 5 pinned Skilldex skills installed, this skill's own cases passed 45/45; precision 100%, recall 96% over every case in the catalog. The original 882-character description, same runner and cases: 42/45, precision 77%, recall 100%.
 - **Result:** Misses: none.
 - **Engine:** claude
@@ -26,7 +26,7 @@
 
 ## 2026-10-13 · The layer guide is the source of every move
 - **Kind:** observed
-- **Source:** harness LAYERS.md and standards/engineering.md (commit 4bdc755)
+- **Source:** harness LAYERS.md and standards/engineering.md (commit 9dfd497)
 - **Claim:** Each artifact belongs to one layer by who must see it and whether it names an engine; the standards block is rendered into L1 and L2; cloud sessions and CI see only L2.
 - **Result:** The classification step and the deletion table; the "repos today → target" checklist generalizes the guide's per-repo tables.
 

@@ -2,7 +2,7 @@
 
 ## 2026-10-13 · Routes on a 289-character description in the 8,000-character catalog
 - **Kind:** measured
-- **Source:** RR_MODEL=haiku RR_EFFORT=low node tools/cli.mjs eval-routing skills "$SKILLDEX/skills" --skill checking-plan-readiness --runner "node router.mjs" --json, run 3 times on 2026-10-13 at harness feat/reconcile-skills after 8816da6, with $SKILLDEX a clone of https://github.com/QuentinTorg/skilldex at fc572b6 and router.mjs the runner in skills/evaluating-skills/references/engine-notes.md; per-case results in skills/routing-results-2026-10-13.jsonl, the table in skills/ROUTING-RESULTS.md
+- **Source:** RR_MODEL=haiku RR_EFFORT=low node tools/cli.mjs eval-routing skills "$SKILLDEX/skills" --skill checking-plan-readiness --runner "node router.mjs" --json, run 3 times on 2026-10-13 at harness feat/reconcile-skills after 681794e, with $SKILLDEX a clone of https://github.com/QuentinTorg/skilldex at fc572b6 and router.mjs the runner in skills/evaluating-skills/references/engine-notes.md; per-case results in skills/routing-results-2026-10-13.jsonl, the table in skills/ROUTING-RESULTS.md
 - **Claim:** With all 28 descriptions cut to 7,899 characters and the 5 pinned Skilldex skills installed, this skill's own cases passed 33/33; precision 100%, recall 100% over every case in the catalog. The original 902-character description, same runner and cases: 33/33, precision 96%, recall 100%.
 - **Result:** Misses: none.
 - **Engine:** claude
@@ -18,14 +18,14 @@
 
 ## 2026-10-13 · The trace check separates complete and broken plans
 - **Kind:** measured
-- **Source:** node tools/validate.mjs --trace fixtures/trace/complete and fixtures/trace/broken (harness 4bdc755)
+- **Source:** node tools/validate.mjs --trace fixtures/trace/complete and fixtures/trace/broken (harness 9dfd497)
 - **Claim:** The complete fixture reports READY with 0 errors and full coverage; the broken fixture reports NOT-READY with 13 epic errors (cycle, missing ADR, orphan requirement, missing UX, unknown persona) and 1 project error.
 - **Result:** part A mirrors these rule names and severities so a manual report reads the same as a generated one.
 - **Skill version:** 0.1.0
 
 ## 2026-10-13 · The generated report validates against its own contract
 - **Kind:** measured
-- **Source:** node tools/validate.mjs --trace <copy of fixtures/trace/complete> --readiness <copy>/specs, then validate on the written readiness.md (harness 4bdc755)
+- **Source:** node tools/validate.mjs --trace <copy of fixtures/trace/complete> --readiness <copy>/specs, then validate on the written readiness.md (harness 9dfd497)
 - **Claim:** The report the tool writes passes the readiness-report contract, and so does the manual template in references/.
 - **Skill version:** 0.1.0
 

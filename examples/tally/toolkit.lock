@@ -12,7 +12,7 @@ entries:
     kind: harness
     source: ../..
     ref: main
-    commit: f88aec23f3ded0b144ff5621f60be2ed87650fa7
+    commit: 74b79f32f53ece49e4ff603319257a9331977f0a
     tree: e2c69ff167630d8df0033bfb0bab4ee51b454008
     version: 0.1.0
     autoUpdate: minor
