@@ -67,7 +67,8 @@ in `fixtures/lint/broken/<rule>/`.
 `harness simulate <scenario.yaml>` or `harness simulate --project <root>` runs a seeded,
 deterministic discrete-event model of the runtime contracts and checks 18 invariants after every
 event. The world: a supervisor policy (the `orchestrating-work` protocol as code), author and
-evaluator sessions with read-only helpers, CI, a merge queue that classifies conflicts and re-runs
+evaluator sessions with read-only helpers, CI, a reviewer that reviews every pushed head (pass or
+changes-requested, `reviewer.reject_rate`), a merge queue that classifies conflicts and re-runs
 checks on the merged result (for the branches it serves), the orchestrator's own merge under a
 merge grant for a branch no queue serves, a scripted human with latencies who also merges an
 integration branch into the target once nothing on it is in flight (`promote`), a forge whose
@@ -78,8 +79,8 @@ signals (working, blocked, done, idle, unknown) are lossy and duplicable, with e
 A scenario names tasks (`depends_on`, `touches`, `size`, `risk`, `criteria`, `budget`, `lands_to`),
 the policy tier and its `forbid`/`ask`/`budgets`, its grants (`grant`, or `grants` for several,
 e.g. a work grant and a separate merge grant; each validated against the grant contract), the
-supervisor's caps, the merge queue's `queue_targets` (default every branch), the
-human's behaviour (`on_integration: merge|hold`), and faults: `concurrent_claims` (a rival runtime),
+supervisor's caps, the evaluator's and the reviewer's latency and reject rate, the merge queue's
+`queue_targets` (default every branch), the human's behaviour (`on_integration: merge|hold`), and faults: `concurrent_claims` (a rival runtime),
 `crash`, `lost_events`, `duplicate_wakes`, `unknown_signals`, `no_progress`, `budget_exhaustion`,
 `semantic_conflict`, `evaluator_rejection`, `grant_expiry`, `merge_without_grant`, `ask`, `wall`,
 `question` (`grant_expiry.grant` names the one grant to expire; default every one). Unknown keys
@@ -95,7 +96,7 @@ spec gate).
 |---|---|
 | `one-owner-per-claimed-task` | a claimed task has one owner from a CAS claim; one author session holds it; only the owner commits |
 | `transitions-allowed` | every status change is a `workflow.yaml` transition from its from-state by a listed role, or the orchestrator under a live grant of its `grant`; reasons where needed; humans are humans |
-| `guards-hold` | the transition's guards hold on the evidence (deps merged, an integrated dependency counting only in the same epic; checks green, criteria met and named in tests, independent review, independent verification by the evaluator for risk medium and up, lands on the protected or the integration branch as `lands_to` says, mechanical-only, merged checks green, integration landed, question answered); a grant adds its grant guards |
+| `guards-hold` | the transition's guards hold on the evidence (deps merged, an integrated dependency counting only in the same epic; checks green, criteria met and named in tests, independent review (the reviewer role's pass on the current head), independent verification (the evaluator role's pass on the current head, every task), lands on the protected or the integration branch as `lands_to` says, mechanical-only, merged checks green, integration landed, question answered); a grant adds its grant guards |
 | `human-gates-by-humans` | gates are passed by a human approver, or by the orchestrator under a live grant where the gate is grantable |
 | `signals-never-advance-workflow` | a commit decided on a runtime signal is one the evidence and authority justify on their own |
 | `attention-consistent` | records carry attention only; needs-human names the next action; complete only when the human has nothing left |
@@ -111,13 +112,15 @@ spec gate).
 
 Transition tables, roles, gates, guards, side states, the merge requirements and the claimed statuses
 are read from `state-machines/*.yaml` and the task schema; a guard the simulator has no evidence
-model for is an error, never a pass. `--break <mutation>` swaps in one of 20
+model for is an error, never a pass. `--break <mutation>` swaps in one of 21
 deliberately broken supervisors (`--list` names them); the tests run each, plus four broken world
 bindings (bypass that skips walls, a forge without CAS, a merge queue that resolves semantic
 conflicts, no branch protection), and require the named invariant to catch it. Among them:
 `cross-epic-integrated` (a dependent in another epic treats an integrated dependency as merged:
-`guards-hold`, deps-merged), `finalize-unverified` (a risk-medium PR marked ready with no evaluator
-verdict: `guards-hold`, independent-verification) and `land-without-grant` (the orchestrator lands a
+`guards-hold`, deps-merged), `finalize-unverified` (a PR marked ready with no evaluator
+verdict: `guards-hold`, independent-verification), `approve-over-reviewer` (the evaluator's pass
+taken as the review while the reviewer requested changes on that head: `guards-hold`,
+independent-review) and `land-without-grant` (the orchestrator lands a
 change no merge grant of its covers: `transitions-allowed`, `merge-requires-authority`).
 
 `--supervisor <module>` replaces the built-in supervisor with a runtime's own, so a binding is tested

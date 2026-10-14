@@ -61,7 +61,9 @@ grantable:
     parameters: [policy]
     does_not_cover: Dropping a material in-scope finding, or skipping the re-review after fixes.
   finalize:
-    means: Mark a PR ready for review once the current head passed an independent review.
+    means: >-
+      Mark a PR ready for review (task.mark-pr-ready) once the current head has the evaluator's
+      passing verdict (workflow guard independent-verification), as every task needs.
     workflow: [task.mark-pr-ready]
     does_not_cover: Merging. Finalization grants no merge authority.
   publish-review:
@@ -78,6 +80,8 @@ grantable:
       One repository, one exact target branch, one strategy. No wildcard target. A grant for
       main does not cover release/*. The target is the branch the task lands on: its lands_to (the
       epic's integration branch, tier 2), else the protected branch.
+    # independent-review is a reviewer-role pass on the current head (workflow guards); the
+    # evaluator's verdict (independent-verification) is already required to reach human-review.
     always_requires: [independent-review, required-checks]
     also_checks: >-
       The actual base and head at merge time; record the result. Only the coordinator exercises it,

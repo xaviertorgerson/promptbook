@@ -7,7 +7,7 @@
 #
 # Source: agentic-template docs/workflow.md, docs/roles.md and docs/interjection.md (2026-10-13),
 # generalized. Authority for the orchestrator role, and every `grant:` below, is authority.yaml.
-version: 1.2.1
+version: 1.3.0
 contract: workflow
 
 rules:
@@ -48,8 +48,8 @@ roles:
   engineer:     { kind: human, holds: [pr-approval] }
   planner:      { kind: agent }
   coder:        { kind: agent }
-  reviewer:     { kind: agent, note: "Inline comments only; never approves, never pushes." }
-  evaluator:    { kind: agent, note: "Judges the current head against the task's criteria in a clean context and records a verdict (pass or fail); never edits, never approves, never commits a status (playbook: verification)." }
+  reviewer:     { kind: agent, note: "Reviews every pushed head as code (inline comments, then pass or changes-requested); never approves, never pushes. Its pass is the independent-review guard." }
+  evaluator:    { kind: agent, note: "Judges the current head against the task's criteria in a clean context and records a verdict (pass or fail); never edits, never approves, never commits a status (playbook: verification). Its pass is the independent-verification guard." }
   merge:        { kind: agent, note: "The only automated role that lands on the protected branch, and only after pr-approval." }
   train:        { kind: automation, note: "Promotes one built artifact through the stages; never retries a red hop." }
   orchestrator: { kind: agent, note: "A coordinator. Holds nothing by default; acts only through a grant (authority.yaml)." }
@@ -91,8 +91,8 @@ guards:
   checks-green:             { checks: "The required checks on the PR head passed." }
   criteria-met:             { checks: "The coder's last return reports every criterion met (return.criteria.unmet empty)." }
   pr-ready:                 { checks: "The PR is marked ready for review." }
-  independent-review:       { checks: "A reviewer that did not author the change reviewed the current head and passed it." }
-  independent-verification: { checks: "When the task's risk is medium or high: an evaluator that did not author the change recorded a passing verdict on the criteria for the current head (playbook: verification). Low risk: holds." }
+  independent-review:       { checks: "A reviewer (role reviewer) that did not author the change passed the current head. An evaluator's verdict is not a review. Required where a merge grant approves (approve-pr's grant_guards; authority.yaml merge always_requires)." }
+  independent-verification: { checks: "Every task: an evaluator (role evaluator) that did not author the change recorded a passing verdict on the criteria for the current head. k and the model family scale with risk: low may use k = 1 and the writer's family; medium k = 2 and high k = 3, on a different family where one is available (playbook: verification). A reviewer's pass is not a verdict." }
   lands-on-protected:       { checks: "The task has no lands_to (or it names the protected branch): the change lands on the protected branch." }
   lands-on-integration:     { checks: "The task's lands_to names its epic's integration branch, and the change lands there." }
   integration-landed:       { checks: "The integration branch holding the change landed on the protected branch: a human merged it." }
@@ -130,10 +130,10 @@ machines:
           note: "Dispatching the highest-priority ready task is mechanical, not select-tasks: the owner ordered the work at spec-approval. A coordinator choosing, reordering or adding work needs the grant." }
       - { id: open-draft,        from: in-progress,  to: review,       by: [coder, engineer], guards: [draft-pr-open] }
       - { id: mark-pr-ready,     from: review,       to: human-review, by: [coder, engineer], grant: finalize, guards: [checks-green, criteria-met, criteria-named-in-tests, pr-ready, independent-verification],
-          note: "In agentic-template the coder does this when the deterministic gates pass; a runtime whose default is human finalization (stagehand) needs the finalize grant. Risk medium and up waits for the evaluator's pass on the current head." }
+          note: "In agentic-template the coder does this when the deterministic gates pass; a runtime whose default is human finalization (stagehand) needs the finalize grant. Every task waits for the evaluator's pass on the current head; a runtime that has a reviewer waits for its review too, since a changes-requested found after this point needs a human to send the task back." }
       - { id: iterate,           from: review,       to: in-progress,  by: [coder, engineer] }
       - { id: approve-pr,        from: human-review, to: merging,      by: [owner, engineer], gate: pr-approval, grant: merge, guards: [checks-green],
-          grant_guards: [independent-review, checks-green] }
+          grant_guards: [independent-review, independent-verification, checks-green] }
       - { id: land,              from: merging,      to: merged,       by: [merge], grant: merge, guards: [lands-on-protected, mechanical-only, merged-checks-green],
           note: "The merge role after the approval; or the orchestrator under a live merge grant whose repo, target and strategy match (a runtime with no separate merge role)." }
       - { id: integrate,         from: merging,      to: integrated,   by: [merge], grant: merge, guards: [lands-on-integration, mechanical-only, merged-checks-green],

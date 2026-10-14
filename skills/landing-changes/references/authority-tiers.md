@@ -23,7 +23,7 @@ role and its credential, tier 2 by issuing a grant. Nothing is inferred from a l
 
 | Transition | From → to | By | Grant | Guards |
 |---|---|---|---|---|
-| `approve-pr` | human-review → merging | owner, engineer | `merge` (a coordinator stands in) | checks-green; with a grant also independent-review |
+| `approve-pr` | human-review → merging | owner, engineer | `merge` (a coordinator stands in) | checks-green; with a grant also independent-review (the reviewer's pass) and independent-verification (the evaluator's), both on the current head |
 | `land` | merging → merged | merge | `merge` (the coordinator, matching repo, strategy and exact target) | lands-on-protected, mechanical-only, merged-checks-green |
 | `integrate` | merging → integrated | merge | `merge` (target = the task's `lands_to`) | lands-on-integration, mechanical-only, merged-checks-green |
 | `return-to-human` | merging → human-review | merge | `merge` | a reason: a semantic conflict or red merged checks |

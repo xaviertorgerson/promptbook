@@ -8,8 +8,12 @@ weak verifier just produces wrong work faster. One lucky pass hides a flaky succ
 
 ## Practice
 
-- **A separate evaluator, every task.** Before `human-review`, a fresh evaluator judges the change.
-  It is mandatory for `risk: medium` and above and the default for everything else.
+- **A separate evaluator, every task.** Before `human-review`, a fresh evaluator judges the current
+  head against the criteria and records a verdict. Risk scales the effort, not whether it runs: low
+  risk may use one trial and the writer's model family; medium takes two trials and high three, on a
+  different family where one is available.
+- **A verdict is not a review.** The evaluator's verdict on the criteria and the reviewer's code
+  review of the same head are two roles and two records; neither stands in for the other.
 - **Clean context.** The evaluator starts with the intent (task criteria, PR description, linked
   requirements) and the changeset, not the writer's conversation.
 - **Different where possible.** Prefer a different model family from the writer; at minimum a
@@ -51,11 +55,14 @@ weak verifier just produces wrong work faster. One lucky pass hides a flaky succ
 `task` (`evaluator`, `risk`, `AC-n`), `return` (criteria met/unmet, findings), `run-record`
 (verdict), `task-record` (`reviews[]` with `role: evaluator`, outcome pass or fail),
 `state-machines/workflow.yaml` (`mark-pr-ready`, `review` → `human-review`, carries the
-`independent-verification` guard: the evaluator's pass on the current head for risk medium and up).
+`independent-verification` guard: the evaluator's pass on the current head, every task;
+`independent-review`, a reviewer-role pass on the current head, is what a merge grant's `approve-pr`
+also needs).
 
 ## Anti-patterns
 
 - The writer's "self-review" counted as the evaluation.
+- A reviewer's pass counted as the evaluator's verdict, or the other way round.
 - An evaluator handed the writer's transcript and asked to agree.
 - A green CI treated as proof of the criteria.
 - The evaluator fixing what it finds.

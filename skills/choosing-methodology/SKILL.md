@@ -52,7 +52,7 @@ mapping-journeys); dispatching the tasks once a mode is set (orchestrating-work)
    research-plan-implement.
 3. **State what the mode loads and guards** (`references/modes.md`): the skills the runtime loads
    for its tasks (and no other workflow skills), the guards it adds to transitions, and the invariants
-   it can never remove (walls, the evaluator for risk medium and up, human merge, human spec approval).
+   it can never remove (walls, the evaluator's verdict on every task, human merge, human spec approval).
 4. **Record it.** Set the epic's default as `mode` in the spec's frontmatter (the `epic` contract;
    absent means spec-driven) and `mode` on a task file only where the task differs (a task's `mode`
    overrides the epic's). Add one line of rationale to the spec ("mode: research-plan-implement —

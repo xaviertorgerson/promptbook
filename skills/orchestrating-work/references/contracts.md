@@ -27,8 +27,8 @@ Field names are exact. The full schemas are `schemas/*.schema.json` in the harne
 |---|---|---|---|
 | claim | ready → in-progress | coder, engineer, owner | `select-tasks` (only to choose, reorder or add work; dispatching in the owner's order is mechanical) |
 | open-draft | in-progress → review | coder, engineer | — |
-| mark-pr-ready | review → human-review | coder, engineer | `finalize`; guard `independent-verification`: risk medium or high needs the evaluator's pass on the current head |
-| approve-pr | human-review → merging | owner, engineer (gate) | `merge`, with independent review and required checks |
+| mark-pr-ready | review → human-review | coder, engineer | `finalize`; guard `independent-verification`: every task needs the evaluator's pass on the current head |
+| approve-pr | human-review → merging | owner, engineer (gate) | `merge`, with the reviewer's pass (`independent-review`), the evaluator's verdict and required checks, all on the current head |
 | land | merging → merged | merge | `merge` (repo, strategy and exact target match; the target is the protected branch) |
 | integrate | merging → integrated | merge | `merge` (the target is the task's `lands_to`) |
 | promote | integrated → merged | owner, engineer | never (a human merged the integration branch) |

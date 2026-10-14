@@ -40,7 +40,7 @@ Risk: medium · k = 2 · Evaluated: 2026-10-13T10:12:00Z
 
 | Outcome | Goes to | What is forwarded | Next |
 |---|---|---|---|
-| pass | the writer and the coordinator | the verdict file path | evidence for `independent-review`; an engineer, or a coordinator with a `finalize` grant, marks the PR ready |
+| pass | the writer and the coordinator | the verdict file path | evidence for `independent-verification`; an engineer, or a coordinator with a `finalize` grant, marks the PR ready |
 | fail with `blocks AC-n` | the disposer (human, or coordinator under `dispose-findings`), then the same writer | the verdict file, unedited, plus the selection list; blocking findings are selected by default unless the human re-specs the criterion | the writer fixes the selected numbers only (pinned resolving-findings skill), then asks for re-evaluation of the full new head |
 | fail with only `defect` findings | the disposer | the verdict file | only the findings they select go to the writer, as a selection list; the rest become follow-ups |
 | `follow-up` items | the planner (through the human or coordinator) | the lines, quoted | new tasks or notes; never added to this PR silently |
@@ -57,5 +57,5 @@ reviews:
 
 An evaluator's entry is `role: evaluator` with `outcome` `pass` or `fail`; `changes-requested` and
 `comment` belong to code reviews (`role: reviewer`). A `pass` on the current head is what the
-workflow guard `independent-verification` checks before `mark-pr-ready` on a task of risk medium or
-high.
+workflow guard `independent-verification` checks before `mark-pr-ready`, on every task; a reviewer's
+`pass` is the separate `independent-review` guard.

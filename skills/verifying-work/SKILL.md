@@ -16,8 +16,8 @@ shares its blind spots, so the evaluator starts clean, prefers a different model
 rather than reading claims, and never fixes what it finds.
 
 Typical asks: "evaluate BILL-7", "verify the PR against its acceptance criteria", "is AC-2 actually
-met", "run the evaluator on this head", "give me a verdict per criterion", or a task at risk medium
-or higher reaching review.
+met", "run the evaluator on this head", "give me a verdict per criterion", or any task reaching
+review: every task gets a verdict on its current head before human review.
 
 Hand off instead: a style or design review of a diff (reviewing-code); a security review
 (reviewing-security); writing or finding missing tests, such as "cover AC-3 with a test" or "which
@@ -89,18 +89,18 @@ evaluator's verdict on a different head.
 - A `return` JSON (contract `return`, role `evaluator`). If `harness validate` is available, run
   `node tools/validate.mjs --contract return <file>`.
 - For the coordinator: a `reviews[]` entry for the task record (`pr`, `head`, `role: evaluator`,
-  `outcome` `pass` or `fail`, `by`, `ref` to the verdict). On risk medium or high, a `pass` on the
-  current head is what the workflow guard `independent-verification` requires before
-  `mark-pr-ready`. The writer adds the agent-log line; the runner
+  `outcome` `pass` or `fail`, `by`, `ref` to the verdict). A `pass` on the current head is what the
+  workflow guard `independent-verification` requires before `mark-pr-ready`, on every task. The writer adds the agent-log line; the runner
   records the run. The evaluator writes neither the task file nor the code.
 
 ## Gates and stop conditions
 
 - **Never edit** source, tests, the task file, the PR's state or description. Never approve, merge,
   or mark ready. Never post a review on someone else's PR without a `publish-review` decision.
-- A pass is evidence for the `independent-verification` guard (`mark-pr-ready`) and the
-  `independent-review` guard (a grant's `approve-pr`), not approval; review counts are not approval.
-  A changed head voids the verdict.
+- A pass is evidence for the `independent-verification` guard (`mark-pr-ready`), not approval and
+  not a code review: a grant's `approve-pr` also needs the reviewer role's pass on the head
+  (`independent-review`), a separate record. Review counts are not approval. A changed head voids
+  the verdict.
 - Hand to a human (`needs-human` with a question): a criterion that cannot be judged without a
   product decision (ambiguous or contradictory); the preview or test infrastructure is down for
   reasons outside the change; the packet's head and the PR disagree and you cannot tell which is

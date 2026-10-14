@@ -72,9 +72,10 @@ merging (landing-changes).
    attribution, pushed to the task branch after each. Open a draft PR (PR text: the pinned
    preparing-pull-requests skill, draft mode). Set `status: in-progress → review` (transition
    `open-draft`, guard: the draft PR exists) with an agent-log line. Update Working notes.
-10. **Get the independent evaluation.** Mandatory when `risk` is `medium` or `high`: the workflow
-    guard `independent-verification` holds `mark-pr-ready` until an evaluator that did not write the
-    change records a pass on the current head. The default otherwise. Request verifying-work with
+10. **Get the independent evaluation.** Every task: the workflow guard `independent-verification`
+    holds `mark-pr-ready` until an evaluator that did not write the change records a pass on the
+    current head (risk sets its trials and model family, not whether it runs). The reviewer's code
+    review of the head is separate and does not count as the verdict. Request verifying-work with
     only the evaluator packet (task criteria, diff ref `<base>...<head>`, how to run the tests and
     the PR preview), never your transcript or Working notes. Without a subagent mechanism, end the
     run at `review` and hand back `attention: working` with "evaluation due on <head>" in the
@@ -99,8 +100,8 @@ merging (landing-changes).
 - Commits and a draft PR on the task branch; the worktree and its derived resources.
 - A `return` (contract `return`): `task`, `role: coder`, `summary` (≤ 8,000 characters),
   `artifacts`, `attention`, `decisions_needed`, `criteria` (`met`, `unmet` with reasons),
-  `verification`, `session`. `complete` only when every criterion is met and the evaluation (when
-  required) passed on the current head. Worked examples: references/handback-review.return.json,
+  `verification`, `session`. `complete` only when every criterion is met and the evaluation passed on the
+  current head. Worked examples: references/handback-review.return.json,
   references/handback-needs-input.return.json. If `harness validate` is available, run
   `node tools/validate.mjs --contract return <file>`.
 
@@ -108,7 +109,7 @@ merging (landing-changes).
 
 - **Your last transition is `review`.** Never set `human-review`, `merging` or `merged`. Marking the
   PR ready (`mark-pr-ready`) happens after a passing verdict on the current head (guard
-  `independent-verification` from risk medium), by an engineer or by a coordinator holding a live
+  `independent-verification`, every task), by an engineer or by a coordinator holding a live
   `finalize` grant. Landing is landing-changes.
 - Never push to the default or integration branch, never force-push, never approve or merge your
   own PR, never answer a permission prompt. A permission denial is a question for a human.

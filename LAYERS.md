@@ -209,7 +209,7 @@ explicit models (no `inherit` for cost-sensitive roles):
 | Subagent | Target | Change |
 |---|---|---|
 | `explorer` (read-only, sonnet, low effort) | core | a cheaper model at low effort; returns `path:line` per the `return` contract |
-| `reviewer` (findings only) | core | the evaluator role; a different model family where the runtime allows; mandatory before `human-review` for `risk` medium and up |
+| `reviewer` (findings only) | core | the evaluator role; a different model family where the runtime allows; a verdict before `human-review` on every task (risk sets its trials) |
 | `test-runner` (failures only) | core | unchanged role; explicit model |
 | `coder` (worktree isolation) | core | explicit model and effort by task `size`; budget caps |
 

@@ -11,8 +11,8 @@ metadata:
 # Landing changes
 
 Merge is where one agent's mistake becomes everyone's. Land only what a human approved, or what a
-live, scoped grant lets a coordinator stand in for, and only after an independent review of the
-exact head and green checks on the merged result. Overlapping logic is never resolved by an agent.
+live, scoped grant lets a coordinator stand in for, and only after the reviewer's pass and the
+evaluator's verdict on the exact head and green checks on the merged result. Overlapping logic is never resolved by an agent.
 
 Typical asks: "the PR is approved, land it", "merge BILL-7", "resolve these merge conflicts",
 "rebase and land", "run the merge queue", "can the coordinator merge into the epic branch", "set up
@@ -30,9 +30,10 @@ deploying a merged build (releasing-changes).
   `lands_to` (the epic's integration branch, when it lands there), the agent log.
 - The grant, if a coordinator acts under one (`grant` contract): `granted_to`, `scope`, `actions`
   with `merge{repo, target, strategy, requires}`, `limits`, `expires_at`, `revoked_at`, `narrowed`.
-- The verdict of the independent evaluation bound to the head (verifying-work), and the task
-  record's `reviews[]` (`pr`, `head`, `outcome`, `role`, `by`; the evaluator's verdict is `role:
-  evaluator` with `outcome` pass or fail).
+- The task record's `reviews[]` (`pr`, `head`, `outcome`, `role`, `by`), each bound to a head: the
+  reviewer's code review is `role: reviewer` (pass or changes-requested; the `independent-review`
+  guard), the evaluator's verdict on the criteria `role: evaluator` (pass or fail;
+  `independent-verification`, verifying-work). One never stands in for the other.
 - Your own identity, to check you authored nothing in the PR.
 
 ## Procedure
@@ -58,7 +59,8 @@ deploying a merged build (releasing-changes).
    tier 0.
 5. **Record the approval transition.** `approve-pr` (`human-review` → `merging`): by the owner or
    engineer who approved (cite the approval and its head in the agent-log line), or by the
-   coordinator under the grant (cite the grant id and the verdict). One commit on the task branch.
+   coordinator under the grant (cite the grant id, the reviewer's pass and the evaluator's verdict on
+   the head). One commit on the task branch.
 6. **Update and classify.** Fetch the target, merge it into the PR's head in a clean checkout
    (never your primary checkout), and classify any conflicts with references/conflict-classes.md.
    **Any semantic conflict:** abort the merge, label the PR for a human merge, comment naming the
@@ -68,9 +70,9 @@ deploying a merged build (releasing-changes).
    regenerate. Identical hunks: take either. Commit the resolution to the PR's branch and push it
    plainly. A history rewrite of the PR branch (rebase strategy) is allowed only when authorized
    for that branch, with `--force-with-lease=<branch>:<expected-sha>`; never on the target, never on
-   a shared branch without the human. A pushed resolution changes the head: the independent review
-   must cover it (a mechanical-only commit is listed in the land record; anything more needs
-   re-evaluation).
+   a shared branch without the human. A pushed resolution changes the head: the reviewer and the
+   evaluator must cover it (a mechanical-only commit is listed in the land record; anything more
+   needs re-review and re-evaluation).
 8. **Land through the queue.** With a merge queue on the target, enqueue the PR: it re-tests the PR
    on top of the latest target plus the PRs ahead of it and removes it on red. Without one, land
    one change at a time: re-run the full required checks on the merged result and merge only on

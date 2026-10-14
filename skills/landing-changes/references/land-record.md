@@ -10,7 +10,7 @@
 Under a grant:
 
 ```markdown
-- 2026-10-14 orchestrator — approve-pr under GRANT-4 (verdict pass at 3a9f2b1, .agent/verdicts/BILL-6-3a9f2b1.md); status → merging.
+- 2026-10-14 orchestrator — approve-pr under GRANT-4 (reviewer pass at 3a9f2b1, PR #244 review 3; evaluator verdict pass at 3a9f2b1, .agent/verdicts/BILL-6-3a9f2b1.md); status → merging.
 - 2026-10-14 orchestrator — integrated PR #244 into integration/rating-engine by squash as 5c2d8e0 (tier 2, GRANT-4); merged checks green; status → integrated.
 ```
 
@@ -35,7 +35,8 @@ merge_commit: 5c2d8e0
 conflicts: [{ file: pnpm-lock.yaml, row: 1, resolution: regenerated }]
 resolution_commit: 8e4f1a2      # listed because it changed the head after evaluation (mechanical only)
 evidence:
-  independent_review: .agent/verdicts/BILL-6-3a9f2b1.md
+  independent_review: https://github.com/acme/billing/pull/244#pullrequestreview-3   # the reviewer role's pass on 3a9f2b1
+  independent_verification: .agent/verdicts/BILL-6-3a9f2b1.md                       # the evaluator's verdict on 3a9f2b1
   required_checks: green on the merged result (queue run 4471)
   grant_check: all 12 rows passed at 2026-10-14T11:02:00Z
 landed_by: orchestrator

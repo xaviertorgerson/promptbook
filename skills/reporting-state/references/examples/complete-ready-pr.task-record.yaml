@@ -1,5 +1,5 @@
 # The PR is ready for human review; its current head passed a code review and the evaluator's verdict
-# on the criteria (the independent-verification guard for a medium-risk task). Orchestration
+# on the criteria (the independent-verification guard every task needs). Orchestration
 # is complete; the human gate is the task's status (human-review), not attention. An idle pane alone
 # would not have justified this.
 task_id: BILL-2

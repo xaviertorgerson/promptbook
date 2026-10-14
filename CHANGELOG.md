@@ -29,6 +29,14 @@ Fixes from an independent review of 0.1.0 (workflow, authority, trace, simulator
   as orchestrating-work says, and the runtime refuses a reader when every slot is taken; a guard
   the simulator has no evidence model for throws instead of passing; new mutation
   `uncounted-readers` (caught by `cap-workers`).
+- **behavioral** — workflow 1.3.0: every task needs the evaluator's verdict on its current head
+  before `human-review` (`independent-verification`; risk sets the trials and the model family, not
+  whether it runs). `independent-review` is the reviewer role's pass on the current head, required
+  where a merge grant approves (`approve-pr` grant guards now also carry independent-verification);
+  authority's `finalize` waits for the verdict. The simulator models the reviewer (it reviews every
+  pushed head; `reviewer.minutes`, `reviewer.reject_rate`), filters reviews by role, and the new
+  mutation `approve-over-reviewer` (approving on the evaluator's pass while the reviewer requested
+  changes) is caught by `guards-hold` and `merge-requires-authority`.
 - **behavioral** — workflow 1.2.1: `released` is not a terminal state (roll-back leaves it); a test
   holds every terminal state to having no transition out.
 

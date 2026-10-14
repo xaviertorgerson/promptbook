@@ -86,7 +86,8 @@ export class World {
       const pr = this.newPr(t.id, t.owner ?? 'unknown', head);
       pr.checks.set(head, 'green');
       pr.coverage.set(head, new Set(t.criteria));
-      pr.reviews.push({ head, verdict: 'pass', by: 'prior-reviewer', role: 'evaluator', at: 0 });
+      pr.reviews.push({ head, verdict: 'pass', by: 'prior-reviewer', role: 'reviewer', at: 0 });
+      pr.reviews.push({ head, verdict: 'pass', by: 'prior-evaluator', role: 'evaluator', at: 0 });
       if (t.status !== 'review') pr.ready = true;
       if (['merging', 'integrated'].includes(t.status)) pr.approval = { head, by: 'prior-human', actorKind: 'human', role: 'owner', grant: null, at: 0 };
       if (t.status === 'integrated') {
@@ -734,6 +735,7 @@ export class World {
     pr.coverage.set(head, covered);
     this.effect({ pushed: head, pr: pr.number, covered: [...covered] });
     this.ciRun(s.task, head);
+    this.reviewerRun(s.task, head);
     this.authorCommit(s, 'open-draft', 'review', {
       onAccept: () => {
         const f = sc.faults.merge_without_grant;
@@ -856,6 +858,18 @@ export class World {
       this.authorEnd(s, { outcome: 'verdict', subtype: 'success', exit: 0, reason: null, ret: { task: taskId, role: 'evaluator', summary: `Reviewed ${s.head}: ${verdict} (${why}).`, attention: 'complete', artifacts: [{ path: `pr/${pr.number}#review`, kind: 'report' }], decisions_needed: [], verification: [{ command: 'run the tests named for each criterion', result: verdict === 'pass' ? 'pass' : 'fail' }] } });
     });
     return s.id;
+  }
+
+  // The reviewer role reviews every pushed head (inline comments; it never approves): pass, or
+  // changes-requested. Its pass on the current head is the independent-review guard.
+  reviewerRun(task, head) {
+    this.at(this.rng.between(this.sc.reviewer.minutes), 'review', { actor: 'reviewer-bot', task, detail: { head } }, () => {
+      const pr = this.forge.prs.get(task);
+      const verdict = this.rng.chance(this.sc.reviewer.reject_rate) ? 'changes-requested' : 'pass';
+      pr.reviews.push({ head, verdict, by: 'reviewer-bot', role: 'reviewer', at: this.t });
+      this.effect({ review: verdict, role: 'reviewer', head });
+      this.webhook({ what: 'review', task, value: verdict });
+    });
   }
 
   ciRun(task, head) {

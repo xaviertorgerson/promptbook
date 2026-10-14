@@ -218,8 +218,29 @@ describe('simulate: the faults happen and are handled as the contracts say', () 
     for (const r of runs) {
       assert.equal(r.world.forge.tasks.get('EVR-2').status, 'spec-draft');
       assert.equal(r.world.forge.tasks.get('EVR-1').status, 'merged');
-      assert.ok(r.world.forge.prs.get('EVR-2').reviews.length <= 5);
+      assert.ok(r.world.forge.prs.get('EVR-2').reviews.filter((x) => x.role === 'evaluator').length <= 5);
     }
+  });
+
+  it('a reviewer\'s changes-requested blocks a grant\'s approval even when the evaluator passed that head; a low-risk task still gets a verdict', () => {
+    const sc = scenario('integration-branch', { reviewer: { reject_rate: 0.5 } });
+    for (const r of runAll(sc, 10)) {
+      assert.deepEqual(r.violations, [], 'the correct supervisor fixes what the reviewer found before finalizing');
+      for (const [id, pr] of r.world.forge.prs) {
+        if (!pr.merged) continue;
+        const on = pr.reviews.filter((x) => x.head === pr.merged.head);
+        assert.ok(on.some((x) => x.role === 'evaluator' && x.verdict === 'pass'), `${id}: a verdict on the landed head (risk ${r.world.meta.get(id).spec.risk.level})`);
+        assert.equal(on.filter((x) => x.role === 'reviewer').at(-1)?.verdict, 'pass', `${id}: the reviewer's last word on the landed head is a pass`);
+      }
+    }
+    const broken = runAll(sc, MUTANT_SEEDS, { policy: orchestrating({ break: ['approve-over-reviewer'] }) });
+    const overRuled = broken.filter((r) => r.violations.some((v) => {
+      if (v.invariant !== 'guards-hold' || !/approve-pr: guard independent-review/.test(v.message)) return false;
+      const pr = r.world.forge.prs.get(v.task);
+      const head = pr.merged?.head ?? pr.approval?.head;
+      return pr.reviews.some((x) => x.head === head && x.role === 'reviewer' && x.verdict === 'changes-requested') && pr.reviews.some((x) => x.head === head && x.role === 'evaluator' && x.verdict === 'pass');
+    }));
+    assert.ok(overRuled.length > 0, 'some seed approves a head the evaluator passed and the reviewer rejected, and guards-hold names it');
   });
 
   it('an evaluator\'s run is logged as the evaluator\'s verdict, never as the author advancing the task', () => {
@@ -272,6 +293,7 @@ const MUTANTS = [
   { break: 'finalize-unverified', scenario: 'integration-branch', caught: ['guards-hold'], message: /mark-pr-ready: guard independent-verification does not hold$/ },
   { break: 'land-without-grant', scenario: 'integration-branch', over: { merge: { queue_targets: [] } }, caught: ['transitions-allowed', 'merge-requires-authority'], message: /orchestrator/ },
   { break: 'uncounted-readers', scenario: 'happy-path', over: { work: { helper_rate: 1 } }, caught: ['cap-workers'] },
+  { break: 'approve-over-reviewer', scenario: 'integration-branch', over: { reviewer: { reject_rate: 0.5 } }, caught: ['guards-hold', 'merge-requires-authority'], message: /independent-review/ },
   { world: { engine: 'bypass-skips-walls' }, label: 'engine binding: bypass skips walls (disableAllHooks)', scenario: 'wall-bypass', caught: ['walls-block'] },
   { world: { cas: false }, label: 'forge without compare-and-swap', scenario: 'parallel-overlap', caught: ['one-owner-per-claimed-task'] },
   { world: { mergeBot: 'resolve-semantic' }, label: 'merge queue resolves semantic conflicts', scenario: 'grant-expiry', caught: ['guards-hold', 'merge-requires-authority'] },

@@ -18,7 +18,7 @@
 | a run hit a ceiling or crashed, or had permission denials | needs-human | "Turn ceiling reached" | next_action: options (split, re-scope, raise budget) |
 | task `needs-input` or `blocked` | needs-human | "Parked: needs input" | next_action: the parked reason |
 | an author is implementing or fixing; evaluator queued | working | "Fixing review findings" | next_role: author |
-| a draft PR is open and the current head is not yet evaluated | working | "Awaiting independent review" | next_role: evaluator |
+| a draft PR is open and the current head is not yet evaluated | working | "Awaiting the evaluator's verdict" | next_role: evaluator |
 | findings were selected and routed back | working | "Addressing two findings" | next_role: author |
 | waiting on another task or agent | working | "Waiting on BILL-11" | next_role: orchestrator |
 | CI failed; the author is iterating within its ceiling | working | "Fixing failing checks" | next_role: author |

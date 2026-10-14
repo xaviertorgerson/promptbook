@@ -12,11 +12,11 @@ import { RUNTIME_SIGNALS, ruleMatches, WORKER_KINDS } from './world.mjs';
 export const INVARIANTS = {
   'one-owner-per-claimed-task': 'A claimed task has exactly one owner, set by a compare-and-swap claim; one author session at a time works it, and only its owner commits to it (workflow: claim-is-compare-and-swap; playbook: single-writer).',
   'transitions-allowed': 'Every status change is a transition in workflow.yaml, from its from-state, by a role its `by` lists (or the orchestrator under a live grant naming the transition\'s `grant`), with a reason where it needs one; human roles are humans; owner changes only by a claim or a human (workflow: transitions-are-commits).',
-  'guards-hold': 'Every guard of the transition holds on the evidence when it is applied (deps-merged, with an integrated dependency counting only in the same epic; owner-free, draft-pr-open, checks-green, criteria-met, criteria-named-in-tests, pr-ready, independent-review, independent-verification for risk medium and up, lands-on-protected, lands-on-integration, mechanical-only, merged-checks-green, integration-landed, question-answered); a grant adds its grant_guards (workflow guards; authority: finalize, merge).',
+  'guards-hold': 'Every guard of the transition holds on the evidence when it is applied (deps-merged, with an integrated dependency counting only in the same epic; owner-free, draft-pr-open, checks-green, criteria-met, criteria-named-in-tests, pr-ready, independent-review (a reviewer-role pass on the current head), independent-verification (an evaluator-role pass on the current head, every task), lands-on-protected, lands-on-integration, mechanical-only, merged-checks-green, integration-landed, question-answered); a grant adds its grant_guards (workflow guards; authority: finalize, merge).',
   'human-gates-by-humans': 'A gate transition (workflow.yaml gates) is made by a human approver, or, where the gate is grantable, by the orchestrator under a live grant of that action (authority.yaml).',
   'signals-never-advance-workflow': 'A commit decided on a runtime signal (agent state, CI result, events-lost notice) is still one the evidence and the actor\'s authority justify on their own; a wake is a hint (attention.yaml: signals-never-advance-workflow).',
   'attention-consistent': 'Task records carry attention only (working, needs-human, complete); needs-human names the next action; complete names none and is recorded only once the evidence shows nothing is left for the human (attention.yaml: idle-is-not-complete).',
-  'merge-requires-authority': 'A change lands on a branch (the protected target, or an epic\'s integration branch) only by the merge role, a human, or the orchestrator under a merge grant live when it decided for that exact branch; an agent lands only together with its land or integrate commit and after checks on the merged result of that head; with an approval of the landed head by a human or by the orchestrator under such a grant, an independent passing review of that head and green checks; never over a semantic conflict or red merged checks (authority.yaml merge; playbook: landing-changes).',
+  'merge-requires-authority': 'A change lands on a branch (the protected target, or an epic\'s integration branch) only by the merge role, a human, or the orchestrator under a merge grant live when it decided for that exact branch; an agent lands only together with its land or integrate commit and after checks on the merged result of that head; with an approval of the landed head by a human or by the orchestrator under such a grant, a reviewer-role pass on that head (independent-review) and green checks; never over a semantic conflict or red merged checks (authority.yaml merge; playbook: landing-changes).',
   'lanes-disjoint': 'Claimed tasks (in-progress through merging) never have overlapping touches: overlapping tasks are one lane and run in sequence (playbook: single-writer).',
   'cap-workers': 'Live workers per runtime (authors, evaluators and the readers they start) never exceed the supervisor\'s max_workers, nor the limits.max_workers of any live grant that delegates dispatch (select-tasks, approve-plan, dispose-findings, finalize); a merge-only grant caps nothing (playbook: budgets-and-routing).',
   'cap-depth': 'No helper is spawned below the delegation depth cap; helpers do not spawn helpers by default (playbook: topologies).',
@@ -34,7 +34,14 @@ export const INVARIANTS = {
 const UNMODELED = new Set(['epic-approved', 'criteria-ears', 'no-blocking-question', 'requirements-cited', 'dependency-cleared', 'all-tasks-merged', 'acceptance-met', 'stage-checks-green']);
 const PARKED = new Set(['suspended', 'spec-draft', 'needs-input', 'blocked']);
 const DONE_FOR_HUMAN = new Set(['human-review', 'merging', 'integrated', 'merged']);
-const RISKY = new Set(['medium', 'high']);
+
+// The latest review of `head` by `role` (reviewer: a code review; evaluator: the verdict on the
+// criteria) passed, and its author is not the change's (workflow guards independent-review and
+// independent-verification: one role each, never interchangeable).
+export function passedBy(pr, head, role) {
+  const r = pr ? [...pr.reviews].reverse().find((x) => x.head === head && x.role === role) : null;
+  return r?.verdict === 'pass' && r.by !== pr.author;
+}
 
 export class Checker {
   constructor({ machines, registry = sharedRegistry(), only = null } = {}) {
@@ -62,7 +69,6 @@ export class Checker {
     const m = w.meta.get(c.task);
     const pr = w.forge.prs.get(c.task);
     const head = pr?.head;
-    const review = pr ? [...pr.reviews].reverse().find((r) => r.head === head) : null;
     switch (guard) {
       case 'deps-merged': return m.spec.depends_on.every((d) => {
         const st = w.forge.tasks.get(d)?.status;
@@ -74,12 +80,8 @@ export class Checker {
       case 'criteria-met': return Boolean(m.lastReturn) && m.lastReturn.head === head && m.lastReturn.criteria.unmet.length === 0;
       case 'criteria-named-in-tests': return Boolean(pr) && m.spec.criteria.every((ac) => pr.coverage.get(head)?.has(ac));
       case 'pr-ready': return Boolean(pr?.ready);
-      case 'independent-review': return review?.verdict === 'pass' && review.by !== pr.author;
-      case 'independent-verification': {
-        if (!RISKY.has(m.spec.risk.level) && !m.spec.risk.irreversible) return true;
-        const verdict = pr ? [...pr.reviews].reverse().find((r) => r.head === head && r.role === 'evaluator') : null;
-        return verdict?.verdict === 'pass' && verdict.by !== pr.author;
-      }
+      case 'independent-review': return passedBy(pr, head, 'reviewer');
+      case 'independent-verification': return passedBy(pr, head, 'evaluator');
       case 'lands-on-protected': return landingTarget(w.sc, m.spec) === w.sc.target;
       case 'lands-on-integration': return landingTarget(w.sc, m.spec) !== w.sc.target;
       case 'integration-landed': return w.forge.target.landed.includes(c.task);
@@ -114,8 +116,6 @@ export class Checker {
       out.push({ invariant: 'transitions-allowed', message: `${c.actor} changed the owner ${before.owner} → ${after.owner}` });
     }
     const guards = [...T.guards, ...(viaGrant ? T.grant_guards : [])];
-    // authority.yaml finalize: "once the current head passed an independent review".
-    if (viaGrant && T.grant === 'finalize') guards.push('independent-review');
     for (const g of new Set(guards)) if (!this.guardHolds(w, g, c, before)) out.push({ invariant: 'guards-hold', message: `${c.transition}: guard ${g} does not hold${viaGrant ? ' (exercised under a grant)' : ''}` });
     const gate = T.gate ? this.m.gates[T.gate] : null;
     if (gate) {
@@ -181,8 +181,7 @@ export class Checker {
           if (!a.grantLive) why.push(`approved under ${g.id}, which was not live when it decided`);
           if (!grantCovers(g)) why.push(`${g.id} does not delegate merge for ${sc.repo} → ${landingTarget(sc, spec)} by ${sc.strategy}`);
           // authority.yaml grantable.merge.always_requires, whatever the grant itself lists.
-          const review = [...pr.reviews].reverse().find((r) => r.head === l.head);
-          const evidence = { 'independent-review': review?.verdict === 'pass' && review.by !== pr.author, 'required-checks': pr.checks.get(l.head) === 'green' };
+          const evidence = { 'independent-review': passedBy(pr, l.head, 'reviewer'), 'required-checks': pr.checks.get(l.head) === 'green' };
           for (const req of m.mergeRequires) if (!evidence[req]) why.push(`${req} missing for the landed head`);
         }
       }

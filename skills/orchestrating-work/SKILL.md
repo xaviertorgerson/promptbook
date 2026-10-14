@@ -99,8 +99,10 @@ Model and effort per role come from routing-models; set each one explicitly at t
 - One persistent author per task is the only writer. Findings go back to that same author, who
   resolves only the selected ones.
 - One independent evaluator per task (verifying-work): a separate session, clean context (intent and
-  changeset only), a different model family where the runtime allows, an objective artifact. It is
-  mandatory for `risk` medium and up and the default otherwise. It never edits.
+  changeset only), a different model family where the runtime allows, an objective artifact. Every
+  task gets its verdict before `human-review`; risk sets the trials (k = 1 low, 2 medium, 3 high) and
+  whether a different family is required (medium and up, where one is available). It never edits.
+  The reviewer's code review of the head is a separate record; neither counts as the other.
 - The same evaluator re-judges the complete current head after every fix. A changed head voids a pass.
 - Where the runtime starts a fresh session per run, "the same role" resumes from the task file,
   branch and agent log, never from a transcript.

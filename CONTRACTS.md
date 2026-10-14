@@ -532,8 +532,11 @@ strategy and exact target match — the target being the task's `lands_to`, else
 human merged the integration branch (tier 3; never grantable). `reopen` and `respec` take an
 integrated task back with a reason when a later integration breaks it. `deps-merged` counts an
 `integrated` dependency only for a dependent in the same epic. `mark-pr-ready` carries
-`independent-verification`: a task of risk medium or high needs the evaluator's passing verdict on
-the current head. The simulator enforces all of it (TOOLS.md).
+`independent-verification`: every task needs the evaluator's passing verdict on the current head
+(workflow 1.3.0; risk sets its trials and model family). `independent-review` is the reviewer role's
+pass on the current head, required where a merge grant approves; the two are separate records
+(`task-record.reviews[].role`) and neither counts as the other. The simulator enforces all of it
+(TOOLS.md).
 
 ## Compatibility summary
 
