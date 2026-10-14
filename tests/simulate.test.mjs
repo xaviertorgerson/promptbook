@@ -304,7 +304,7 @@ const MUTANTS = [
   { break: 'cross-epic-integrated', scenario: 'integration-branch', caught: ['guards-hold'], message: /INV-1|claim: guard deps-merged/ },
   { break: 'finalize-unverified', scenario: 'integration-branch', caught: ['guards-hold'], message: /mark-pr-ready: guard independent-verification does not hold$/ },
   { break: 'land-without-grant', scenario: 'integration-branch', over: { merge: { queue_targets: [] } }, caught: ['transitions-allowed', 'merge-requires-authority'], message: /orchestrator/ },
-  { break: 'uncounted-readers', scenario: 'happy-path', over: { work: { helper_rate: 1 } }, caught: ['cap-workers'] },
+  { break: 'uncounted-readers', scenario: 'happy-path', over: { work: { helper_rate: 1, helper_minutes: [60, 120] } }, caught: ['cap-workers'] },
   { break: 'grant-covers-protected', scenario: 'grant-expiry', over: { tasks: [...raw('grant-expiry').tasks, { id: 'GEX-6', size: 'S', touches: ['src/f/**'] }] }, caught: ['human-gates-by-humans', 'transitions-allowed', 'merge-requires-authority'], message: /GEX-6/ },
   { break: 'claim-on-default', scenario: 'parallel-overlap', caught: ['one-owner-per-claimed-task', 'status-where-it-lives'], message: /not by creating task\/par-\d+ on the remote|on the protected branch/ },
   { break: 'terminal-on-task-branch', scenario: 'integration-branch', over: { merge: { queue_targets: [] } }, caught: ['status-where-it-lives'], message: /→ integrated was written on task\/rat-\d+, not on the target integration\/rating/ },
