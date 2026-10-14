@@ -252,8 +252,15 @@ describe('compile-policy contract', () => {
 
     it('the dotfiles\' x-claude workaround is unnecessary: tier auto gives Claude auto mode and Codex what auto-edit gave it', { skip: !fs.existsSync(DOTFILES_L1_POLICY) }, () => {
       const real = load(DOTFILES_L1_POLICY);
-      const { 'x-claude': workaround, ...rest } = real;
-      assert.ok(workaround?.default_mode?.workstation, 'the dotfiles still carry the workaround');
+      const { 'x-claude': xClaude, ...rest } = real;
+      if (!xClaude?.default_mode?.workstation) {
+        assert.equal(real.profiles.workstation.tier, 'auto', 'the migrated dotfiles use the auto tier');
+        const c = compilePolicy(real, { profile: 'workstation', engine: 'claude' });
+        assert.equal(c.ok, true, JSON.stringify(c.errors));
+        assert.equal(settings(c).permissions.defaultMode, 'auto');
+        return;
+      }
+      const workaround = xClaude;
       const migrated = { ...rest, profiles: { ...rest.profiles, workstation: { ...rest.profiles.workstation, tier: 'auto' } } };
       const c = compilePolicy(migrated, { profile: 'workstation', engine: 'claude' });
       assert.equal(c.ok, true, JSON.stringify(c.errors));
