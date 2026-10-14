@@ -25,7 +25,8 @@ harness `adapters/ci` owns the mapping.
 - The template's PreToolUse hook denies every `git push --force*`, including `--force-with-lease`
   (probed 2026-10-13); in those projects the rebase strategy's branch rewrite is a human action.
 - `git push` with no target, or to `main`/`master`, is an `ask` in that hook; unattended it is a
-  denial. Branch protection, not the ask, is the wall (ADR-0021).
+  denial. Branch protection, not the ask, is the wall (ADR-0021, agentic-template branch
+  `docs/adr-permission-precedence`, `c177fa1`).
 
 ## Terminal-multiplexer coordinators (stagehand)
 

@@ -49,7 +49,7 @@
 
 ## 2026-10-13 · Walls are excluded because evals do not sample rare events
 - **Kind:** audit
-- **Source:** playbook: harness-review (harness @ 4bdc755); agentic-template ADR-0021 on branch docs/adr-permission-precedence
+- **Source:** playbook: harness-review (harness @ 4bdc755); agentic-template ADR-0021 on branch docs/adr-permission-precedence (commit c177fa1)
 - **Claim:** The playbook excludes deny hooks, branch protection and secret guards from removal; ADR-0021 measured that only denies hold in every permission mode, so a removed deny has no fallback.
 - **Result:** Step 6 and the walls list in references/components.md; scenario S2 at k=10.
 

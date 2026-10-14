@@ -36,7 +36,7 @@
 
 ## 2026-10-13 · Asks are not walls; only denies held in every mode
 - **Kind:** measured
-- **Source:** agentic-template DECISIONS.md ADR-0021 on branch docs/adr-permission-precedence
+- **Source:** agentic-template DECISIONS.md ADR-0021 on branch docs/adr-permission-precedence (commit c177fa1)
 - **Claim:** Under a personal bypass default, project hook and settings denies blocked in every permission mode measured; an ask prompted only interactively and was a denial headless.
 - **Result:** Step 4 flags any change that turns a deny into an ask, disables hooks or widens an unattended allowlist (scenario S4).
 - **Engine:** claude

@@ -10,8 +10,8 @@ harness `adapters/` own the mapping and are the place to correct it. Unverified 
   are copied in (agentic-template copies `.env` this way; see managing-worktrees for the rule).
 - Structured return: `claude -p --output-format json --json-schema <return.schema.json>`; the
   return is in `.structured_output`. Unattended runs pin `--permission-mode dontAsk` plus
-  `--allowedTools`, `--max-turns` and `--max-budget-usd` (agentic-template ADR-0021,
-  `fix/agent-run-caps`); every denied ask shows up in `permission_denials`.
+  `--allowedTools`, `--max-turns` and `--max-budget-usd` (agentic-template ADR-0021 on branch
+  `docs/adr-permission-precedence` at `c177fa1`; the loop on `fix/agent-run-caps`); every denied ask shows up in `permission_denials`.
 - Evaluator: a subagent in its own context (agentic-template's `reviewer` and `test-runner`). Set
   its model explicitly; "inherit" gives the writer's model, which defeats "different family".
 - Never run a loop or CI session with `--bare`: it skips hooks, which disarms the walls.

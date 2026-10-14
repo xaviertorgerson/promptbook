@@ -94,7 +94,8 @@ are relative to the repo root. "Unverified" marks a path documented inconsistent
 
 ## What ADR-0021 means for L1 and L2
 
-The measured matrix (Claude Code 2.1.296, 2026-10-13) is in
+The measured matrix (Claude Code 2.1.296, 2026-10-13; agentic-template ADR-0021 on branch
+`docs/adr-permission-precedence`, commit `c177fa1`, not yet on master) is in
 [permissions-and-autonomy](playbook/runtime/permissions-and-autonomy.md). Its consequences per layer:
 
 | Layer | May | Must not | Must |

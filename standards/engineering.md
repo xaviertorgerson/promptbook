@@ -44,7 +44,7 @@ Names in backticks are today's implementations in the agentic-core pack; any pac
 | ENG-2 | Stop hook blocks finishing with uncommitted work in loop mode (`verify-done`); CI; browser smoke project | — | honesty of the report is advisory |
 | ENG-3 | PreToolUse hook denies secret-file reads and writes (`guard-secrets`); permission deny rules; `secret-scan` in CI; ignore rules | deny rules for `.env*`, `secrets/`, `~/.ssh`; secrets rendered from the vault at apply time | Bash reads of secret files depend on the hook's patterns |
 | ENG-4 | PreToolUse hook **denies** destructive shell, SQL and infra commands; a migration with DROP/TRUNCATE must cite an ADR | deny rules; auto-mode hard-deny lines; policy `forbid` list | DB shells are an `ask`, which is a denial unattended and a prompt interactively |
-| ENG-5 | branch protection, required code-owner review (agents are not owners), required checks; hook denies force-push | — | push-to-default is an `ask` in the hook, so branch protection is the wall (ADR-0021) |
+| ENG-5 | branch protection, required code-owner review (agents are not owners), required checks; hook denies force-push | — | push-to-default is an `ask` in the hook, so branch protection is the wall (agentic-template ADR-0021, branch `docs/adr-permission-precedence` at `c177fa1`) |
 | ENG-6 | review | engine attribution settings set to empty | no commit-msg lint yet; candidate L2 hook |
 | ENG-7 | the pack's linter rule for empty blocks where one exists; review | — | advisory where no lint rule exists |
 | ENG-8 | config schema refuses to boot on a bad key; contract types at the API; security review | — | advisory beyond typed boundaries |

@@ -30,7 +30,8 @@ an extension in 2026-07-28 with tasks/get, tasks/update, tasks/cancel).
 
 - Claude Code `claude -p --output-format json`: result `subtype` (`success`, `error_max_turns`,
   `error_max_budget_usd`, `error_during_execution`, `error_max_structured_output_retries`) and
-  `permission_denials`. Under `--permission-mode dontAsk` an ask becomes a denial (ADR-0021).
+  `permission_denials`. Under `--permission-mode dontAsk` an ask becomes a denial (ADR-0021, agentic-template
+  branch `docs/adr-permission-precedence`, `c177fa1`).
 - Codex `codex exec`: the runner records the terminal event as `subtype` (unverified field names).
 - The runner writes one `run-record` line per run (`.agent/loop-runs.jsonl`).
 
