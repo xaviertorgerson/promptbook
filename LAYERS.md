@@ -81,7 +81,7 @@ are relative to the repo root. "Unverified" marks a path documented inconsistent
 | Task queue | L2 | `specs/<epic>/tasks/*.md`, validated against L3 `task` |
 | Runtime task records | L4, untracked in L2 checkout or control workspace | `.orchestrator/tasks/<id>.yaml` (`task-record`) |
 | Run records | L4 writes; L3 schema | `.agent/loop-runs.jsonl` (gitignored), one `run-record` per run |
-| Authority grants | L4 runtime, issued by a human | the runtime's project note, as `grant` documents |
+| Authority grants | L2 file, issued by a human; L4 runtimes read them | `.orchestrator/grants/GRANT-n.yaml`, committed by the granting human on a CODEOWNERS-protected path (or a forge-side record); agents write only `.orchestrator/grants/drafts/`; `harness grant verify --git` before acting |
 | CI agents (planner, coder, reviewer, merge) | L4 runtime, installed into L2 | `.github/workflows/agent-*.yml`; engine binding in `adapters/ci` |
 | Secrets, personal | L1 | Bitwarden note rendered to `~/.config/shell/secrets.sh` (mode 600) at apply time |
 | Secrets, CI and stages | L2 names them, the forge holds them | forge environments and secrets; never a file |
@@ -94,7 +94,8 @@ are relative to the repo root. "Unverified" marks a path documented inconsistent
 
 ## What ADR-0021 means for L1 and L2
 
-The measured matrix (Claude Code 2.1.296, 2026-10-13) is in
+The measured matrix (Claude Code 2.1.296, 2026-10-13; agentic-template ADR-0021 on branch
+`docs/adr-permission-precedence`, commit `c177fa1`, not yet on master) is in
 [permissions-and-autonomy](playbook/runtime/permissions-and-autonomy.md). Its consequences per layer:
 
 | Layer | May | Must not | Must |
@@ -139,7 +140,7 @@ So:
 | `home/dot_claude/settings.json.tmpl`: bypass default, allow and deny lists, `autoMode`, herdr hook, `attribution`, `extraKnownMarketplaces.agentic` | generate | permissions, mode and `autoMode` compiled from `agent-policy.yaml`; never `disableAllHooks`; herdr hook and `attribution` stay; the marketplace entry pinned by `sha`; drop `advisorModel: opus` over an Opus main model unless an eval shows a gain |
 | no Codex `config.toml` or rules | add | `home/dot_codex/config.toml.tmpl` and `home/dot_codex/rules/*.rules`, compiled from the same policy |
 | no Gemini/Antigravity config | add | `home/dot_gemini/settings.json.tmpl`; verify the Antigravity path on install |
-| no user-scope skills | add | `home/.chezmoiexternal.toml.tmpl` cloning the pinned harness, Skilldex and the herdr skill into `~/.agents/sources/`; `run_onchange_after_27-agent-skills.sh.tmpl` linking them into `~/.agents/skills/` and copying into `~/.claude/skills/` |
+| no user-scope skills | add | `home/.chezmoiexternal.toml.tmpl` cloning the pinned harness, Skilldex and the herdr skill into `~/.agents/sources/`; `run_onchange_after_27-agent-skills.sh.tmpl` linking the harness's `personal` set (or `solo` on a machine where one developer plans and builds; `skills/SETS.yaml`), Skilldex and the herdr skill into `~/.agents/skills/` and copying into `~/.claude/skills/`; never the whole library, which with Skilldex exceeds the 8,000-character description budget (`harness lint --budget-set <set>`) |
 | no policy or lock | add | `home/.chezmoidata/agent-policy.yaml`, `agents.yaml`, `toolkit.yaml` |
 | `home/dot_config/mise/config.toml.tmpl` (`herdr = "0.9.3"`) | stay | already pinned; mirrored as a lock entry so bumps are reviewed with the stagehand and Heeler floors |
 | `run_once_after_25-claude-code`, `run_once_after_26-herdr-integrations` | stay | L1 installs agents and Herdr integrations |
@@ -208,7 +209,7 @@ explicit models (no `inherit` for cost-sensitive roles):
 | Subagent | Target | Change |
 |---|---|---|
 | `explorer` (read-only, sonnet, low effort) | core | a cheaper model at low effort; returns `path:line` per the `return` contract |
-| `reviewer` (findings only) | core | the evaluator role; a different model family where the runtime allows; mandatory before `human-review` for `risk` medium and up |
+| `reviewer` (findings only) | core | the evaluator role; a different model family where the runtime allows; a verdict before `human-review` on every task (risk sets its trials) |
 | `test-runner` (failures only) | core | unchanged role; explicit model |
 | `coder` (worktree isolation) | core | explicit model and effort by task `size`; budget caps |
 

@@ -16,8 +16,11 @@ every merge into a negotiation, and the human reviews a diff no one author under
 - **Parallelism is across tasks, not inside one.** Tasks run in parallel only when their `touches`
   globs are disjoint. Overlapping tasks form a lane and run in sequence; the scheduler, not the
   agents, decides.
-- **Ownership is recorded.** The task file's `owner` is the lock, claimed by compare-and-swap. A
-  human taking a task over sets `owner` and the agent yields.
+- **Ownership is recorded where agents can write it.** A claim creates the task's branch on the
+  remote: its first commit sets `owner` and `in-progress`, and a push of a branch that already
+  exists is rejected, which is the compare-and-swap. In-flight status lives on that branch; the
+  default branch, which agents never push, keeps `ready` until the task lands. A human taking a
+  task over edits the branch head and the agent yields.
 - **Helpers do not spawn helpers.** A worker gets an objective and boundaries, not orchestration
   machinery; recursive delegation is off by default.
 
@@ -44,7 +47,8 @@ every merge into a negotiation, and the human reviews a diff no one author under
 
 `task` (`owner`, `touches`, `depends_on`; the trace check's `overlapping-tasks-ordered` wants two
 tasks that touch the same files ordered), `return` (readers hand back findings, not edits), `grant`
-(who may assign work), `state-machines/workflow.yaml` (claim = `ready` → `in-progress`).
+(who may assign work), `state-machines/workflow.yaml` (claim = `ready` → `in-progress`, the new-ref
+push of `status_authority`).
 
 ## Anti-patterns
 

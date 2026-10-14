@@ -31,8 +31,9 @@ user; Codex: both shown), so rename instead of shadowing.
 | Codex | `~/.codex/config.toml` permission profile; `~/.codex/rules/*.rules` (`prefix_rule` allow / prompt / forbidden) | `:danger-full-access` as a default | a profile with `approval_policy = "never"` and allow rules; runner timeout (no documented spend cap) |
 | Gemini CLI | `~/.gemini/settings.json`; `~/.gemini/policies/*.toml` (`decision = "deny"`) | `hooksConfig.enabled: false` | non-interactive mode (ask becomes deny); YOLO only from the command line; workspace-tier policy currently disabled |
 
-ADR-0021 (agentic-template, Claude Code 2.1.296) is the measurement behind the walls matrix; its
-`scripts/permission-probe.mjs --run` re-runs it on a machine.
+ADR-0021 (agentic-template branch `docs/adr-permission-precedence`, commit `c177fa1`, not yet on
+master; Claude Code 2.1.296) is the measurement behind the walls matrix; its
+`scripts/permission-probe.mjs --run`, on the same branch, re-runs it on a machine.
 
 ## Lock and runtime examples
 

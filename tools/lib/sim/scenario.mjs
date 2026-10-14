@@ -49,6 +49,8 @@ export const DEFAULTS = {
   },
   checks: { minutes: [5, 15], red_rate: 0.05, merged_red_rate: 0.02 },
   evaluator: { minutes: [10, 30], reject_rate: 0.05 },
+  // The reviewer role (a forge-event agent, not a runtime worker): a code review of every pushed head.
+  reviewer: { minutes: [5, 20], reject_rate: 0.05 },
   // queue_targets: the branches the merge queue (merge role) serves; null = every branch. A branch it
   // does not serve is landed by whoever holds a merge grant for it (the orchestrator), or nobody.
   merge: { minutes: [3, 10], queue_targets: null },
@@ -76,7 +78,7 @@ export const FAULTS = {
 
 const TIERS = ['read-only', 'ask', 'auto-edit', 'auto', 'autonomous', 'unattended'];
 const SIZES = ['XS', 'S', 'M', 'L', 'XL'];
-const TASK_KEYS = new Set(['id', 'epic', 'priority', 'size', 'risk', 'touches', 'depends_on', 'criteria', 'budget', 'status', 'owner', 'title', 'lands_to']);
+const TASK_KEYS = new Set(['id', 'epic', 'priority', 'size', 'risk', 'touches', 'depends_on', 'criteria', 'budget', 'status', 'owner', 'title', 'lands_to', 'branch']);
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 
@@ -146,6 +148,8 @@ export function normalize(raw, { source = 'scenario' } = {}) {
       status: t.status ?? 'ready',
       owner: t.owner ?? null,
       lands_to: t.lands_to && t.lands_to !== sc.target ? t.lands_to : null,
+      // The task's branch (its file's `branch`): created on the remote by the claim.
+      branch: t.branch ?? `task/${String(t.id).toLowerCase()}`,
     };
   });
   for (const t of sc.tasks) for (const d of t.depends_on) if (!ids.has(d)) errors.push(`${t.id}.depends_on: no task ${d}`);
@@ -165,7 +169,7 @@ export function normalize(raw, { source = 'scenario' } = {}) {
   }
   if (sc.merge.queue_targets !== null && !(Array.isArray(sc.merge.queue_targets) && sc.merge.queue_targets.every((x) => typeof x === 'string'))) errors.push('merge.queue_targets: null (every branch) or a list of branch names');
   if (!['merge', 'hold'].includes(sc.human.on_integration)) errors.push('human.on_integration: merge or hold');
-  for (const [k, r] of [['work.fix_minutes', sc.work.fix_minutes], ['checks.minutes', sc.checks.minutes], ['evaluator.minutes', sc.evaluator.minutes], ['merge.minutes', sc.merge.minutes], ['human.review_minutes', sc.human.review_minutes], ['human.answer_minutes', sc.human.answer_minutes]]) range(r, k, errors);
+  for (const [k, r] of [['work.fix_minutes', sc.work.fix_minutes], ['checks.minutes', sc.checks.minutes], ['evaluator.minutes', sc.evaluator.minutes], ['reviewer.minutes', sc.reviewer.minutes], ['merge.minutes', sc.merge.minutes], ['human.review_minutes', sc.human.review_minutes], ['human.answer_minutes', sc.human.answer_minutes]]) range(r, k, errors);
   // grant: X is grants: [X]. Grant ids are unique; grant_expiry expires the one it names, or all.
   if (sc.grant && sc.grants.length) errors.push('grant and grants: name one grant, or a list of them, not both');
   sc.grants = structuredClone(sc.grant ? [sc.grant] : sc.grants ?? []);
@@ -219,6 +223,7 @@ export function scenarioFromProject(root, config = {}) {
       status: d.status,
       owner: d.owner ?? null,
       ...(d.lands_to ? { lands_to: d.lands_to } : {}),
+      ...(d.branch ? { branch: d.branch } : {}),
     });
   }
   const known = new Set(tasks.map((t) => t.id));

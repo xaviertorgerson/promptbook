@@ -1,16 +1,19 @@
-# A full delegation (select, finalize, merge into main by squash) that expires four hours in. Merges
-# decided under the live grant finish their step; after expiry the orchestrator stops finalizing and
-# merging, records needs-human with a renewal request, and the human renews or reviews by hand. A
-# semantic conflict between two tasks that landed in parallel goes back to the human, never resolved
-# by the merge queue.
+# A full delegation (select, finalize, and merge into the epic's integration branch by squash) that
+# expires four hours in. Merges decided under the live grant finish their step; after expiry the
+# orchestrator stops finalizing and merging, records needs-human with a renewal request, and the
+# human renews or reviews by hand. The merge grant names integration/sim, never main: the human
+# merges the integration branch into main once nothing on it is in flight (promote). A semantic
+# conflict between two tasks that landed in parallel goes back to the human, never resolved by
+# whoever lands.
 name: grant-expiry
-description: A merge grant expires mid-run; semantic conflicts at the merge queue return to the human.
+description: A merge grant into an integration branch expires mid-run; semantic conflicts return to the human.
 seed: 8
 policy:
   tier: autonomous
   forbid:
     - { command: [git, push, [--force, -f]] }
 supervisor: { max_workers: 3 }
+merge: { queue_targets: [main] }
 grant:
   id: GRANT-3
   granted_by: owner
@@ -21,7 +24,7 @@ grant:
   actions:
     - select-tasks
     - finalize
-    - { action: merge, repo: acme/app, target: main, strategy: squash, requires: [independent-review, required-checks, current-head] }
+    - { action: merge, repo: acme/app, target: integration/sim, protected_branch: main, strategy: squash, requires: [independent-review, required-checks, current-head] }
   limits: { max_workers: 3, budget: { max_usd: 80 } }
   expires_at: "+14d"
   revocable: true
@@ -30,8 +33,8 @@ faults:
   grant_expiry: { at_minutes: 240 }
   semantic_conflict: { pairs: [[GEX-2, GEX-3]], rate: 1 }
 tasks:
-  - { id: GEX-1, size: S, touches: ["src/a/**"] }
-  - { id: GEX-2, size: S, touches: ["src/b/**"] }
-  - { id: GEX-3, size: S, touches: ["src/c/**"] }
-  - { id: GEX-4, size: M, touches: ["src/d/**"], depends_on: [GEX-1] }
-  - { id: GEX-5, size: S, touches: ["src/e/**"] }
+  - { id: GEX-1, size: S, lands_to: integration/sim, touches: ["src/a/**"] }
+  - { id: GEX-2, size: S, lands_to: integration/sim, touches: ["src/b/**"] }
+  - { id: GEX-3, size: S, lands_to: integration/sim, touches: ["src/c/**"] }
+  - { id: GEX-4, size: M, lands_to: integration/sim, touches: ["src/d/**"], depends_on: [GEX-1] }
+  - { id: GEX-5, size: S, lands_to: integration/sim, touches: ["src/e/**"] }

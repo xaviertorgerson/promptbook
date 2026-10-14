@@ -1,6 +1,7 @@
 # Lifecycle: issued with plan approval and finalization, narrowed when the human wanted to see each
-# PR before it went ready, then revoked when the epic was re-scoped. Kept as history; runtimes load
-# only live grants.
+# PR before it went ready, then revoked when the epic was re-scoped. The issued fields stay as
+# issued; the narrowing is appended, and the grant in force is the issue minus it. Kept as history;
+# runtimes load only live grants.
 id: GRANT-6
 granted_by: maria
 granted_to: { role: orchestrator }
@@ -10,12 +11,12 @@ scope:
   objective: Deliver the invoicing epic's first slice
   repositories: [acme/billing]
   epics: [invoicing]
-actions: [select-tasks, approve-plan]
+actions: [select-tasks, approve-plan, finalize]
 limits: { max_workers: 2, budget: { max_usd: 20 } }
 expires_at: "2026-10-15T08:00:00Z"
 revocable: true
 narrowed:
-  - { at: "2026-10-03T10:00:00Z", by: maria, change: removed finalize }
+  - { at: "2026-10-03T10:00:00Z", by: maria, remove_actions: [finalize], reduce_limits: { max_workers: 1 }, reason: maria marks each PR ready herself }
 revoked_at: "2026-10-04T09:00:00Z"
 revoked_by: maria
 revocation_reason: The invoicing epic was re-scoped; a new grant will follow the new spec.

@@ -140,14 +140,19 @@ describe('simulate: the faults happen and are handled as the contracts say', () 
     // The conflict needs GEX-2 and GEX-3 in the merge window together, which most seeds produce.
     const returned = runs.filter((r) => r.trace.flatMap((l) => l.commits ?? []).some((c) => c.transition === 'return-to-human'));
     assert.ok(returned.length >= 5, `the semantic conflict went back to the human in ${returned.length}/10 seeds`);
-    for (const r of returned) assert.ok(r.trace.flatMap((l) => l.commits ?? []).filter((c) => c.transition === 'return-to-human').every((c) => c.role === 'merge'));
+    for (const r of returned) assert.ok(r.trace.flatMap((l) => l.commits ?? []).filter((c) => c.transition === 'return-to-human').every((c) => c.role === 'orchestrator' && ['GRANT-3', 'GRANT-4'].includes(c.grant)), 'the orchestrator, under the live merge grant, hands it back');
+    for (const r of runs) {
+      const commits = r.trace.flatMap((l) => l.commits ?? []);
+      assert.ok(!commits.some((c) => c.transition === 'land'), 'nothing lands on main under the grant');
+      assert.ok(commits.filter((c) => c.transition === 'promote').every((c) => c.role === 'owner'), 'the human promotes the integration branch');
+    }
   });
 
   describe('a runtime holding a work grant and a separate merge grant', () => {
     const grant = (id, actions, limits) => ({ id, granted_by: 'owner', granted_to: { role: 'orchestrator', runtime: 'sim' }, granted_at: '+0m', source: `sim: ${id}`, scope: { objective: 'Deliver the sim epic', repositories: ['acme/app'], epics: ['sim'] }, actions, limits, expires_at: '+14d', revocable: true });
     const work = grant('GRANT-1', ['select-tasks', 'approve-plan', 'finalize'], { max_workers: 2, budget: { max_usd: 60 } });
-    const mergeOnly = grant('GRANT-2', [{ action: 'merge', repo: 'acme/app', target: 'main', strategy: 'squash', requires: ['independent-review', 'required-checks'] }], { max_workers: 1, budget: { max_usd: 5 } });
-    const tasks = ['a', 'b', 'c', 'd', 'e'].map((x, i) => ({ id: `TWO-${i + 1}`, size: 'S', touches: [`src/${x}/**`] }));
+    const mergeOnly = grant('GRANT-2', [{ action: 'merge', repo: 'acme/app', target: 'integration/sim', protected_branch: 'main', strategy: 'squash', requires: ['independent-review', 'required-checks'] }], { max_workers: 1, budget: { max_usd: 5 } });
+    const tasks = ['a', 'b', 'c', 'd', 'e'].map((x, i) => ({ id: `TWO-${i + 1}`, size: 'S', lands_to: 'integration/sim', touches: [`src/${x}/**`] }));
     const base = { name: 'two-grants', supervisor: { max_workers: 4 }, merge: { queue_targets: [] }, grants: [work, mergeOnly], tasks };
     const peak = (w) => {
       const marks = [...w.sessions.values()].filter((s) => s.runtime === 'main' && ['author', 'evaluator'].includes(s.kind)).flatMap((s) => [[s.startedAt, 1], [s.endedAt ?? Infinity, -1]]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
@@ -173,8 +178,8 @@ describe('simulate: the faults happen and are handled as the contracts say', () 
         const by = (t) => [...new Set(commits.filter((c) => c.transition === t).map((c) => c.grant))];
         assert.deepEqual(by('mark-pr-ready'), ['GRANT-1']);
         assert.deepEqual(by('approve-pr'), ['GRANT-2']);
-        assert.deepEqual(by('land'), ['GRANT-2']);
-        assert.equal(r.summary.merged, 5);
+        assert.deepEqual(by('integrate'), ['GRANT-2']);
+        assert.equal(r.summary.merged, 5, 'the human promoted the integration branch');
       }
       const noMerge = runAll(normalize({ ...base, grants: [work], merge: { queue_targets: null } }), 5, { trace: true });
       for (const r of noMerge) {
@@ -183,7 +188,14 @@ describe('simulate: the faults happen and are handled as the contracts say', () 
       }
     });
 
-    it('grant and grants together are a scenario error; so is a grant id twice', () => {
+    it('no merge grant covers the protected branch: one naming it, or naming another protected branch than the repository\'s, is refused', () => {
+    const toMain = grant('GRANT-2', [{ action: 'merge', repo: 'acme/app', target: 'main', protected_branch: 'main', strategy: 'squash', requires: ['independent-review', 'required-checks'] }], { max_workers: 1, budget: { max_usd: 5 } });
+    assert.throws(() => simulate(normalize({ ...base, grants: [work, toMain] }), { trace: false }), /merge-target-not-protected/);
+    const wrong = grant('GRANT-2', [{ action: 'merge', repo: 'acme/app', target: 'integration/sim', protected_branch: 'trunk', strategy: 'squash', requires: ['independent-review', 'required-checks'] }], { max_workers: 1, budget: { max_usd: 5 } });
+    assert.throws(() => simulate(normalize({ ...base, grants: [work, wrong] }), { trace: false }), /names trunk as acme\/app's protected branch; the scenario's is main/);
+  });
+
+  it('grant and grants together are a scenario error; so is a grant id twice', () => {
       assert.throws(() => normalize({ ...base, grant: work }), /grant and grants/);
       assert.throws(() => normalize({ ...base, grants: [work, work] }), /GRANT-1 repeats/);
     });
@@ -218,8 +230,29 @@ describe('simulate: the faults happen and are handled as the contracts say', () 
     for (const r of runs) {
       assert.equal(r.world.forge.tasks.get('EVR-2').status, 'spec-draft');
       assert.equal(r.world.forge.tasks.get('EVR-1').status, 'merged');
-      assert.ok(r.world.forge.prs.get('EVR-2').reviews.length <= 5);
+      assert.ok(r.world.forge.prs.get('EVR-2').reviews.filter((x) => x.role === 'evaluator').length <= 5);
     }
+  });
+
+  it('a reviewer\'s changes-requested blocks a grant\'s approval even when the evaluator passed that head; a low-risk task still gets a verdict', () => {
+    const sc = scenario('integration-branch', { reviewer: { reject_rate: 0.5 } });
+    for (const r of runAll(sc, 10)) {
+      assert.deepEqual(r.violations, [], 'the correct supervisor fixes what the reviewer found before finalizing');
+      for (const [id, pr] of r.world.forge.prs) {
+        if (!pr.merged) continue;
+        const on = pr.reviews.filter((x) => x.head === pr.merged.head);
+        assert.ok(on.some((x) => x.role === 'evaluator' && x.verdict === 'pass'), `${id}: a verdict on the landed head (risk ${r.world.meta.get(id).spec.risk.level})`);
+        assert.equal(on.filter((x) => x.role === 'reviewer').at(-1)?.verdict, 'pass', `${id}: the reviewer's last word on the landed head is a pass`);
+      }
+    }
+    const broken = runAll(sc, MUTANT_SEEDS, { policy: orchestrating({ break: ['approve-over-reviewer'] }) });
+    const overRuled = broken.filter((r) => r.violations.some((v) => {
+      if (v.invariant !== 'guards-hold' || !/approve-pr: guard independent-review/.test(v.message)) return false;
+      const pr = r.world.forge.prs.get(v.task);
+      const head = pr.merged?.head ?? pr.approval?.head;
+      return pr.reviews.some((x) => x.head === head && x.role === 'reviewer' && x.verdict === 'changes-requested') && pr.reviews.some((x) => x.head === head && x.role === 'evaluator' && x.verdict === 'pass');
+    }));
+    assert.ok(overRuled.length > 0, 'some seed approves a head the evaluator passed and the reviewer rejected, and guards-hold names it');
   });
 
   it('an evaluator\'s run is logged as the evaluator\'s verdict, never as the author advancing the task', () => {
@@ -262,7 +295,7 @@ const MUTANTS = [
   { break: 'swallow-denials', scenario: 'unattended-ask', caught: ['asks-surface-to-human'] },
   { break: 'ignore-no-progress', scenario: 'wall-bypass', caught: ['no-progress-stops'] },
   { break: 'unbounded-workers', scenario: 'happy-path', caught: ['cap-workers'] },
-  { break: 'nested-helpers', scenario: 'happy-path', over: { work: { helper_rate: 1 } }, caught: ['cap-depth'] },
+  { break: 'nested-helpers', scenario: 'happy-path', over: { work: { helper_rate: 1 }, supervisor: { max_workers: 10 } }, caught: ['cap-depth'] },
   { break: 'redispatch-on-unknown', scenario: 'crash-lost-events', over: { faults: { ...raw('crash-lost-events').faults, unknown_signals: { rate: 1 } } }, caught: ['one-owner-per-claimed-task'] },
   { break: 'complete-on-idle', scenario: 'happy-path', caught: ['attention-consistent'] },
   { break: 'status-as-attention', scenario: 'happy-path', caught: ['attention-consistent'] },
@@ -271,9 +304,15 @@ const MUTANTS = [
   { break: 'cross-epic-integrated', scenario: 'integration-branch', caught: ['guards-hold'], message: /INV-1|claim: guard deps-merged/ },
   { break: 'finalize-unverified', scenario: 'integration-branch', caught: ['guards-hold'], message: /mark-pr-ready: guard independent-verification does not hold$/ },
   { break: 'land-without-grant', scenario: 'integration-branch', over: { merge: { queue_targets: [] } }, caught: ['transitions-allowed', 'merge-requires-authority'], message: /orchestrator/ },
+  { break: 'uncounted-readers', scenario: 'happy-path', over: { work: { helper_rate: 1, helper_minutes: [60, 120] } }, caught: ['cap-workers'] },
+  { break: 'grant-covers-protected', scenario: 'grant-expiry', over: { tasks: [...raw('grant-expiry').tasks, { id: 'GEX-6', size: 'S', touches: ['src/f/**'] }] }, caught: ['human-gates-by-humans', 'transitions-allowed', 'merge-requires-authority'], message: /GEX-6/ },
+  { break: 'claim-on-default', scenario: 'parallel-overlap', caught: ['one-owner-per-claimed-task', 'status-where-it-lives'], message: /not by creating task\/par-\d+ on the remote|on the protected branch/ },
+  { break: 'terminal-on-task-branch', scenario: 'integration-branch', over: { merge: { queue_targets: [] } }, caught: ['status-where-it-lives'], message: /→ integrated was written on task\/rat-\d+, not on the target integration\/rating/ },
+  { break: 'land-on-stale-approval', world: { forgeProtection: false }, scenario: 'integration-branch', caught: ['approval-bound-to-head', 'merge-requires-authority'], message: /a commit after the approval voids it|no approval of the landed head/ },
+  { break: 'approve-over-reviewer', scenario: 'integration-branch', over: { reviewer: { reject_rate: 0.5 } }, caught: ['guards-hold', 'merge-requires-authority'], message: /independent-review/ },
   { world: { engine: 'bypass-skips-walls' }, label: 'engine binding: bypass skips walls (disableAllHooks)', scenario: 'wall-bypass', caught: ['walls-block'] },
   { world: { cas: false }, label: 'forge without compare-and-swap', scenario: 'parallel-overlap', caught: ['one-owner-per-claimed-task'] },
-  { world: { mergeBot: 'resolve-semantic' }, label: 'merge queue resolves semantic conflicts', scenario: 'grant-expiry', caught: ['guards-hold', 'merge-requires-authority'] },
+  { world: { mergeBot: 'resolve-semantic' }, label: 'merge queue resolves semantic conflicts', scenario: 'grant-expiry', over: { merge: { queue_targets: null } }, caught: ['guards-hold', 'merge-requires-authority'] },
   { world: { forgeProtection: false }, label: 'forge without branch protection', scenario: 'merge-without-grant', caught: ['merge-requires-authority'] },
 ];
 
@@ -364,6 +403,20 @@ describe('simulate: determinism, inputs and outputs', () => {
     assert.ok(!('status' in reg().schema('grant').properties), 'the contract has no stored status');
   });
 
+  it('a guard the model has no evidence for is an error, never a pass', () => {
+    const c = new Checker({ machines: machines() });
+    const w = { forge: { tasks: new Map([['A-1', {}]]), prs: new Map() }, meta: new Map([['A-1', { spec: { criteria: [] } }]]) };
+    assert.throws(() => c.guardHolds(w, 'moon-in-phase', { task: 'A-1', transition: 'claim' }, { owner: null }), /no evidence model for guard moon-in-phase/);
+    assert.equal(c.guardHolds(w, 'epic-approved', { task: 'A-1', transition: 'mark-ready' }, { owner: null }), true, 'a planning guard the simulator does not model is listed, so it holds');
+  });
+
+  it('readers count toward the workers cap: the runtime refuses a helper when every slot is taken', () => {
+    const runs = runAll(scenario('happy-path', { work: { helper_rate: 1 } }), 10, { trace: true });
+    for (const r of runs) assert.deepEqual(r.violations, []);
+    assert.ok(runs.some((r) => r.trace.some((l) => (l.effects ?? []).some((e) => e.spawn === 'refused' && e.why === 'workers cap'))), 'a helper was refused at the cap');
+    assert.match(INVARIANTS['cap-workers'], /readers/);
+  });
+
   it('the invariants read the state machines: roles, gates and claimed statuses come from the YAML', () => {
     const m = machines();
     assert.equal(m.transitions.get('approve-pr').gate, 'pr-approval');
@@ -389,6 +442,23 @@ describe('simulate CLI', () => {
     assert.match(bad.stdout, /reproduce: node tools\/simulate\.mjs fixtures\/scenarios\/unattended-ask\.yaml --seed \d+ --break auto-approve-ask/);
   });
 
+  it('--supervisor runs a runtime\'s own supervisor module against the invariants', () => {
+    const dir = path.join(TMP, 'supervisors');
+    fs.mkdirSync(dir, { recursive: true });
+    const policies = path.join(ROOT, 'tools/lib/sim/policies.mjs');
+    fs.writeFileSync(path.join(dir, 'ok.mjs'), `import { orchestrating } from ${JSON.stringify(policies)};\nexport default orchestrating();\n`);
+    fs.writeFileSync(path.join(dir, 'greedy.mjs'), `import { orchestrating } from ${JSON.stringify(policies)};\nconst inner = orchestrating({ break: ['unbounded-workers'] });\nexport default (ctx) => ({ ...inner(ctx), name: 'greedy' });\n`);
+    fs.writeFileSync(path.join(dir, 'empty.mjs'), 'export const nothing = 1;\n');
+    const ok = cli('fixtures/scenarios/happy-path.yaml', '--supervisor', path.join(dir, 'ok.mjs'), '--seeds', '1..3', '--no-trace');
+    assert.equal(ok.status, 0, ok.stdout + ok.stderr);
+    const bad = cli('fixtures/scenarios/happy-path.yaml', '--supervisor', path.join(dir, 'greedy.mjs'), '--seeds', '1..3', '--no-trace');
+    assert.equal(bad.status, 1, bad.stdout + bad.stderr);
+    assert.match(bad.stdout, /cap-workers @ event \d+/);
+    assert.match(bad.stdout, /reproduce: .* --supervisor .*greedy\.mjs/);
+    assert.equal(cli('fixtures/scenarios/happy-path.yaml', '--supervisor', path.join(dir, 'empty.mjs')).status, 2);
+    assert.equal(cli('fixtures/scenarios/happy-path.yaml', '--supervisor', path.join(dir, 'ok.mjs'), '--break', 'unbounded-workers').status, 2);
+  });
+
   it('--list names every invariant and mutation; usage errors exit 2', () => {
     const l = cli('--list');
     assert.equal(l.status, 0);
@@ -396,5 +466,46 @@ describe('simulate CLI', () => {
     assert.equal(cli('fixtures/scenarios/happy-path.yaml', '--break', 'nope').status, 2);
     assert.equal(cli('nope.yaml').status, 2);
     assert.equal(cli('fixtures/scenarios/happy-path.yaml', '--seeds', '9..1').status, 2);
+  });
+});
+
+describe('simulate: where status lives (workflow.yaml status_authority)', () => {
+  it('the workflow states the status authority the simulator models, and approve-pr is a forge event', () => {
+    const m = machines();
+    for (const id of ['claim-creates-the-branch', 'in-flight-status-on-the-task-branch', 'gate-events-are-forge-events', 'landing-writes-the-target', 'deps-read-the-dependents-target', 'humans-win-on-the-task-branch', 'merge-grants-never-target-the-protected-branch']) assert.ok(m.statusAuthority.has(id), id);
+    assert.equal(m.transitions.get('approve-pr').event, 'forge-approval');
+    for (const k of ['approval-bound-to-head', 'status-where-it-lives']) assert.ok(INVARIANTS[k], k);
+  });
+
+  it('a claim creates the task branch; in-flight status is on it; the default branch says ready until the task lands; approvals are events; landing writes the target', () => {
+    for (const r of runAll(loadScenario(path.join(SCEN, 'integration-branch.yaml')), 5, { trace: true })) {
+      assert.deepEqual(r.violations, []);
+      const commits = r.trace.flatMap((l) => (l.commits ?? []).map((c) => ({ ...c, t: l.t })));
+      const branchOf = (id) => r.world.meta.get(id).spec.branch;
+      for (const c of commits.filter((x) => x.transition === 'claim')) assert.ok(c.new_ref && c.ref === branchOf(c.task), `${c.task}: the claim is the new ref ${branchOf(c.task)}`);
+      for (const c of commits.filter((x) => ['open-draft', 'iterate', 'mark-pr-ready', 'return-to-human'].includes(x.transition))) assert.equal(c.ref, branchOf(c.task), `${c.task} ${c.transition}`);
+      for (const c of commits.filter((x) => x.transition === 'approve-pr')) assert.equal(c.event, 'forge-approval', `${c.task}: approve-pr is no commit`);
+      for (const c of commits.filter((x) => x.transition === 'integrate')) assert.equal(c.ref, 'integration/rating');
+      for (const c of commits.filter((x) => x.transition === 'land' || x.transition === 'promote')) assert.equal(c.ref, 'main');
+      assert.ok(commits.every((c) => c.ref !== 'main' || c.role === 'merge' || c.role === 'owner'), 'only the merge role and humans write main');
+      // The default branch's copy of an epic task said ready while it was in flight.
+      assert.equal(r.world.forge.target.files.get('RAT-1').status, 'merged');
+    }
+    const mid = runAll(loadScenario(path.join(SCEN, 'happy-path.yaml')), 1, { trace: false })[0];
+    assert.ok([...mid.world.forge.refs.values()].filter((x) => x.kind === 'task').length === 5, 'each task got its branch');
+  });
+
+  it('a rival\'s claim is a new-ref push the forge rejects: exactly one runtime creates each branch', () => {
+    for (const r of runAll(loadScenario(path.join(SCEN, 'parallel-overlap.yaml')), 5, { trace: true })) {
+      const rejected = r.trace.flatMap((l) => l.effects ?? []).filter((e) => e.push === 'rejected' && /exists$/.test(e.why ?? ''));
+      assert.ok(rejected.length > 0, 'a claim lost to an existing branch');
+      // A branch is created once while it lives; only a redo or respec (which delete it) frees it again.
+      const live = new Set();
+      for (const c of r.trace.flatMap((l) => l.commits ?? [])) {
+        const branch = r.world.meta.get(c.task).spec.branch;
+        if (c.new_ref) { assert.ok(!live.has(c.ref), `${c.ref} created while it existed`); live.add(c.ref); }
+        if (['redo', 'respec'].includes(c.transition)) live.delete(branch);
+      }
+    }
   });
 });

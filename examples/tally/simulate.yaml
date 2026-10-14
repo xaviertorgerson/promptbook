@@ -74,6 +74,7 @@ grants:
       - action: merge
         repo: tally/tally
         target: integration/settle-up
+        protected_branch: main
         strategy: merge
         requires: [independent-review, required-checks, current-head]
     limits:
@@ -84,6 +85,9 @@ grants:
         - the checks on the merged result fail
     expires_at: "2026-10-27T21:45:00Z"
     revocable: true
+# The walkthrough's reviewer passes every head it sees (its findings in the fixtures' scenarios), so
+# the review rounds here are the evaluator's.
+reviewer: { reject_rate: 0 }
 faults:
   ask: { tasks: [SPLIT-4], command: [psql, app_feat_split_4_revoke_link] }
   evaluator_rejection: { tasks: { SPLIT-2: 1 } }

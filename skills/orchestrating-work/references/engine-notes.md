@@ -11,7 +11,7 @@ follows it. Verify on use: the products below change fast.
 - Per-run ceilings `--max-turns` and `--max-budget-usd` (env `AGENT_MAX_TURNS`,
   `AGENT_MAX_BUDGET_USD`; defaults 200 and $5); stops on a failed run, a stalled task, or when no task
   is dispatchable; appends a `run-record` line to `.agent/loop-runs.jsonl`.
-- ADR-0021 requires every unattended run to pass `--permission-mode dontAsk` with `--allowedTools`;
+- ADR-0021 (agentic-template branch `docs/adr-permission-precedence`, `c177fa1`) requires every unattended run to pass `--permission-mode dontAsk` with `--allowedTools`;
   check the loop and CI workflows you run actually pass it before trusting the allowlist.
 
 ## Forge-event CI agents (agentic-template `.github/workflows/agent-*.yml`)

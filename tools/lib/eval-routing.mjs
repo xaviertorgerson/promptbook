@@ -11,7 +11,9 @@ import { splitFrontmatter, parseYaml, readText } from './loaders.mjs';
 // "none": nothing is). Ported from agentic-template scripts/skill-evals.mjs; the runner is any command
 // that reads the prompt on stdin and prints text, so no engine is assumed.
 
-export function loadSkills(dirs) {
+// cases: the eval file each skill's cases are read from (evals/<cases>): routing.jsonl, the cases
+// descriptions are tuned on, or heldout.routing.jsonl, cases written apart and never tuned on.
+export function loadSkills(dirs, { cases: casesFile = 'routing.jsonl' } = {}) {
   const skills = [];
   for (const root of dirs) {
     const list = fs.existsSync(path.join(root, 'SKILL.md')) ? [root] : fs.readdirSync(root, { withFileTypes: true })
@@ -23,7 +25,7 @@ export function loadSkills(dirs) {
       const fm = splitFrontmatter(readText(path.join(dir, 'SKILL.md')));
       const data = fm ? parseYaml(fm.yaml).data ?? {} : {};
       const name = typeof data.name === 'string' ? data.name : path.basename(dir);
-      const routing = path.join(dir, 'evals/routing.jsonl');
+      const routing = path.join(dir, 'evals', casesFile);
       const cases = fs.existsSync(routing)
         ? readText(routing).split(/\r?\n/).flatMap((l, i) => {
           if (!l.trim()) return [];

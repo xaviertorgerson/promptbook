@@ -2,7 +2,7 @@
 
 ## 2026-10-13 · Routes on a 288-character description in the 8,000-character catalog
 - **Kind:** measured
-- **Source:** node tools/cli.mjs eval-routing skills <Skilldex fc572b6>/skills --skill verifying-work --runner "<clean-context headless runner>" --json, 3 trials, 2026-10-13 (harness feat/reconcile-skills after 8816da6; runner and full table in skills/ROUTING-RESULTS.md)
+- **Source:** RR_MODEL=haiku RR_EFFORT=low node tools/cli.mjs eval-routing skills "$SKILLDEX/skills" --skill verifying-work --runner "node router.mjs" --json, run 3 times on 2026-10-13 at harness feat/reconcile-skills after 8816da6, with $SKILLDEX a clone of https://github.com/QuentinTorg/skilldex at fc572b6 and router.mjs the runner in skills/evaluating-skills/references/engine-notes.md; per-case results in skills/routing-results-2026-10-13.jsonl, the table in skills/ROUTING-RESULTS.md
 - **Claim:** With all 28 descriptions cut to 7,899 characters and the 5 pinned Skilldex skills installed, this skill's own cases passed 42/42; precision 100%, recall 100% over every case in the catalog. The original 811-character description, same runner and cases: 38/42, precision 97%, recall 92%.
 - **Result:** Misses: none.
 - **Engine:** claude
@@ -62,3 +62,9 @@
 - **Source:** agentic-template .claude/skills/task-next/SKILL.md (step 6) and .claude/skills/reviewer/evals.md (Evidence, 2026-09-21) at commit bbfad58
 - **Claim:** The loop treats a fresh critic as ideal rather than required, and the reviewer once verified criteria by reading with no tie to a test, so unverified criteria slipped through as looking covered.
 - **Result:** Evaluation is mandatory from risk medium, and the deterministic criteria-in-test-names gate runs first.
+
+## 2026-10-13 · One verdict rule for every task, and a verdict is not a review
+- **Kind:** audit
+- **Source:** independent review of the harness at 67ca917 (findings 9 and 23): workflow.yaml, authority.yaml, playbook/execution/verification.md and tools/lib/sim/invariants.mjs disagreed on what independent-review and independent-verification mean and on which risks need an evaluator
+- **Claim:** The workflow guard demanded a verdict only from risk medium, the playbook said every task, authority's finalize asked for an "independent review", and the simulator accepted any role's latest review as the review a merge grant needs.
+- **Result:** Every task gets the evaluator's verdict on its current head before human review (independent-verification; k 1, 2, 3 by risk, a different family from medium where available); independent-review is the reviewer role's pass on the current head, required where a merge grant approves. The pass gate says the verdict is not the review.

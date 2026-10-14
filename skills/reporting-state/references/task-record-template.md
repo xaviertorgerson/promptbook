@@ -1,4 +1,4 @@
-# Task record template (task-record contract 1.2.0)
+# Task record template (task-record contract 1.3.0)
 
 One per task per runtime, at `.orchestrator/tasks/<task_id>.yaml`, untracked. Omit unused fields.
 Unknown fields are errors except `x-*`.

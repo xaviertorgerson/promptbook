@@ -10,7 +10,8 @@ pushed.
 ## Practice
 
 - **One isolated checkout per task**, keyed on the task's branch: a git worktree or a container. One
-  session per checkout; sessions are not shared across tasks.
+  session per checkout; sessions are not shared across tasks. The branch is also the claim: pushing
+  it as a new ref claims the task, and the task's in-flight status lives on its head.
 - **Derive every shared resource from the branch.** Database name, port block, cache directory and
   any local service get a value computed from the branch, so a worktree is hermetic and repeatable.
   Untracked files the app needs (local env files) are copied in by an allowlist, never by hand.
@@ -41,7 +42,8 @@ pushed.
 
 ## Contracts used
 
-`task` (`branch`, `touches`), `task-record` (repository root, worktree, base commit, branch,
+`task` (`branch`, `touches`), `state-machines/workflow.yaml` (`status_authority`: the branch is the
+claim and holds the in-flight status), `task-record` (repository root, worktree, base commit, branch,
 workspace id; `resources`: the derived database, port block, caches and service prefixes, the cleanup
 `audit`, and `worktree_removed_at`, which requires an audit that passed),
 `state-machines/attention.yaml` (cleanup does not change attention).
@@ -53,6 +55,8 @@ workspace id; `resources`: the derived database, port block, caches and service 
 - Worktrees deleted in bulk by age.
 - Closing a primary workspace and taking its linked worktrees with it.
 - A task branch created from whatever happened to be checked out.
+- A claim committed to the default branch, where agents may not push, or a status "fixed" there by
+  hand while the task branch holds the live one.
 
 ## Revisit when
 

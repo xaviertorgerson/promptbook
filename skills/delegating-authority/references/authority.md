@@ -1,4 +1,4 @@
-# Authority rules (excerpt of the harness `authority` machine and `grant` contract 1.0.0)
+# Authority rules (excerpt of the harness `authority` machine 1.3.0 and `grant` contract 2.0.0)
 
 ## Default
 
@@ -17,14 +17,17 @@ request and never renewed from a saved summary.
 | `dispose-findings` + `policy` | decide which review findings are fixed now and which become follow-ups | dropping a material in-scope finding; skipping the re-review after fixes |
 | `finalize` | mark a PR ready once the current head passed an independent review | merging |
 | `publish-review` | publish a review on someone else's PR for the exact head reviewed | publishing for a changed head without re-review |
-| `merge{repo, target, strategy, requires}` | land a PR through the forge in place of the human approval | any other repository, branch or strategy; a wildcard target; a direct push |
+| `merge{repo, target, protected_branch, strategy, requires}` | approve and integrate a PR into an epic's integration branch through the forge in place of the human approval | the protected branch (never a target); any other repository, branch or strategy; a wildcard target; a direct push |
 
 Merge rules: one repository, one exact target branch, one strategy; `requires` always includes
-`independent-review` and `required-checks` (optionally `current-head`, `human-approval`); only a
+`independent-review` (the reviewer role's pass on the current head) and `required-checks`
+(optionally `current-head`, `human-approval`); only a
 coordinator (`orchestrator`) or the `merge` role may hold it; workers never do; the forge's branch
-protection still applies, and a required human code-owner review cannot be satisfied by a grant. A
-grant for `main` does not cover `release/*`. Merge is delegated last, if ever; prefer a per-epic
-integration branch and leave integration → default branch to a human.
+protection still applies, and a required human code-owner review cannot be satisfied by a grant.
+The target is never the protected branch, which the grant names as `protected_branch`: a grant for
+`integration/rating` covers neither `integration/rating-v2` nor `main`, and integration → protected
+branch is a human's merge (`promote-integration`, never grantable). Merge is delegated last, if
+ever.
 
 ## Never grantable
 
@@ -33,10 +36,12 @@ integration branch and leave integration → default branch to a human.
 | `spec-approval` | the plan is the human's; delegating it removes the human from the plan |
 | `production-release` | customers see it; automating that gate is a human config change in the forge, not a delegation |
 | `answer-permission-prompt` | approving a tool call the policy asks about is the checkpoint itself |
+| `answer-input-request` | a remote agent's or a tool's request for input is a question for a human; forward it verbatim |
 | `change-policy` | walls (deny rules, hooks, branch protection) change only by a reviewed human commit |
 | `force-push-shared` | destroys others' history |
 | `destructive-data` | dropping databases, deleting volumes, wiping backups |
-| `widen-grant` | widening is a new grant from the human; a holder may only narrow its own |
+| `widen-grant` | widening is a new grant from the human; a holder may only stop exercising part of its own and draft the narrowing |
+| `promote-integration` | an integration branch reaches the protected branch only by a human's merge (workflow `promote`) |
 
 Policy denies (the operator's policy, project walls) beat any grant.
 
@@ -46,14 +51,16 @@ The `grant` file has no status field; the state is read from where it lives and 
 
 | State | How to tell | Who moves it |
 |---|---|---|
-| draft | under `.orchestrator/grants/drafts/`; not loaded by any runtime | the agent drafting from the human's request |
-| issued | under `.orchestrator/grants/`; `granted_at` ≤ now < `expires_at`; no `revoked_at` | the human's confirmation (recorded as `source`) |
+| draft | under `.orchestrator/grants/drafts/`, the only grants path an agent writes; not loaded by any runtime | the agent drafting from the human's request |
+| issued | committed by `granted_by`, a human owner of `.orchestrator/grants/` (CODEOWNERS), there; `granted_at` ≤ now < `expires_at`; no `revoked_at` | the human's confirmation (recorded as `source`) and commit |
 | used | issued, and at least one task record `decisions[].source` or run record `grant` names it | each delegated action, recorded after the check passes |
 | expired | now ≥ `expires_at` | time; the holder records needs-human with a renewal request |
 | revoked | `revoked_at`, `revoked_by` and `revocation_reason` set | the human |
 
-Narrowing (`narrowed[]` entries, current `actions`/`scope` edited down) keeps a grant issued or used.
-Liveness is checked before every delegated action, not once per session.
+Narrowing keeps a grant issued or used: `narrowed[]` entries, appended by an owner, each removing
+actions or scope entries or lowering limits or the expiry; the issued fields never change after the
+issuing commit, and the grant in force is the issue minus every entry. Liveness and provenance
+(`harness grant verify --git`) are checked before every delegated action, not once per session.
 
 ## Stop conditions
 

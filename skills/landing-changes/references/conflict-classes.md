@@ -22,7 +22,7 @@ needs it.
 | 7 | **Correction:** a hunk where one side is empty and the base is not empty (one side deleted lines the other side kept or changed) | semantic | a human | not in the original classifier |
 | 8 | Every hunk one-sided, and in each the empty side's base is empty too (only one side added lines) | mechanical | take the side that added | `one-sided` |
 | 9 | Any hunk where both sides are non-empty and differ (overlapping logic) | semantic | a human; never pick a side | `overlapping hunk(s)` |
-| 10 | A task file's frontmatter (`status`, `owner`), or any file on the project's protected list (hooks, permission rules, CI workflows, owner files) | semantic | a human | the owner/status pair is a lock; walls change only by human review |
+| 10 | A task file's frontmatter (`status`, `owner`), or any file on the project's protected list (hooks, permission rules, CI workflows, owner files) | semantic | a human | a task's status lives on its branch and the default branch's copy changes only by a human or a landing, so a conflict there means a human edited it; walls change only by human review |
 | 11 | Anything else, or any doubt | semantic | a human | "unknown → semantic" |
 
 The PR as a whole is mechanical only if every conflicted file is.

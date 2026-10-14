@@ -1,0 +1,3 @@
+{"prompt": "Run the search epic tonight: start the ready tasks with at most three workers and tell me at 8am what needs me.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
+{"prompt": "The orchestrator died at 2am. Reconcile the task records and carry on without redoing any work.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
+{"prompt": "SEARCH-2's author pane just went idle; update its task record.", "expect": "no-trigger", "kind": "near-miss", "route_to": "reporting-state", "note": "held out: written after tuning, never used to change a description"}

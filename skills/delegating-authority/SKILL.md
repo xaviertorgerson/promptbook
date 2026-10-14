@@ -39,8 +39,10 @@ workers a grant covers (orchestrating-work); permission policy or walls (adoptin
 1. Read the request in the human's words. Separate the **outcome assigned** (deliver the milestone)
    from the **decisions delegated** (choose tasks, approve plans). An outcome alone delegates nothing.
 2. Map each decision to an action: `select-tasks`, `approve-plan`, `dispose-findings` (needs a
-   `policy`), `finalize`, `publish-review`, `merge` (needs `repo`, one exact `target`, `strategy`,
-   `requires` including `independent-review` and `required-checks`). Each is separate: finalize is
+   `policy`), `finalize`, `publish-review`, `merge` (needs `repo`, one exact `target`, the
+   repository's `protected_branch`, `strategy`, `requires` including `independent-review` and
+   `required-checks`). The target is an epic's integration branch, never the protected branch: a
+   request to let the coordinator merge into the protected branch is refused and kept human. Each is separate: finalize is
    not merge; merge is not publish-review.
 3. Refuse anything on the never-delegable list (below); say so and keep it with the human.
 4. Fill the template in `references/grant-template.md`: `granted_by` (the human), `granted_to`
@@ -50,30 +52,40 @@ workers a grant covers (orchestrating-work); permission policy or walls (adoptin
    the end of the milestone or two weeks), `revocable: true`.
 5. Ask only about missing consequential choices: the merge target, the worker cap, the budget, the
    expiry. Do not turn a clear request into another approval ceremony.
-6. Save the draft outside the live directory (`.orchestrator/grants/drafts/`) and validate it:
-   `node tools/validate.mjs --contract grant <file>` when the validator is available.
+6. Save the draft outside the live directory (`.orchestrator/grants/drafts/`, the only grants path
+   an agent writes) and validate it: `node tools/validate.mjs --contract grant <file>` when the
+   validator is available.
 7. Show the human the actions, scope, limits and expiry in plain words.
 
 ### B. Issue it (state: issued)
 
 1. Only the human's confirmation issues a grant. Set `granted_at` to the confirmation time and
    `source` to where the human confirmed it (a commit, an issue comment, a transcript reference).
-2. Move it to `.orchestrator/grants/GRANT-n.yaml`. Ids are never reused.
+2. The human commits it to `.orchestrator/grants/GRANT-n.yaml`, a path the project's CODEOWNERS
+   gives to its human owners (or records it forge-side): an agent never moves a draft live, and a
+   file an agent committed there is not a grant. `granted_by` is one of those owners. Ids are never
+   reused.
 3. Link it: each task record acting under it sets `grant: GRANT-n`.
 
 ### C. Check an action (every time, immediately before acting)
 
 Run `references/check.md` in order; stop at the first "no":
 
-1. **Never delegable?** spec approval, production release, answering a permission prompt, changing
-   policy or walls, force-pushing a shared branch, destructive data actions, widening a grant → no.
+0. **Is it a grant at all?** `harness grant verify <file> --git` when the tools are available
+   (references/check.md): committed by `granted_by`, an owner of the grants path; issued fields
+   unchanged since; `narrowed[]` only appended and only narrowing. Any failure → ask the human.
+1. **Never delegable?** spec approval, production release, answering a permission prompt or an
+   input request, changing policy or walls, force-pushing a shared branch, destructive data
+   actions, widening a grant, promoting an integration branch to the protected branch → no.
 2. **A policy or repository wall forbids it?** Walls beat every grant → no.
 3. **A live grant?** `granted_at` ≤ now < `expires_at`, no `revoked_at`, `granted_to` matches you.
-4. **The action is listed** in its current `actions` (narrowing already removed what it removed).
+4. **The action is listed** in the grant in force: the issued `actions` minus every
+   `narrowed[].remove_actions` (and scope and limits likewise).
 5. **The scope covers it:** the repository is in `scope.repositories`; the epic, task or requirement
    is listed when the grant lists any; it is not a `non_goal`.
-6. **Merge only:** same `repo`, the PR's base equals `target` exactly, the strategy matches, an
-   independent reviewer (not the author) passed the current head, required checks are green on it,
+6. **Merge only:** same `repo`, the PR's base equals `target` exactly and is not the protected
+   branch (the grant's `protected_branch` and the forge's default branch), the strategy matches,
+   the reviewer role (not the author) passed the current head and the evaluator's verdict is on it, required checks are green on it,
    and every other `requires` entry holds. The forge's branch protection still applies; if it needs a
    human code owner, the grant cannot satisfy it.
 7. **Limits:** live workers < `max_workers`; spend under the grant (sum of run records with
@@ -85,8 +97,12 @@ A "no" at 3–7 means ask the human. Never fill a gap by inference.
 
 ### D. Narrow, revoke, expire
 
-- **Narrow** (the human, or the holder of its own grant): edit `actions` or `scope` to remove
-  something and append `narrowed: {at, by, change}`. Widening is never an edit: draft a new grant.
+- **Narrow** (the human): append one structured entry, `narrowed: {at, by, remove_actions,
+  remove_scope, reduce_limits, reason}`, and leave the issued fields as issued; the grant in force
+  is the issue minus every entry. An entry only removes what the grant holds or lowers a limit or
+  the expiry, never empties a scope list (`narrowing-only-narrows`). The holder narrows its own
+  grant by stopping the narrowed actions at once (record it in the task record's `decisions`) and
+  drafting the entry for the human to commit. Widening is never an edit: draft a new grant.
 - **Revoke** (the human): set `revoked_at`, `revoked_by`, `revocation_reason`. Takes effect at the
   holder's next check; landed work stays landed.
 - **Expire:** at `expires_at`, finish the current step, start nothing new, and record
@@ -95,8 +111,9 @@ A "no" at 3–7 means ask the human. Never fill a gap by inference.
 
 ## Never delegable
 
-`spec-approval` · `production-release` · `answer-permission-prompt` · `change-policy` ·
-`force-push-shared` · `destructive-data` · `widen-grant`. Why each is in `references/authority.md`.
+`spec-approval` · `production-release` · `answer-permission-prompt` · `answer-input-request` ·
+`change-policy` · `force-push-shared` · `destructive-data` · `widen-grant` · `promote-integration`.
+Why each is in `references/authority.md`.
 
 ## Outputs
 

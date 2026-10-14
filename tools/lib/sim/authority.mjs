@@ -1,10 +1,14 @@
+import { effectiveGrant } from '../grant.mjs';
+
 // Authority facts shared by the world, the supervisor and the invariants (state-machines/authority.yaml).
+// Every check reads the grant in force: the issued fields minus its narrowing (tools/lib/grant.mjs).
 
 // A grant's lifecycle state at a moment (epoch ms). Derived, never stored: the grant contract has no
 // status field (CONTRACTS.md, grant lifecycle). pending: before granted_at; live; expired: at or past
 // expires_at; revoked: at or past revoked_at (revocation wins over expiry, since it names a person).
-export function grantState(g, ms) {
-  if (!g) return null;
+export function grantState(g0, ms) {
+  if (!g0) return null;
+  const g = effectiveGrant(g0, ms);
   if (g.revoked_at && Date.parse(g.revoked_at) <= ms) return 'revoked';
   if (ms < Date.parse(g.granted_at)) return 'pending';
   if (ms >= Date.parse(g.expires_at)) return 'expired';
@@ -21,26 +25,29 @@ const actionName = (a) => (typeof a === 'string' ? a : a.action);
 export const landingTarget = (sc, task) => task?.lands_to ?? sc.target;
 
 // Does grant g delegate `action` for this task? merge must name the scenario's repository, the
-// exact branch the task lands on and the strategy (authority.yaml grantable.merge.scope_rule);
-// every action is bounded by the grant's scope (repositories, epics, tasks).
-export function grantHas(g, action, sc, task) {
-  if (!g) return false;
+// exact branch the task lands on, which is never the protected branch, and the strategy
+// (authority.yaml grantable.merge.scope_rule); every action is bounded by the grant's scope
+// (repositories, epics, tasks).
+export function grantHas(g0, action, sc, task, ms = Infinity) {
+  if (!g0) return false;
+  const g = effectiveGrant(g0, ms);
   if (!g.scope?.repositories?.includes(sc.repo)) return false;
   if (task && g.scope.epics?.length && !g.scope.epics.includes(task.epic)) return false;
   if (task && g.scope.tasks?.length && !g.scope.tasks.includes(task.id)) return false;
-  return g.actions.some((a) => actionName(a) === action && (action !== 'merge' || (a.repo === sc.repo && a.target === landingTarget(sc, task) && a.strategy === sc.strategy)));
+  const mergeCovers = (a) => a.repo === sc.repo && a.target === landingTarget(sc, task) && a.target !== sc.target && a.protected_branch === sc.target && a.strategy === sc.strategy;
+  return g.actions.some((a) => actionName(a) === action && (action !== 'merge' || mergeCovers(a)));
 }
 
 // Actions that start or steer workers. A grant that delegates one of them bounds how many run at
 // once (limits.max_workers) and what the runtime spends (limits.budget); a merge-only or
 // review-only grant bounds neither (authority.yaml lifecycle.limits).
 export const DISPATCH_ACTIONS = ['select-tasks', 'approve-plan', 'dispose-findings', 'finalize'];
-export const dispatches = (g) => g.actions.some((a) => DISPATCH_ACTIONS.includes(actionName(a)));
+export const dispatches = (g, ms = Infinity) => effectiveGrant(g, ms).actions.some((a) => DISPATCH_ACTIONS.includes(actionName(a)));
 
 // The workers cap at a moment: the supervisor's own cap, and the smallest max_workers among the
 // live grants that delegate dispatch.
 export function workerCap(grants, ms, base) {
-  return Math.min(base, ...grants.filter((g) => grantLiveAt(g, ms) && dispatches(g)).map((g) => g.limits?.max_workers ?? Infinity));
+  return Math.min(base, ...grants.filter((g) => grantLiveAt(g, ms) && dispatches(g, ms)).map((g) => effectiveGrant(g, ms).limits?.max_workers ?? Infinity));
 }
 
 // The grant an action is exercised under: a live one that delegates it for the task; else one that

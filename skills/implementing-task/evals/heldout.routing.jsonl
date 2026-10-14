@@ -1,0 +1,3 @@
+{"prompt": "Claim SEARCH-4 from the queue and build it in its own worktree.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
+{"prompt": "Start on the highest-priority ready task and take it as far as a draft PR.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
+{"prompt": "Spread the six ready search tasks over three workers and keep them busy until the queue is empty.", "expect": "no-trigger", "kind": "near-miss", "route_to": "orchestrating-work", "note": "held out: written after tuning, never used to change a description"}

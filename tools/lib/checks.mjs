@@ -1,4 +1,5 @@
 import { classify, criteria } from './ears.mjs';
+import { narrowingFindings } from './grant.mjs';
 import { globToRegExp } from './glob.mjs';
 import { headings, splitLines, stripComments, fenceMask } from './markdown.mjs';
 
@@ -70,6 +71,19 @@ export const CHECKS = {
     if (t('expires_at') <= t('granted_at')) out.push({ rule: 'expires-after-granted', pointer: '/expires_at', message: `expires_at ${data.expires_at} is not after granted_at ${data.granted_at}` });
     if (t('revoked_at') < t('granted_at')) out.push({ rule: 'revoked-after-granted', pointer: '/revoked_at', message: `revoked_at ${data.revoked_at} is before granted_at ${data.granted_at}` });
     return out;
+  },
+
+  // A merge grant never targets the protected branch (authority.yaml grantable.merge.scope_rule):
+  // the coordinator lands on an epic's integration branch at most; promotion is a human's merge.
+  'merge-target-not-protected'({ data }) {
+    return (Array.isArray(data?.actions) ? data.actions : []).flatMap((a, i) => (a && typeof a === 'object' && a.action === 'merge' && a.target && a.target === a.protected_branch
+      ? [{ rule: 'merge-target-not-protected', pointer: `/actions/${i}/target`, message: `merge into ${a.target}, the protected branch: no grant covers it; target an integration branch (integration/<epic>) and leave its merge into ${a.protected_branch} to a human (promote)` }]
+      : []));
+  },
+
+  // narrowed[] removes only what the grant in force holds and lowers only limits (tools/lib/grant.mjs).
+  'narrowing-only-narrows'({ data }) {
+    return narrowingFindings(data);
   },
 
   // A rule in allow or ask that a forbid rule already covers never takes effect (deny wins on every

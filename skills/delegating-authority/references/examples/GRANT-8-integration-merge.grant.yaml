@@ -16,6 +16,7 @@ actions:
   - action: merge
     repo: acme/billing
     target: integration/rating-engine
+    protected_branch: main
     strategy: merge
     requires: [independent-review, required-checks, current-head]
 limits:

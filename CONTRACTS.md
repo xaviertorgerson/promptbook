@@ -153,8 +153,10 @@ template epics validate unchanged.
 
 ### task
 
-**Purpose.** One unit of work, the coordination substrate: the frontmatter is the kanban column and
-the claim lock; the body is the contract the coder builds against. **Schema** `task.schema.json`
+**Purpose.** One unit of work, the coordination substrate: the frontmatter is the kanban column, the
+`branch` it names is the claim lock (a claim creates it on the remote; while it exists the live
+status is on its head, and the default branch's copy says `ready` until the task lands:
+`workflow.yaml` `status_authority`); the body is the contract the coder builds against. **Schema** `task.schema.json`
 1.3.0. Required (agentic-template's fields, same meaning): `id`, `epic`, `status`, `priority`, `cuj`,
 `guiding_docs`, `branch`, `depends_on`, `owner`. Optional template fields: `parent`, `size`,
 `kickback_reason`. **Optional harness fields:**
@@ -192,7 +194,9 @@ named in a test, each `{covered,total}`), `gaps[]` (`traceGap`); a `ready` verdi
 no gap that blocks readiness. Written by `validate.mjs --trace <root> --readiness <dir>`; never
 hand-edited. `generated_at` and `source_commit` change on every check whatever the plan says, so
 `--no-timestamp` leaves both out (1.2.0: `generated_at` is optional) and a report committed with the
-plan changes only when the plan does; its own commit dates it. **Compat.** New.
+plan changes only when the plan does; its own commit dates it. `--readiness <dir> --check`
+regenerates each committed report in that form and fails on one that is missing, differs from the
+plan (a hand edit, or a plan change not regenerated), is timestamped, or has no epic; CI runs it. **Compat.** New.
 
 ### task-record
 
@@ -250,25 +254,37 @@ evaluator's or reader's run is logged as what it was instead of an author's "adv
 ### grant
 
 **Purpose.** A human delegating named decisions to a coordinator for a named scope, within limits,
-until an expiry (`state-machines/authority.yaml`). **Schema** `grant.schema.json` 1.1.0: `id`,
+until an expiry (`state-machines/authority.yaml`). **Schema** `grant.schema.json` 2.0.0: `id`,
 `granted_by`, `granted_to{role, agent, runtime}`, `granted_at`, `source`, `scope{objective,
 repositories, epics, tasks, requirements, non_goals}`, `actions[]`, `limits{max_workers, budget,
-stop_when}`, `expires_at`, `revocable: true`, `revoked_at/by/reason`, `narrowed[]`. Actions:
+stop_when}`, `expires_at`, `revocable: true`, `revoked_at/by/reason`, `narrowed[]` (structured:
+`{at, by, remove_actions, remove_scope, reduce_limits, reason}`, at least one of the three). Actions:
 `select-tasks`, `approve-plan`, `dispose-findings` (with a `policy`), `finalize`, `publish-review`,
-and `merge{repo, target, strategy, requires}` where `requires` must include `independent-review` and
-`required-checks`; only an orchestrator or the merge role may hold merge. **Lifecycle (derived; no
+and `merge{repo, target, protected_branch, strategy, requires}` where `requires` must include
+`independent-review` and `required-checks`; only an orchestrator or the merge role may hold merge.
+2.0.0 (breaking): `protected_branch` is required and `target` may not equal it
+(`merge-target-not-protected`): a merge grant lands on an epic's integration branch at most, and
+the protected branch is reached only by the merge role after a human's approval or by a human's
+merge of the integration branch (workflow `land` is never grantable; `promote` is a human's). **Lifecycle (derived; no
 status field).** A grant's state is read from the record, never stored in it: *where* it is (the
 project's `.orchestrator/grants/GRANT-n.yaml`; it applies to that project only and is never moved or
 deleted, so the audit trail stays), its *dates* (`pending` before `granted_at`, `live` until
 `expires_at`, exclusive, then `expired`), its *revocation* (`revoked` from `revoked_at`, with
 `revoked_by` and `revocation_reason`; it wins over expiry), its *narrowing* (`narrowed[]`, append-only;
-widening is a new grant), and its *recorded uses* (every task record, run record and orchestrator
+the issued fields never change, and the grant in force is the issue minus every entry; an entry
+only removes what the grant holds, only lowers limits and the expiry and never empties a scope list,
+`narrowing-only-narrows`; widening is a new grant), its *provenance* (a live grant is the file the
+granting human committed under `.orchestrator/grants/`, a CODEOWNERS-protected path, `granted_by`
+one of its owners; agents write only `.orchestrator/grants/drafts/`, which validate as grants but are
+never live; `harness grant verify <file> --git` checks the owners, the last commit's author, the
+issued fields against the issuing commit, append-only narrowing and a source commit), and its
+*recorded uses* (every task record, run record and orchestrator
 commit that names its id). A coordinator derives the state before each delegated action
-(`authority.yaml` lifecycle.validity); the simulator's `grantState()` is the reference. A coordinator
+(`authority.yaml` lifecycle.validity); the simulator's `grantState()` and `tools/lib/grant.mjs` `effectiveGrant()` are the reference. A coordinator
 may hold several grants (a work grant and a merge grant, revocable alone): each action is exercised
 under the grant that delegates it, and the workers cap is the smallest `max_workers` among the live
 grants that dispatch work, so a merge-only grant's `max_workers` bounds its merges, not the epic's
-workers (`authority.yaml` 1.2.0 lifecycle.limits). **Swap story.** Lets a
+workers (`authority.yaml` lifecycle.limits, since 1.2.0). **Swap story.** Lets a
 coordinator (stagehand, a CI orchestrator, a future agent) stand in for named human decisions with an
 auditable, expiring record instead of a remembered chat line. **Compat.** stagehand's
 project-delegation grants map field by field ([adapters/herdr](adapters/herdr/README.md)); the
@@ -339,11 +355,12 @@ or `## YYYY-MM · title` when the source gives only a month; any other level-2 h
 an error, `entry-heading`, so no evidence is silently dropped; with `**Kind:**` measured | observed |
 incident | audit | vendor-reported | literature, `**Source:**`, `**Claim:**`, optional result,
 engine, model, skill_version, revisit; vendor-reported and literature must cite a URL, measured must
-cite a source); `#/$defs/routingCase` for `evals/routing.jsonl` lines (`prompt`, `expect` trigger |
+cite a source); `#/$defs/routingCase` for `evals/routing.jsonl` lines (and `evals/heldout.routing.jsonl`, cases
+written after tuning and never used to change a description: `prompt`, `expect` trigger |
 no-trigger, `kind` positive | near-miss | negative, `route_to`); and `#/$defs/routingResult` for the
-lines `harness eval-routing --out` writes (`routing-results*.jsonl`: `skill`, `case` `<skill>:<line>`,
-`prompt`, `expect`, `kind`, `route_to`, `model`, `runs`, `answers[]` per run, `passes`, `pass` —
-pass^k, every run — `errors`, `at`, `skill_version`; counts must agree), the measured source an
+lines `harness eval-routing --out` writes (`routing-results*.jsonl`: `skill`, `case` `<skill>:<line>` of the
+cases file the run read, `prompt`, `expect`, `kind`, `route_to`, `model`, `runs`, `answers[]` per
+run, `passes`, `pass` — pass^k, every run — `errors`, `at`, `skill_version`; counts must agree), the measured source an
 evidence entry cites. The eval files validate wherever a skills folder is, dot-folder or not
 (`skills/`, a project's `.agents/skills/` or `.claude/skills/`, a user's `~/.agents/skills/`):
 unlike `SKILL.md`, whose L3 contract an engine's own skill folder may extend, the eval shapes are
@@ -440,7 +457,8 @@ flowchart LR
 | `one-way-door-decided` | no ADR the epic cites (header, ADR column, `satisfies`, a task's guiding doc) is a one-way door still proposed | see below; blocks readiness |
 | `ready-task-unblocked` | a `ready` task has no unchecked Open question that says it blocks | error (warning in legacy adoption); blocks readiness |
 | `task-size-fits` | no task is `XL`: an error from `ready` on, a warning before | see below |
-| `persona-has-journey`, `persona-in-brief`, `nfr-has-decision`, `task-index-agrees`, `cites-current-decision`, `decision-link-agrees`, `tests-exist` | consistency | warning |
+| `tests-exist` | some test file matches; an explicit `--tests` glob that matches nothing, or no test file while a task is at review or later, is an error (and that task's criteria are uncovered) | warning; error, blocks readiness |
+| `persona-has-journey`, `persona-in-brief`, `nfr-has-decision`, `task-index-agrees`, `cites-current-decision`, `decision-link-agrees` | consistency | warning |
 | `task-mode-overrides-epic` | a task's `mode` differs from its epic's | info |
 
 **Severity policy.** A broken reference or an invalid artifact is always an error. A *missing* link
@@ -452,16 +470,22 @@ layer): the product-layer rules are skipped (reported once as `info`), and every
 introduced — persona links, task → requirement, requirement → journey, UX, ADR `satisfies` — is a
 warning even on an approved epic, so adopting the harness never turns a green build red. Gaps that
 keep an epic from `ready` are marked `blocks_readiness` in either mode. With no test files at all,
-criterion coverage is a single `tests-exist` warning, as `ears-coverage.mjs` does in status mode.
+criterion coverage is a single `tests-exist` warning while no task claims to be tested; once a task is
+at review or later it is an error and each of that task's criteria is uncovered, so a merged task
+with no test never reads ready.
 `--strict` makes warnings fail; `--readiness <dir>` writes each epic's `readiness.md`
 (`--no-timestamp`: without `generated_at` and `source_commit`).
 
 **Test names.** A file's extension picks how its test names are read: JS/TS the first string of
 `it`/`test`/`describe` (ears-coverage's extractor); Go `t.Run("…")` and `func TestXxx`; Python
-`def test_…`, pytest `ids=[…]` and `pytest.param(…, id="…")`; JUnit 5 `@DisplayName("…")`; Kotlin
-backticked function names; Rust `fn` names; Ruby `it`/`describe`/`context`/`specify`/`test "…"`.
-`--test-pattern <regex>` (repeatable) adds a reader for anything else (group 1, or the match, is a
-name). An id matches in any case with a hyphen, an underscore or nothing between prefix and number
+`def test_…`, pytest `ids=[…]` and the `id="…"` of a `pytest.param(…)`; JUnit 5 `@DisplayName("…")`;
+Kotlin backticked function names; Rust the names of `fn`s under a test attribute (`#[test]`,
+`#[tokio::test]`, `#[rstest]`, `#[test_case(…)]`), never a helper `fn` or an `#[ignore]`d one; Ruby
+`it`/`describe`/`context`/`specify`/`test "…"`. A test that never runs evidences nothing: comments are
+blanked first (strings kept), and JS/TS `it.skip`, `test.todo`, `describe.skip` (with the tests it
+holds), their `.each`, `xit`/`xtest`/`xdescribe` and a `{ skip: … }` or `{ todo: … }` option are
+dropped, as are Ruby's `xit` family. `--test-pattern <regex>` (repeatable) adds a reader for anything
+else (group 1, or the match, is a name), read from the same comment-blanked text. An id matches in any case with a hyphen, an underscore or nothing between prefix and number
 (`AC-2`, `ac_2`, `AC2`, `bill_7_ac_2`), or in CamelCase after a lower-case letter or digit
 (`TestBILL7AC2`), never inside a longer id (`AC-21`, `FAC2`).
 
@@ -475,9 +499,10 @@ criteria, and `--json` lists each criterion's evidence (`epics[].criteria_eviden
 bare, ambiguous or none). A bare id unique in its epic still counts when another epic has the same
 id, so a project with several epics should qualify every name.
 
-On `wt-stack-drift` (two epics, no product docs, no tests) the check reports legacy adoption, 0
-errors, and 32 warnings: tasks that cite no requirement (with the exact `requirements: [REQ-2]` fix
-where one is named in prose), requirements no task implements, journeys no requirement serves, and
+On `wt-stack-drift` (two epics, no product docs, no tests) the check reports legacy adoption, 31
+warnings and 7 errors: rating-engine's BILL-1 (merged) and BILL-2 (human-review) have no test file
+naming their six criteria (`tests-exist`, `criterion-named-in-test`). The warnings are tasks that
+cite no requirement (with the exact `requirements: [REQ-2]` fix where one is named in prose), requirements no task implements, journeys no requirement serves, and
 CUJ-2 of template-migration, which the spec's Tasks table attributes to TMIG-1 and TMIG-3 while their
 `cuj:` frontmatter does not.
 
@@ -487,24 +512,29 @@ CUJ-2 of template-migration, which the spec's Tasks table attributes to TMIG-1 a
 sequenceDiagram
   autonumber
   participant H as Human (owner / engineer)
-  participant G as git (task file)
+  participant D as git: default branch
+  participant B as git: task branch
+  participant F as forge (PR)
   participant C as Coordinator (loop / CI / stagehand)
   participant A as Agent (engine)
   participant R as Runtime records
-  H->>G: approve spec (gate 1) — tasks become ready
-  C->>G: claim: owner + status ready→in-progress in one commit (CAS)
+  H->>D: approve spec (gate 1) — tasks become ready on the default branch
+  C->>D: fetch task files; ls-remote: a task with no branch is unclaimed
+  A->>B: claim: the branch's first commit, owner + ready→in-progress, pushed as a new ref (CAS)
   C->>R: task-record (attention working), grant if delegated
   C->>A: dispatch: task file + guiding_docs, budget
   A-->>R: signals (Herdr state, A2A/MCP task state) — attention only
-  A->>G: commits, draft PR, agent-log handoff, status → review
+  A->>B: commits, agent-log handoff, status → review; draft PR
   A-->>C: return (summary, artifacts, criteria met/unmet, decisions needed)
   C->>R: run-record line (outcome, subtype, cost), task-record reconciled
   alt criteria met and gates green
-    A->>G: status → human-review
-    H->>G: approve PR (gate 2) — or a merge grant with independent review + checks
-    C->>G: merge agent (or the orchestrator under the merge grant) lands; status → merged
-    Note over C,G: lands_to integration/epic: status → integrated, and a human's merge of that branch → merged
-    H->>G: approve production release (gate 3)
+    F-->>R: reviewer's review and evaluator's verdict, each bound to the head
+    A->>B: status → human-review
+    H->>F: approve PR (gate 2): a forge review of the head, not a commit; or a merge grant's holder, for an integration branch
+    C->>R: the approval in reviews/decisions
+    C->>D: merge role lands; the merge carries status → merged on the protected branch
+    Note over C,D: lands_to integration/epic: the merge writes integrated there; a human's merge of that branch, then promote → merged
+    H->>F: approve production release (gate 3)
   else needs-human
     C->>H: next_action (question, permission, budget)
   end
@@ -513,17 +543,26 @@ sequenceDiagram
 The three human gates and every transition are in `state-machines/workflow.yaml`; which signal
 means what is `state-machines/attention.yaml`; what a human may delegate is
 `state-machines/authority.yaml`. The invariant that ties them: **status is a commit by an authorized
-role; a runtime signal is a hint that changes attention at most.**
+role on the branch where it lives (or, for approve-pr, a forge event); a runtime signal is a hint
+that changes attention at most.** Where it lives is `workflow.yaml` `status_authority` (workflow
+1.5.0): a claim creates the task branch (the rejected new-ref push is the compare-and-swap);
+in-flight status is on the task branch; approvals are forge events bound to the head, voided by any
+commit after them; only the landing actor writes `merged` or `integrated`, on the target;
+`deps-merged` reads the dependent's own target.
 
-Landing (workflow 1.2.0, authority 1.1.0). `land` (→ `merged`), `integrate` (→ `integrated`) and
-`return-to-human` are the merge role's, or the orchestrator's under a live `merge` grant whose repo,
-strategy and exact target match — the target being the task's `lands_to`, else the protected branch
-(a runtime with no separate merge role). `promote` (`integrated` → `merged`) is a human's, after the
+Landing (workflow since 1.2.0, authority since 1.1.0). `land` (→ `merged`, the protected branch) is the
+merge role's alone, after a human's approval (never grantable since workflow 1.4.0). `integrate` (→
+`integrated`) and `return-to-human` are the merge role's, or the orchestrator's under a live
+`merge` grant whose repo, strategy and exact target match — the target being the task's `lands_to`,
+an integration branch, never the protected branch (a runtime with no separate merge role). `promote` (`integrated` → `merged`) is a human's, after the
 human merged the integration branch (tier 3; never grantable). `reopen` and `respec` take an
 integrated task back with a reason when a later integration breaks it. `deps-merged` counts an
 `integrated` dependency only for a dependent in the same epic. `mark-pr-ready` carries
-`independent-verification`: a task of risk medium or high needs the evaluator's passing verdict on
-the current head. The simulator enforces all of it (TOOLS.md).
+`independent-verification`: every task needs the evaluator's passing verdict on the current head
+(workflow since 1.3.0; risk sets its trials and model family). `independent-review` is the reviewer role's
+pass on the current head, required where a merge grant approves; the two are separate records
+(`task-record.reviews[].role`) and neither counts as the other. The simulator enforces all of it
+(TOOLS.md).
 
 ## Compatibility summary
 

@@ -28,13 +28,13 @@ Hand off instead: doing one task yourself (implementing-task); writing or checki
 
 | Read | Contract | For |
 |---|---|---|
-| `specs/<epic>/tasks/*.md`, at a fresh pull | `task` | `status`, `owner`, `priority`, `depends_on`, `touches`, `size`, `risk`, `mode`, `evaluator`, `budget` |
+| `specs/<epic>/tasks/*.md` on the default branch at a fresh fetch, and each claimed task's file on its branch head | `task` | `status`, `owner`, `priority`, `depends_on`, `touches`, `size`, `risk`, `mode`, `evaluator`, `budget`; a claimed task's live status is on its branch, not the default branch |
 | `specs/<epic>/spec.md` | `epic` | epic `status` (approved or in-progress); the epic's default mode where the project records one |
 | `.orchestrator/grants/GRANT-n.yaml` | `grant` | which decisions a human delegated, for what scope, within which limits, until when |
 | `.orchestrator/tasks/<id>.yaml` | `task-record` | who runs what, where, attention, next action |
 | worker hand-backs (`.agent/returns/*.json` or the runtime's structured output) | `return` | summary, artifacts, attention, decisions needed, criteria met/unmet |
 | `.agent/loop-runs.jsonl` or the runtime's run log | `run-record` | turns, cost, outcome and subtype per run |
-| the forge, the runtime | — | branches, PR heads, reviews, required checks; live workers, sessions, pending wakes, a state snapshot |
+| the forge, the runtime | — | the remote's task branches (`git ls-remote --heads`: a branch is a claim), PR heads, reviews, approvals and required checks; live workers, sessions, pending wakes, a state snapshot |
 
 The rules you rely on from `workflow`, `attention` and `authority` are excerpted in
 `references/contracts.md`. Without a grant you hold no delegated authority at all.
@@ -54,8 +54,10 @@ The rules you rely on from `workflow`, `attention` and `authority` are excerpted
 ### 2. Select (mechanical; `references/dispatch-loop.md`)
 
 A task is dispatchable when all hold:
-- `status: ready`, `owner: null`, every `depends_on` task is `merged` (or `integrated`, when it is in
-  the same epic and lands on that epic's integration branch), its epic is approved or in-progress;
+- `status: ready` and `owner: null` on the default branch's copy, no branch for it on the remote
+  and no open PR; every `depends_on` task is `merged` as the branch the task lands on says it (the
+  default branch; or `integrated` on the epic's integration branch the task lands on); its epic is
+  approved or in-progress;
 - its `touches` are disjoint from every in-flight task's `touches` (no `touches` means it runs alone in its epic);
 - its mode's guards hold (`references/contracts.md`, Mode guards); for example research-plan-implement
   needs an approved plan in the task's working notes before the claim;
@@ -91,16 +93,20 @@ Model and effort per role come from routing-models; set each one explicitly at t
 4. Send the thin assignment in `references/assignments.md`: task id and file, exact checkout, branch
    and base commit, guiding docs, constraints and non-goals, budget, the real approval path, and the
    return expected. Never send grants, task records, wake mechanics or this skill.
-5. The author claims the task by compare-and-swap in its own first commit (implementing-task). A
-   rejected claim means someone else won: retire the worker, audit the checkout, select again.
+5. The author claims the task by creating its branch on the remote: the claim commit is the
+   branch's first commit, pushed as a new ref (implementing-task). A rejected push means someone
+   else won: retire the worker, audit the checkout, select again. Never claim, or have a worker
+   claim, by committing to the default branch.
 
 ### 5. Pair author and evaluator
 
 - One persistent author per task is the only writer. Findings go back to that same author, who
   resolves only the selected ones.
 - One independent evaluator per task (verifying-work): a separate session, clean context (intent and
-  changeset only), a different model family where the runtime allows, an objective artifact. It is
-  mandatory for `risk` medium and up and the default otherwise. It never edits.
+  changeset only), a different model family where the runtime allows, an objective artifact. Every
+  task gets its verdict before `human-review`; risk sets the trials (k = 1 low, 2 medium, 3 high) and
+  whether a different family is required (medium and up, where one is available). It never edits.
+  The reviewer's code review of the head is a separate record; neither counts as the other.
 - The same evaluator re-judges the complete current head after every fix. A changed head voids a pass.
 - Where the runtime starts a fresh session per run, "the same role" resumes from the task file,
   branch and agent log, never from a transcript.
@@ -130,8 +136,12 @@ not a stall. Duplicate or stale wakes repeat nothing.
 ### 8. Move work forward only through its owners
 
 You commit no task transition by default: authors claim, open drafts, park and (where the project
-allows) mark PRs ready; humans approve; the merge role lands. You make a transition only under a
-live grant naming it: `finalize` for mark-pr-ready, `merge` for approve-pr through landing-changes.
+allows) mark PRs ready, all on the task branch; humans approve (a forge review, never a commit);
+the merge role lands and writes `merged` on the target. You make a transition only under a live
+grant naming it: `finalize` for mark-pr-ready (a commit on the task branch), `merge` for approve-pr
+(a forge approval of the current head, recorded in the task record's `reviews` and `decisions`)
+and integrate (landing-changes; the status flip goes on the integration branch, never the task
+branch).
 A task in `human-review` is complete for orchestration; the human gate is a status, not a wait.
 
 ### 9. Escalate instead of retrying

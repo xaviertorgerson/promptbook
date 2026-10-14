@@ -31,7 +31,9 @@ dispatching work (orchestrating-work); deciding whether an action is authorized
 - The mapping in `references/attention-map.md` (from the harness `attention` machine): a suggested
   attention and a reconcile action (`inspect`, `record`, `ignore`) per source and value.
 - The worker's latest answer or `return` object; the task file (status, owner, open questions, agent
-  log); git and the forge (branch, PR head, reviews, checks); the run record when a run ended.
+  log), read where the status lives: a claimed task's on its branch head, not the default branch's
+  copy (which says `ready` until the task lands); git and the forge (branch, PR head, reviews,
+  approvals, checks); the run record when a run ended.
 - `.orchestrator/tasks/<id>.yaml` (`task-record`), the record you maintain.
 
 ## Procedure
@@ -83,7 +85,8 @@ working or complete need no line. End with "None." when nothing needs the human.
 ## Never
 
 - Change `status` (or `owner`) in a task file because of a signal. Status moves only by a commit from
-  the role that owns the transition, on evidence.
+  the role that owns the transition, on evidence, on the branch where it lives; an approval is a
+  forge review you record in `reviews`/`decisions`, never a status you write.
 - Mark `complete` because a worker went idle, a remote task completed, or a check passed.
 - Answer a permission prompt, supply credentials, or send approval input.
 - Keep counters, phase histories or booleans in the record; keep evidence and the next action.

@@ -10,7 +10,7 @@
 # suggestion against evidence (the agent's latest answer, git, the PR, the task file) before it
 # records anything; a signal alone is a hint. Stagehand states the rule as: a wake is a hint, not
 # an event ledger.
-version: 1.2.0
+version: 1.3.0
 contract: attention
 
 states:
@@ -76,7 +76,7 @@ sources:
       TASK_STATE_UNSPECIFIED:    { attention: null,        reconcile: inspect }
       TASK_STATE_SUBMITTED:      { attention: working,     reconcile: ignore }
       TASK_STATE_WORKING:        { attention: working,     reconcile: ignore }
-      TASK_STATE_INPUT_REQUIRED: { attention: needs-human, reconcile: inspect, note: "Interrupted. The remote agent asks for input; a human or the grant holder answers, never a guess." }
+      TASK_STATE_INPUT_REQUIRED: { attention: needs-human, reconcile: inspect, note: "Interrupted. The remote agent asks for input; a human answers, never a guess and never the coordinator (no grant delegates answering: authority.yaml)." }
       TASK_STATE_AUTH_REQUIRED:  { attention: needs-human, reconcile: record,  note: "Interrupted. Credentials are a human action, always." }
       TASK_STATE_COMPLETED:      { attention: null,        reconcile: inspect, note: "Terminal for the remote task only. Read its artifacts; the local task's status is unchanged." }
       TASK_STATE_FAILED:         { attention: needs-human, reconcile: inspect, note: "Terminal. Decide retry, re-plan or park." }
@@ -88,7 +88,7 @@ sources:
     ref: https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/schema/2025-11-25/schema.ts (TaskStatus)
     signals:
       working:        { attention: working,     reconcile: ignore }
-      input_required: { attention: needs-human, reconcile: inspect, note: "Waiting for elicitation or sampling. A human answers unless a grant covers it." }
+      input_required: { attention: needs-human, reconcile: inspect, note: "Waiting for elicitation or sampling. A human answers; no grant delegates answering (authority.yaml)." }
       completed:      { attention: null,        reconcile: inspect, note: "The tool call finished; it is one step of the run, not the task." }
       failed:         { attention: null,        reconcile: inspect, note: "Includes tool results with isError. The agent may recover on its own; inspect before raising." }
       cancelled:      { attention: null,        reconcile: inspect }

@@ -13,6 +13,7 @@ harness <command> [args]          # package.json bin: tools/cli.mjs; or pnpm <co
   simulate        the runtime contracts under faults                tools/simulate.mjs
   compile-policy  agent-policy.yaml into one engine's settings      tools/compile-policy.mjs
   lock            pin or verify toolkit.lock                        tools/lock.mjs
+  grant           verify a grant before acting under it             tools/grant.mjs
   eval-routing    routing evals through a model command             tools/eval-routing.mjs
   import-evals    an agentic-template evals.md into the eval files  tools/import-evals.mjs
 ```
@@ -26,9 +27,13 @@ from its path in the project layout, else from its name's suffix (`*.grant.yaml`
 `harness trace <root>`
 is `validate --trace <root>`; `--readiness <dir>` writes each epic's report with the root's `HEAD` as
 `source_commit`, and `--no-timestamp` leaves it and `generated_at` out for a report committed with
-the plan; `--tests <glob>` picks the test files, `--test-pattern <regex>` adds a
+the plan; `--readiness <dir> --check` writes nothing and fails (exit 1) when a committed report is
+missing, stale against the plan, timestamped, or names no epic, printing the first differing line
+and the command that regenerates it (CI runs it so "never hand-edited" holds); `--tests <glob>`
+picks the test files (an explicit glob that matches nothing is an error), `--test-pattern <regex>` adds a
 way to read test names beyond the built-in JS/TS, Go, Python, JUnit/Kotlin, Rust and Ruby readers
-(fixtures: `fixtures/test-names/`).
+(fixtures: `fixtures/test-names/`). A commented-out, skipped or todo test, and a Rust `fn` with no
+test attribute, name nothing (CONTRACTS.md, Test names).
 
 ## lint
 
@@ -41,7 +46,8 @@ authoring rules. Errors name a stable rule; `--strict` fails on warnings too.
 | `name-is-gerund` | the first word ends in -ing: `writing-requirements` |
 | `description-use-when`, `description-do-not-use-for` | a "Use when …" trigger and a "Do not use for … (neighbour)" clause; warnings if out of order or naming no neighbour |
 | `description-length` | a description over 400 characters fails, over 300 warns: every description stays loaded in every session |
-| `description-budget` (warning) | the scanned set's descriptions together exceed 8000 characters (one engine keeps skill metadata within 2% of context or 8000 characters); the longest are named. The budget binds what a machine installs, not one library: `--budget-set <file>` sums the descriptions of an installed set (a list of skill folders or folders of skills, one per line or a YAML list; or a `toolkit.lock`, whose local entries contribute the skills under `source/path`, the harness's under `skills/`, narrowed by an `x-skills` list; a remote entry is reported as `budget-set-unread`, a listed folder that is missing fails `budget-set-missing`) and warns over 8000 with the count from each source; with no folder given only this check runs |
+| `description-budget` (warning) | the scanned set's descriptions together exceed 8000 characters (one engine keeps skill metadata within 2% of context or 8000 characters); the longest are named. The budget binds what a machine installs, not one library: `--budget-set <file>` sums the descriptions of an installed set (a list of skill folders or folders of skills, one per line or a YAML list; or a `toolkit.lock`, whose local entries contribute the skills under `source/path`, the harness's under `skills/`, narrowed by an `x-skills` list; a remote entry is reported as `budget-set-unread`, a listed folder that is missing fails `budget-set-missing`) and warns over 8000 with the count from each source; `--budget-set <set>` names a set of a `SETS.yaml` instead (the linted folder's, else `./skills/`, else the harness's own) and checks what a session holding it loads; with no folder given only this check runs |
+| `sets-shape`, `sets-known`, `sets-disjoint`, `sets-cover`, `set-over-budget`, `set-not-installed` (warning) | a folder's `SETS.yaml` (the harness's: `skills/SETS.yaml`) names install sets: each a scope (`user`, `project`, or `library`, never installed), its own `skills` and/or the sets it `includes`, and what a session `loaded_with` it (another set, or an `external` pack measured at a pinned commit; `--external name=<dir>` reads the real descriptions). Every named skill and set exists; every skill is in exactly one set's own list and some installable set; a user or project set, with what loads beside it, stays within `budget.limit` less `budget.headroom` (8,000 less 10%); `--budget-set` on a library set warns. The sets line prints each total |
 | `deprecated-description` | a skill with `metadata.deprecated` is exempt from "Use when": its description starts with "Deprecated:" and names the replacement skill |
 | `parse-error` | the frontmatter is YAML; when a plain value holds ": " (the usual cause), the error says to quote it |
 | `body-length` | warn over 200 body lines, fail over 300 |
@@ -61,21 +67,28 @@ in `fixtures/lint/broken/<rule>/`.
 ## simulate
 
 `harness simulate <scenario.yaml>` or `harness simulate --project <root>` runs a seeded,
-deterministic discrete-event model of the runtime contracts and checks 18 invariants after every
+deterministic discrete-event model of the runtime contracts and checks 20 invariants after every
 event. The world: a supervisor policy (the `orchestrating-work` protocol as code), author and
-evaluator sessions with read-only helpers, CI, a merge queue that classifies conflicts and re-runs
+evaluator sessions with read-only helpers, CI, a reviewer that reviews every pushed head (pass or
+changes-requested, `reviewer.reject_rate`), a merge queue that classifies conflicts and re-runs
 checks on the merged result (for the branches it serves), the orchestrator's own merge under a
 merge grant for a branch no queue serves, a scripted human with latencies who also merges an
-integration branch into the target once nothing on it is in flight (`promote`), a forge whose
-pushes are compare-and-swap on the task file and whose branches (the protected target and each
-epic's integration branch) admit a merge only with an approval of the head, and a runtime whose
+integration branch into the target once nothing on it is in flight (`promote`), a forge of remote
+refs that each hold their own copy of the task files (`workflow.yaml` `status_authority`): a claim
+creates the task's branch as a new ref (rejected when it exists: the compare-and-swap), in-flight
+status is committed on it (compare-and-swap per ref), the default branch's copy says `ready` until
+the task lands, approve-pr is a forge event bound to the PR head and the branch's version (a commit
+after it voids it), landing writes `merged` or `integrated` on the target inside the merge, and the
+targets (the protected branch and each epic's integration branch) admit a merge only with a valid
+approval of the head, and a runtime whose
 signals (working, blocked, done, idle, unknown) are lossy and duplicable, with events-lost notices.
 
-A scenario names tasks (`depends_on`, `touches`, `size`, `risk`, `criteria`, `budget`, `lands_to`),
+A scenario names tasks (`depends_on`, `touches`, `size`, `risk`, `criteria`, `budget`, `lands_to`,
+`branch`: default `task/<id>`),
 the policy tier and its `forbid`/`ask`/`budgets`, its grants (`grant`, or `grants` for several,
 e.g. a work grant and a separate merge grant; each validated against the grant contract), the
-supervisor's caps, the merge queue's `queue_targets` (default every branch), the
-human's behaviour (`on_integration: merge|hold`), and faults: `concurrent_claims` (a rival runtime),
+supervisor's caps, the evaluator's and the reviewer's latency and reject rate, the merge queue's
+`queue_targets` (default every branch), the human's behaviour (`on_integration: merge|hold`), and faults: `concurrent_claims` (a rival runtime),
 `crash`, `lost_events`, `duplicate_wakes`, `unknown_signals`, `no_progress`, `budget_exhaustion`,
 `semantic_conflict`, `evaluator_rejection`, `grant_expiry`, `merge_without_grant`, `ask`, `wall`,
 `question` (`grant_expiry.grant` names the one grant to expire; default every one). Unknown keys
@@ -89,15 +102,17 @@ spec gate).
 
 | Invariant | Holds that |
 |---|---|
-| `one-owner-per-claimed-task` | a claimed task has one owner from a CAS claim; one author session holds it; only the owner commits |
+| `one-owner-per-claimed-task` | a claimed task has one owner, from the claim that created its branch on the remote (the new-ref compare-and-swap); a claim anywhere else is a violation; one author session holds it; only the owner commits |
+| `approval-bound-to-head` | approve-pr is a forge event bound to the PR head and the task branch's version, never a commit; nothing lands on an approval a later commit voided |
+| `status-where-it-lives` | in-flight status is committed on the task branch while it exists; `merged` and `integrated` only on the target, by the landing actor; no agent but the merge role writes the protected branch |
 | `transitions-allowed` | every status change is a `workflow.yaml` transition from its from-state by a listed role, or the orchestrator under a live grant of its `grant`; reasons where needed; humans are humans |
-| `guards-hold` | the transition's guards hold on the evidence (deps merged, an integrated dependency counting only in the same epic; checks green, criteria met and named in tests, independent review, independent verification by the evaluator for risk medium and up, lands on the protected or the integration branch as `lands_to` says, mechanical-only, merged checks green, integration landed, question answered); a grant adds its grant guards |
+| `guards-hold` | the transition's guards hold on the evidence (deps merged, an integrated dependency counting only in the same epic; checks green, criteria met and named in tests, independent review (the reviewer role's pass on the current head), independent verification (the evaluator role's pass on the current head, every task), lands on the protected or the integration branch as `lands_to` says, mechanical-only, merged checks green, integration landed, question answered); a grant adds its grant guards |
 | `human-gates-by-humans` | gates are passed by a human approver, or by the orchestrator under a live grant where the gate is grantable |
 | `signals-never-advance-workflow` | a commit decided on a runtime signal is one the evidence and authority justify on their own |
 | `attention-consistent` | records carry attention only; needs-human names the next action; complete only when the human has nothing left |
 | `merge-requires-authority` | a change lands on a branch only by the merge role, a human, or the orchestrator under a merge grant live when it decided for that exact branch; an agent lands only with its `land`/`integrate` commit and after checks on the merged result of that head; with an approval of that head by a human or such a grant, plus `authority.yaml`'s `always_requires`, and never over a semantic conflict or red merged checks |
 | `lanes-disjoint` | claimed tasks never have overlapping `touches` |
-| `cap-workers`, `cap-depth`, `cap-run`, `cap-spend` | workers, delegation depth, per-run turns and spend, per-task and runtime budgets |
+| `cap-workers`, `cap-depth`, `cap-run`, `cap-spend` | workers (authors, evaluators and the readers they start; the runtime refuses a reader when every slot is taken), delegation depth, per-run turns and spend, per-task and runtime budgets |
 | `no-progress-stops` | after a stalled run or a ceiling, no rerun until a human decides |
 | `merged-criteria-covered` | a merged task has a test naming every criterion on the landed head |
 | `asks-surface-to-human` | only a human answers a prompt; unattended, an ask is a denial; every prompt and denial reaches the human as needs-human |
@@ -106,14 +121,32 @@ spec gate).
 | `contracts-valid` | every run-record, return, grant and task record produced validates |
 
 Transition tables, roles, gates, guards, side states, the merge requirements and the claimed statuses
-are read from `state-machines/*.yaml` and the task schema. `--break <mutation>` swaps in one of 19
+are read from `state-machines/*.yaml` and the task schema; a guard the simulator has no evidence
+model for is an error, never a pass. `--break <mutation>` swaps in one of 25
 deliberately broken supervisors (`--list` names them); the tests run each, plus four broken world
 bindings (bypass that skips walls, a forge without CAS, a merge queue that resolves semantic
 conflicts, no branch protection), and require the named invariant to catch it. Among them:
 `cross-epic-integrated` (a dependent in another epic treats an integrated dependency as merged:
-`guards-hold`, deps-merged), `finalize-unverified` (a risk-medium PR marked ready with no evaluator
-verdict: `guards-hold`, independent-verification) and `land-without-grant` (the orchestrator lands a
+`guards-hold`, deps-merged), `finalize-unverified` (a PR marked ready with no evaluator
+verdict: `guards-hold`, independent-verification), `approve-over-reviewer` (the evaluator's pass
+taken as the review while the reviewer requested changes on that head: `guards-hold`,
+independent-review), and the three that put status in the wrong place: `claim-on-default` (a claim
+committed to the default branch: `one-owner-per-claimed-task`, `status-where-it-lives`),
+`terminal-on-task-branch` (`integrated` written on the task branch: `status-where-it-lives`) and
+`land-on-stale-approval` (a fix pushed after the approval and landed on it, with the forge's
+protection off: `approval-bound-to-head`, `merge-requires-authority`) and `land-without-grant` (the orchestrator lands a
 change no merge grant of its covers: `transitions-allowed`, `merge-requires-authority`).
+
+`--supervisor <module>` replaces the built-in supervisor with a runtime's own, so a binding is tested
+against the same invariants: the module's default export is a factory `({ runtime, sc }) => ({ name,
+onEvent(note, api) })`, the shape `orchestrating()` in `tools/lib/sim/policies.mjs` returns. On every
+wake (`note`: `start`, `checkin`, `signal`, `ci`, `webhook`, `notice`) it reads `api.view()` (tasks
+with their specs, PRs, its sessions and ended runs, decisions, prompts, grants and `grantHas`,
+spend, records) and acts only through `api.dispatch(task, {mode, caps, claimable})`,
+`api.evaluate(task, {caps})`, `api.commit(task, {transition, to, …})` (as the orchestrator, under its
+grants), `api.record(task, {attention, summary, next_action, item, questions})`,
+`api.consume(session)`, `api.merge(task)` and `api.answerPrompt(id, decision)` (which the invariants
+catch: only a human answers). It cannot reach the forge or the human directly.
 
 Output: `.sim-out/<scenario>-seed<n>.jsonl` (one event per line: time, actor, task, the commits it
 applied, effects, violations), `.summary.json` (merged, parked, needs-human, spend, makespan,
@@ -163,6 +196,22 @@ Goldens: `fixtures/compile-policy/golden/expected/<engine>-<profile>/`, each wit
 `fixtures/compile-policy/dotfiles/agent-policy.yaml` restates the user's Claude settings for the diff
 test; stagehand's `herdr.rules` round-trips through the Codex compiler when the checkout is present.
 
+## grant
+
+`harness grant verify <grant.yaml>... [--git] [--owners a,b] [--identities <file>] [--root <dir>]`
+answers "may a coordinator act under this file?" (`state-machines/authority.yaml` lifecycle.issue):
+the grant contract, schema and named checks; the file is under `.orchestrator/grants/` and not a
+draft under `drafts/` (`grant-on-protected-path`, `grant-is-draft`); `granted_by`, each
+`narrowed[].by` and `revoked_by` are owners of that path, read from the project's CODEOWNERS (the
+last matching rule, as the forges read it) or `--owners` (`granted-by-is-owner`,
+`narrowed-by-owner`); `narrowed[]` only narrows (`narrowing-only-narrows`, also a validator check).
+`--git` reads the file's history: its last commit is by `granted_by` (`committed-by-granter`; an
+author matches a handle by name, email local part or the `--identities` map), every commit touching
+it is by an owner, the issued fields equal the issuing commit's (`issued-fields-unchanged`),
+`narrowed[]` was only appended to (`narrowing-append-only`), and a commit `source` names exists
+(`source-resolves`). The grant in force (issued minus narrowing) is `effectiveGrant()` in
+`tools/lib/grant.mjs`, which the simulator uses too.
+
 ## lock
 
 `harness lock [--lock toolkit.lock]` fills each entry's `commit`, `tree` (the git tree id of `path`)
@@ -188,7 +237,10 @@ named. The router sees only installed, non-deprecated skills' names and descript
 loader would. It reports failures and per-skill precision and recall. `--runs <k>` asks k times per
 case and passes a case only when all k pass (pass^k); `--model <label>` names the model; `--out
 <routing-results….jsonl>` writes one result per case in the evidence contract's `routingResult`
-shape, which `harness validate` checks and an evidence entry cites as its measured source. Ported from agentic-template's
+shape, which `harness validate` checks and an evidence entry cites as its measured source. `--cases <file>` reads
+each skill's cases from `evals/<file>` instead of `routing.jsonl` (the held-out cases are `heldout.routing.jsonl`);
+`--set <name>` installs only that set of the folder holding a `SETS.yaml` (other folders, a pinned pack, stay
+whole), so a set's routing is measured with what it actually loads. Ported from agentic-template's
 `scripts/skill-evals.mjs`. Tests use `fixtures/eval-routing/fake-router.mjs`; no test calls a model.
 
 ## import-evals

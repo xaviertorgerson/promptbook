@@ -7,7 +7,9 @@ snapshot. A transcript or a session id is a hint. Never replay old handoffs.
 
 1. Human messages and decisions recorded with their source (authority, intent).
 2. Git and the forge: commits, branches, PR heads, reviews, required checks (what happened).
-3. Task files: status, owner, agent log, working notes (where the work stands).
+3. Task files: status, owner, agent log, working notes (where the work stands), read where each
+   status lives: a claimed task's on its branch head (`git ls-remote --heads` lists the claims), a
+   landed one's on its target, the rest on the default branch.
 4. Worker answers and returns (their conclusions; verify consequential ones).
 5. Runtime signals and saved attention (observations only).
 
@@ -26,7 +28,8 @@ snapshot. A transcript or a session id is a hint. Never replay old handoffs.
 | the current head failed evaluation (or a code review requested changes) | working, next_role author | route the recorded findings to the author |
 | task `in-progress`, branch has commits after the base, no PR | working, next_role author | resume or restart the author from the branch and agent log |
 | task `in-progress`, owner is this runtime, no commits, no live worker | working | the claim stands; restart the author on the same branch |
-| task `ready` but the record says working | working → re-check | the claim never landed: retire the worker, audit the checkout, select again |
+| task `ready` and no branch on the remote, but the record says working | working → re-check | the claim never landed: retire the worker, audit the checkout, select again |
+| task branch exists, the default branch's copy says `ready` | follow the branch head | the default branch is stale for every in-flight task by design; never "fix" it |
 | task `blocked`, `needs-input` or `suspended` | needs-human | the parked reason, verbatim, as next_action |
 | owner changed to a human | complete for orchestration | stop the worker after it commits; record the take-over |
 | record and task disagree in another way | needs-human | name the disagreement |

@@ -1,0 +1,13 @@
+# A free-text narrowing: nothing says what it removed, so nothing can check it narrowed.
+id: GRANT-12
+granted_by: maria
+granted_to: { role: orchestrator }
+granted_at: "2026-10-01T08:00:00Z"
+source: "https://forge.example.com/acme/billing/issues/211#issuecomment-1"
+scope: { objective: Deliver the invoicing epic, repositories: [acme/billing] }
+actions: [select-tasks]
+limits: { max_workers: 2, budget: { max_usd: 20 } }
+expires_at: "2026-10-15T08:00:00Z"
+revocable: true
+narrowed:
+  - { at: "2026-10-03T10:00:00Z", by: maria, reason: tightened it }

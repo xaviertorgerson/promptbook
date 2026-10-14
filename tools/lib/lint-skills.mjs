@@ -325,14 +325,142 @@ export function lintSkills(targets, opts = {}) {
     overlaps.push({ severity: 'warning', rule: 'description-budget', score: total, message: `the ${skills.length} descriptions total ${total} characters, over the ${limits.descriptionBudget} an engine may keep loaded (2% of context or 8000 characters); longest: ${longest.join(', ')}` });
   }
 
-  const all = [...skills.flatMap((s) => s.findings), ...overlaps];
+  // 9. Install sets: a folder of skills that holds SETS.yaml has every set checked against it.
+  const sets = [];
+  for (const t of [...new Set(targets.map((x) => path.resolve(x)))]) {
+    const file = path.join(t, SETS_FILE);
+    if (!fs.existsSync(file)) continue;
+    const here = skills.filter((s) => path.dirname(s.dir) === t);
+    sets.push(lintSets(file, here, { externalDirs: opts.externalDirs ?? {} }));
+  }
+
+  const all = [...skills.flatMap((s) => s.findings), ...overlaps, ...sets.flatMap((x) => x.findings)];
   const counts = { skills: skills.length, error: all.filter((x) => x.severity === 'error').length, warning: all.filter((x) => x.severity === 'warning').length };
   for (const s of skills) s.status = s.findings.some((x) => x.severity === 'error') ? 'FAIL' : 'PASS';
   return {
     skills: skills.map(({ dir, name, status, findings, description, deprecated }) => ({ dir, name, status, deprecated, description, findings })),
     overlaps,
+    sets,
     counts,
   };
+}
+
+// ------------------------------------------------------------------------------------- install sets
+
+// skills/SETS.yaml names what a machine (scope user) or a project (scope project) installs, and what
+// a session loads beside it (loaded_with: other sets, externals); scope library is the whole
+// library, never installed. Every installed set, with what it is loaded with, stays within the
+// always-loaded budget less its headroom.
+export const SETS_FILE = 'SETS.yaml';
+const SET_SCOPES = ['user', 'project', 'library'];
+
+export function loadSets(file) {
+  const errors = [];
+  let data;
+  try { data = parseYamlText(readText(file)); } catch (e) { return { data: null, errors: [`not YAML: ${e.message}`] }; }
+  const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
+  const strings = (v) => Array.isArray(v) && v.every((x) => typeof x === 'string');
+  if (!isObj(data)) return { data: null, errors: ['a mapping with budget, external and sets'] };
+  for (const k of Object.keys(data)) if (!['budget', 'external', 'sets'].includes(k)) errors.push(`${k}: unknown key (budget, external, sets)`);
+  if (!isObj(data.budget) || !Number.isInteger(data.budget.limit) || !(data.budget.headroom >= 0 && data.budget.headroom < 1)) errors.push('budget: { limit: <characters>, headroom: <0..1> }');
+  for (const [n, e] of Object.entries(data.external ?? {})) {
+    if (!isObj(e) || !strings(e.skills) || !Number.isInteger(e.chars)) errors.push(`external.${n}: { source, commit, skills: [names], chars: <measured> }`);
+    for (const k of Object.keys(e ?? {})) if (!['source', 'commit', 'skills', 'chars'].includes(k)) errors.push(`external.${n}.${k}: unknown key`);
+  }
+  if (!isObj(data.sets) || !Object.keys(data.sets).length) errors.push('sets: a mapping of set names');
+  for (const [n, s] of Object.entries(data.sets ?? {})) {
+    if (!isObj(s)) { errors.push(`sets.${n}: a mapping`); continue; }
+    for (const k of Object.keys(s)) if (!['scope', 'about', 'skills', 'includes', 'loaded_with'].includes(k)) errors.push(`sets.${n}.${k}: unknown key (scope, about, skills, includes, loaded_with)`);
+    if (!SET_SCOPES.includes(s.scope)) errors.push(`sets.${n}.scope: one of ${SET_SCOPES.join(', ')}`);
+    for (const k of ['skills', 'includes', 'loaded_with']) if (s[k] !== undefined && !strings(s[k])) errors.push(`sets.${n}.${k}: a list of names`);
+    if (!s.skills?.length && !s.includes?.length) errors.push(`sets.${n}: names skills or includes other sets`);
+  }
+  return { data: errors.length ? null : data, errors };
+}
+
+// The harness skill names a set installs (its skills and those of the sets it includes).
+export function setSkills(data, name, stack = []) {
+  const s = data.sets[name];
+  if (!s || stack.includes(name)) return new Set();
+  const out = new Set(s.skills ?? []);
+  for (const inc of s.includes ?? []) for (const x of setSkills(data, inc, [...stack, name])) out.add(x);
+  return out;
+}
+
+// What a session holding this set loads: [{ from, name, chars }], the set's skills, then each
+// loaded_with set's, then each external's (read from its checkout when one is given, else the
+// measured chars).
+export function setLoad(data, name, chars, { externalDirs = {} } = {}) {
+  const parts = [];
+  const seen = new Set();
+  const addSet = (n) => { for (const sk of setSkills(data, n)) if (!seen.has(sk)) { seen.add(sk); parts.push({ from: n, name: sk, chars: chars.get(sk) ?? 0 }); } };
+  addSet(name);
+  for (const w of data.sets[name]?.loaded_with ?? []) {
+    if (data.sets[w]) addSet(w);
+    else if (data.external?.[w]) {
+      const e = data.external[w];
+      const dir = externalDirs[w];
+      if (dir && fs.existsSync(dir)) {
+        for (const d of skillsUnder(dir)) {
+          const { data: fm } = loadFrontmatter(path.join(d, 'SKILL.md'));
+          if (!e.skills.includes(fm?.name ?? path.basename(d))) continue;
+          parts.push({ from: w, name: fm?.name ?? path.basename(d), chars: typeof fm?.description === 'string' ? fm.description.length : 0 });
+        }
+      } else parts.push({ from: w, name: `${w} (${e.skills.length} skills, measured at ${e.commit})`, chars: e.chars, count: e.skills.length });
+    }
+  }
+  return { parts, total: parts.reduce((a, p) => a + p.chars, 0) };
+}
+
+// --budget-set <name>: one set of a SETS.yaml, as budgetSet reports a file (what a session holding
+// it loads, against the budget less its headroom; over it is an error, set-over-budget).
+export function budgetSetByName(setsFile, name, { externalDirs = {} } = {}) {
+  const { data, errors } = loadSets(setsFile);
+  if (!data) throw new Error(`${setsFile}: ${errors.join('; ')}`);
+  if (!data.sets[name]) throw new Error(`${setsFile} has no set ${name} (sets: ${Object.keys(data.sets).join(', ')})`);
+  const dir = path.dirname(setsFile);
+  const skills = skillDirs(dir).map((d) => { const { data: fm } = loadFrontmatter(path.join(d, 'SKILL.md')); return { name: path.basename(d), chars: typeof fm?.description === 'string' ? fm.description.length : 0 }; });
+  const load = setLoad(data, name, new Map(skills.map((s) => [s.name, s.chars])), { externalDirs });
+  const limit = Math.floor(data.budget.limit * (1 - data.budget.headroom));
+  const findings = [];
+  if (data.sets[name].scope !== 'library' && load.total > limit) findings.push({ severity: 'error', rule: 'set-over-budget', message: `${name} loads ${load.total} characters, over ${limit} (${data.budget.limit} less ${Math.round(data.budget.headroom * 100)}% headroom)` });
+  if (data.sets[name].scope === 'library') findings.push({ severity: 'warning', rule: 'set-not-installed', message: `${name} is the library scope: nothing installs it whole (${load.total} of ${limit})` });
+  return { file: `${path.resolve(setsFile)}#${name}`, skills: load.parts.map((p) => ({ name: p.name, from: p.from, chars: p.chars, count: p.count ?? 1 })), total: load.total, limit, findings };
+}
+
+export function lintSets(file, skills, { externalDirs = {} } = {}) {
+  const findings = [];
+  const f = (severity, rule, message) => findings.push({ severity, rule, file: path.basename(file), message });
+  const { data, errors } = loadSets(file);
+  for (const e of errors) f('error', 'sets-shape', e);
+  if (!data) return { file, findings, sets: [] };
+  const chars = new Map(skills.map((s) => [s.name, s.description.length]));
+  const names = new Set(skills.map((s) => s.name));
+  for (const [n, s] of Object.entries(data.sets)) {
+    for (const sk of s.skills ?? []) if (!names.has(sk)) f('error', 'sets-known', `sets.${n} names ${sk}, which is no skill here`);
+    for (const inc of s.includes ?? []) if (!data.sets[inc]) f('error', 'sets-known', `sets.${n} includes ${inc}, which is no set`);
+    for (const w of s.loaded_with ?? []) if (!data.sets[w] && !data.external?.[w]) f('error', 'sets-known', `sets.${n} is loaded with ${w}, which is no set or external`);
+  }
+  // Each skill belongs to exactly one set's own list, and some installable set installs it.
+  const owner = new Map();
+  for (const [n, s] of Object.entries(data.sets)) for (const sk of s.skills ?? []) {
+    if (owner.has(sk)) f('error', 'sets-disjoint', `${sk} is listed by both ${owner.get(sk)} and ${n}: list a skill in one set and include that set`);
+    else owner.set(sk, n);
+  }
+  const installed = new Set(Object.entries(data.sets).filter(([, s]) => s.scope !== 'library').flatMap(([n]) => [...setSkills(data, n)]));
+  for (const sk of names) if (!installed.has(sk)) f('error', 'sets-cover', `${sk} is in no user or project set, so nothing installs it`);
+  const out = [];
+  const limit = Math.floor(data.budget.limit * (1 - data.budget.headroom));
+  for (const [n, s] of Object.entries(data.sets)) {
+    const load = setLoad(data, n, chars, { externalDirs });
+    out.push({ name: n, scope: s.scope, skills: setSkills(data, n).size, ...load, limit });
+    if (s.scope === 'library') continue;
+    if (load.total > limit) {
+      const by = Object.entries(load.parts.reduce((m, p) => ({ ...m, [p.from]: (m[p.from] ?? 0) + p.chars }), {})).map(([k, v]) => `${k} ${v}`).join(', ');
+      f('error', 'set-over-budget', `${n} (${s.scope}) loads ${load.total} characters with what it is loaded with (${by}), over ${limit}: the ${data.budget.limit}-character budget less ${Math.round(data.budget.headroom * 100)}% headroom; split the set or shorten its descriptions`);
+    }
+  }
+  return { file, findings, sets: out };
 }
 
 // ------------------------------------------------------------------------------------- budget set

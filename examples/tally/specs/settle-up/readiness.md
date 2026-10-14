@@ -1,9 +1,8 @@
 ---
 epic: "settle-up"
-generated_at: "2026-10-13T21:05:57Z"
 generator: "harness/validate@1.0.0"
 adoption: "full"
-epic_status: "draft"
+epic_status: "in-progress"
 verdict: "ready"
 counts:
   error: 0
@@ -31,7 +30,7 @@ gaps: []
 
 ## Verdict
 
-**ready** — epic status `draft`, full adoption: 0 error(s), 0 warning(s).
+**ready** — epic status `in-progress`, full adoption: 0 error(s), 0 warning(s).
 
 ## Coverage
 

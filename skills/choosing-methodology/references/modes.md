@@ -8,7 +8,8 @@ invariants. A mode adds guards to transitions; it never adds states and never re
 
 - Walls: policy denies and project hooks hold in every mode.
 - A human approves the spec (the plan) and production releases; merge stays human unless a grant says otherwise.
-- An independent evaluator before `human-review`, mandatory for risk medium and up.
+- An independent evaluator's verdict before `human-review`, on every task; risk sets its trials
+  and model family.
 - Every acceptance criterion id named in a test before `review` (code work).
 - Turn, spend and no-progress caps on every unattended run.
 

@@ -1,6 +1,7 @@
 # Eight tasks, four of them sharing src/billing/** in different spellings (a directory glob, a file, a
 # pattern), with four workers available. Overlapping tasks must run as one lane; disjoint ones in
-# parallel. A rival runtime with its own coder races every claim (compare-and-swap on the task file).
+# parallel. A rival runtime with its own coder races every claim: each pushes the task's branch as a
+# new ref, and the forge rejects the second (the compare-and-swap).
 name: parallel-overlap
 description: Overlapping touches form one lane; two runtimes race for the same ready tasks.
 seed: 2

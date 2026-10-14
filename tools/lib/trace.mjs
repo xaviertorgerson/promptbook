@@ -210,9 +210,17 @@ export function trace(root, opts = {}) {
   }
 
   // ---------------------------------------------------------------- tests
+  // No test file is a warning only while nothing claims to be tested: a glob the caller named that
+  // matches nothing, or a task at review or later with no test file at all, is a blocking error
+  // (and each such task's criteria are reported uncovered below).
   const testsPresent = p.testFiles.length > 0;
   if (!testsPresent) {
-    gap({ rule: 'tests-exist', severity: 'warning', subject: 'tests', message: `no test file matches ${p.testGlobs.length} glob(s); criterion coverage is not checked (as agentic-template's ears-coverage does in status mode)`, file: null, line: null });
+    const explicit = opts.testGlobs !== undefined;
+    const late = [...allTasks.values()].filter((t) => EVIDENCED_TASK.has(t.status)).map((t) => t.id);
+    const what = explicit ? `--tests ${p.testGlobs.join(' ')} matched no file` : `no test file matches the ${p.testGlobs.length} default glob(s)`;
+    const why = late.length ? `; ${late.join(', ')} ${late.length > 1 ? 'are' : 'is'} at review or later, so no test evidences ${late.length > 1 ? 'their' : 'its'} criteria` : explicit ? '' : '; criterion coverage is checked once a task reaches review';
+    const severity = explicit || late.length ? 'error' : 'warning';
+    gap({ rule: 'tests-exist', severity, subject: 'tests', message: `${what}${why}`, file: null, line: null, ...(severity === 'error' ? { blocks_readiness: true } : {}) });
   }
   // Criterion evidence. A test name that carries a task id is qualified: it counts for the tasks it
   // names, never another. A bare AC-n counts only for the one task of its epic with that id; when
@@ -285,7 +293,6 @@ export function trace(root, opts = {}) {
       }
       for (const c of t.criteria) {
         cov.criteria.total += 1;
-        if (!testsPresent) { evidence.push({ task: t.id, criterion: c.id, evidence: 'none' }); continue; }
         const qualified = namesOf(c.id).some((i) => nameTasks.get(t.id).has(i));
         const bare = bareNamesOf(c.id).length > 0;
         const kind = qualified ? 'qualified' : !bare ? 'none' : sharing.get(c.id).length === 1 ? 'bare' : 'ambiguous';
@@ -495,4 +502,33 @@ export function renderReadiness(result, epic, { now = new Date().toISOString(), 
     '',
   ];
   return lines.join('\n');
+}
+
+// Committed readiness reports against the plan as it is now (trace --readiness <dir> --check): each
+// epic's report is rendered in its committed form (no generated_at, no source_commit) and compared
+// byte for byte. [{ epic, file, status: ok | missing | stale | timestamped | orphan, line?, expected?,
+// found? }]; a report with no epic behind it is an orphan.
+export function checkReadiness(result, dir) {
+  const out = [];
+  const epics = new Set(result.epics.map((e) => e.epic));
+  for (const e of result.epics) {
+    const file = path.join(dir, e.epic, 'readiness.md');
+    if (!exists(file)) { out.push({ epic: e.epic, file, status: 'missing' }); continue; }
+    const found = readText(file);
+    const expected = renderReadiness(result, e.epic, { now: null });
+    if (found === expected) { out.push({ epic: e.epic, file, status: 'ok' }); continue; }
+    const fm = loadFrontmatterMarkdown(found).records[0]?.data ?? {};
+    if (fm.generated_at || fm.source_commit) { out.push({ epic: e.epic, file, status: 'timestamped' }); continue; }
+    const [a, b] = [splitLines(expected), splitLines(found)];
+    const i = a.findIndex((l, k) => l !== b[k]);
+    const line = i === -1 ? Math.min(a.length, b.length) + 1 : i + 1;
+    out.push({ epic: e.epic, file, status: 'stale', line, expected: a[line - 1] ?? '(end of file)', found: b[line - 1] ?? '(end of file)' });
+  }
+  if (exists(dir)) {
+    for (const name of fs.readdirSync(dir)) {
+      const file = path.join(dir, name, 'readiness.md');
+      if (!epics.has(name) && exists(file)) out.push({ epic: name, file, status: 'orphan' });
+    }
+  }
+  return out;
 }

@@ -59,7 +59,7 @@ for the human. They move separately: no row below moves a status on a signal.
 | 6 | Ranked quality attributes, ADR-0001..0004; ADR-0001 (tenancy) is the one-way door, decided | choosing-architecture | `DECISIONS.md`, `ARCHITECTURE.md` | one-way door accepted · dana | L2 |
 | 7 | Epic mode `spec-driven`; no task overrides it | choosing-methodology | `spec.md` frontmatter | — | L2 |
 | 8 | Four tasks: SPLIT-1 the skeleton and root; SPLIT-2 and SPLIT-3 share `migrations/**`, so ordered; SPLIT-4 its own lane; `lands_to`, `risk`, `evaluator`, `budget` on each | planning-work | `specs/settle-up/tasks/SPLIT-{1..4}.md` | — | L2 |
-| 9 | Trace check at the gate: ready, 0 gaps, 17/17 criteria named in tests | checking-plan-readiness | `specs/settle-up/readiness.md` (generated) | — | L3 tool |
+| 9 | Trace check at the gate: ready, 0 gaps, 17/17 criteria named in tests; the report is committed `--no-timestamp` and regenerated with the plan | checking-plan-readiness | `specs/settle-up/readiness.md` (generated) | `trace --readiness specs --check` in CI | L3 tool |
 | 10 | **Gate 1, spec-approval**: epic draft → approved → in-progress; tasks spec-draft → ready | — | `spec.md`, task files | spec-approval · dana | L2 |
 | 11 | Pin the harness (local, `main`@f88aec2) and Skilldex (`fc572b6`) | adopting-harness | `toolkit.lock` | `lock --check` in CI | L2 → L3 |
 | 12 | Delegate: GRANT-1 (select-tasks, approve-plan, dispose-findings; 3 workers; SPLIT-1 excluded) and GRANT-2 (merge into `integration/settle-up` only); both expire 2026-10-27 | delegating-authority | `.orchestrator/grants/GRANT-{1,2}.yaml` | issued · dana | L4 |
@@ -85,7 +85,7 @@ The coordinator wakes on events and a cheap check-in timer, reads the task files
 
 | # | When | Step | Skill | Artifact | Gate · passed by | Attention | Layer |
 |---|---|---|---|---|---|---|---|
-| 19 | 08:00 | Check-in: SPLIT-2 and SPLIT-4 ready, deps merged, lanes disjoint → dispatch both (2 of 3 workers); SPLIT-3 waits on the migrations lane | orchestrating-work, routing-models | claims by tally-coder (compare-and-swap); records SPLIT-2, SPLIT-4 | select-tasks · GRANT-1 | SPLIT-2, SPLIT-4 working | L4, L1 `devbox` |
+| 19 | 08:00 | Check-in: SPLIT-2 and SPLIT-4 ready, deps merged, lanes disjoint → dispatch both (2 of 3 workers); SPLIT-3 waits on the migrations lane | orchestrating-work, routing-models | claims by tally-coder: each pushes its task branch (`feat/split-2-save-once`, `feat/split-4-revoke-link`) as a new ref, the compare-and-swap; main's copies stay `ready`; records SPLIT-2, SPLIT-4 | — (dispatching ready work in priority order is mechanical; GRANT-1's `max_workers` caps it) | SPLIT-2, SPLIT-4 working | L4, L1 `devbox` |
 | 20 | 08:23 | SPLIT-4's run wants `psql` on its worktree database; `ask` under `dontAsk` is a **denial**; the run hands back instead of working around it | implementing-task, reporting-state | return `SPLIT-4-author-denied.json`; run record 2: stalled, `permission_denials: 1`; status stays in-progress | — | SPLIT-4 **needs-human** (phone push) | L1 `ci` ask → L4 |
 | 21 | 08:31 | SPLIT-2 draft PR #2 at a41c9e2; the author's return says complete | implementing-task, writing-tests | return `SPLIT-2-author-a41c9e2.json`; run record 3; → review | — | working | L4 |
 | 22 | 09:01 | **Evaluator rejects** a41c9e2: two identical submits racing both stored (AC-1) | verifying-work | verdict and return `SPLIT-2-evaluator-a41c9e2.json`; run record 4: `verdict` | independent verification failed · tally-evaluator | working | L1 `ci` (Gemini) |
@@ -93,18 +93,23 @@ The coordinator wakes on events and a cheap check-in timer, reads the task files
 | 24 | 09:24 | Author fixes it: unique index in `migrations/0002`, a race test; d8f03b7 | implementing-task | run record 5; → in-progress → review | — | working | L4 |
 | 25 | 09:53 | Evaluator passes d8f03b7. **Its done wake is lost**; the events-lost notice (10:06) makes the coordinator read a snapshot and the verdict file (10:07) | verifying-work, reporting-state | `SPLIT-2-evaluator-d8f03b7.json`; run record 6; record `signals` | independent verification · tally-evaluator | working | L4 |
 | 26 | 10:10 | The coder marks PR #2 ready: checks green, criteria met and named in tests, the evaluator's pass on this head (GRANT-1 holds no finalize) | implementing-task | run record 7; → human-review | — | working | L4 |
-| 27 | 10:25 | **Gate 2 under a grant**: the coordinator approves (independent review and required checks on d8f03b7), rebases, re-runs checks on the merged result, integrates by merge commit | landing-changes (tier 2) | → merging → **integrated**; record `decisions` | pr-approval · coordinator under GRANT-2 | SPLIT-2 **complete** | L4 |
-| 28 | 10:28 | SPLIT-3 dispatched: SPLIT-2 is integrated in the same epic, which counts; a reader maps the ledger first | orchestrating-work | claim; return `SPLIT-3-reader-ledger.json`; run record 8: the reader's, outcome `read`, status unchanged | select-tasks · GRANT-1 | SPLIT-3 working | L4 |
+| 27 | 10:25 | **Gate 2 under a grant**: the coordinator approves d8f03b7 as a forge review (the reviewer's pass, the evaluator's verdict and required checks on that head; no commit on the task branch), rebases, re-runs checks on the merged result, integrates by merge commit, which writes `integrated` into integration/settle-up's copy of SPLIT-2 | landing-changes (tier 2) | → merging → **integrated**; record `reviews` and `decisions` | pr-approval · coordinator under GRANT-2 | SPLIT-2 **complete** | L4 |
+| 28 | 10:28 | SPLIT-3 dispatched: SPLIT-2 is integrated in the same epic, which counts; a reader maps the ledger first | orchestrating-work | claim; return `SPLIT-3-reader-ledger.json`; run record 8: the reader's, outcome `read`, status unchanged | — (mechanical dispatch, as in step 19) | SPLIT-3 working | L4 |
 | 29 | 10:45 | SPLIT-2's cleanup audit is blocked: its dev server still listens on 4511 | managing-worktrees | record `resources.audit` (blocked) | — | complete | L4 |
 
 ### The snapshot — 2026-10-15 11:00
 
-| Task | Status (task file) | Attention (task record) | Why they differ |
+Each task file is shown where its status lives (`state-machines/workflow.yaml` `status_authority`):
+SPLIT-1 on `main`; SPLIT-2 on `integration/settle-up`, which the merge wrote; SPLIT-3 and SPLIT-4 on
+their task branches' heads. `main`'s copies of SPLIT-2, SPLIT-3 and SPLIT-4 still say `ready` until
+dana's merge of the integration branch carries them there and she records `promote`.
+
+| Task | Status (task file, where it lives) | Attention (task record) | Why they differ |
 |---|---|---|---|
-| SPLIT-1 | merged | complete | they agree |
-| SPLIT-2 | integrated | complete | dana's merge of the integration branch is a gate the status already shows; attention flags what she must act on now (attention.yaml) |
-| SPLIT-3 | in-progress | working | they agree |
-| SPLIT-4 | in-progress | needs-human | a denial is a question for a human; it never moves the status |
+| SPLIT-1 | merged (`main`) | complete | they agree |
+| SPLIT-2 | integrated (`integration/settle-up`) | complete | dana's merge of the integration branch is a gate the status already shows; attention flags what she must act on now (attention.yaml) |
+| SPLIT-3 | in-progress (`feat/split-3-settle-from-link`) | working | they agree |
+| SPLIT-4 | in-progress (`feat/split-4-revoke-link`) | needs-human | a denial is a question for a human; it never moves the status |
 
 ### Learn — 2026-10-15
 

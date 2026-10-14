@@ -5,7 +5,7 @@ granted_at: "2026-10-12T08:00:00Z"
 source: chat transcript 2026-10-12
 scope: { objective: Ship BILL-7, repositories: [acme/billing] }
 actions:
-  - { action: merge, repo: acme/billing, requires: [independent-review, required-checks] }
+  - { action: merge, repo: acme/billing, protected_branch: main, requires: [independent-review, required-checks] }
 limits: { max_workers: 1, budget: { max_usd: 10 } }
 expires_at: "2026-10-13T08:00:00Z"
 revocable: true

@@ -2,7 +2,7 @@
 
 ## 2026-10-13 · Routes on a 280-character description in the 8,000-character catalog
 - **Kind:** measured
-- **Source:** node tools/cli.mjs eval-routing skills <Skilldex fc572b6>/skills --skill reviewing-security --runner "<clean-context headless runner>" --json, 3 trials, 2026-10-13 (harness feat/reconcile-skills after 8816da6; runner and full table in skills/ROUTING-RESULTS.md)
+- **Source:** RR_MODEL=haiku RR_EFFORT=low node tools/cli.mjs eval-routing skills "$SKILLDEX/skills" --skill reviewing-security --runner "node router.mjs" --json, run 3 times on 2026-10-13 at harness feat/reconcile-skills after 8816da6, with $SKILLDEX a clone of https://github.com/QuentinTorg/skilldex at fc572b6 and router.mjs the runner in skills/evaluating-skills/references/engine-notes.md; per-case results in skills/routing-results-2026-10-13.jsonl, the table in skills/ROUTING-RESULTS.md
 - **Claim:** With all 28 descriptions cut to 7,899 characters and the 5 pinned Skilldex skills installed, this skill's own cases passed 36/36; precision 80%, recall 100% over every case in the catalog. The original 765-character description, same runner and cases: 36/36, precision 92%, recall 100%.
 - **Result:** Misses: none.
 - **Engine:** claude
@@ -36,7 +36,7 @@
 
 ## 2026-10-13 · Asks are not walls; only denies held in every mode
 - **Kind:** measured
-- **Source:** agentic-template DECISIONS.md ADR-0021 on branch docs/adr-permission-precedence
+- **Source:** agentic-template DECISIONS.md ADR-0021 on branch docs/adr-permission-precedence (commit c177fa1)
 - **Claim:** Under a personal bypass default, project hook and settings denies blocked in every permission mode measured; an ask prompted only interactively and was a denial headless.
 - **Result:** Step 4 flags any change that turns a deny into an ask, disables hooks or widens an unattended allowlist (scenario S4).
 - **Engine:** claude

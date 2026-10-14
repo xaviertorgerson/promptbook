@@ -29,6 +29,7 @@ export function loadMachines({ dir = STATE_DIR, registry = sharedRegistry() } = 
     roleKind: Object.fromEntries(Object.entries(workflow.roles).map(([r, v]) => [r, v.kind])),
     gates: workflow.gates,
     mergeRequires: authority.grantable.merge.always_requires,
+    statusAuthority: new Set((workflow.status_authority ?? []).map((r) => r.id)),
   };
 }
 

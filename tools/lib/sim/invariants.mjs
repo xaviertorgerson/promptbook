@@ -2,7 +2,7 @@ import { registry as sharedRegistry } from '../registry.mjs';
 import { grantHas, landingTarget, recordGrant, workerCap } from './authority.mjs';
 import { isHuman } from './machines.mjs';
 import { touchesOverlap } from './util.mjs';
-import { RUNTIME_SIGNALS, ruleMatches } from './world.mjs';
+import { RUNTIME_SIGNALS, ruleMatches, WORKER_KINDS } from './world.mjs';
 
 // The invariants checked after every event (and once at the end). Each is named, says which
 // contract rule it holds the world to, and reports { invariant, index, at, task, message } so a
@@ -10,15 +10,17 @@ import { RUNTIME_SIGNALS, ruleMatches } from './world.mjs';
 // side states and claimed statuses come from state-machines/*.yaml and the task schema.
 
 export const INVARIANTS = {
-  'one-owner-per-claimed-task': 'A claimed task has exactly one owner, set by a compare-and-swap claim; one author session at a time works it, and only its owner commits to it (workflow: claim-is-compare-and-swap; playbook: single-writer).',
+  'one-owner-per-claimed-task': 'A claimed task has exactly one owner, set by the claim that creates its task branch on the remote (a new-ref push the forge rejects when the branch exists: the compare-and-swap); a claim written anywhere else is a violation; one author session at a time works it, and only its owner commits to it (workflow: status_authority claim, claim-is-compare-and-swap; playbook: single-writer).',
+  'approval-bound-to-head': 'approve-pr is a forge event bound to the PR head and the task branch version it approved, never a commit; any later commit on the task branch voids it, and nothing lands on a void approval (workflow: status_authority gate-events).',
+  'status-where-it-lives': 'In-flight status is committed on the task branch while it exists (the default branch\'s copy otherwise); merged and integrated are written only on the target (the protected branch, or the epic\'s integration branch) by the landing actor, never on the task branch; no agent but the merge role writes the protected branch (workflow: status_authority).',
   'transitions-allowed': 'Every status change is a transition in workflow.yaml, from its from-state, by a role its `by` lists (or the orchestrator under a live grant naming the transition\'s `grant`), with a reason where it needs one; human roles are humans; owner changes only by a claim or a human (workflow: transitions-are-commits).',
-  'guards-hold': 'Every guard of the transition holds on the evidence when it is applied (deps-merged, with an integrated dependency counting only in the same epic; owner-free, draft-pr-open, checks-green, criteria-met, criteria-named-in-tests, pr-ready, independent-review, independent-verification for risk medium and up, lands-on-protected, lands-on-integration, mechanical-only, merged-checks-green, integration-landed, question-answered); a grant adds its grant_guards (workflow guards; authority: finalize, merge).',
+  'guards-hold': 'Every guard of the transition holds on the evidence when it is applied (deps-merged, with an integrated dependency counting only in the same epic; owner-free, draft-pr-open, checks-green, criteria-met, criteria-named-in-tests, pr-ready, independent-review (a reviewer-role pass on the current head), independent-verification (an evaluator-role pass on the current head, every task), lands-on-protected, lands-on-integration, mechanical-only, merged-checks-green, integration-landed, question-answered); a grant adds its grant_guards (workflow guards; authority: finalize, merge).',
   'human-gates-by-humans': 'A gate transition (workflow.yaml gates) is made by a human approver, or, where the gate is grantable, by the orchestrator under a live grant of that action (authority.yaml).',
   'signals-never-advance-workflow': 'A commit decided on a runtime signal (agent state, CI result, events-lost notice) is still one the evidence and the actor\'s authority justify on their own; a wake is a hint (attention.yaml: signals-never-advance-workflow).',
   'attention-consistent': 'Task records carry attention only (working, needs-human, complete); needs-human names the next action; complete names none and is recorded only once the evidence shows nothing is left for the human (attention.yaml: idle-is-not-complete).',
-  'merge-requires-authority': 'A change lands on a branch (the protected target, or an epic\'s integration branch) only by the merge role, a human, or the orchestrator under a merge grant live when it decided for that exact branch; an agent lands only together with its land or integrate commit and after checks on the merged result of that head; with an approval of the landed head by a human or by the orchestrator under such a grant, an independent passing review of that head and green checks; never over a semantic conflict or red merged checks (authority.yaml merge; playbook: landing-changes).',
+  'merge-requires-authority': 'A change lands on a branch (the protected target, or an epic\'s integration branch) only by the merge role, a human, or the orchestrator under a merge grant live when it decided for that exact branch; an agent lands only together with its land or integrate commit and after checks on the merged result of that head; with an approval of the landed head by a human or by the orchestrator under such a grant, a reviewer-role pass on that head (independent-review) and green checks; never over a semantic conflict or red merged checks (authority.yaml merge; playbook: landing-changes).',
   'lanes-disjoint': 'Claimed tasks (in-progress through merging) never have overlapping touches: overlapping tasks are one lane and run in sequence (playbook: single-writer).',
-  'cap-workers': 'Live workers per runtime never exceed the supervisor\'s max_workers, nor the limits.max_workers of any live grant that delegates dispatch (select-tasks, approve-plan, dispose-findings, finalize); a merge-only grant caps nothing (playbook: budgets-and-routing).',
+  'cap-workers': 'Live workers per runtime (authors, evaluators and the readers they start) never exceed the supervisor\'s max_workers, nor the limits.max_workers of any live grant that delegates dispatch (select-tasks, approve-plan, dispose-findings, finalize); a merge-only grant caps nothing (playbook: budgets-and-routing).',
   'cap-depth': 'No helper is spawned below the delegation depth cap; helpers do not spawn helpers by default (playbook: topologies).',
   'cap-run': 'Every run is dispatched with a turn and a spend cap within the policy\'s budgets, and the runner stops it there (HAR-3).',
   'cap-spend': 'Spend per task stays within its budget (plus human raises) and the runtime\'s total within its budget or grant (playbook: budgets-and-routing).',
@@ -34,7 +36,14 @@ export const INVARIANTS = {
 const UNMODELED = new Set(['epic-approved', 'criteria-ears', 'no-blocking-question', 'requirements-cited', 'dependency-cleared', 'all-tasks-merged', 'acceptance-met', 'stage-checks-green']);
 const PARKED = new Set(['suspended', 'spec-draft', 'needs-input', 'blocked']);
 const DONE_FOR_HUMAN = new Set(['human-review', 'merging', 'integrated', 'merged']);
-const RISKY = new Set(['medium', 'high']);
+
+// The latest review of `head` by `role` (reviewer: a code review; evaluator: the verdict on the
+// criteria) passed, and its author is not the change's (workflow guards independent-review and
+// independent-verification: one role each, never interchangeable).
+export function passedBy(pr, head, role) {
+  const r = pr ? [...pr.reviews].reverse().find((x) => x.head === head && x.role === role) : null;
+  return r?.verdict === 'pass' && r.by !== pr.author;
+}
 
 export class Checker {
   constructor({ machines, registry = sharedRegistry(), only = null } = {}) {
@@ -59,15 +68,15 @@ export class Checker {
   // ------------------------------------------------------------------------------ evidence
 
   guardHolds(w, guard, c, before) {
-    const t = w.forge.tasks.get(c.task);
     const m = w.meta.get(c.task);
     const pr = w.forge.prs.get(c.task);
     const head = pr?.head;
-    const review = pr ? [...pr.reviews].reverse().find((r) => r.head === head) : null;
     switch (guard) {
+      // Read on the dependent's own target (status_authority): merged on the protected branch,
+      // integrated or merged on its integration branch.
       case 'deps-merged': return m.spec.depends_on.every((d) => {
-        const st = w.forge.tasks.get(d)?.status;
-        return st === 'merged' || (st === 'integrated' && w.meta.get(d).spec.epic === m.spec.epic);
+        const st = w.statusOn(landingTarget(w.sc, m.spec), d);
+        return st === 'merged' || (st === 'integrated' && Boolean(m.spec.lands_to));
       });
       case 'owner-free': return before.owner === null || c.actorKind === 'human';
       case 'draft-pr-open': return Boolean(pr);
@@ -75,20 +84,48 @@ export class Checker {
       case 'criteria-met': return Boolean(m.lastReturn) && m.lastReturn.head === head && m.lastReturn.criteria.unmet.length === 0;
       case 'criteria-named-in-tests': return Boolean(pr) && m.spec.criteria.every((ac) => pr.coverage.get(head)?.has(ac));
       case 'pr-ready': return Boolean(pr?.ready);
-      case 'independent-review': return review?.verdict === 'pass' && review.by !== pr.author;
-      case 'independent-verification': {
-        if (!RISKY.has(m.spec.risk.level) && !m.spec.risk.irreversible) return true;
-        const verdict = pr ? [...pr.reviews].reverse().find((r) => r.head === head && r.role === 'evaluator') : null;
-        return verdict?.verdict === 'pass' && verdict.by !== pr.author;
-      }
+      case 'independent-review': return passedBy(pr, head, 'reviewer');
+      case 'independent-verification': return passedBy(pr, head, 'evaluator');
       case 'lands-on-protected': return landingTarget(w.sc, m.spec) === w.sc.target;
       case 'lands-on-integration': return landingTarget(w.sc, m.spec) !== w.sc.target;
       case 'integration-landed': return w.forge.target.landed.includes(c.task);
       case 'mechanical-only': return w.merge.state.get(c.task)?.conflict !== 'semantic';
       case 'merged-checks-green': return w.merge.state.get(c.task)?.mergedChecks === 'green';
       case 'question-answered': return m.questionAnswered || w.forge.decisions.some((d) => d.task === c.task && d.kind === 'question');
-      default: return UNMODELED.has(guard) || Boolean(t);
+      default:
+        // A guard the simulator does not know is a gap in the model, never a pass.
+        if (UNMODELED.has(guard)) return true;
+        throw new Error(`guards-hold: no evidence model for guard ${guard} (${c.transition}); add it to invariants.mjs or UNMODELED`);
     }
+  }
+
+  // Where a status write went, against where it lives (workflow.yaml status_authority).
+  placement(w, entry) {
+    const { commit: c, before, after } = entry;
+    const out = [];
+    const target = landingTarget(w.sc, w.meta.get(c.task).spec);
+    const protectedName = w.sc.target;
+    const branch = w.taskBranch(c.task);
+    // A gate made by a forge event (workflow.yaml: approve-pr's event) is never a commit.
+    if (this.m.transitions.get(c.transition)?.event) {
+      if (!c.forgeEvent) out.push({ invariant: 'approval-bound-to-head', message: `${c.transition} was committed on ${entry.ref}: an approval is a forge event bound to the head, and a commit moves the head it approves` });
+      return out;
+    }
+    if (['merged', 'integrated'].includes(after.status) && after.status !== before.status) {
+      const want = c.transition === 'promote' ? protectedName : target;
+      if (entry.ref !== want) out.push({ invariant: 'status-where-it-lives', message: `${c.task} → ${after.status} was written on ${entry.ref}, not on the target ${want}` });
+      return out;
+    }
+    if (c.transition === 'claim') {
+      // A claim belongs on the new task branch (one-owner-per-claimed-task says so); writing it on the
+      // protected branch is also an agent writing the default branch.
+    } else if (['redo', 'respec'].includes(c.transition)) {
+      if (entry.ref !== protectedName) out.push({ invariant: 'status-where-it-lives', message: `${c.transition} hands ${c.task} back on the protected copy; it was written on ${entry.ref}` });
+    } else if (entry.branchBefore && entry.ref !== branch) {
+      out.push({ invariant: 'status-where-it-lives', message: `${c.task} is claimed (its branch ${branch} exists), but ${c.transition} → ${after.status} was written on ${entry.ref}` });
+    }
+    if (entry.ref === protectedName && c.actorKind !== 'human' && c.role !== 'merge') out.push({ invariant: 'status-where-it-lives', message: `${c.actor} (${c.role}) wrote ${c.task}'s status on the protected branch ${protectedName}; only the merge role and humans do` });
+    return out;
   }
 
   // [problems] for one applied commit: authorization and guards, as transitions-allowed /
@@ -112,8 +149,6 @@ export class Checker {
       out.push({ invariant: 'transitions-allowed', message: `${c.actor} changed the owner ${before.owner} → ${after.owner}` });
     }
     const guards = [...T.guards, ...(viaGrant ? T.grant_guards : [])];
-    // authority.yaml finalize: "once the current head passed an independent review".
-    if (viaGrant && T.grant === 'finalize') guards.push('independent-review');
     for (const g of new Set(guards)) if (!this.guardHolds(w, g, c, before)) out.push({ invariant: 'guards-hold', message: `${c.transition}: guard ${g} does not hold${viaGrant ? ' (exercised under a grant)' : ''}` });
     const gate = T.gate ? this.m.gates[T.gate] : null;
     if (gate) {
@@ -140,6 +175,11 @@ export class Checker {
       if (c.transition === 'claim' && (before.status !== 'ready' || before.owner !== null)) {
         this.report(w, ev, 'one-owner-per-claimed-task', c.task, `${c.id}: ${c.actor} claimed ${c.task} while it was ${before.status} owned by ${before.owner}`);
       }
+      const branch = w.taskBranch(c.task);
+      if (c.transition === 'claim' && !(entry.newRef && entry.ref === branch)) {
+        this.report(w, ev, 'one-owner-per-claimed-task', c.task, `${c.id}: ${c.actor} claimed ${c.task} by a commit on ${entry.ref}, not by creating ${branch} on the remote (the claim is the new-ref push)`);
+      }
+      for (const p of this.placement(w, entry)) this.report(w, ev, p.invariant, c.task, `${c.id}: ${p.message}`);
       if (c.session && c.transition !== 'claim' && before.owner !== c.actor) {
         this.report(w, ev, 'one-owner-per-claimed-task', c.task, `${c.id}: ${c.actor} committed ${c.transition} to a task owned by ${before.owner}`);
       }
@@ -153,6 +193,10 @@ export class Checker {
 
     for (const l of ev.lands) {
       if (!l.admitted) continue;
+      // A merge of a PR lands on the approval it holds: of this head, at the task branch's version.
+      if (!l.via && l.approval && (l.approval.head !== l.head || (l.approval.branchVersion ?? null) !== l.branchVersion)) {
+        this.report(w, ev, 'approval-bound-to-head', l.task, `${l.task}@${l.head} landed on ${l.target} on an approval of ${l.approval.head} at task-branch version ${l.approval.branchVersion}, now ${l.branchVersion}: a commit after the approval voids it`);
+      }
       const why = [];
       const pr = w.forge.prs.get(l.task);
       const spec = w.meta.get(l.task).spec;
@@ -179,8 +223,7 @@ export class Checker {
           if (!a.grantLive) why.push(`approved under ${g.id}, which was not live when it decided`);
           if (!grantCovers(g)) why.push(`${g.id} does not delegate merge for ${sc.repo} → ${landingTarget(sc, spec)} by ${sc.strategy}`);
           // authority.yaml grantable.merge.always_requires, whatever the grant itself lists.
-          const review = [...pr.reviews].reverse().find((r) => r.head === l.head);
-          const evidence = { 'independent-review': review?.verdict === 'pass' && review.by !== pr.author, 'required-checks': pr.checks.get(l.head) === 'green' };
+          const evidence = { 'independent-review': passedBy(pr, l.head, 'reviewer'), 'required-checks': pr.checks.get(l.head) === 'green' };
           for (const req of m.mergeRequires) if (!evidence[req]) why.push(`${req} missing for the landed head`);
         }
       }
@@ -212,7 +255,7 @@ export class Checker {
     // Caps.
     const ms = w.startMs + ev.at * 60000;
     for (const rt of w.runtimes.values()) {
-      const live = [...w.sessions.values()].filter((s) => s.runtime === rt.name && (s.kind === 'author' || s.kind === 'evaluator') && (s.state === 'running' || s.state === 'blocked'));
+      const live = [...w.sessions.values()].filter((s) => s.runtime === rt.name && WORKER_KINDS.has(s.kind) && (s.state === 'running' || s.state === 'blocked'));
       const cap = workerCap(rt.grants, ms, sc.supervisor.max_workers);
       if (live.length > cap) this.report(w, ev, 'cap-workers', null, `${rt.name}: ${live.length} live workers, cap ${cap}`, `workers-${rt.name}-${ev.index}`);
       const total = rt.spend.total;
@@ -320,6 +363,16 @@ export function exportTaskRecords(w) {
       if (g) rec.grant = g.id;
       const signals = Object.fromEntries(Object.entries(r.signals).map(([role, s]) => [role, s]));
       if (Object.keys(signals).length) rec.signals = signals;
+      // Gate events live here, not in the task file (workflow.yaml status_authority): each review,
+      // verdict and approval bound to the head it judged; an approval under a grant is a decision.
+      const pr = w.forge.prs.get(id);
+      if (pr) {
+        const outcome = (x) => (x.role === 'evaluator' ? (x.verdict === 'pass' ? 'pass' : 'fail') : x.verdict);
+        const reviews = [...pr.reviews.map((x) => ({ pr: `pr/${pr.number}`, head: x.head, outcome: outcome(x), role: x.role, by: x.by })), ...(pr.approvals ?? []).map((a) => ({ pr: `pr/${pr.number}`, head: a.head, outcome: 'pass', role: a.role, by: a.by }))];
+        if (reviews.length) rec.reviews = reviews;
+        const decisions = (pr.approvals ?? []).filter((a) => a.grant).map((a) => ({ decision: `approve-pr at ${a.head}`, source: a.grant, scope: id, at: w.iso(a.at) }));
+        if (decisions.length) rec.decisions = decisions;
+      }
       out.push(rec);
     }
   }

@@ -47,8 +47,10 @@ worktree (implementing-task); deciding how many tasks run at once (orchestrating
    integration branch, when set; else the default branch) and record its exact commit. Branch from that commit, never from
    whatever is checked out.
 4. **Create the worktree** at the derived path on the task branch (references/naming-and-resources.md):
-   new branch from the recorded commit, or the existing remote branch when resuming. One worktree
-   per branch; if one exists for this branch, reuse it after checking it is this task's.
+   new branch from the recorded commit, or the existing remote branch when resuming. The task's
+   claim is the push that creates that branch on the remote (implementing-task): a branch that
+   already exists there is someone's claim, so resume it only as its owner. One worktree per
+   branch; if one exists for this branch, reuse it after checking it is this task's.
 5. **Initialize submodules** inside the new worktree before running any git command in a submodule
    directory (until then, git acts on the parent). Keep non-target submodules at their pins; set a
    target submodule's remote and branch only after it is initialized.
@@ -72,7 +74,8 @@ worktree (implementing-task); deciding how many tasks run at once (orchestrating
     your own task branch. **Once it is shared** (a PR under review, another agent or human has it):
     merge the base into the branch, no history rewrite. A rewrite of a shared branch needs explicit
     human authorization. Record the new base commit. Conflicts here are resolved as the author's own
-    work; landing conflicts belong to landing-changes.
+    work; landing conflicts belong to landing-changes. Never refresh an approved PR: any commit on
+    the task branch after the approval voids it.
 
 **Clean up (audited, never by age or in bulk)**
 

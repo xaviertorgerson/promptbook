@@ -68,5 +68,5 @@ from the protected branch; the schema it creates (household, member, bill, share
 - 2026-10-14 dana — draft PR #1 at 3c9a1f4; AC-1..AC-5 named in tests; status → review
 - 2026-10-14 tally-evaluator — verdict pass on 3c9a1f4 (k = 2): .agent/verdicts/SPLIT-1-3c9a1f4.md
 - 2026-10-14 dana — PR #1 marked ready; status → human-review
-- 2026-10-14 dana — approved PR #1 (gate 2, pr-approval); status → merging
-- 2026-10-14 merge — landed on main@7e21c0b, merged checks green; status → merged. Staging serves the image by digest (AC-4, AC-5).
+- 2026-10-14 dana — approved PR #1 at 3c9a1f4 (gate 2, pr-approval; a forge review, not a commit); status → merging
+- 2026-10-14 merge — landed on main@7e21c0b, merged checks green; status → merged, written by the merge on main. Staging serves the image by digest (AC-4, AC-5).

@@ -39,8 +39,11 @@ merging (landing-changes).
 1. **Orient.** Read the instruction file, the task, its `guiding_docs`. If nothing is dispatchable,
    report "no ready task", name what each `ready` task waits on, and stop. Never claim a
    `spec-draft` task, never edit `depends_on`, never invent work.
-2. **Check it is claimable now.** `status: ready`; `owner: null` (or you are the human who took it
-   over); every `depends_on` merged; no unchecked Open question marked blocking; every `inputs`
+2. **Check it is claimable now.** `status: ready` and `owner: null` on the default branch's copy
+   (or you are the human who took it over), and no branch for it on the remote and no open PR (a
+   claimed task's status lives on its branch, not on the default branch); every `depends_on`
+   merged as the branch you will land on says (merged on the default branch; on your epic's
+   integration branch, integrated); no unchecked Open question marked blocking; every `inputs`
    entry present (a named secret, service or decision you cannot see is a stop, step 12). If
    `risk` is `high` or `irreversible: true` and no human is supervising this run, do not claim it:
    hand back `needs-human` with the reason.
@@ -48,11 +51,13 @@ merging (landing-changes).
    branch the grant names) and record its exact commit. Create the task's worktree on `branch` from
    that commit with managing-worktrees (minimum recipe in references/claim-and-handback.md). Run the
    project's smoke check; start from green or stop.
-4. **Claim by compare-and-swap.** In one commit, set `owner: <your identity>` and
-   `status: ready → in-progress` (transition `claim`), plus an agent-log line naming the base commit.
-   Push the task branch without force. The branch name is unique to the task, so the push is the
-   swap: if it is rejected, or the branch already exists on the remote, someone else holds the task.
-   Remove your empty worktree, re-fetch, and go back to step 1 for the next one.
+4. **Claim by creating the branch.** The claim commit is the task branch's first commit: set
+   `owner: <your identity>` and `status: ready → in-progress` (transition `claim`), plus an
+   agent-log line naming the base commit, and push the branch as a new ref, without force. The
+   branch's existence on the remote is the lock and the rejected push is the compare-and-swap: if
+   the push is rejected, or the branch already exists, someone else holds the task. Remove your
+   empty worktree, re-fetch, and go back to step 1 for the next one. Never commit the claim, or any
+   status, to the default branch: its copy says `ready` until the task lands.
 5. **Write the living plan.** Add or rewrite `## Working notes` in the task file: the plan as steps
    mapped to `AC-n`, decisions taken inside the task's scope, what changed and why, what is next.
    Rewrite it as you go; it is the plan, not a diary (the agent log is the append-only part). If
@@ -69,12 +74,15 @@ merging (landing-changes).
    and read your diff against each `AC-n`. Fix until green. This is the writer's check; it is not
    the evaluation.
 9. **Commit and publish the draft.** Small Conventional Commits with the why in the body, no AI
-   attribution, pushed to the task branch after each. Open a draft PR (PR text: the pinned
+   attribution, pushed to the task branch after each. Every status change from here on is a commit
+   to the task file on the task branch; re-read the branch head before each (a human's edit there
+   wins). Open a draft PR (PR text: the pinned
    preparing-pull-requests skill, draft mode). Set `status: in-progress → review` (transition
    `open-draft`, guard: the draft PR exists) with an agent-log line. Update Working notes.
-10. **Get the independent evaluation.** Mandatory when `risk` is `medium` or `high`: the workflow
-    guard `independent-verification` holds `mark-pr-ready` until an evaluator that did not write the
-    change records a pass on the current head. The default otherwise. Request verifying-work with
+10. **Get the independent evaluation.** Every task: the workflow guard `independent-verification`
+    holds `mark-pr-ready` until an evaluator that did not write the change records a pass on the
+    current head (risk sets its trials and model family, not whether it runs). The reviewer's code
+    review of the head is separate and does not count as the verdict. Request verifying-work with
     only the evaluator packet (task criteria, diff ref `<base>...<head>`, how to run the tests and
     the PR preview), never your transcript or Working notes. Without a subagent mechanism, end the
     run at `review` and hand back `attention: working` with "evaluation due on <head>" in the
@@ -99,8 +107,8 @@ merging (landing-changes).
 - Commits and a draft PR on the task branch; the worktree and its derived resources.
 - A `return` (contract `return`): `task`, `role: coder`, `summary` (≤ 8,000 characters),
   `artifacts`, `attention`, `decisions_needed`, `criteria` (`met`, `unmet` with reasons),
-  `verification`, `session`. `complete` only when every criterion is met and the evaluation (when
-  required) passed on the current head. Worked examples: references/handback-review.return.json,
+  `verification`, `session`. `complete` only when every criterion is met and the evaluation passed on the
+  current head. Worked examples: references/handback-review.return.json,
   references/handback-needs-input.return.json. If `harness validate` is available, run
   `node tools/validate.mjs --contract return <file>`.
 
@@ -108,7 +116,7 @@ merging (landing-changes).
 
 - **Your last transition is `review`.** Never set `human-review`, `merging` or `merged`. Marking the
   PR ready (`mark-pr-ready`) happens after a passing verdict on the current head (guard
-  `independent-verification` from risk medium), by an engineer or by a coordinator holding a live
+  `independent-verification`, every task), by an engineer or by a coordinator holding a live
   `finalize` grant. Landing is landing-changes.
 - Never push to the default or integration branch, never force-push, never approve or merge your
   own PR, never answer a permission prompt. A permission denial is a question for a human.

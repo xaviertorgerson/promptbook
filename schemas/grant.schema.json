@@ -3,16 +3,16 @@
   "$id": "https://harness.dev/schemas/grant.schema.json",
   "title": "Authority grant",
   "description": "A human delegating named decisions to a coordinator for a named scope, within limits, until an expiry. Everything not granted stays human-owned (state-machines/authority.yaml). A grant never waives repository policy, protected branches, independent review or required checks.",
-  "x-version": "1.1.0",
+  "x-version": "2.0.0",
   "x-artifacts": [
-    { "format": "yaml", "paths": [".orchestrator/grants/*.yaml", "grants/*.yaml"], "suffixes": [".grant.yaml", ".grant.yml"] }
+    { "format": "yaml", "paths": [".orchestrator/grants/*.yaml", ".orchestrator/grants/drafts/*.yaml", "grants/*.yaml"], "suffixes": [".grant.yaml", ".grant.yml"] }
   ],
   "type": "object",
   "required": ["id", "granted_by", "granted_to", "granted_at", "source", "scope", "actions", "limits", "expires_at"],
   "properties": {
     "id": { "$ref": "common.schema.json#/$defs/grantId" },
     "granted_by": {
-      "description": "The human who holds the authority being delegated.",
+      "description": "The human who holds the authority being delegated: an owner of the grants path (CODEOWNERS), who commits the live grant file (harness grant verify --git).",
       "$ref": "common.schema.json#/$defs/handle"
     },
     "granted_to": {
@@ -87,15 +87,43 @@
     "revoked_by": { "$ref": "common.schema.json#/$defs/handle" },
     "revocation_reason": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
     "narrowed": {
-      "description": "Narrowing history: each entry removes actions or scope; widening is a new grant.",
+      "description": "Narrowing history, append-only and structured: each entry removes actions or scope, or reduces limits or the expiry, of the grant in force. The issued fields stay as issued; the grant in force is them minus every entry (narrowing-only-narrows). Widening is a new grant.",
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["at", "by", "change"],
+        "x-rule": "narrowing-names-a-removal",
+        "required": ["at", "by"],
+        "anyOf": [{ "required": ["remove_actions"] }, { "required": ["remove_scope"] }, { "required": ["reduce_limits"] }],
         "properties": {
           "at": { "$ref": "common.schema.json#/$defs/dateTime" },
-          "by": { "$ref": "common.schema.json#/$defs/handle" },
-          "change": { "$ref": "common.schema.json#/$defs/nonEmptyString" }
+          "by": { "description": "A human owner of the grants path; a coordinator drafts the narrowing of its own grant and stops exercising it, and the human commits it.", "$ref": "common.schema.json#/$defs/handle" },
+          "remove_actions": {
+            "description": "Action names to drop (removing merge drops every merge action).",
+            "type": "array", "minItems": 1, "uniqueItems": true,
+            "items": { "enum": ["select-tasks", "approve-plan", "dispose-findings", "finalize", "publish-review", "merge"] }
+          },
+          "remove_scope": {
+            "description": "Entries to drop from the scope's lists; emptying a list would leave it unrestricted, so it is not a narrowing (revoke instead).",
+            "type": "object", "minProperties": 1,
+            "properties": {
+              "repositories": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/repo" } },
+              "epics": { "type": "array", "minItems": 1, "items": { "$ref": "common.schema.json#/$defs/slug" } },
+              "tasks": { "type": "array", "minItems": 1, "items": { "$ref": "common.schema.json#/$defs/taskId" } },
+              "requirements": { "type": "array", "minItems": 1, "items": { "$ref": "common.schema.json#/$defs/docRef" } }
+            },
+            "additionalProperties": false
+          },
+          "reduce_limits": {
+            "description": "New, lower limits or an earlier expiry; a higher value is widening.",
+            "type": "object", "minProperties": 1,
+            "properties": {
+              "max_workers": { "type": "integer", "minimum": 1, "maximum": 32 },
+              "budget": { "$ref": "common.schema.json#/$defs/budget" },
+              "expires_at": { "$ref": "common.schema.json#/$defs/dateTime" }
+            },
+            "additionalProperties": false
+          },
+          "reason": { "$ref": "common.schema.json#/$defs/nonEmptyString" }
         },
         "additionalProperties": false
       }
@@ -103,7 +131,7 @@
   },
   "patternProperties": { "^x-": {} },
   "additionalProperties": false,
-  "x-checks": ["grant-dates"],
+  "x-checks": ["grant-dates", "merge-target-not-protected", "narrowing-only-narrows"],
   "allOf": [
     {
       "x-rule": "revocation-names-revoker",
@@ -156,15 +184,20 @@
       "additionalProperties": false
     },
     "mergeAction": {
-      "description": "Merge authority names the repository, the target branch and the strategy, and still requires an independent review of the current head and the required checks.",
+      "description": "Merge authority names the repository, the target branch, the repository's protected branch (which the target never is: a grant lands only on a non-protected integration branch, and the protected branch is reached by a human's merge) and the strategy, and still requires the reviewer's pass on the current head and the required checks.",
       "x-rule": "merge-names-repo-target-strategy",
       "type": "object",
-      "required": ["action", "repo", "target", "strategy", "requires"],
+      "required": ["action", "repo", "target", "protected_branch", "strategy", "requires"],
       "properties": {
         "action": { "const": "merge" },
         "repo": { "$ref": "#/$defs/repo" },
         "target": {
-          "description": "One exact branch; no wildcard.",
+          "description": "One exact branch; no wildcard; never protected_branch (merge-target-not-protected).",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
+        },
+        "protected_branch": {
+          "description": "The repository's protected (default) branch as the human states it. The coordinator checks it against the forge before every merge; a target equal to it is invalid.",
           "type": "string",
           "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
         },

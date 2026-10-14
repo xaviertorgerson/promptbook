@@ -32,7 +32,7 @@ much a run may spend.**
 ## Evidence
 
 **Measured matrix** (2026-10-13 · measured · agentic-template ADR-0021 on branch
-`docs/adr-permission-precedence`; Claude Code 2.1.296, about 100 headless runs). User layer: a bypass
+`docs/adr-permission-precedence`, commit `c177fa1`; Claude Code 2.1.296, about 100 headless runs). User layer: a bypass
 default with deny rules; project layer: hook and rule `deny`/`ask`. "no-prompt" is `dontAsk`.
 
 | probe | user bypass | default | bypass flag | auto | no-prompt |
@@ -50,8 +50,10 @@ held); a project lock on bypass removed bypass even against the flag; a tool all
 a user bypass default, but did under the no-prompt mode. The interactive prompt was not measured.
 
 - 2026-10-13 · practice · ADR-0021 ships `scripts/permission-probe.mjs` to re-run the matrix on any
-  machine; every measured cell agreed with the vendor docs
-  ([DECISIONS.md](https://github.com/xaviertorgerson/agentic-template/blob/master/DECISIONS.md)).
+  machine; every measured cell agreed with the vendor docs (both on branch
+  `docs/adr-permission-precedence` at commit `c177fa1`, not yet on master:
+  [DECISIONS.md](https://github.com/xaviertorgerson/agentic-template/blob/c177fa1/DECISIONS.md),
+  [permission-probe.mjs](https://github.com/xaviertorgerson/agentic-template/blob/c177fa1/scripts/permission-probe.mjs)).
 - 2026-03-25 · vendor · auto mode: 0.4% false positives, 17% false negatives on real overeager actions
   ([Anthropic](https://www.anthropic.com/engineering/claude-code-auto-mode)).
 - 2025-10-20 · vendor · sandboxing reduced permission prompts by 84% internally

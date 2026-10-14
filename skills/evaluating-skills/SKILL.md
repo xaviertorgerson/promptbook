@@ -61,6 +61,10 @@ Copy the list into your working notes and tick it as you go.
    - About 20 cases gate a pull request; the full set runs on the default branch and when a new
      model is adopted. After a description change, run each changed skill's cases 3 times; any
      disagreement between runs is a failure.
+   - Cases a description was tuned against overstate how it routes. Keep a few per skill out of
+     tuning in `evals/heldout.routing.jsonl`, report their rate apart, and never edit a description
+     to pass one: a held-out case used for tuning is no longer held out. Run what is installed,
+     not only the whole library: the router sees one install set beside what loads with it.
 5. **Run scenarios** at pass^k. Every trial starts in a fresh checkout or sandbox and cannot read an
    earlier trial's history, transcript or commits. Grade the end state, not the sequence of steps. A
    scenario passes only when all k trials pass; report it as `n/k`, never as the best run.
