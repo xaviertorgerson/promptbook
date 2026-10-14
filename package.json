@@ -17,6 +17,7 @@
     "lint": "node tools/lint-skills.mjs",
     "simulate": "node tools/simulate.mjs",
     "compile-policy": "node tools/compile-policy.mjs",
+    "run": "node tools/run.mjs",
     "lock": "node tools/lock.mjs",
     "eval-routing": "node tools/eval-routing.mjs",
     "import-evals": "node tools/import-evals.mjs",

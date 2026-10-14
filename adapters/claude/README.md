@@ -52,7 +52,7 @@ L1 and never touches project settings. Rules:
 | `sandbox.credentials: [{path, extract?, inject_hosts?}]` | `sandbox.credentials.files: [{path, mode: "mask", extract, injectHosts}]` and `sandbox.network.tlsTerminate: {}` | Sandboxed commands read a sentinel copy and the sandbox proxy restores the real value on requests to `injectHosts`, which must also be in `network.allowedDomains` (a warning names any that is not). Masking needs the proxy to terminate TLS, and Claude honors `mask` entries and `tlsTerminate` only from user, managed or `--settings` scope, which is where this fragment goes. Requires Claude Code v2.1.221+. On macOS a masked file is blocked, not masked. A glob or directory falls back to `deny`, so the policy takes one file per entry. [sandboxing][sbx] |
 | `sandbox.credentials: [{env, inject_hosts?}]` | `sandbox.credentials.envVars: [{name, mode: "mask", injectHosts}]` | Commands and their logs never hold the real value; a `deny` for the same variable in any scope wins. [sandboxing][sbx] |
 | `profiles.<p>.sandbox`, `profiles.<p>.egress` | as above, for that profile | Merged key by key over the top-level `sandbox` and `egress` before compiling. |
-| `budgets.<tier>` | runner flags `--max-turns`, `--max-budget-usd` | No settings key; the runner reads the policy. `max_minutes` and `max_tokens` have no flag: the runner enforces them with a timeout, or the compile fails. |
+| `budgets.<tier>` | `runner.json`: `args` `--max-turns`, `--max-budget-usd`; `caps` and `enforcement` for `harness run` | No settings key. Enforced by the engine: `max_turns` (`--max-turns`) and `max_usd` (`--max-budget-usd`; "spend can overshoot by one response"), which `harness run` also checks against the result line's `num_turns` and `total_cost_usd` after the run (exit 125 on a breach). Enforced by `harness run`: `max_minutes` (`caps.timeout_seconds`, a hard kill of the run's process group, exit 124). Not enforced: `max_tokens` (a `budgets` gap). |
 | `accept_gaps` | — | Only consulted when a field cannot be represented. An entry covers the `profiles` it names; one without `profiles` covers every profile except a bypass-tier one, so the devbox's `sandbox` and `egress` gaps are accepted for it by name. |
 
 **Credential masks are not read denies.** Claude merges `Read(...)` deny rules into the sandbox's
@@ -78,7 +78,7 @@ outside the `autonomous` tier, any project-scope `defaultMode`.
   on a POSIX profile) — error, unless `accept_gaps` names `{engine: claude, field: forbid|deny_read}`;
 - a `forbid.command` whose first token is an alternatives list is expanded into one deny per
   alternative, never dropped;
-- `budgets.max_minutes` / `max_tokens` on a tier whose runner has no timeout — error.
+- `budgets.max_tokens` — no flag or setting, and `harness run` cannot meter tokens before a run ends: a `budgets` gap.
 
 ## Plugin manifest skeleton
 

@@ -451,7 +451,7 @@ describe('review finding 7: unattended, an ask Codex cannot represent is a denia
   });
 
   it('an ask on a tool with a Codex key becomes its deny; one without fails closed', () => {
-    const p = { policy_version: 1, profiles: { ci: { tier: 'unattended' } }, deny_read: ['~/.ssh/**'], forbid: [], ask: [{ tool: 'web-fetch', domain: 'docs.example.com' }, { tool: 'mcp:db:query' }, { tool: 'web-search' }], budgets: { unattended: { max_turns: 5, max_usd: 1, max_minutes: 10 } }, sandbox: { enabled: true }, accept_gaps: [{ engine: 'codex', field: 'budgets', reason: 'the runner caps the run' }] };
+    const p = { policy_version: 1, profiles: { ci: { tier: 'unattended' } }, deny_read: ['~/.ssh/**'], forbid: [], ask: [{ tool: 'web-fetch', domain: 'docs.example.com' }, { tool: 'mcp:db:query' }, { tool: 'web-search' }], budgets: { unattended: { max_turns: 5, max_usd: 1, max_minutes: 10 } }, sandbox: { enabled: true } };
     const r = compilePolicy(p, { profile: 'ci', engine: 'codex' });
     assert.ok(r.errors.some((e) => e.field === 'ask' && /web-search/.test(e.message)), JSON.stringify(r.errors));
     const ok = compilePolicy({ ...p, ask: p.ask.slice(0, 2) }, { profile: 'ci', engine: 'codex' });
@@ -460,5 +460,40 @@ describe('review finding 7: unattended, an ask Codex cannot represent is a denia
     assert.match(config(ok), /disabled_tools = \["query"\]/);
     const interactive = compilePolicy({ ...p, profiles: { ci: { tier: 'ask' } } }, { profile: 'ci', engine: 'codex' });
     assert.ok(interactive.warnings.some((w) => w.rule === 'dropped' && /web-search/.test(w.message)), 'an interactive ask is still a convenience');
+  });
+});
+
+describe('review finding 12: unattended caps are never waived; runner.json carries them for harness run', () => {
+  const tally = load(path.join(ROOT, 'examples/tally/_operator/agent-policy.yaml'));
+  const runner = (r) => JSON.parse(r.files.find((f) => f.path === 'runner.json').content);
+
+  it('every runner.json carries caps and says who enforces each', () => {
+    const want = {
+      claude: { max_turns: 'engine', max_budget_usd: 'engine', timeout_seconds: 'harness-run' },
+      codex: { max_turns: 'harness-run', max_budget_usd: 'none', timeout_seconds: 'harness-run' },
+      gemini: { max_turns: 'engine', max_budget_usd: 'none', timeout_seconds: 'harness-run' },
+    };
+    for (const engine of ENGINES) {
+      const r = compilePolicy(tally, { profile: 'ci', engine });
+      assert.equal(r.ok, true, `${engine}: ${JSON.stringify(r.errors)}`);
+      assert.deepEqual(runner(r).caps, { max_turns: 120, max_budget_usd: 4, timeout_seconds: 5400 }, engine);
+      assert.deepEqual(runner(r).enforcement, want[engine], engine);
+      assert.ok(!r.accepted.some((a) => a.field === 'budgets'), `${engine}: a budgets gap waived an unattended cap`);
+    }
+    assert.ok(runner(compilePolicy(tally, { profile: 'ci', engine: 'codex' })).args.includes('--json'), 'harness run counts Codex tool actions from --json');
+    const gem = compilePolicy(tally, { profile: 'ci', engine: 'gemini' });
+    assert.equal(JSON.parse(gem.files.find((f) => f.path === 'settings.json').content).model.maxSessionTurns, 120);
+    for (const engine of ['codex', 'gemini']) assert.ok(compilePolicy(tally, { profile: 'ci', engine }).warnings.some((w) => w.rule === 'spend-unmetered'), engine);
+    assert.deepEqual(runner(compilePolicy(tally, { profile: 'workstation', engine: 'claude' })).caps, { max_turns: null, max_budget_usd: null, timeout_seconds: null });
+  });
+
+  it('unattended on an engine with no spend flag needs max_minutes, whatever accept_gaps says', () => {
+    const { max_minutes, ...noClock } = tally.budgets.unattended;
+    const p = { ...tally, budgets: { ...tally.budgets, unattended: noClock }, accept_gaps: [...tally.accept_gaps, { engine: 'codex', field: 'budgets', reason: 'trust me' }, { engine: 'gemini', field: 'budgets', reason: 'trust me' }] };
+    for (const engine of ['codex', 'gemini']) {
+      const r = compilePolicy(p, { profile: 'ci', engine });
+      assert.ok(r.errors.some((e) => e.rule === 'unattended-caps' && /max_minutes/.test(e.message)), `${engine}: ${JSON.stringify(r.errors)}`);
+    }
+    assert.equal(compilePolicy(p, { profile: 'ci', engine: 'claude' }).ok, true, 'Claude caps turns and spend itself');
   });
 });

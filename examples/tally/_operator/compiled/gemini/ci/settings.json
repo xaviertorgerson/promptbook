@@ -22,5 +22,8 @@
       "run_shell_command(pnpm)",
       "run_shell_command(node)"
     ]
+  },
+  "model": {
+    "maxSessionTurns": 120
   }
 }

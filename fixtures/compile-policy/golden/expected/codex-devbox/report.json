@@ -35,8 +35,8 @@
     },
     {
       "field": "budgets",
-      "message": "max_usd have no documented codex exec flag (a runner timeout enforces max_minutes only)",
-      "reason": "the devbox's spend is watched by the operator, who is reachable"
+      "message": "codex reports no cost: max_usd 20 is not metered; the run is bounded by max_turns",
+      "reason": "the devbox's spend is watched by the operator, who is reachable; neither engine reports cost"
     }
   ],
   "notes": [

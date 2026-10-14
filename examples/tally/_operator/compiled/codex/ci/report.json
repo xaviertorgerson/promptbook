@@ -12,6 +12,10 @@
     {
       "rule": "allow-unsandboxed",
       "message": "allow [\"git\", [\"status\", \"log\", \"diff\", \"show\", \"branch\", \"add\", \"commit\", \"fetch\", \"pull\", \"push\", \"switch\", \"checkout\", \"worktree\"]], [\"gh\", \"pr\", [\"create\", \"view\", \"ready\", \"comment\"]] not emitted on codex: an execpolicy allow runs outside the sandbox, past deny_read and egress; the commands run sandboxed instead (accept_gaps {engine: codex, field: allow, profiles: [ci]} emits them)"
+    },
+    {
+      "rule": "spend-unmetered",
+      "message": "codex reports no cost: max_usd 4 is not metered; the run is bounded by max_turns and a hard kill at max_minutes 90"
     }
   ],
   "accepted": [
@@ -29,11 +33,6 @@
       "field": "sandbox",
       "message": "fail_if_unavailable has no documented Codex key",
       "reason": "the launcher refuses to start Codex where its sandbox is unavailable"
-    },
-    {
-      "field": "budgets",
-      "message": "max_turns, max_usd have no documented codex exec flag (a runner timeout enforces max_minutes only)",
-      "reason": "the runner stops a Codex run at the turn and spend caps from its own run records, and at max_minutes by timeout"
     }
   ],
   "notes": []

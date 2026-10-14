@@ -17,7 +17,9 @@ import { toToml } from './toml.mjs';
 //   preconditions the bypass tier (autonomous) names what keeps it safe outside the policy
 //                 (profile `requires`, never waivable) and is isolated by the policy's own sandbox
 //                 and egress deny, or by an accept_gaps entry for that field with a reason (HAR-4);
-//                 the unattended tier has the caps HAR-3 states, which accept_gaps cannot waive.
+//                 the unattended tier has the caps HAR-3 states, which accept_gaps cannot waive:
+//                 runner.json carries them for `harness run`, which enforces what the engine does
+//                 not, and an engine with no spend flag needs max_minutes for a hard kill.
 
 export const ENGINES = ['claude', 'codex', 'gemini'];
 export const BYPASS_TIER = 'autonomous';
@@ -167,6 +169,9 @@ function preflight(ctx) {
     const b = p.budgets?.unattended ?? {};
     const missing = ['max_turns', 'max_usd'].filter((k) => b[k] === undefined);
     if (missing.length) ctx.error('unattended-caps', `the unattended tier runs with turn and spend caps (HAR-3): budgets.unattended lacks ${missing.join(', ')}`);
+    else if (!ENFORCES[ctx.engine].max_budget_usd.startsWith('engine') && b.max_minutes === undefined) {
+      ctx.error('unattended-caps', `${ctx.engine} has no spend flag, so harness run bounds an unattended run's spend by a hard kill at budgets.unattended.max_minutes, which is not set (HAR-3; accept_gaps cannot waive it)`);
+    }
   }
 }
 
@@ -316,7 +321,6 @@ function emitClaude(ctx) {
   }
   if (budget.max_turns) args.push('--max-turns', String(budget.max_turns));
   if (budget.max_usd) args.push('--max-budget-usd', String(budget.max_usd));
-  if (budget.max_tokens) ctx.gap('budgets', 'max_tokens has no flag and no timeout can enforce it');
   const runner = runnerFile(ctx, args, budget);
 
   return [
@@ -329,6 +333,25 @@ function emitClaude(ctx) {
 // reads.
 const jsonFile = (path, data, kind) => ({ path, content: `${JSON.stringify(data, null, 2)}\n`, kind, data });
 
+// Who enforces each cap of a run `harness run` launches: the engine (a flag or setting the compile
+// emits), harness run itself, or nobody (said so in a spend-unmetered warning). adapters/*/README.md.
+export const ENFORCES = {
+  claude: { max_turns: 'engine', max_budget_usd: 'engine', timeout_seconds: 'harness-run' },
+  codex: { max_turns: 'harness-run', max_budget_usd: 'none', timeout_seconds: 'harness-run' },
+  gemini: { max_turns: 'engine', max_budget_usd: 'none', timeout_seconds: 'harness-run' },
+};
+
+// The run's caps from the tier's budget. max_tokens has no enforcer on any engine (a gap).
+function capsOf(ctx, budget) {
+  if (budget.max_tokens) ctx.gap('budgets', 'max_tokens has no flag or setting, and harness run cannot meter tokens before a run ends');
+  if (budget.max_usd && ENFORCES[ctx.engine].max_budget_usd === 'none') {
+    const msg = `${ctx.engine} reports no cost: max_usd ${budget.max_usd} is not metered; the run is bounded by max_turns${budget.max_minutes ? ` and a hard kill at max_minutes ${budget.max_minutes}` : ''}`;
+    if (ctx.tier === 'unattended') ctx.warn('spend-unmetered', msg);
+    else ctx.gap('budgets', msg);
+  }
+  return { max_turns: budget.max_turns ?? null, max_budget_usd: budget.max_usd ?? null, timeout_seconds: budget.max_minutes ? budget.max_minutes * 60 : null };
+}
+
 function runnerFile(ctx, args, budget) {
   return {
     generated_by: GENERATOR,
@@ -338,7 +361,8 @@ function runnerFile(ctx, args, budget) {
     tier: ctx.tier,
     ...(ctx.profile?.requires?.length ? { requires: ctx.profile.requires } : {}),
     args,
-    timeout_seconds: budget.max_minutes ? budget.max_minutes * 60 : null,
+    caps: capsOf(ctx, budget),
+    enforcement: ENFORCES[ctx.engine],
   };
 }
 
@@ -454,9 +478,10 @@ function emitCodex(ctx) {
   if (p.sandbox?.credentials?.length) ctx.gap('sandbox', `credential masks have no documented Codex key: sandboxed commands would read ${p.sandbox.credentials.map((c) => c.path ?? `$${c.env}`).join(', ')} unmasked`);
   for (const w of p.sandbox?.writable_roots ?? []) setPath(w, 'write');
 
+  // No documented turn, spend or token flag for codex exec: harness run counts tool actions in the
+  // --json event stream against max_turns, and kills the run at max_minutes.
   const budget = p.budgets?.[tier] ?? {};
-  const capped = ['max_turns', 'max_usd', 'max_tokens'].filter((k) => budget[k] !== undefined);
-  if (capped.length) ctx.gap('budgets', `${capped.join(', ')} have no documented codex exec flag (a runner timeout enforces max_minutes only)`);
+  const runnerArgs = budget.max_turns ? ['--json'] : [];
 
   const profileTable = {
     description: `Compiled from ${ctx.source} (profile ${ctx.profileName}, tier ${tier}) by ${GENERATOR}`,
@@ -480,7 +505,7 @@ function emitCodex(ctx) {
   return [
     { path: configName, content: `${header}\n${toToml(config)}`, kind: 'settings-fragment', data: config },
     { path: 'rules/harness.rules', content: rulesText, kind: 'rules', data: rules },
-    jsonFile('runner.json', runnerFile(ctx, [], budget), 'runner'),
+    jsonFile('runner.json', runnerFile(ctx, runnerArgs, budget), 'runner'),
   ];
 }
 
@@ -568,9 +593,10 @@ function emitGemini(ctx) {
   if (p.sandbox?.credentials?.length) ctx.gap('sandbox', `credential masks have no Gemini key: sandboxed commands would read ${p.sandbox.credentials.map((c) => c.path ?? `$${c.env}`).join(', ')} unmasked`);
   for (const w of p.sandbox?.writable_roots ?? []) ctx.drop('sandbox.writable_roots', { write: w }, 'container mounts are the launcher\'s job');
 
+  // model.maxSessionTurns ends a session past its turns (headless exit 53, "turn limit exceeded");
+  // there is no spend key, and harness run kills the run at max_minutes.
   const budget = p.budgets?.[tier] ?? {};
-  const capped = ['max_turns', 'max_usd', 'max_tokens'].filter((k) => budget[k] !== undefined);
-  if (capped.length) ctx.gap('budgets', `${capped.join(', ')} have no main-session key (only subagent max_turns)`);
+  if (budget.max_turns) settings.model = { maxSessionTurns: budget.max_turns };
 
   const header = `# Compiled from ${ctx.source} (profile ${ctx.profileName}, tier ${tier}) by ${GENERATOR}.\n# User-tier policy (~/.gemini/policies/); the workspace tier is disabled upstream. Tool names other than\n# read_file, glob, write_file, replace and run_shell_command are unverified (adapters/gemini).\n`;
   return [

@@ -16,5 +16,14 @@
     "--max-budget-usd",
     "5"
   ],
-  "timeout_seconds": 3600
+  "caps": {
+    "max_turns": 200,
+    "max_budget_usd": 5,
+    "timeout_seconds": 3600
+  },
+  "enforcement": {
+    "max_turns": "engine",
+    "max_budget_usd": "engine",
+    "timeout_seconds": "harness-run"
+  }
 }

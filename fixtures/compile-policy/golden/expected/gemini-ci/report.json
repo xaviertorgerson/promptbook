@@ -4,6 +4,10 @@
     {
       "rule": "dropped",
       "message": "sandbox.writable_roots write ~/.cache/pnpm dropped on gemini: container mounts are the launcher's job"
+    },
+    {
+      "rule": "spend-unmetered",
+      "message": "gemini reports no cost: max_usd 5 is not metered; the run is bounded by max_turns and a hard kill at max_minutes 60"
     }
   ],
   "accepted": [
@@ -26,11 +30,6 @@
       "field": "sandbox",
       "message": "fail_if_unavailable has no Gemini key",
       "reason": "the launcher refuses to start without the container, which mounts no gh or npm credentials"
-    },
-    {
-      "field": "budgets",
-      "message": "max_turns, max_usd have no main-session key (only subagent max_turns)",
-      "reason": "the runner enforces turns and spend from its own logs"
     }
   ],
   "notes": [

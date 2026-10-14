@@ -5,5 +5,14 @@
   "profile": "desk",
   "tier": "auto",
   "args": [],
-  "timeout_seconds": null
+  "caps": {
+    "max_turns": null,
+    "max_budget_usd": null,
+    "timeout_seconds": null
+  },
+  "enforcement": {
+    "max_turns": "engine",
+    "max_budget_usd": "engine",
+    "timeout_seconds": "harness-run"
+  }
 }

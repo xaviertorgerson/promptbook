@@ -12,6 +12,7 @@ harness <command> [args]          # package.json bin: tools/cli.mjs; or pnpm <co
   lint            skills against the authoring rules                tools/lint-skills.mjs
   simulate        the runtime contracts under faults                tools/simulate.mjs
   compile-policy  agent-policy.yaml into one engine's settings      tools/compile-policy.mjs
+  run             an engine under its runner.json and its caps      tools/run.mjs
   lock            pin or verify toolkit.lock                        tools/lock.mjs
   eval-routing    routing evals through a model command             tools/eval-routing.mjs
   import-evals    an agentic-template evals.md into the eval files  tools/import-evals.mjs
@@ -138,6 +139,12 @@ on disk beside what it wrote, not only on stderr:
 | Engine | Files |
 |---|---|
 | claude | `settings.json` (permissions allow/deny/ask, `defaultMode` per tier, `auto` for the auto tier, `sandbox` with `allowUnsandboxedCommands: false` under a bypass that relies on it and `credentials` masks with `network.tlsTerminate`), `runner.json` (unattended: `--permission-mode dontAsk --allowedTools … --max-turns --max-budget-usd`) |
+
+Every `runner.json` carries `caps` (`max_turns`, `max_budget_usd`, `timeout_seconds`, null where the
+tier's budget sets none) and `enforcement`, which says per cap who enforces it: `engine` (a flag or
+setting the compile emits), `harness-run`, or `none` (said in a `spend-unmetered` warning). Codex and
+Gemini report no cost, so an unattended profile on either needs `budgets.unattended.max_minutes` for
+a hard kill; no `accept_gaps` entry waives an unattended cap.
 | codex | `config.toml` (or `<profile>.config.toml` unattended: a `harness` permission profile, approval policy, network domains), `rules/harness.rules` (`prefix_rule` prompt / forbidden with justification and match examples; `allow` only where the profile accepts the `allow` gap, since an allow runs outside the sandbox, and never for an interpreter), `runner.json` |
 | gemini | `settings.json` (`defaultApprovalMode`, `tools.sandbox`, `tools.allowed`), `policies/harness.toml` (user-tier `[[rule]]` deny / ask_user / allow), `runner.json` |
 
@@ -166,6 +173,25 @@ Goldens: `fixtures/compile-policy/golden/expected/<engine>-<profile>/`, each wit
 (`UPDATE_GOLDEN=1` rewrites).
 `fixtures/compile-policy/dotfiles/agent-policy.yaml` restates the user's Claude settings for the diff
 test; stagehand's `herdr.rules` round-trips through the Codex compiler when the checkout is present.
+
+## run
+
+`harness run --runner <runner.json> [--report <file>] [--grace <s>] -- <engine command...>` launches
+one engine command under the `runner.json` compile-policy wrote: it appends the runner's `args` and
+enforces the caps marked `enforcement: harness-run`.
+
+| Engine | `max_turns` | `max_budget_usd` | `timeout_seconds` |
+|---|---|---|---|
+| claude | engine (`--max-turns`); checked after the run against the result's `num_turns` | engine (`--max-budget-usd`, may overshoot by one response); checked after the run against `total_cost_usd` | harness run |
+| codex | harness run: tool actions counted from `codex exec --json` (`--json` is in the runner's args) | **none**: Codex reports tokens, not cost (the run report records the tokens) | harness run |
+| gemini | engine (`model.maxSessionTurns`; headless exit 53) | **none**: no cost reported | harness run |
+
+The timeout is a hard kill: SIGTERM to the run's process group, SIGKILL `--grace` seconds later
+(default 10). A run stopped at the timeout exits 124; one stopped at, or reporting a result past, a
+cap exits 125; otherwise the engine's own exit code passes through. An unattended runner without
+its caps, or without a timeout on an engine that meters no spend, is refused (exit 1), as is a file
+compile-policy did not write. `--report` writes `{argv, caps, enforcement, exit_code, signal,
+stopped_by, stopped_by_engine, turns, cost_usd, usage, duration_ms}`, the fields a run record needs.
 
 ## lock
 

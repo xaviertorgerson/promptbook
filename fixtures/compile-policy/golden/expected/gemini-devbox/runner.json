@@ -11,5 +11,14 @@
   "args": [
     "--approval-mode=yolo"
   ],
-  "timeout_seconds": null
+  "caps": {
+    "max_turns": null,
+    "max_budget_usd": 20,
+    "timeout_seconds": null
+  },
+  "enforcement": {
+    "max_turns": "engine",
+    "max_budget_usd": "none",
+    "timeout_seconds": "harness-run"
+  }
 }

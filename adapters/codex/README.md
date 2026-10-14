@@ -43,7 +43,7 @@ approvals, the full config reference); those claims are marked *unverified*.
 | `egress.default: deny` | `network.enabled = true` with only the allow list | |
 | `sandbox.*` | the permission profile is the sandbox | `fail_if_unavailable`: no documented key — **no equivalent**; error unless accepted. |
 | `sandbox.credentials` (masks) | — | **No equivalent**: sandboxed commands would read the credential unmasked; error unless `accept_gaps` names `{engine: codex, field: sandbox}`. |
-| `budgets` | runner flags/timeouts around `codex exec` | No documented turn or spend cap key *(unverified)*; the runner enforces a wall-clock timeout, and `max_turns`/`max_usd` fail the compile unless `accept_gaps` names `{engine: codex, field: budgets}`. |
+| `budgets` | `runner.json` `caps` and `enforcement`, `args: ["--json"]` when `max_turns` is set; enforced by `harness run` | The non-interactive page documents no turn, token, time or spend flag for `codex exec` ([non-interactive mode][exec]). `harness run` enforces `max_turns` by counting tool actions in the `--json` stream (`item.started` of `command_execution`, `file_change`, `mcp_tool_call`, `web_search`; the page lists those item kinds, the exact type names are *unverified*) and stopping the run as one more starts (exit 125), and `max_minutes` by a hard kill (exit 124). **Not enforced: `max_usd`** — Codex reports tokens (`turn.completed.usage`, recorded in the run report), not cost. Unattended, that is a `spend-unmetered` warning and the compile requires `max_minutes`, so the run has a hard ceiling no `accept_gaps` entry can remove; in other tiers `max_usd` (and `max_tokens` everywhere) is a `budgets` gap. |
 
 **Degradation (fail closed).** An unrepresentable `forbid` or `deny_read` is a compile error, never a
 silent drop; the only way past it is an `accept_gaps` entry with a reason, which the compiler prints.
@@ -69,6 +69,7 @@ the `.codex-plugin` field set follows a working port of a Claude plugin
 [rules]: https://learn.chatgpt.com/docs/agent-configuration/rules
 [perm]: https://learn.chatgpt.com/docs/permissions
 [hooks]: https://learn.chatgpt.com/docs/hooks
+[exec]: https://learn.chatgpt.com/docs/non-interactive-mode
 [config]: https://learn.chatgpt.com/docs/config-file/config-basic
 [config-ref]: https://learn.chatgpt.com/docs/config-file/config-reference
 [managed]: https://learn.chatgpt.com/docs/enterprise/managed-configuration

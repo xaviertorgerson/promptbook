@@ -8,6 +8,10 @@
     {
       "rule": "merge-mcp",
       "message": "merge mcp_servers.{prod-db}.disabled_tools into the existing server entries"
+    },
+    {
+      "rule": "spend-unmetered",
+      "message": "codex reports no cost: max_usd 5 is not metered; the run is bounded by max_turns and a hard kill at max_minutes 60"
     }
   ],
   "accepted": [
@@ -35,11 +39,6 @@
       "field": "sandbox",
       "message": "fail_if_unavailable has no documented Codex key",
       "reason": "on the desk, Codex commands read the gh and npm credentials as they did before the masks; elsewhere the launcher refuses to start Codex without its sandbox"
-    },
-    {
-      "field": "budgets",
-      "message": "max_turns, max_usd have no documented codex exec flag (a runner timeout enforces max_minutes only)",
-      "reason": "the runner enforces turns and spend from its own logs"
     }
   ],
   "notes": []

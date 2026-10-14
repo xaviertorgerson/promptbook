@@ -294,7 +294,9 @@ Claude in auto mode while the profile said auto-edit) becomes `profiles.workstat
 Codex compiles exactly as it did, so drop the `x-claude` key and the template's lookup. A profile may name `requires`: preconditions the operator keeps outside the
 policy (`prod-unreachable-from-this-host`, `non-root-container`); the bypass tier (autonomous)
 must name them (a validation warning, a compile error) and the compiler passes them to the launcher
-in `runner.json`. A rule has exactly one matcher: `command` (argv prefix, with alternatives),
+in `runner.json`, with the run's `caps` and who enforces each (`engine`, `harness-run`, or `none`);
+`harness run` is that launcher. An unattended tier's caps are never waivable: on an engine that
+reports no cost the compile requires `budgets.unattended.max_minutes` for a hard kill. A rule has exactly one matcher: `command` (argv prefix, with alternatives),
 `write` (path glob) or `tool` (web-fetch with a domain, web-search, `mcp:server[:tool]`). An `allow`
 or `ask` that a `forbid` covers is a warning (it never takes effect). `accept_gaps` records the
 degradations the operator accepts; an entry's `profiles` (1.4.0) scopes it, and an entry without

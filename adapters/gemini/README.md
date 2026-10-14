@@ -50,7 +50,7 @@ non-interactive mode `ask_user` is treated as `deny`.
 | `sandbox.fail_if_unavailable` | — | **No equivalent**; error unless accepted. |
 | `sandbox.writable_roots` | — | Container mounts are the launcher's job. |
 | `sandbox.credentials` (masks) | — | **No equivalent**: sandboxed commands would read the credential unmasked; error unless `accept_gaps` names `{engine: gemini, field: sandbox}` (a container that mounts no credentials is the usual reason). |
-| `budgets` | subagent `max_turns`, `timeout_mins` only; none for the main session | Runner timeout; `max_usd` → error unless accepted. |
+| `budgets` | `settings.json` `model.maxSessionTurns` for `max_turns`; `runner.json` `caps` and `enforcement` for `harness run` | `model.maxSessionTurns` is the session's turn limit ([configuration][config]); headless, exceeding it exits 53, "turn limit exceeded" ([headless][headless]), which `harness run` reports as the engine's own stop. `harness run` enforces `max_minutes` by a hard kill (exit 124). **Not enforced: `max_usd`** — the headless JSON reports tokens, not cost: unattended, a `spend-unmetered` warning and `max_minutes` is required; elsewhere `max_usd` (and `max_tokens` everywhere) is a `budgets` gap. |
 
 **Never emitted:** `hooksConfig.enabled: false`, `security.disableYoloMode: false` overrides on a
 shared machine, any `tools.exclude` (deprecated in favour of deny rules).
@@ -66,3 +66,4 @@ write. A profile that lists `gemini` in `engines` and cannot compile is not rend
 [config]: https://geminicli.com/docs/reference/configuration
 [policy]: https://geminicli.com/docs/reference/policy-engine
 [sandbox]: https://geminicli.com/docs/cli/sandbox/
+[headless]: https://geminicli.com/docs/cli/headless/
