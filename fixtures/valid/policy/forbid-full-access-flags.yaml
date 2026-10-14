@@ -1,0 +1,15 @@
+# Walls that name the very flags a compile must never emit: a forbid on a nested agent that skips its
+# own walls is data in a rule, not a key in the output, so it compiles on every engine.
+policy_version: 1
+profiles:
+  laptop: { tier: auto-edit }
+deny_read: ["~/.ssh/**"]
+forbid:
+  - { command: [claude, --dangerously-skip-permissions], reason: no nested agent that skips the walls }
+  - { command: [codex, [--yolo, --dangerously-bypass-approvals-and-sandbox]], reason: no nested agent without its sandbox }
+  - { command: [gemini, --approval-mode=yolo] }
+sandbox: { enabled: true, fail_if_unavailable: true }
+accept_gaps:
+  - { engine: gemini, field: deny_read, reason: "Gemini runs in a container without the secret files mounted" }
+  - { engine: codex, field: sandbox, reason: "the launcher refuses to start Codex where its sandbox is unavailable" }
+  - { engine: gemini, field: sandbox, reason: "the launcher refuses to start Gemini outside its container" }

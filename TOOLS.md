@@ -154,8 +154,9 @@ its outside preconditions, or without `sandbox.enabled`, `sandbox.fail_if_unavai
 egress, with a reason) (HAR-4); `requires` goes into `runner.json` and the notes for the launcher;
 an unattended tier without turn and spend caps (HAR-3); any `x-` extension that disables hooks (HAR-2); an `examples` entry its rule does
 not match. No output may carry `disableAllHooks`, `hooksConfig.enabled: false`, `disableYoloMode`,
-`tools.exclude`, a full-access mode, or a bypass key outside the bypass tier (checked on every
-compile). Unattended, an `ask` compiles to a denial. `--diff <settings.json|settings.json.tmpl>`
+`tools.exclude`, a full-access mode, or a bypass key outside the bypass tier: every compile checks
+the parsed output's keys and mode values (never the text, so a forbid on `codex --yolo` compiles), and
+a hit is a `walls-only` error like any other refusal. Unattended, an `ask` compiles to a denial. `--diff <settings.json|settings.json.tmpl>`
 compares the Claude output with a hand-written file.
 
 Goldens: `fixtures/compile-policy/golden/expected/<engine>-<profile>/`, each with its `report.json`

@@ -11,7 +11,7 @@ import { toToml } from './toml.mjs';
 //   walls only    the compiler never emits a key that removes walls: disableAllHooks,
 //                 hooksConfig.enabled false, security.disableYoloMode overrides, tools.exclude,
 //                 :danger-full-access, a bypass mode or its prompt skip outside the bypass tier
-//                 (assertNoUnsafeKeys, checked on every compile).
+//                 (unsafeKeys, on the parsed output of every compile; a hit is a compile error).
 //   preconditions the bypass tier (autonomous) names what keeps it safe outside the policy
 //                 (profile `requires`, never waivable) and is isolated by the policy's own sandbox
 //                 and egress deny, or by an accept_gaps entry for that field with a reason (HAR-4);
@@ -294,10 +294,14 @@ function emitClaude(ctx) {
   const runner = runnerFile(ctx, args, budget);
 
   return [
-    { path: 'settings.json', content: `${JSON.stringify(settings, null, 2)}\n`, kind: 'settings-fragment' },
-    { path: 'runner.json', content: `${JSON.stringify(runner, null, 2)}\n`, kind: 'runner' },
+    jsonFile('settings.json', settings, 'settings-fragment'),
+    jsonFile('runner.json', runner, 'runner'),
   ];
 }
+
+// An emitted file: what is written (content) and its parsed form (data), which the walls-only check
+// reads.
+const jsonFile = (path, data, kind) => ({ path, content: `${JSON.stringify(data, null, 2)}\n`, kind, data });
 
 function runnerFile(ctx, args, budget) {
   return {
@@ -412,9 +416,9 @@ function emitCodex(ctx) {
   const configName = tier === 'unattended' ? `${ctx.profileName}.config.toml` : 'config.toml';
   const rulesText = `# Compiled from ${ctx.source} (profile ${ctx.profileName}, tier ${tier}) by ${GENERATOR}.\n# Most restrictive decision wins: forbidden > prompt > allow. Check: codex execpolicy check --rules <this file> -- <cmd>\n\n${rules.map(renderPrefixRule).join('\n')}`;
   return [
-    { path: configName, content: `${header}\n${toToml(config)}`, kind: 'settings-fragment' },
-    { path: 'rules/harness.rules', content: rulesText, kind: 'rules' },
-    { path: 'runner.json', content: `${JSON.stringify(runnerFile(ctx, [], budget), null, 2)}\n`, kind: 'runner' },
+    { path: configName, content: `${header}\n${toToml(config)}`, kind: 'settings-fragment', data: config },
+    { path: 'rules/harness.rules', content: rulesText, kind: 'rules', data: rules },
+    jsonFile('runner.json', runnerFile(ctx, [], budget), 'runner'),
   ];
 }
 
@@ -508,28 +512,63 @@ function emitGemini(ctx) {
 
   const header = `# Compiled from ${ctx.source} (profile ${ctx.profileName}, tier ${tier}) by ${GENERATOR}.\n# User-tier policy (~/.gemini/policies/); the workspace tier is disabled upstream. Tool names other than\n# read_file, glob, write_file, replace and run_shell_command are unverified (adapters/gemini).\n`;
   return [
-    { path: 'settings.json', content: `${JSON.stringify(settings, null, 2)}\n`, kind: 'settings-fragment' },
-    { path: 'policies/harness.toml', content: `${header}\n${rules.length ? toToml({ rule: rules }) : ''}`, kind: 'rules' },
-    { path: 'runner.json', content: `${JSON.stringify(runnerFile(ctx, args, budget), null, 2)}\n`, kind: 'runner' },
+    jsonFile('settings.json', settings, 'settings-fragment'),
+    { path: 'policies/harness.toml', content: `${header}\n${rules.length ? toToml({ rule: rules }) : ''}`, kind: 'rules', data: rules },
+    jsonFile('runner.json', runnerFile(ctx, args, budget), 'runner'),
   ];
 }
 
 // ------------------------------------------------------------------------------------- guard
 
-// The keys that would remove a wall, checked on every compile's output. Throws: a hit is a compiler
-// bug, never a policy choice.
-export function assertNoUnsafeKeys(files, { engine, tier }) {
+// A setting that removes a wall, found in the parsed output of every compile: keys, and the values of
+// the keys that pick a mode or a sandbox, never free text (a forbid on `codex --yolo` is a rule's
+// pattern, not a mode). Each hit is a compile error: it is a compiler bug, never a policy choice.
+const FULL_ACCESS = /danger-full-access/;
+const ALWAYS_BAD_FLAGS = new Set(['--dangerously-skip-permissions', '--allow-dangerously-skip-permissions', '--dangerously-bypass-approvals-and-sandbox']);
+
+function unsafeInData(data, where, bypass, bad) {
+  const walk = (v, keys) => {
+    if (Array.isArray(v)) { v.forEach((x, i) => walk(x, [...keys, i])); return; }
+    if (!v || typeof v !== 'object') return;
+    for (const [k, x] of Object.entries(v)) {
+      const at = [...keys, k].join('.');
+      if (k === 'disableAllHooks') bad.push(`${where}: disableAllHooks (${at})`);
+      if (k === 'hooksConfig' && x?.enabled === false) bad.push(`${where}: hooksConfig.enabled false`);
+      if (k === 'disableYoloMode') bad.push(`${where}: security.disableYoloMode (${at})`);
+      if (k === 'exclude' && keys.at(-1) === 'tools') bad.push(`${where}: tools.exclude`);
+      if ((k === 'hooks' || k === 'codex_hooks') && keys.at(-1) === 'features' && x === false) bad.push(`${where}: features.${k} false`);
+      if (['default_permissions', 'extends', 'sandbox_mode'].includes(k) && typeof x === 'string' && FULL_ACCESS.test(x)) bad.push(`${where}: a full-access mode (${at} = ${x})`);
+      if (!bypass && k === 'skipDangerousModePermissionPrompt') bad.push(`${where}: skipDangerousModePermissionPrompt outside the ${BYPASS_TIER} tier`);
+      if (!bypass && k === 'defaultMode' && x === 'bypassPermissions') bad.push(`${where}: a bypass mode outside the ${BYPASS_TIER} tier (${at})`);
+      if (!bypass && k === 'defaultApprovalMode' && x === 'yolo') bad.push(`${where}: a bypass mode outside the ${BYPASS_TIER} tier (${at})`);
+      walk(x, [...keys, k]);
+    }
+  };
+  walk(data, []);
+}
+
+function unsafeInArgs(args, where, bypass, bad) {
+  args.forEach((a, i) => {
+    const next = args[i + 1];
+    if (ALWAYS_BAD_FLAGS.has(a)) bad.push(`${where}: a full-access flag ${a}`);
+    if ((a === '--sandbox' || a === '-s') && FULL_ACCESS.test(next ?? '')) bad.push(`${where}: a full-access flag ${a} ${next}`);
+    if (bypass) return;
+    if (a === '--yolo' || a === '--approval-mode=yolo' || (a === '--approval-mode' && next === 'yolo')) bad.push(`${where}: a bypass flag outside the ${BYPASS_TIER} tier (${a}${a === '--approval-mode' ? ` ${next}` : ''})`);
+    if (a === '--permission-mode' && next === 'bypassPermissions') bad.push(`${where}: a bypass flag outside the ${BYPASS_TIER} tier (--permission-mode bypassPermissions)`);
+  });
+}
+
+// files: the emitted files, each with its parsed form in `data` (a rules file's data is its rule
+// list, which holds patterns, never settings, so it is not walked).
+export function unsafeKeys(files, { tier }) {
   const bad = [];
+  const bypass = tier === BYPASS_TIER;
   for (const f of files) {
-    const c = f.content;
-    if (/disableAllHooks/.test(c)) bad.push(`${f.path}: disableAllHooks`);
-    if (/"hooksConfig"/.test(c) && /"enabled"\s*:\s*false/.test(c)) bad.push(`${f.path}: hooksConfig.enabled false`);
-    if (/disableYoloMode/.test(c)) bad.push(`${f.path}: security.disableYoloMode`);
-    if (/"exclude"\s*:/.test(c) && engine === 'gemini') bad.push(`${f.path}: tools.exclude`);
-    if (/danger-full-access|dangerously-skip-permissions/.test(c)) bad.push(`${f.path}: a full-access mode`);
-    if (tier !== BYPASS_TIER && /skipDangerousModePermissionPrompt|bypassPermissions|--yolo|approval-mode=yolo/.test(c)) bad.push(`${f.path}: a bypass key outside the ${BYPASS_TIER} tier`);
+    if (f.kind === 'rules' || f.data === undefined) continue;
+    if (f.kind === 'runner') unsafeInArgs(f.data.args ?? [], f.path, bypass, bad);
+    else unsafeInData(f.data, f.path, bypass, bad);
   }
-  if (bad.length) throw new Error(`compile-policy emitted a key that removes a wall: ${bad.join('; ')}`);
+  return bad;
 }
 
 const EMIT = { claude: emitClaude, codex: emitCodex, gemini: emitGemini };
@@ -547,9 +586,9 @@ export function effectivePolicy(policy, profileName) {
 }
 
 // Compile one profile for one engine. The policy must already be schema-valid (the CLI validates it
-// first). Returns { ok, files: [{ path, content, kind }], errors, warnings, accepted, notes }; files is
+// first); `emit` replaces the engine emitters (tests only). Returns { ok, files: [{ path, content, kind }], errors, warnings, accepted, notes }; files is
 // empty whenever errors is not.
-export function compilePolicy(policy, { profile, engine, source = 'agent-policy.yaml' }) {
+export function compilePolicy(policy, { profile, engine, source = 'agent-policy.yaml', emit = EMIT }) {
   if (!ENGINES.includes(engine)) throw new Error(`unknown engine "${engine}" (${ENGINES.join(', ')})`);
   const ctx = new Context(effectivePolicy(policy, profile), profile, engine, source);
   policy = ctx.policy;
@@ -561,8 +600,8 @@ export function compilePolicy(policy, { profile, engine, source = 'agent-policy.
   preflight(ctx);
   let files = [];
   if (ctx.profile) {
-    files = EMIT[engine](ctx);
-    assertNoUnsafeKeys(files, { engine, tier: ctx.tier });
+    files = emit[engine](ctx);
+    for (const b of unsafeKeys(files, { tier: ctx.tier })) ctx.error('walls-only', `the compile emitted a setting that removes a wall: ${b} (a compiler bug; nothing written)`);
   }
   const ok = ctx.errors.length === 0;
   return { ok, engine, profile, tier: ctx.tier, files: ok ? files : [], errors: ctx.errors, warnings: ctx.warnings, accepted: ctx.accepted, notes: ctx.notes };

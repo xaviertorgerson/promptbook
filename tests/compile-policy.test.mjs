@@ -6,7 +6,7 @@ import path from 'node:path';
 import { after, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
-import { assertNoUnsafeKeys, commandMatches, compilePolicy, diffClaudeSettings, ENGINES, expandCommand, globArgsPattern, parseSettingsTemplate, renderDiff, renderReport } from '../tools/lib/compile-policy.mjs';
+import { commandMatches, compilePolicy, diffClaudeSettings, ENGINES, expandCommand, globArgsPattern, parseSettingsTemplate, renderDiff, renderReport, unsafeKeys } from '../tools/lib/compile-policy.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FIX = path.join(ROOT, 'fixtures/compile-policy');
@@ -61,12 +61,37 @@ describe('compile-policy contract', () => {
             assert.doesNotMatch(f.content, /disableAllHooks|hooksConfig|disableYoloMode|danger-full-access|dangerously-skip-permissions/, `${engine}/${profile}/${f.path}`);
             if (p.profiles[profile].tier !== 'autonomous') assert.doesNotMatch(f.content, /bypassPermissions|skipDangerousModePermissionPrompt|yolo/, `${engine}/${profile}/${f.path}`);
           }
+          assert.deepEqual(unsafeKeys(r.files, { tier: p.profiles[profile].tier }), [], `${engine}/${profile}`);
         }
       }
     }
     assert.ok(compiled >= 30, `compiled ${compiled} files`);
-    assert.throws(() => assertNoUnsafeKeys([{ path: 'settings.json', content: '{"disableAllHooks": true}' }], { engine: 'claude', tier: 'autonomous' }), /removes a wall/);
-    assert.throws(() => assertNoUnsafeKeys([{ path: 'settings.json', content: '{"permissions":{"defaultMode":"bypassPermissions"}}' }], { engine: 'claude', tier: 'ask' }), /bypass key outside/);
+    const settings = (data) => [{ path: 'settings.json', kind: 'settings-fragment', data }];
+    assert.match(unsafeKeys(settings({ disableAllHooks: true }), { tier: 'autonomous' }).join(), /disableAllHooks/);
+    assert.match(unsafeKeys(settings({ permissions: { defaultMode: 'bypassPermissions' } }), { tier: 'ask' }).join(), /bypass mode outside/);
+    assert.match(unsafeKeys(settings({ hooksConfig: { enabled: false } }), { tier: 'ask' }).join(), /hooksConfig\.enabled false/);
+    assert.match(unsafeKeys([{ path: 'config.toml', kind: 'settings-fragment', data: { permissions: { harness: { extends: ':danger-full-access' } } } }], { tier: 'ask' }).join(), /full-access/);
+    assert.match(unsafeKeys([{ path: 'runner.json', kind: 'runner', data: { args: ['--approval-mode=yolo'] } }], { tier: 'unattended' }).join(), /bypass flag outside/);
+    assert.deepEqual(unsafeKeys([{ path: 'runner.json', kind: 'runner', data: { args: ['--approval-mode=yolo'] } }], { tier: 'autonomous' }), []);
+  });
+
+  it('a forbid that names a full-access or bypass flag is data, not a key: it compiles on every engine (finding 11)', () => {
+    const p = load(path.join(ROOT, 'fixtures/valid/policy/forbid-full-access-flags.yaml'));
+    for (const engine of ENGINES) {
+      const r = compilePolicy(p, { profile: 'laptop', engine });
+      assert.equal(r.ok, true, `${engine}: ${JSON.stringify(r.errors)}`);
+    }
+    const claude = JSON.parse(compilePolicy(p, { profile: 'laptop', engine: 'claude' }).files[0].content);
+    assert.ok(claude.permissions.deny.includes('Bash(claude --dangerously-skip-permissions *)'));
+    assert.ok(compilePolicy(p, { profile: 'laptop', engine: 'codex' }).files.find((f) => f.path === 'rules/harness.rules').content.includes('"--yolo"'));
+  });
+
+  it('an unsafe key in the output is a compile error through the normal channel, never a thrown stack trace', () => {
+    const p = load(path.join(FIX, 'refuse/never-disable-hooks.yaml'));
+    const r = compilePolicy({ ...p, 'x-claude-extra': undefined, profiles: { laptop: { tier: 'ask', engines: ['claude'] } } }, { profile: 'laptop', engine: 'claude', emit: { claude: (ctx) => [{ path: 'settings.json', kind: 'settings-fragment', content: '{}', data: { disableAllHooks: true } }] } });
+    assert.equal(r.ok, false);
+    assert.deepEqual(r.files, []);
+    assert.ok(r.errors.some((e) => e.rule === 'walls-only' && /settings\.json: disableAllHooks/.test(e.message)), JSON.stringify(r.errors));
   });
 
   const refusals = {
