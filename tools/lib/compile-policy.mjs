@@ -211,6 +211,17 @@ function claudeRules(ctx, rule, list) {
 
 function emitClaude(ctx) {
   const { policy: p, tier } = ctx;
+  const sandboxOn = p.sandbox?.enabled === true;
+  // Read() and Edit() denies reach Claude's file tools, the file commands it recognizes in Bash and
+  // redirection targets, not a script that opens files itself (permissions: "they don't apply to ...
+  // a Python or Node script that opens files itself"); only the sandbox binds every process.
+  const partial = [...(p.deny_read.length ? ['deny_read'] : []), ...(p.forbid.some((r) => r.write) ? ['forbid write'] : [])];
+  if (partial.length) {
+    const scripts = (p.allow ?? []).filter((r) => r.command && coversInterpreter(r.command)).map((r) => starlark(r.command));
+    const why = `${partial.join(' and ')} reach Claude's file tools and the file commands it recognizes in Bash (cat, head, sed, tee, redirections), not a script that opens files itself${scripts.length ? ` (allowed here: ${scripts.join(', ')})` : ''}`;
+    if (!sandboxOn) ctx.gap('sandbox', `${why}; without sandbox.enabled nothing binds every process`);
+    else if (p.sandbox?.fail_if_unavailable !== true) ctx.warn('sandbox-may-fall-back', `sandbox.fail_if_unavailable is not true: where the sandbox cannot start, commands run unsandboxed, and ${why}`);
+  }
   const perm = { allow: [], deny: [], ask: [] };
   const add = (list, rules) => { for (const r of rules) if (!perm[list].includes(r)) perm[list].push(r); };
   const fsys = { denyRead: [], allowWrite: [] };
@@ -266,7 +277,7 @@ function emitClaude(ctx) {
     else ctx.drop('sandbox.writable_roots', { write: w }, 'a relative sandbox path in user settings resolves against ~/.claude, not the workspace');
   }
   const filesystem = Object.fromEntries(Object.entries(fsys).filter(([, v]) => v.length));
-  if (Object.keys(filesystem).length) sandbox.filesystem = filesystem;
+  if (sandboxOn && Object.keys(filesystem).length) sandbox.filesystem = filesystem;
   const network = Object.fromEntries(Object.entries(net).filter(([, v]) => v.length));
   if (egress?.default === 'deny') network.strictAllowlist = true;
 
@@ -274,8 +285,8 @@ function emitClaude(ctx) {
   // value on requests to the inject hosts, which needs the proxy to terminate TLS (sandboxing: mask
   // credentials). Masks bind sandboxed commands only, never the file tools.
   const masks = p.sandbox?.credentials ?? [];
-  if (masks.length) {
-    if (p.sandbox?.enabled !== true) ctx.warn('credentials-need-sandbox', 'sandbox.credentials masks act only inside the sandbox, and sandbox.enabled is not true');
+  if (masks.length && !sandboxOn) ctx.warn('credentials-need-sandbox', 'sandbox.credentials masks act only inside the sandbox, and sandbox.enabled is not true: not emitted');
+  if (masks.length && sandboxOn) {
     const inject = (c) => (c.inject_hosts ? { injectHosts: c.inject_hosts } : {});
     const files = masks.filter((c) => c.path).map((c) => ({ path: c.path, mode: 'mask', ...(c.extract ? { extract: c.extract } : {}), ...inject(c) }));
     const envVars = masks.filter((c) => c.env).map((c) => ({ name: c.env, mode: 'mask', ...inject(c) }));
@@ -286,7 +297,7 @@ function emitClaude(ctx) {
     if (unlisted.length) ctx.warn('credential-host-unlisted', `the sandbox proxy restores a masked credential only on hosts the egress allow list admits; ${unlisted.join(', ')} ${unlisted.length > 1 ? 'are' : 'is'} not in egress.allow_domains, so requests there carry the placeholder`);
     if (files.length) ctx.warn('mask-not-a-read-deny', `Claude Code's file tools can read ${files.map((f) => f.path).join(', ')}: a mask covers sandboxed commands only (a deny_read entry would deny the sandbox too); on macOS a masked file is blocked instead of masked`);
   }
-  if (Object.keys(network).length) sandbox.network = network;
+  if (sandboxOn && Object.keys(network).length) sandbox.network = network;
 
   const permissions = {};
   if (CLAUDE_MODE[tier]) permissions.defaultMode = CLAUDE_MODE[tier];

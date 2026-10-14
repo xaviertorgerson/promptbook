@@ -411,3 +411,26 @@ describe('review finding 1: a Codex allow rule runs outside the sandbox', () => 
     for (const c of [['git', 'status'], ['gh', 'pr'], ['pnpm', 'test'], ['npm', 'ci'], ['make']]) assert.ok(!coversInterpreter(c), JSON.stringify(c));
   });
 });
+
+describe('review finding 6: Claude\'s read and write denies without the sandbox', () => {
+  const p = load(path.join(FIX, 'review/claude-no-sandbox.yaml'));
+
+  it('deny_read and a write forbid without sandbox.enabled are a sandbox gap: Bash scripts read past Read() denies', () => {
+    const r = compilePolicy(p, { profile: 'ci', engine: 'claude' });
+    assert.equal(r.ok, false);
+    const e = r.errors.find((x) => x.rule === 'unrepresentable' && x.field === 'sandbox');
+    assert.ok(e && /deny_read and forbid write/.test(e.message) && /\["bash"\]/.test(e.message), JSON.stringify(r.errors));
+    const accepted = compilePolicy({ ...p, accept_gaps: [{ engine: 'claude', field: 'sandbox', profiles: ['ci'], reason: 'the ci container mounts no secrets' }] }, { profile: 'ci', engine: 'claude' });
+    assert.equal(accepted.ok, true, JSON.stringify(accepted.errors));
+    assert.ok(accepted.accepted.some((a) => a.field === 'sandbox'));
+    const s = JSON.parse(accepted.files.find((f) => f.path === 'settings.json').content);
+    assert.ok(s.permissions.deny.includes('Read(~/.ssh/**)'), 'the file-tool deny is still emitted');
+    assert.equal(s.sandbox, undefined, 'no inert sandbox.filesystem.denyRead without a sandbox');
+  });
+
+  it('a sandbox that may fall back to unsandboxed is a warning that says what then reads past the denies', () => {
+    const r = compilePolicy(golden, { profile: 'desk', engine: 'claude' });
+    assert.ok(r.warnings.some((w) => w.rule === 'sandbox-may-fall-back' && /deny_read/.test(w.message)), JSON.stringify(r.warnings));
+    assert.ok(!compilePolicy(golden, { profile: 'laptop', engine: 'claude' }).warnings.some((w) => w.rule === 'sandbox-may-fall-back'));
+  });
+});

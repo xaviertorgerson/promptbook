@@ -1,0 +1,14 @@
+# Review finding 6: unattended, deny_read and a write forbid, an allowlisted cat and bash, and no
+# sandbox: Read() and Edit() denies reach the file tools, never a script that opens files itself.
+policy_version: 1
+profiles:
+  ci: { tier: unattended }
+  laptop: { tier: auto-edit }
+deny_read: ["~/.ssh/**", "**/.env"]
+forbid:
+  - { write: "**/.git/hooks/**" }
+allow:
+  - { command: [cat] }
+  - { command: [bash] }
+budgets:
+  unattended: { max_turns: 10, max_usd: 1 }

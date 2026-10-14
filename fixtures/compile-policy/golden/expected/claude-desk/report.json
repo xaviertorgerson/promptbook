@@ -2,6 +2,10 @@
   "tier": "auto",
   "warnings": [
     {
+      "rule": "sandbox-may-fall-back",
+      "message": "sandbox.fail_if_unavailable is not true: where the sandbox cannot start, commands run unsandboxed, and deny_read and forbid write reach Claude's file tools and the file commands it recognizes in Bash (cat, head, sed, tee, redirections), not a script that opens files itself (allowed here: [\"pnpm\"])"
+    },
+    {
       "rule": "mask-not-a-read-deny",
       "message": "Claude Code's file tools can read ~/.config/gh/hosts.yml: a mask covers sandboxed commands only (a deny_read entry would deny the sandbox too); on macOS a masked file is blocked instead of masked"
     }

@@ -35,9 +35,9 @@ L1 and never touches project settings. Rules:
 | `tier: auto` | `permissions.defaultMode: "auto"` (user scope only) | Auto mode: "everything, with background safety checks": a classifier reviews each action, ask rules still prompt, deny rules block in every mode; where auto mode is unavailable (model, plan, a `disableAutoMode` setting) the session starts in Manual, the stricter side. Like bypass, `auto` "doesn't take effect from project or local settings". With `egress.default: deny`, WebFetch outside `allow_domains` is the classifier's call, not a denial: an `egress` gap unless `forbid {tool: web-fetch}` removes the tool. [permission modes][modes] |
 | `tier: autonomous` | `permissions.defaultMode: "bypassPermissions"` (user scope only) | `defaultMode` `auto` and `bypassPermissions` "don't take effect from project or local settings"; bypass refuses to run as root outside a sandbox. Walls still hold (ADR-0021). |
 | `tier: unattended` | no settings key: the runner passes `--permission-mode dontAsk --allowedTools <allow>` | Under a user bypass default `--allowedTools` is not a boundary; under `dontAsk` it is, and every ask becomes a denial in `permission_denials` (ADR-0021). [headless][headless] |
-| `deny_read: [glob]` | `permissions.deny: ["Read(<glob>)"]` and `sandbox.filesystem.denyRead` | `**/.env` stays relative; `~/x` stays `~/x`; an absolute `/etc/x` becomes `//etc/x` (a single leading `/` is relative to the settings file). Read rules reach Grep/Glob best-effort; Bash reads are covered only by the sandbox. [permissions][perm] [sandboxing][sbx] |
+| `deny_read: [glob]` | `permissions.deny: ["Read(<glob>)"]` and `sandbox.filesystem.denyRead` | `**/.env` stays relative; `~/x` stays `~/x`; an absolute `/etc/x` becomes `//etc/x` (a single leading `/` is relative to the settings file). Read rules reach Grep/Glob best-effort and the file commands Claude recognizes in Bash (`cat`, `head`, `sed`, `tee`, redirections), "not ... a Python or Node script that opens files itself"; only the sandbox binds every process. So without `sandbox.enabled: true` the compile fails with a `sandbox` gap until it is accepted (no inert `sandbox.filesystem` is emitted then), and with `fail_if_unavailable` not true it warns `sandbox-may-fall-back`. [permissions][perm] [sandboxing][sbx] |
 | `forbid: {command: [a, b, ...]}` | `permissions.deny: ["Bash(a b *)"]` | One rule per expansion of an alternatives token. A space before `*` is the prefix boundary (`Bash(git diff *)` does not match `git diff-index`). |
-| `forbid: {write: glob}` | `permissions.deny: ["Edit(<glob>)"]` | `Edit` rules apply to every built-in tool that edits files. |
+| `forbid: {write: glob}` | `permissions.deny: ["Edit(<glob>)"]` | `Edit` rules apply to every built-in tool that edits files and to Bash redirection targets, not to a script that writes files itself: partial without the sandbox, the same `sandbox` gap as `deny_read`. |
 | `forbid: {tool: web-fetch, domain: d}` | `permissions.deny: ["WebFetch(domain:<d>)"]` | `**.host` → two rules, `host` and `*.host` (Claude's `*.host` excludes the apex). |
 | `forbid: {tool: "mcp:server[:tool]"}` | `permissions.deny: ["mcp__server"]` / `["mcp__server__tool"]` | No parenthesized MCP parameters (skipped at load). |
 | `ask: [...]` | `permissions.ask` | Same syntax as deny. Interactive only; never protection. |
@@ -67,8 +67,12 @@ model must not see it either.
 **Never emitted:** `disableAllHooks` (removes every hook wall; ADR-0021), `skipDangerousModePermissionPrompt`
 outside the `autonomous` tier, any project-scope `defaultMode`.
 
-**Degradation (fail closed).** Claude Code can represent every policy field above, so a Claude
-compile fails only on input it cannot express exactly:
+**Degradation (fail closed).** A Claude compile fails on input it cannot express exactly:
+
+- `deny_read` or a `forbid.write` without `sandbox.enabled: true` — a `sandbox` gap: the permission
+  rules bind the file tools and recognized file commands, and a script the agent runs reads past
+  them; accept it (`accept_gaps: {engine: claude, field: sandbox, profiles: [...]}`) only where the
+  machine itself holds no secret the policy denies;
 
 - a `forbid` or `deny_read` glob the permission syntax cannot anchor (for example a Windows drive path
   on a POSIX profile) — error, unless `accept_gaps` names `{engine: claude, field: forbid|deny_read}`;
