@@ -1,0 +1,3 @@
+{"prompt": "Before the owner signs off the refunds spec, does every requirement have a task and every task a requirement?", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
+{"prompt": "Generate the readiness report for the onboarding epic and tell me what blocks approval.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
+{"prompt": "Two tasks in the refunds plan both edit src/billing; make one depend on the other.", "expect": "no-trigger", "kind": "near-miss", "route_to": "planning-work", "note": "held out: written after tuning, never used to change a description"}

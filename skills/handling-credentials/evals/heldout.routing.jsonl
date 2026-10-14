@@ -1,0 +1,3 @@
+{"prompt": "The deploy workflow still uses a long-lived cloud access key. Replace it with something short-lived.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
+{"prompt": "Give the coder agent a token that can push branches but cannot merge or change repository settings.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
+{"prompt": "Review this pull request's new file-upload endpoint for path traversal.", "expect": "no-trigger", "kind": "near-miss", "route_to": "reviewing-security", "note": "held out: written after tuning, never used to change a description"}

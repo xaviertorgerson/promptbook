@@ -1,0 +1,3 @@
+{"prompt": "For the import jobs, do we keep the queue in Postgres or add a separate broker? Write the decision record.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
+{"prompt": "Is putting every tenant in one shared schema reversible later? Record the decision with the options we considered.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
+{"prompt": "Inside BILL-14, should the helper return null or throw when the rate is missing?", "expect": "no-trigger", "kind": "near-miss", "route_to": "implementing-task", "note": "held out: written after tuning, never used to change a description"}

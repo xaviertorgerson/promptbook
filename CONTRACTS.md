@@ -355,11 +355,12 @@ or `## YYYY-MM · title` when the source gives only a month; any other level-2 h
 an error, `entry-heading`, so no evidence is silently dropped; with `**Kind:**` measured | observed |
 incident | audit | vendor-reported | literature, `**Source:**`, `**Claim:**`, optional result,
 engine, model, skill_version, revisit; vendor-reported and literature must cite a URL, measured must
-cite a source); `#/$defs/routingCase` for `evals/routing.jsonl` lines (`prompt`, `expect` trigger |
+cite a source); `#/$defs/routingCase` for `evals/routing.jsonl` lines (and `evals/heldout.routing.jsonl`, cases
+written after tuning and never used to change a description: `prompt`, `expect` trigger |
 no-trigger, `kind` positive | near-miss | negative, `route_to`); and `#/$defs/routingResult` for the
-lines `harness eval-routing --out` writes (`routing-results*.jsonl`: `skill`, `case` `<skill>:<line>`,
-`prompt`, `expect`, `kind`, `route_to`, `model`, `runs`, `answers[]` per run, `passes`, `pass` —
-pass^k, every run — `errors`, `at`, `skill_version`; counts must agree), the measured source an
+lines `harness eval-routing --out` writes (`routing-results*.jsonl`: `skill`, `case` `<skill>:<line>` of the
+cases file the run read, `prompt`, `expect`, `kind`, `route_to`, `model`, `runs`, `answers[]` per
+run, `passes`, `pass` — pass^k, every run — `errors`, `at`, `skill_version`; counts must agree), the measured source an
 evidence entry cites. The eval files validate wherever a skills folder is, dot-folder or not
 (`skills/`, a project's `.agents/skills/` or `.claude/skills/`, a user's `~/.agents/skills/`):
 unlike `SKILL.md`, whose L3 contract an engine's own skill folder may extend, the eval shapes are

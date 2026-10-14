@@ -84,6 +84,10 @@ Fixes from an independent review of 0.1.0 (workflow, authority, trace, simulator
   `set-not-installed`); `--budget-set` also takes a set name, and `--external name=<dir>` reads a
   pinned pack's real descriptions. The README gains Core vs optional and the minimum adoption for
   one developer.
+- **additive** — `eval-routing --cases <file>` (another cases file per skill) and `--set <name>`
+  (install only that set); 84 held-out routing cases (`evals/heldout.routing.jsonl`, three per
+  skill, written after tuning); the per-case results of the tuned run and both held-out runs
+  (`skills/routing-results*.jsonl`).
 
 ### Fixed
 
@@ -96,6 +100,10 @@ Fixes from an independent review of 0.1.0 (workflow, authority, trace, simulator
   skills' references state the current contract and machine versions (a docs test checks every
   "`<name>` contract X.Y.Z" label). The Tally walkthrough no longer files routine dispatch under
   `select-tasks`: dispatching ready work in priority order is mechanical.
+- skills/ROUTING-RESULTS.md reports the held-out pass rate apart from the tuned cases' (pass^3:
+  80/84 with every skill installed, 14/15 with the personal set and Skilldex, against 341/344 on the
+  tuned cases), and every measured routing entry's source is the exact command, with the runner
+  printed in evaluating-skills/references/engine-notes.md, not a placeholder.
 
 ## [0.1.0] - 2026-10-13
 

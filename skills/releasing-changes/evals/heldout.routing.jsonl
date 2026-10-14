@@ -1,0 +1,3 @@
+{"prompt": "The build in QA looks good; promote that exact digest to UAT.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
+{"prompt": "Production has been erroring since the 14:00 deploy; roll it back.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
+{"prompt": "Merge the approved PR for the hotfix.", "expect": "no-trigger", "kind": "near-miss", "route_to": "landing-changes", "note": "held out: written after tuning, never used to change a description"}

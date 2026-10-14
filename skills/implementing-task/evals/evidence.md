@@ -2,7 +2,7 @@
 
 ## 2026-10-13 · Routes on a 275-character description in the 8,000-character catalog
 - **Kind:** measured
-- **Source:** node tools/cli.mjs eval-routing skills <Skilldex fc572b6>/skills --skill implementing-task --runner "<clean-context headless runner>" --json, 3 trials, 2026-10-13 (harness feat/reconcile-skills after 8816da6; runner and full table in skills/ROUTING-RESULTS.md)
+- **Source:** RR_MODEL=haiku RR_EFFORT=low node tools/cli.mjs eval-routing skills "$SKILLDEX/skills" --skill implementing-task --runner "node router.mjs" --json, run 3 times on 2026-10-13 at harness feat/reconcile-skills after 8816da6, with $SKILLDEX a clone of https://github.com/QuentinTorg/skilldex at fc572b6 and router.mjs the runner in skills/evaluating-skills/references/engine-notes.md; per-case results in skills/routing-results-2026-10-13.jsonl, the table in skills/ROUTING-RESULTS.md
 - **Claim:** With all 28 descriptions cut to 7,899 characters and the 5 pinned Skilldex skills installed, this skill's own cases passed 45/45; precision 87%, recall 92% over every case in the catalog. The original 773-character description, same runner and cases: 45/45, precision 92%, recall 92%.
 - **Result:** Misses: none.
 - **Engine:** claude

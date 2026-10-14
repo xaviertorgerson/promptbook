@@ -5,6 +5,15 @@ pinned Skilldex skills (commit fc572b6: building-skills, preparing-pull-requests
 resolving-findings, reviewing-code, writing-specifications) installed beside them as distractors.
 Re-run when any description changes, a skill is added or removed, or the routing model changes.
 
+The per-case results, one evidence-contract `routingResult` line per case with every trial's
+answer (`harness validate` checks them):
+
+| File | Cases | What |
+|---|---|---|
+| skills/routing-results-2026-10-13.jsonl | 344 | the final tuned run (each skill's evals/routing.jsonl) |
+| skills/routing-results-heldout-full-2026-10-13.jsonl | 84 | held-out cases, every harness skill installed |
+| skills/routing-results-heldout-personal-2026-10-13.jsonl | 15 | held-out cases, only the personal set installed |
+
 ## Result
 
 | | Original descriptions | Current descriptions |
@@ -14,16 +23,56 @@ Re-run when any description changes, a skill is added or removed, or the routing
 | Cases passed, 344 cases × 3 trials | 1015/1032 (98.4%) | **1027/1032 (99.5%)** |
 
 Both columns ran the same cases through the same runner on the same day. Model: haiku
-(claude-haiku-5-5), effort low.
+(claude-haiku-5-5), effort low. Per case, all three trials passed (pass^3) for 341 of the 344.
+
+These are the cases the descriptions were tuned against, so they overstate how the descriptions
+route prompts nobody tuned for; the held-out run below measures that.
+
+## Held-out cases
+
+Written after the descriptions were final and never used to change one: three per skill in
+`evals/heldout.routing.jsonl`, two positives in words the skill's routing.jsonl does not use and one
+near-miss naming the skill that should load instead, each with the note "held out". Same runner,
+model and effort; 3 trials per case.
+
+| Catalog | Characters | Cases | pass^3 | Trials |
+|---|---|---|---|---|
+| full: the 28 harness skills and Skilldex | 9,573 (the library; never installed whole) | 84 | **80/84 (95.2%)** | 245/252 (97.2%) |
+| personal and Skilldex: what every machine loads | 2,993 | 15 (the personal skills' own) | **14/15 (93.3%)** | 42/45 (93.3%) |
+
+Positives passed 55/56 (full) and 10/10 (personal); near-misses 25/28 and 4/5. Against the tuned
+cases' 341/344 (99.1%), the held-out pass^3 is four points lower on the full catalog.
+
+| Catalog | Case | Passed | Got | Reading |
+|---|---|---|---|---|
+| full | delegating-authority near-miss "GRANT-9 covers it; go ahead and merge PR 311 into integration/search." → landing-changes | 0/3 | delegating-authority beside landing-changes, every time | the right skill loads, and naming a grant pulls the grant skill in beside it; landing-changes checks the grant itself, so this costs context rather than routing wrong, but the case forbids it |
+| full | choosing-architecture near-miss "Inside BILL-14, should the helper return null or throw when the rate is missing?" → implementing-task | 1/3 | implementing-task once, none twice | nothing wrong loads; an in-task design question twice read as needing no skill |
+| full | defining-personas near-miss "PER-1 and PER-2 are settled; now describe what each must be able to do end to end, and what must never go wrong." → mapping-journeys | 2/3 | defining-personas beside mapping-journeys once | the persona ids pull the persona skill in |
+| full | promoting-learnings positive "Retire old-commit-style; writing-commit-history covers everything it did." | 2/3 | the pinned building-skills alone once, beside promoting-learnings twice | retiring a skill reads as skill authoring to building-skills' broad description |
+| personal | reviewing-security near-miss "Our deploy key leaked into a build log; rotate it and stop it happening again." → handling-credentials | 0/3 | reviewing-security | handling-credentials is a delivery skill, not installed beside personal; with it installed (full) the case passes 3/3. Without it the security review is the closest installed skill, so the miss is the case assuming its neighbour, not the description |
+
+None of the misses was fixed: a held-out case changed to pass would no longer be held out. The
+next tuning round may use them, and then needs fresh held-out cases.
 
 ## How it ran
 
 ```
-node tools/cli.mjs eval-routing skills <skilldex>/skills --skill <name> --runner "<runner>" --json
+RR_MODEL=haiku RR_EFFORT=low node tools/cli.mjs eval-routing skills "$SKILLDEX/skills" --skill <name> --runner "node router.mjs" --json
 ```
 
-once per skill per trial (28 × 3 invocations, run in parallel), aggregated by summing each run's
-true/false positives and negatives per skill. The router prompt is the tool's: every installed
+with `$SKILLDEX` a clone of https://github.com/QuentinTorg/skilldex at fc572b6 and router.mjs the
+runner printed verbatim in evaluating-skills/references/engine-notes.md, once per skill per trial
+(28 × 3 invocations, run in parallel), aggregated by summing each run's true/false positives and
+negatives per skill and folded into skills/routing-results-2026-10-13.jsonl. The held-out runs used
+the same runner in one invocation per skill:
+
+```
+RR_MODEL=haiku RR_EFFORT=low node tools/cli.mjs eval-routing skills "$SKILLDEX/skills" --skill <name> \
+  --cases heldout.routing.jsonl --runs 3 --model claude-haiku-5-5 --runner "node router.mjs" --out <name>.jsonl
+```
+
+and the personal run adds `--set personal`, which keeps only that set of this folder installed
+(Skilldex stays, being another folder). The router prompt is the tool's: every installed
 skill's name and description, the user's message fenced in `<message>`, "which skill or skills
 would you load, or none". A trigger case passes when its skill is named; a no-trigger case when it
 is not, and a near-miss also needs its `route_to` named when that skill is installed (`none`:
@@ -166,4 +215,5 @@ leaves out a set it does not use.
 
 About $1.80 for the whole exercise at the CLI's list prices: $1.66 logged across 12,629 calls
 (eleven full runs of about 1,030 calls at $0.07–$0.30 each, one stopped early, and probes), plus roughly $0.15 of
-early probes that were not logged. A full run costs about $0.08 with the cached catalog.
+early probes that were not logged. A full run costs about $0.08 with the cached catalog. The
+held-out runs cost $0.027 (252 calls on the full catalog, $0.024; 45 on the personal one, $0.003).

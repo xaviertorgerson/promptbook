@@ -4,6 +4,7 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { buildPrompt, evaluate, loadSkills, routingResults, runner } from './lib/eval-routing.mjs';
+import { loadSets, SETS_FILE, setSkills } from './lib/lint-skills.mjs';
 
 const USAGE = `Routing evals: does each skill's description route its routing.jsonl prompts?
 
@@ -12,6 +13,10 @@ const USAGE = `Routing evals: does each skill's description route its routing.js
   node tools/eval-routing.mjs --runner "<cmd>" [dir]... run every case through <cmd>, which reads the
                                                         prompt on stdin and prints the skill name(s)
       --skill <name>       only that skill's cases
+      --set <name>         install only that set (skills/SETS.yaml) of a folder that has a SETS.yaml;
+                           other folders (a pinned library) stay installed whole
+      --cases <file>       read each skill's cases from evals/<file> (default routing.jsonl; the
+                           held-out cases are heldout.routing.jsonl)
       --limit <n>          at most n cases
       --runs <k>           ask k times per case; a case passes only when all k pass (pass^k; default 1)
       --model <label>      the model the runner calls, recorded in --out (default: the runner command)
@@ -29,7 +34,7 @@ Exit 0 all pass (or dry run), 1 a case failed, 2 usage error.`;
 const pct = (x) => (x === null ? '  —  ' : `${(x * 100).toFixed(0).padStart(3)}%`);
 
 export function main(argv = process.argv.slice(2)) {
-  const VALUED = new Set(['--runner', '--skill', '--limit', '--timeout', '--runs', '--model', '--out']);
+  const VALUED = new Set(['--runner', '--skill', '--limit', '--timeout', '--runs', '--model', '--out', '--set', '--cases']);
   const value = (n) => { const i = argv.indexOf(n); return i === -1 ? undefined : argv[i + 1]; };
   if (argv.includes('--help') || argv.includes('-h')) { console.log(USAGE); return 0; }
   const usage = (m) => { console.error(`eval-routing: ${m}\n\n${USAGE}`); return 2; };
@@ -48,7 +53,18 @@ export function main(argv = process.argv.slice(2)) {
   if (argv.includes('--out') && !out) return usage('--out needs a file');
   if (out && dryRun) return usage('--out needs --runner: a dry run has no results');
 
-  const skills = loadSkills(targets);
+  let skills = loadSkills(targets, { cases: value('--cases') ?? 'routing.jsonl' });
+  const setName = value('--set');
+  if (setName) {
+    const setsDir = targets.find((d) => fs.existsSync(path.join(d, SETS_FILE)));
+    if (!setsDir) return usage(`--set ${setName}: no ${SETS_FILE} in ${targets.join(', ')}`);
+    const { data, errors } = loadSets(path.join(setsDir, SETS_FILE));
+    if (!data) return usage(`${SETS_FILE}: ${errors.join('; ')}`);
+    if (!data.sets[setName]) return usage(`no set ${setName} (sets: ${Object.keys(data.sets).join(', ')})`);
+    const keep = setSkills(data, setName);
+    const root = path.resolve(setsDir);
+    skills = skills.filter((s) => path.dirname(path.resolve(s.dir)) !== root || keep.has(s.name));
+  }
   const only = value('--skill');
   if (only && !skills.some((s) => s.name === only)) return usage(`no skill named ${only}`);
   const result = evaluate(skills, { ask: dryRun ? null : runner(command, { timeout }), dryRun, only, limit, runs });

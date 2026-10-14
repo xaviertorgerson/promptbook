@@ -1,0 +1,3 @@
+{"prompt": "Check the new password-reset endpoint for anything an attacker could abuse.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
+{"prompt": "We want to add a community MCP server that can run shell commands. Is it safe?", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
+{"prompt": "Our deploy key leaked into a build log; rotate it and stop it happening again.", "expect": "no-trigger", "kind": "near-miss", "route_to": "handling-credentials", "note": "held out: written after tuning, never used to change a description"}

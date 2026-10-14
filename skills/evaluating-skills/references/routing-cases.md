@@ -19,6 +19,11 @@ Rules the validator enforces:
 Minimum per skill: 4 positive, 3 near-miss (each naming a neighbour from the description's "Do not
 use for"), 2 negative.
 
+Held-out cases go in `evals/heldout.routing.jsonl`, in the same format, with no minimum: written
+after the description is tuned, in words routing.jsonl does not use, and never used to change a
+description. `harness eval-routing --cases heldout.routing.jsonl` runs them; report their rate apart
+from routing.jsonl's.
+
 ## Example
 
 ```jsonl

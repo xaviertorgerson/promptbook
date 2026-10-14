@@ -237,7 +237,10 @@ named. The router sees only installed, non-deprecated skills' names and descript
 loader would. It reports failures and per-skill precision and recall. `--runs <k>` asks k times per
 case and passes a case only when all k pass (pass^k); `--model <label>` names the model; `--out
 <routing-results….jsonl>` writes one result per case in the evidence contract's `routingResult`
-shape, which `harness validate` checks and an evidence entry cites as its measured source. Ported from agentic-template's
+shape, which `harness validate` checks and an evidence entry cites as its measured source. `--cases <file>` reads
+each skill's cases from `evals/<file>` instead of `routing.jsonl` (the held-out cases are `heldout.routing.jsonl`);
+`--set <name>` installs only that set of the folder holding a `SETS.yaml` (other folders, a pinned pack, stay
+whole), so a set's routing is measured with what it actually loads. Ported from agentic-template's
 `scripts/skill-evals.mjs`. Tests use `fixtures/eval-routing/fake-router.mjs`; no test calls a model.
 
 ## import-evals

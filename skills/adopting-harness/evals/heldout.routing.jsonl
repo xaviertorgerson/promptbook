@@ -1,0 +1,3 @@
+{"prompt": "I just cloned our team's service repo; wire it to the harness so the walls and the lock file are in place.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
+{"prompt": "My workstation and the build box need different autonomy tiers. Write the agent policy and compile it for both.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
+{"prompt": "Update toolkit.lock so we pick up harness v0.3.1.", "expect": "no-trigger", "kind": "near-miss", "route_to": "promoting-learnings", "note": "held out: written after tuning, never used to change a description"}

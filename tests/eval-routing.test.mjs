@@ -6,6 +6,7 @@ import path from 'node:path';
 import { after, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { buildPrompt, evaluate, judge, loadSkills, parseAnswer, routingResults, runner } from '../tools/lib/eval-routing.mjs';
+import { loadSets, SETS_FILE, setSkills } from '../tools/lib/lint-skills.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SKILLS = path.join(ROOT, 'fixtures/lint/good/skills');
@@ -125,6 +126,20 @@ describe('eval-routing CLI', () => {
     assert.equal(trigger.pass, false);
     const lines = routingResults(r, { model: 'flaky' });
     assert.ok(lines.every((l) => l.answers.length === 3));
+  });
+
+  it('--set installs only that set of the folder holding SETS.yaml, other folders whole; --cases reads another cases file', () => {
+    const r = cli('skills', 'fixtures/lint/good/skills', '--set', 'personal', '--cases', 'heldout.routing.jsonl');
+    assert.equal(r.status, 0, r.stderr);
+    const listed = [...r.stdout.matchAll(/^([a-z-]+) +\d+ case\(s\)/gm)].map((m) => m[1]);
+    const personal = [...setSkills(loadSets(path.join(ROOT, 'skills', SETS_FILE)).data, 'personal')];
+    const pinned = fs.readdirSync(SKILLS).filter((d) => fs.existsSync(path.join(SKILLS, d, 'SKILL.md')));
+    assert.deepEqual(listed.sort(), [...personal, ...pinned].sort());
+    assert.doesNotMatch(r.stdout, /^- orchestrating-work:/m, 'a skill outside the set is not in the catalog');
+    const heldout = personal.reduce((n, s) => n + fs.readFileSync(path.join(ROOT, 'skills', s, 'evals/heldout.routing.jsonl'), 'utf8').trim().split('\n').length, 0);
+    assert.match(r.stdout, new RegExp(`eval-routing: ${heldout} case\\(s\\) across ${listed.length} skill`), 'the pinned fixtures have no held-out file');
+    assert.equal(cli('skills', '--set', 'nobody').status, 2);
+    assert.equal(cli('fixtures/lint/good/skills', '--set', 'personal').status, 2, 'no SETS.yaml');
   });
 
   it('usage errors exit 2', () => {

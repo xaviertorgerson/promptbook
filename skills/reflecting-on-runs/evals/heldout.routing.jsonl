@@ -1,0 +1,3 @@
+{"prompt": "Agents keep pushing without running the linter. Look at the runs and propose a rule change.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
+{"prompt": "Go through this month's failed evaluator verdicts and suggest small fixes to our skills.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
+{"prompt": "A new model came out today; ablate our subagents and drop whatever is no longer needed.", "expect": "no-trigger", "kind": "near-miss", "route_to": "reviewing-harness", "note": "held out: written after tuning, never used to change a description"}
