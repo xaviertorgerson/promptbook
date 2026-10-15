@@ -76,7 +76,7 @@ deprecated, and a `SETS.yaml` at the root) and one overlay per broken rule in
 
 `promptbook simulate <scenario.yaml>` or `promptbook simulate --project <root>` runs a seeded,
 deterministic discrete-event model of the runtime contracts and checks 20 invariants after every
-event. The world: a supervisor policy (the `orchestrating-work` protocol as code), author and
+event. The world: a supervisor policy (the reference coordinator: the protocol `state-machines/` describes, as code; stagehand's coordinator is tested with `--supervisor`), author and
 evaluator sessions with read-only helpers, CI, a reviewer that reviews every pushed head (pass or
 changes-requested, `reviewer.reject_rate`), a merge queue that classifies conflicts and re-runs
 checks on the merged result (for the branches it serves), the orchestrator's own merge under a

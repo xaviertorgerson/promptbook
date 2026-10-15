@@ -57,7 +57,7 @@ a hosted agent service) binds to promptbook through `adapters/<name>/`. It reads
 never advances workflow status on a runtime signal. `promptbook simulate --supervisor <module>` runs a
 runtime's own supervisor (its dispatch and authority decisions, written against the simulator's api)
 in the runtime-neutral simulation and checks it against every invariant; without the flag the
-simulation runs the `orchestrating-work` protocol as code.
+simulation runs promptbook's reference coordinator (the protocol the state machines describe, as code).
 
 ## Core vs optional
 

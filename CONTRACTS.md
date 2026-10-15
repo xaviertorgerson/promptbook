@@ -4,7 +4,17 @@ Promptbook defines the files every layer reads and writes, so that engines (Clau
 Gemini), runtimes (a CLI loop, CI agents, stagehand on Herdr) and methods can be swapped without
 touching the others. A contract is a JSON Schema 2020-12 file in `schemas/`, versioned with
 `x-version`; the state machines that govern the status fields are in `state-machines/`; the
-validator is `tools/validate.mjs`. Layers are explained in [LAYERS.md](LAYERS.md).
+validator is `tools/validate.mjs`. Layers are explained in [LAYERS.md](LAYERS.md), the five
+repositories of the suite in [SUITE.md](SUITE.md).
+
+Who writes what across the suite: a **stagecraft** project holds the plan and the queue (brief,
+journeys, requirements, ADRs, tasks, readiness reports) and its `toolkit.lock`; **stagehand** is the
+coordinator that reads a project's tasks and writes the runtime's records, task records in the
+`task-record` format and each delegation as a file in the `grant` format, recorded from the human's
+words; the sequential loop and the CI agents (stagecraft) write run records; **Skilldex** holds the
+skills and their evals, in the `skill` and `evidence` formats, and the skills that write the
+learning records; **dotfiles** hold the operator's `policy`. Promptbook holds the formats and the
+checks, and writes none of these artifacts itself.
 
 ```
 node tools/validate.mjs <file|dir>...           # each file against the contract its path implies
@@ -57,18 +67,18 @@ node tools/validate.mjs --list                  # contracts, versions, artifact 
 | [ux-flow](#ux-flow) | `docs/ux/<epic>.md` entries | entries | designer | coder, trace check |
 | [decision](#decision) | `DECISIONS.md` (or `docs/adr/*.md`) entries | entries | anyone, reviewed | everyone; trace check |
 | [epic](#epic) | `specs/<epic>/spec.md` frontmatter | frontmatter-md | product owner | board, planner, trace check |
-| [task](#task) | `specs/<epic>/tasks/<ID>.md` | frontmatter-md | planner | board, loop, coder, reviewer, merge |
+| [task](#task) | `specs/<epic>/tasks/<ID>.md` | frontmatter-md | planner | board, loop, coder, reviewer, merge, stagehand |
 | [readiness-report](#readiness-report) | `specs/<epic>/readiness.md` | frontmatter-md | trace check (generated) | product owner at the spec gate |
-| [task-record](#task-record) | `.orchestrator/tasks/<id>.yaml` (runtime) | YAML | coordinator | coordinator, status board |
+| [task-record](#task-record) | `.orchestrator/tasks/<id>.yaml` (runtime) | YAML | the coordinator (stagehand) | a replacement coordinator, the status board |
 | [return](#return) | a subagent's hand-back | JSON | subagent | dispatcher |
-| [run-record](#run-record) | `.agent/loop-runs.jsonl` (runtime, gitignored) | JSONL | runner | humans, cost reports |
-| [grant](#grant) | `.orchestrator/grants/GRANT-n.yaml` | YAML | a human | coordinator |
-| [policy](#policy) | `agent-policy.yaml` (L1 dotfiles) | YAML | operator | policy compiler → engine settings |
-| [toolkit-lock](#toolkit-lock) | `toolkit.lock` (L1 and L2) | YAML | lock tool | sync, CI |
-| [skill](#skill) | `skills/<name>/SKILL.md` (Skilldex; a pack's or a project's own) | frontmatter-md | skill author | every engine's skill loader |
-| [evidence](#evidence) | `**/skills/<name>/evals/{evidence.md,routing.jsonl}` (Skilldex's, a project's `.agents/skills/` too), `routing-results*.jsonl` | entries / JSONL | skill author, eval runs | skill reviews, routing evals |
-| [agent-setup-review](#agent-setup-review) | `agent-setup-reviews/<date>-<label>.md` | Markdown record | the reviewing-agent-setup skill | humans, the next review |
-| [reflection-report](#reflection-report) | `reflections/*.md` | frontmatter-md | the reflecting-on-runs skill | a curator, humans |
+| [run-record](#run-record) | `.agent/loop-runs.jsonl` (runtime, gitignored) | JSONL | runner (stagecraft's loop and CI agents) | humans, `promptbook report` |
+| [grant](#grant) | `.orchestrator/grants/GRANT-n.yaml` | YAML | a human (stagehand records it from the human's words) | the coordinator, `promptbook grant verify` |
+| [policy](#policy) | `agent-policy.yaml` (L1 dotfiles) | YAML | operator | `promptbook compile-policy` → engine settings |
+| [toolkit-lock](#toolkit-lock) | `toolkit.lock` (L1 and L2) | YAML | `promptbook lock` | stagecraft's sync and CI, dotfiles |
+| [skill](#skill) | `skills/<name>/SKILL.md` (Skilldex; a set's or a project's own) | frontmatter-md | skill author | every engine's skill loader, `promptbook lint` |
+| [evidence](#evidence) | `**/skills/<name>/evals/{evidence.md,routing.jsonl}` (Skilldex's, a project's `.agents/skills/` too), `routing-results*.jsonl` | entries / JSONL | skill author, `promptbook eval-routing` | skill reviews, routing evals |
+| [agent-setup-review](#agent-setup-review) | `agent-setup-reviews/<date>-<label>.md` | Markdown record | Skilldex's reviewing-agent-setup skill | humans, the next review |
+| [reflection-report](#reflection-report) | `reflections/*.md` | frontmatter-md | Skilldex's reflecting-on-runs skill | a curator, humans |
 
 `common` holds the shared definitions and is not an artifact.
 
@@ -213,7 +223,8 @@ worktree's derived `slug`, `worktree_path`, `database`, `ports{slot,first,last}`
 `services`, the last cleanup `audit{at, result: passed|blocked, blocked_by}` and
 `worktree_removed_at`, which requires an audit that passed), `updated_at`. **Swap story.** A different runtime (a CLI loop, a CI
 orchestrator, stagehand) keeps the same note; a coordinator can be replaced mid-task. **Compat.**
-A superset of stagehand's `assets/task-record.yaml`, which validates unchanged; the field map is in
+stagehand, the suite's coordinator, writes its records in this format: its template
+`assets/task-record.yaml` validates as it is, and the field map is in
 [adapters/herdr](adapters/herdr/README.md).
 
 ### return

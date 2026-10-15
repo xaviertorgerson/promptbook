@@ -28,7 +28,7 @@ export const RUNTIME_SIGNALS = new Set(['signal', 'ci', 'notice']);
 // A session's kind as a run record names its role: an evaluator's run ends in a verdict.
 const RUN_ROLE = { author: 'author', evaluator: 'evaluator', helper: 'reader' };
 // Every live session counts toward the workers cap: authors, evaluators and the readers (helpers)
-// an author starts (orchestrating-work, Hold the caps).
+// an author starts: each is a worker against max_workers (authority.yaml lifecycle.limits).
 export const WORKER_KINDS = new Set(['author', 'evaluator', 'helper']);
 
 const argvMatches = (rule, argv) => rule.command.length <= argv.length && rule.command.every((tok, i) => [].concat(tok).includes(argv[i]));
