@@ -10,6 +10,18 @@ Contract versions are each schema's `x-version` and each state machine's `versio
 
 ## [Unreleased]
 
+### Final pass
+
+Trust profiles, a standards block that holds in every profile, and the contracts adapted to the
+tools other maintainers already run (stagehand's task records and delegation, Skilldex's skills).
+
+#### Fixed
+
+- **behavioral** — The stagehand compatibility test checks a record filled from his
+  `assets/task-record.yaml` (`fixtures/valid/task-record/stagehand-development.yaml`, now with
+  `development_target` and `state.next_role`) and that it fills every key the template names; it no
+  longer validates the template's placeholders, nor a grant template stagehand does not ship.
+
 ### promptbook: one job in a suite of five repositories
 
 The harness is renamed **promptbook** and becomes the suite's master copy of formats, standards,
