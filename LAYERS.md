@@ -9,7 +9,7 @@ contract names are defined in [CONTRACTS.md](CONTRACTS.md).
 
 | Layer | Repositories | Holds | Seen by |
 |---|---|---|---|
-| **L1 personal** | **dotfiles** (chezmoi, private) | taste, the autonomy tier per machine profile, installed agents and runtimes (Herdr, the Heeler plugin, stagehand's plugins) at their pins, Skilldex's personal set, secrets wiring, personal MCP | the user's own sessions on the user's machines, every repo |
+| **L1 personal** | **dotfiles** (chezmoi, private) | taste, the autonomy tier per machine profile, installed agents and runtimes (Herdr; on the devbox, stagehand's control workspace and its wake relay) at their pins, the pinned checkouts cloned, Skilldex's personal set, secrets wiring, personal MCP | the user's own sessions on the user's machines, every repo |
 | **L2 project** | **each product repo, started from stagecraft** and kept in step by its template sync | a thin `AGENTS.md` map, walls (hook denies, permission deny rules), the `specs/` queue, product docs, `DECISIONS.md`, `knowledge/`, `toolkit.lock`, read-only MCP config | every agent, collaborator, cloud session and CI job on that repo |
 | **L3 shared** | **promptbook** (the formats, standards, playbook and the tools that check them) and **Skilldex** (every portable skill, with its evals and install sets) | engine- and stack-neutral contracts and procedures | whoever pins them |
 | **L4 implementations** | **stagecraft's sets** (`sets/webapp-saas/`, one per kind of project), **stagehand** (parallel coordination on Herdr), stagecraft's sequential loop and CI agents, and the engines and runtimes themselves (Claude Code, Codex, Gemini; Herdr, Heeler) | bindings of L3 to an engine, stack or runtime | whoever selects them in `toolkit.lock` or installs them in L1 |
@@ -92,7 +92,7 @@ are relative to the repo root. "Unverified" marks a path documented inconsistent
 | Product docs | L2 | `docs/product/brief.md`, `docs/product/personas/`, `docs/ux/<epic>.md`, `docs/` chapters |
 | ADRs | L2 per project; stagecraft and each set for their own decisions | `DECISIONS.md` |
 | Knowledge (verified vendor and pricing learnings) | L2 per project; a stagecraft set when cross-project | `knowledge/<topic>.md` with source and verification headers |
-| Lockfile | L2 and L1 | L2 `toolkit.lock` (promptbook, Skilldex with its `sets`, the stagecraft set); L1 dotfiles `home/.chezmoidata/toolkit.yaml` (the same entries under one key) feeding `home/.chezmoiexternal.toml.tmpl` |
+| Lockfile | L2 and L1 | L2 `toolkit.lock` (promptbook, Skilldex with its `sets`, the stagecraft set); L1 dotfiles `home/.chezmoidata/toolkit.yaml` (the same entries under one key), rendered to `~/.config/agents/toolkit.yaml` and read by the checkout and skills scripts |
 | Telemetry export | L1 per machine, L4 per runtime; promptbook schema | engine telemetry env (Claude: `CLAUDE_CODE_ENABLE_TELEMETRY=1`); OTel GenAI spans to a backend chosen in L4 |
 
 ## What ADR-0021 means for L1 and L2
@@ -228,10 +228,11 @@ explicit models (no `inherit` for cost-sensitive roles):
 | Today | Move | Target |
 |---|---|---|
 | `skills/orchestrating-development/` and references | stay, extended | the suite's one coordinator skill; it absorbs promptbook's orchestrating-work, delegating-authority and reporting-state (claim = creating the task branch, status on the task branch, approvals bound to a head, the attention mapping, grant narrowing and owner checks, caps, the run report) |
-| `templates/AGENTS.local.md` → `.local/AGENTS.md` | L1 | rendered by the dotfiles into the control workspace (stagehand allows a symlink to a private config repo) |
+| `templates/AGENTS.local.md` → `.local/AGENTS.md` | L1 | done: the dotfiles seed it from the template at the pin when absent, on the devbox; the user fills it in (stagehand allows a symlink to a private config repo) |
 | `.orchestrator/` (task records, grants, wake state) | stay | L4 runtime state, untracked; task records and grant files in promptbook's `task-record` and `grant` formats |
-| `plugins/agent-wake`, `plugins/status-board` | stay | Herdr plugins; installed by the dotfiles at a pinned commit |
+| `plugins/agent-wake`, `plugins/status-board` | stay | Herdr plugins; the dotfiles link agent-wake from the pinned checkout on the devbox; the status board is optional and installed by hand |
 | `.codex/rules/herdr.rules` | stay | the reference for how `promptbook compile-policy` emits Codex `prefix_rule` tiers |
+| no Claude Code setup | done | `CLAUDE.md` imports `AGENTS.md`; `.claude/skills/orchestrating-development` links the skill; `.claude/settings.json` mirrors `herdr.rules` (its allow entries apply once the workspace is trusted) |
 | `docs/design/*` | stay | cited by the playbook |
 
 ### dotfiles (L1)
@@ -242,9 +243,9 @@ explicit models (no `inherit` for cost-sensitive roles):
 | `home/dot_claude/CLAUDE.md.tmpl`, `home/dot_codex/AGENTS.md.tmpl` | stay | renderers of the shared template; **add** `home/dot_gemini/GEMINI.md.tmpl` |
 | `home/dot_claude/settings.json.tmpl`: bypass default, allow and deny lists, `autoMode`, herdr hook, `attribution`, `extraKnownMarketplaces.agentic` | generate | permissions, mode and `autoMode` compiled from `agent-policy.yaml`; never `disableAllHooks`; herdr hook and `attribution` stay; the marketplace entry pinned by `sha`; drop `advisorModel: opus` over an Opus main model unless an eval shows a gain |
 | no Codex `config.toml` or rules | add | `home/dot_codex/config.toml.tmpl` and `home/dot_codex/rules/*.rules`, compiled from the same policy |
-| no Gemini/Antigravity config | add | `home/dot_gemini/settings.json.tmpl`; verify the Antigravity path on install |
-| no user-scope skills | add | `home/.chezmoiexternal.toml.tmpl` cloning the pinned promptbook, Skilldex and the herdr skill into `~/.agents/sources/`; `run_onchange_after_27-agent-skills.sh.tmpl` copying Skilldex's `personal` set (from its `skills/SETS.yaml` at the pin) and the herdr skill into `~/.agents/skills/` and `~/.claude/skills/`; never the whole library, which exceeds the 8,000-character description budget (`promptbook lint --budget-set personal --sets <skilldex>/skills/SETS.yaml`) |
-| no policy or lock | add | `home/.chezmoidata/agent-policy.yaml` (compiled by `promptbook compile-policy`), `agents.yaml`, `toolkit.yaml` (promptbook, Skilldex and herdr, each by commit) |
+| no Gemini/Antigravity config | deferred | no profile runs Gemini; `promptbook compile-policy` emits its policy when one does |
+| no user-scope skills | done | `run_after_24-agent-checkouts.sh.tmpl` cloning each pinned checkout that has a source URL into its path (`~/src/skilldex`, `~/src/stagehand`) at the pinned commit when absent, never touching an existing one (a chezmoi external cannot pin a commit and check its tree); `run_onchange_after_27-agent-skills.sh.tmpl` copying Skilldex's `personal` set (from its `skills/SETS.yaml` at the pin) and the herdr skill into `~/.agents/skills/` and `~/.claude/skills/`; never the whole library, which exceeds the 8,000-character description budget (`promptbook lint --budget-set personal --sets <skilldex>/skills/SETS.yaml`) |
+| no policy or lock | done | `home/.chezmoidata/agent-policy.yaml`, compiled by `scripts/compile-agent-policy.sh` (`promptbook compile-policy`) into committed templates that `check-agent-policy.sh` keeps in step, so a machine applies without Node; `toolkit.yaml` (promptbook, Skilldex with `sets: [personal]`, stagehand, herdr, each by commit and tree); `agents.yaml` not yet |
 | `home/dot_config/mise/config.toml.tmpl` (`herdr = "0.9.3"`) | stay | already pinned; mirrored as a lock entry so bumps are reviewed with the stagehand and Heeler floors |
 | `run_once_after_25-claude-code`, `run_once_after_26-herdr-integrations` | stay | L1 installs agents and Herdr integrations |
 | `private_secrets.sh.tmpl`, `private_dot_ssh/config.tmpl` | stay | L1 secrets wiring; no vault on always-on boxes |
@@ -261,7 +262,7 @@ explicit models (no `inherit` for cost-sensitive roles):
 | `herdr` skill | add | user-scope skill for the coordinator only, pinned |
 | Herdr states and events | map | `adapters/herdr`: `blocked` → `needs-human`; `working`; `idle`/`done` reconcile only, never advance status |
 | Heeler app on the iPhone | stay | personal device; nothing in a repo |
-| Heeler host plugin (`heeler` 0.6.0) | pin | installed with `--ref <tag>`, not `main`; choose the push relay (developer-hosted by default) as an L1 decision |
+| Heeler host plugin (`heeler` 0.6.0) | pin, not yet done | installed by hand today; to be installed with `--ref <tag>`, not `main`, once the push relay (developer-hosted by default) is chosen as an L1 decision |
 
 ## Evolution
 
