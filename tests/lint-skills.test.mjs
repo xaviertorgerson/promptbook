@@ -163,6 +163,10 @@ describe('lint-skills CLI', () => {
     assert.equal(j.overlaps[0].rule, 'description-overlap');
     assert.equal(cli(dir, '--overlap', 'lots').status, 2);
     assert.equal(cli(dir, '--sets', path.join(TMP, 'no-such-SETS.yaml')).status, 2);
+    assert.equal(cli('no/such/dir').status, 2);
+    const here = cli();
+    assert.equal(here.status, 2, 'promptbook holds no skills/ to lint by default');
+    assert.match(here.stderr, /the skills live in Skilldex: promptbook lint <skilldex>\/skills/);
   });
 });
 

@@ -38,6 +38,8 @@ export function main(argv = process.argv.slice(2)) {
   const targets = argv.filter((a, i) => !a.startsWith('--') && !VALUED.has(argv[i - 1]));
   const overlap = value('--overlap');
   if (overlap !== undefined && !(Number(overlap) >= 0 && Number(overlap) <= 1)) { console.error(`lint: --overlap takes a number in 0..1\n\n${USAGE}`); return 2; }
+  for (const t of targets) if (!fs.existsSync(t)) { console.error(`lint: no such folder: ${t}\n\n${USAGE}`); return 2; }
+  if (!targets.length && value('--budget-set') === undefined && !fs.existsSync('skills')) { console.error(`lint: no ./skills here; the skills live in Skilldex: promptbook lint <skilldex>/skills\n\n${USAGE}`); return 2; }
   const setFile = value('--budget-set');
   const externalDirs = Object.fromEntries(argv.flatMap((a, i) => (argv[i - 1] === '--external' ? [a.split('=')] : [])).map(([k, ...v]) => [k, v.join('=')]));
   const sets = value('--sets');

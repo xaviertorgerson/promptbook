@@ -15,7 +15,7 @@ const USAGE = `Routing evals: does each skill's description route its routing.js
   dir: skill folders, or folders of skills (default ./skills, as in a Skilldex checkout)
       --skill <name>       only that skill's cases
       --set <name>         install only that set of the library a SETS.yaml names (--sets, else the
-                           one in or above a linted folder); other folders stay installed whole
+                           one in or above a given folder); other folders stay installed whole
       --sets <file>        the SETS.yaml --set reads (Skilldex's)
       --cases <file>       read each skill's cases from evals/<file> (default routing.jsonl; the
                            held-out cases are heldout.routing.jsonl)
@@ -42,7 +42,7 @@ export function main(argv = process.argv.slice(2)) {
   const usage = (m) => { console.error(`eval-routing: ${m}\n\n${USAGE}`); return 2; };
   const dirs = argv.filter((a, i) => !a.startsWith('--') && !VALUED.has(argv[i - 1]));
   const targets = dirs.length ? dirs : ['skills'];
-  for (const d of targets) if (!fs.existsSync(d)) return usage(`no such directory: ${d}`);
+  for (const d of targets) if (!fs.existsSync(d)) return usage(`no such directory: ${d}${dirs.length ? '' : ' (the skills live in Skilldex: promptbook eval-routing <skilldex>/skills)'}`);
   const command = value('--runner');
   if (argv.includes('--runner') && !command) return usage('--runner needs a command');
   const dryRun = !command || argv.includes('--dry-run');
