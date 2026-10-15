@@ -3,14 +3,17 @@
   "$id": "https://promptbook.dev/schemas/run-record.schema.json",
   "title": "Run record",
   "description": "One JSON line per agent run, appended by the runner (never the agent). Exactly the line agentic-template's scripts/loop.mjs writes to .agent/loop-runs.jsonl; promptbook fields are optional additions. A run is an author's unless role says otherwise: an evaluator's run ends in a verdict and a reader's in a read, neither of which moves the task.",
-  "x-version": "1.3.0",
+  "x-version": "1.4.0",
   "x-artifacts": [
     { "format": "jsonl", "paths": [".agent/loop-runs.jsonl", ".agent/runs/*.jsonl"], "suffixes": [".run-record.jsonl"] }
   ],
   "type": "object",
   "required": ["task", "session_id", "started_at", "ended_at", "exit", "outcome", "reason", "subtype", "num_turns", "total_cost_usd", "status_after"],
   "properties": {
-    "task": { "$ref": "common.schema.json#/$defs/taskId" },
+    "task": {
+      "description": "The workflow task id (<PREFIX>-<n>) when the work has one; otherwise the runtime's stable id, as task-record.task_id and return.task accept (a review of an outside pull request, a delegated job).",
+      "$ref": "common.schema.json#/$defs/nonEmptyString"
+    },
     "session_id": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
     "started_at": { "$ref": "common.schema.json#/$defs/dateTime" },
     "ended_at": { "$ref": "common.schema.json#/$defs/dateTime" },

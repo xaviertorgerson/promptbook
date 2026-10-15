@@ -231,7 +231,7 @@ is optional there.
 ### run-record
 
 **Purpose.** One JSON line per agent run, appended by the runner. **Schema** `run-record.schema.json`
-1.3.0: exactly `scripts/loop.mjs`'s line — `task`, `session_id`, `started_at`, `ended_at`, `exit`
+1.4.0: exactly `scripts/loop.mjs`'s line — `task`, `session_id`, `started_at`, `ended_at`, `exit`
 (code or signal), `outcome`, `reason`, `subtype`, `num_turns`, `total_cost_usd`, `status_after` —
 with null where loop.mjs writes null. `outcome` is advanced | stalled | failed | needs-human (the
 loop's since it pins dontAsk: a denied call left the task where it was) for an author's run, and
@@ -250,7 +250,9 @@ ready/in-progress; a verdict is an evaluator's (`verdict-by-evaluator`), a read 
 (`run-kept-status`); `usage` holds only those four counts (`usage-counts-tokens`); ended ≥ started.
 1.2.0 added `role`, the three outcomes and denial lines, so an evaluator's or reader's run is logged
 as what it was instead of an author's "advanced"; 1.3.0 added `usage`, so a run's cost has its
-tokens and cache hit rate beside it (`promptbook report`, TOOLS.md).
+tokens and cache hit rate beside it (`promptbook report`, TOOLS.md); 1.4.0 lets `task` be the
+runtime's stable id when the work has no workflow task (a review of an outside pull request, a
+delegated job), as `task-record.task_id` and `return.task` already do.
 **Compat.** Lines from loop.mjs's own test runs are the fixture
 `fixtures/valid/run-record/loop-mjs-outcomes.jsonl`; the dontAsk loop's lines (agentic-template
 `fix/agent-run-caps`: `needs-human`, `permission_denials` as lines), produced with a fake engine, are
