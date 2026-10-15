@@ -84,6 +84,59 @@ node tools/validate.mjs --list                  # contracts, versions, artifact 
 
 `common` holds the shared definitions and is not an artifact.
 
+### Where each shape comes from
+
+Three kinds, stated plainly. **Adopted**: a public standard, followed as published; promptbook only
+checks it. **Adapted**: a concept the field has converged on (every spec-driven kit and long-running
+harness keeps tasks, specs and progress as files in git), in the shape this suite's projects already
+used, with the public equivalents mapped below so a project on one of them can move across. **Ours**:
+no public equivalent was found (checked 2026-10-15); each names the gap it fills and goes when a
+standard fills it (SUITE.md, "Decided").
+
+| Contract | Kind | Public lineage and equivalents |
+|---|---|---|
+| skill | adopted | [Agent Skills](https://agentskills.io/specification) core fields, verbatim; engine extensions stay out |
+| (instructions) | adopted | [AGENTS.md](https://agents.md) (Agentic AI Foundation); the standards block is one section of it |
+| requirement | adapted | [EARS](https://alistairmavin.com/ears/) notation (Mavin, 2009), which [Kiro](https://kiro.dev/docs/specs/concepts) also uses (`WHEN … THE SYSTEM SHALL …`); Spec Kit's `FR-001` rows and OpenSpec's `SHALL` requirements are the same idea. Ids `REQ-n` / `NFR-n` |
+| decision | adapted | Architecture Decision Records (Nygard, 2011; [MADR](https://adr.github.io/madr/)); the parser reads the headings a project already writes |
+| journey | adapted | Critical User Journeys (Google product and SRE practice); Spec Kit's prioritized user stories with Given/When/Then scenarios carry the same content |
+| persona | adapted | Personas (Cooper); nothing agent-specific |
+| brief | adapted | the one-page product brief (a PR-FAQ or a Shape Up pitch); Spec Kit's `constitution.md` is the nearest agent-kit file, though it holds principles, not the product |
+| ux-flow | adapted | screens with their empty, loading, error and success states, a common design-review practice |
+| epic | adapted | Spec Kit `specs/<feature>/spec.md`, Kiro `requirements.md` + `design.md`, OpenSpec `openspec/changes/<change>/` |
+| task | adapted | Spec Kit and Kiro `tasks.md`, Anthropic's long-running harness `feature_list.json`, [Backlog.md](https://github.com/MrLesk/Backlog.md), [Beads](https://github.com/steveyegge/beads), Claude Code agent-team tasks; crosswalk below. One file per task (not one list) so a task is claimed, reviewed and landed on its own branch |
+| workflow (state machine) | adapted | the task lifecycle every queue has; crosswalk below. Ours adds the human gates (spec, PR, release) and `auto-land` |
+| toolkit-lock | adapted | a package lockfile (npm, Cargo) pinned by commit and tree instead of by registry version, since the libraries are git repositories |
+| run-record | adapted | the result line of `claude -p --output-format json` (`session_id`, `num_turns`, `total_cost_usd`, `usage`); maps to [OpenTelemetry GenAI](https://github.com/open-telemetry/semantic-conventions-genai) attributes (run-record, below) |
+| return | adapted | Anthropic's guidance that a subagent hands back a condensed summary (1–2k tokens); Claude Code's dynamic workflows now validate a subagent's result against a JSON Schema natively (`agent(prompt, { schema })`) |
+| task-record | adapted | stagehand's own records, read as they are; promptbook defines no second shape |
+| policy | ours | each engine's permission settings are public; one policy compiled to all three is not |
+| governance | ours | compiles to GitHub rulesets, `CODEOWNERS` and Environments, which are the standard parts |
+| grant | ours | delegation with scope, limits and expiry; the nearest public pieces are OAuth scopes and A2A's per-agent auth, neither of which covers "merge into this branch until Friday" |
+| readiness-report | ours | a requirements traceability matrix (an old practice), generated per epic |
+| evidence | ours | routing cases per skill; Anthropic's skill-creator keeps its own eval files, which `import-evals` can grow to read |
+| agent-setup-review, reflection-report | ours | records of two Skilldex procedures |
+
+**Task and status crosswalk.** What a task file's `status` means in the queues a project may already
+use. Promptbook's extra states are the gates the others leave to convention.
+
+| promptbook `task.status` | Claude Code agent-team task | Beads | Spec Kit / Kiro `tasks.md` | Anthropic `feature_list.json` | A2A 1.0 task |
+|---|---|---|---|---|---|
+| spec-draft | — | open (deferred) | (task generated, spec not approved) | — | — |
+| ready | pending | open, `bd ready` lists it | `- [ ]` | `passes: false` | SUBMITTED |
+| in-progress | in progress | in_progress (claimed) | `- [ ]` | `passes: false` | WORKING |
+| review, human-review, merging | in progress | in_progress | `- [ ]` | `passes: false` | WORKING |
+| integrated (on the epic's integration branch) | completed | closed | `- [x]` | `passes: true` | COMPLETED (for that branch) |
+| needs-input | — | blocked | — | — | INPUT_REQUIRED |
+| blocked | pending, with unresolved dependencies | blocked | — | — | — |
+| suspended | — | deferred | — | — | — |
+| merged | completed | closed | `- [x]` | `passes: true` | COMPLETED |
+| (no cancel state: a task dropped from the plan is deleted in a reviewed change, or parked as suspended) | — | closed | removed | removed | CANCELED |
+
+`depends_on` is Beads' `blocks`, the agent-team task's dependencies and Spec Kit's phase order;
+`parent` is Beads' `parent-child`. Spec Kit's `[P]` marker (parallel-safe) is what `touches` makes
+checkable: two tasks whose `touches` do not overlap may run at once (`checking-plan-readiness`).
+
 ---
 
 ### brief
@@ -286,6 +339,16 @@ delegated job), as `task-record.task_id` and `return.task` already do.
 `usage` (agentic-template `integration/agent-hardening`), from the same fake engine, are
 `loop-mjs-usage.jsonl`. A task's
 `sessions[]` entry (`common` `sessionRef`, 1.4.0) takes the same outcomes.
+**OpenTelemetry.** A run record is one `invoke_agent` span in the
+[OpenTelemetry GenAI conventions](https://github.com/open-telemetry/semantic-conventions-genai)
+(every `gen_ai.*` name is still at Development stability, so this is a mapping, not an export):
+`session_id` → `gen_ai.conversation.id`; `role` → `gen_ai.agent.name`; `model` →
+`gen_ai.request.model`; `engine` → `gen_ai.provider.name`; `usage.input` + `cache_read` + `cache_write`
+→ `gen_ai.usage.input_tokens`, `usage.cache_read` → `gen_ai.usage.cache_read.input_tokens`,
+`usage.output` → `gen_ai.usage.output_tokens`; `started_at`/`ended_at` → the span's times; a failed
+or needs-human outcome → `error.type`. `task`, `outcome`, `status_after` and the cost have no GenAI
+attribute and travel as `promptbook.*` attributes. An exporter is built when a project runs a tracing
+backend or the conventions reach stable, whichever comes first.
 
 ### grant
 

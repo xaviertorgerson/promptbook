@@ -10,6 +10,18 @@ Contract versions are each schema's `x-version` and each state machine's `versio
 
 ## [Unreleased]
 
+### Lineage
+
+#### Added
+
+- **additive** — CONTRACTS.md "Where each shape comes from": each contract marked adopted (a public
+  standard followed as published), adapted (a converged concept in this suite's shape, with its
+  public equivalents) or ours (no public equivalent found, 2026-10-15); a status crosswalk to Claude
+  Code agent-team tasks, Beads, Spec Kit and Kiro, Anthropic's feature list and A2A 1.0; and the
+  run record's mapping to OpenTelemetry GenAI attributes. SUITE.md's practice table names
+  Anthropic's long-running harness, OpenAI's harness engineering, the spec-driven kits, Ralph loops
+  and the engines' native orchestration, each with where the suite follows it.
+
 ### Review fixes: names, budgets, the guard
 
 #### Changed
