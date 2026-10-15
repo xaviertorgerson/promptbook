@@ -2,7 +2,7 @@ import { fenceMask, headings, section, splitLines, stripComments, tables } from 
 
 // agentic-template keeps a skill's evals in one evals.md: a "## Trigger routing" table (Prompt |
 // Expected), "## Scenarios" (### title, Fixture:, Assertions:) and "## Evidence" (- **date, who.**
-// text). The harness keeps them as three files in the evidence contract's shapes: routing.jsonl,
+// text). The evidence contract keeps them as three files: routing.jsonl,
 // scenarios.md and evidence.md. What the source does not say (a scenario's prompt, a neighbour
 // that is not a skill) is written as a marker that lint reports (imported-needs-review), so a human
 // finishes the import instead of a guess shipping as an eval.
@@ -14,7 +14,7 @@ const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const unquote = (s) => s.trim().replace(/^["“'`]+|["”'`]+$/g, '').trim();
 
 // One routing row -> a routing case (evidence contract, routingCase). rename maps the source's
-// skill names to the harness's.
+// skill names to the library's.
 export function routingCase(promptCell, expectedCell, rename = {}) {
   const near = /\(\s*near[- ]miss\s*\)/i.test(promptCell);
   const prompt = unquote(promptCell.replace(/\(\s*near[- ]miss\s*\)/i, ''));
@@ -96,7 +96,7 @@ export function importEvals(text, { skill, source, rename = {}, k = 3 } = {}) {
   const scenariosMd = [
     `# Scenarios — ${skill}`,
     '',
-    `Imported from ${source} by harness import-evals.`,
+    `Imported from ${source} by promptbook import-evals.`,
     `k = ${k} for every scenario (pass^k). A value the source did not supply carries the import marker;`,
     'lint reports it (imported-needs-review) until a human writes the value.',
     '',

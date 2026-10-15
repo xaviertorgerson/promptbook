@@ -1,4 +1,4 @@
 # A short sha or a tag is not a pin: the lock must name the exact commit.
 lock_version: 1
 entries:
-  - { name: harness, layer: L3, source: "https://github.com/x/harness", ref: v1.0.0, commit: 3c9d2f0, tree: 9f8e7d6c5b4a39281706f5e4d3c2b1a098765432, version: 1.0.0, autoUpdate: minor }
+  - { name: promptbook, layer: L3, source: "https://github.com/x/promptbook", ref: v1.0.0, commit: 3c9d2f0, tree: 9f8e7d6c5b4a39281706f5e4d3c2b1a098765432, version: 1.0.0, autoUpdate: minor }

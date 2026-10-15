@@ -23,8 +23,8 @@ import { registry as sharedRegistry } from './registry.mjs';
 //           through refs/remotes/origin/<ref>, and when it resolves nowhere there, the pin is
 //           verified by its commit and tree alone (a warning, ref-absent).
 
-export const GENERATOR = 'harness/lock@1.0.0';
-const KEY_ORDER = ['name', 'layer', 'kind', 'source', 'path', 'ref', 'commit', 'tree', 'version', 'autoUpdate', 'mirrored'];
+export const GENERATOR = 'promptbook/lock@1.0.0';
+const KEY_ORDER = ['name', 'layer', 'kind', 'source', 'path', 'sets', 'ref', 'commit', 'tree', 'version', 'autoUpdate', 'mirrored'];
 const SHA = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const TAG_VERSION = /(?:^|[/-])v?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)$/;
 
@@ -313,7 +313,7 @@ export function processLock(data, { mode = 'check', lockDir = '.', update = null
         else if (now.kind === 'branch') {
           const contained = src.contains(now.commit, pinned);
           if (contained === false) f('error', 'pin-on-ref', `${entry.ref} no longer contains ${pinned.slice(0, 12)}: the branch was rewritten (force-push)`);
-          else f('warning', 'ref-advanced', `${entry.ref} moved to ${now.commit.slice(0, 12)}${contained === null ? ' (containment not checked: shallow history)' : ''}; \`harness lock --update ${entry.name}\` moves the pin`);
+          else f('warning', 'ref-advanced', `${entry.ref} moved to ${now.commit.slice(0, 12)}${contained === null ? ' (containment not checked: shallow history)' : ''}; \`promptbook lock --update ${entry.name}\` moves the pin`);
         }
       }
       const { shallow, detached } = src.checkout();
@@ -339,7 +339,7 @@ export function processLock(data, { mode = 'check', lockDir = '.', update = null
 }
 
 export function defaultCache() {
-  return path.join(process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), '.cache'), 'harness', 'lock');
+  return path.join(process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), '.cache'), 'promptbook', 'lock');
 }
 
 const keyName = (k) => String(isScalar(k) ? k.value : k);

@@ -6,7 +6,7 @@ import { readRuns, render, runFiles, summarize } from './lib/report.mjs';
 
 const USAGE = `What the agent runs cost: totals from run-record JSONL.
 
-  harness report [file|dir]... [--since <date>] [--json]
+  promptbook report [file|dir]... [--since <date>] [--json]
 
   A file is read as run records; a directory is searched for them (.agent/loop-runs.jsonl,
   .agent/runs/*.jsonl, *.run-record.jsonl). With no path, the current directory. Each line is

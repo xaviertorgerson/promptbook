@@ -11,7 +11,7 @@ mode: spec-driven
 
 # Epic: Settle up
 
-<!-- From skills/writing-requirements/references/spec-template.md. Fictional sample data. -->
+<!-- From Skilldex skills/writing-requirements/assets/spec-template.spec.md. Fictional sample data. -->
 
 - **CUJs:** [`cuj.md`](cuj.md)  ·  **ADRs:** ADR-0001, ADR-0002, ADR-0003, ADR-0004
 - **Rationale (value vs effort):** both brief outcomes depend on it and it is the smallest useful slice; P1, M.

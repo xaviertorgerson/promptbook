@@ -11,7 +11,7 @@ import { validateFile } from '../tools/lib/validate.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FIX = path.join(ROOT, 'fixtures/import-evals');
-const TMP = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'harness-import-'));
+const TMP = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'promptbook-import-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 const cli = (...a) => spawnSync(process.execPath, [path.join(ROOT, 'tools/import-evals.mjs'), ...a], { encoding: 'utf8', cwd: ROOT });
 
@@ -45,17 +45,17 @@ describe('import-evals', () => {
       assert.equal(v.status, 'PASS', JSON.stringify(v.results.flatMap((x) => x.findings)));
     }
     for (const s of parseScenarios(r.scenarios)) assert.deepEqual(scenarioMissing(s), [], s.title);
-    const lint = lintSkills([path.dirname(dir)], { known: ['reviewing-security'] });
+    const lint = lintSkills([path.dirname(dir)], { known: ['reviewing-security', 'reviewing-code'] });
     const rules = lint.skills[0].findings.filter((x) => x.severity === 'error').map((x) => x.rule);
     assert.ok(rules.includes('imported-needs-review'), 'the scenarios have no prompt in the source');
     assert.ok(!rules.includes('route-to-known'), JSON.stringify(rules));
   });
 
   it('a month-dated entry and an unrouted near miss survive the import, and lint flags the near miss for a human', () => {
-    const { dir, r } = skillWith('adopting-things', path.join(FIX, 'adopt-template/evals.md'), { rename: { bootstrap: 'adopting-harness' } });
+    const { dir, r } = skillWith('adopting-things', path.join(FIX, 'adopt-template/evals.md'), { rename: { bootstrap: 'setting-up-the-suite' } });
     assert.match(r.evidence, /^## 2026-09 · a mature repo$/m);
     assert.equal(validateFile(path.join(dir, 'evals/evidence.md')).status, 'PASS');
-    const lint = lintSkills([path.dirname(dir)], { known: ['adopting-harness'] });
+    const lint = lintSkills([path.dirname(dir)], { known: ['setting-up-the-suite'] });
     const flagged = lint.skills[0].findings.filter((x) => x.rule === 'imported-needs-review');
     assert.ok(flagged.some((x) => x.file === 'evals/routing.jsonl' && /needs route_to/.test(x.message)), JSON.stringify(flagged));
     assert.ok(flagged.some((x) => x.file === 'evals/scenarios.md'));

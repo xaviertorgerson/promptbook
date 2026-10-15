@@ -1,6 +1,6 @@
 # Decisions
 
-<!-- From skills/choosing-architecture/references/adr-template.md. Fictional sample data. -->
+<!-- From Skilldex skills/choosing-architecture/assets/adr-template.adr.md. Fictional sample data. -->
 
 ## ADR-0001: Every query is scoped by a household id resolved from the session or link
 **Status:** Accepted

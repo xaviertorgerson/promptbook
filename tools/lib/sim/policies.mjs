@@ -1,9 +1,11 @@
 import { dispatches } from './authority.mjs';
 import { touchesOverlap } from './util.mjs';
 
-// Supervisor policies: the orchestrating-work protocol as code. `orchestrating()` is the correct
-// policy; each entry of MUTATIONS breaks exactly one behaviour of it, so a mutation test shows which
-// invariant notices that one change.
+// Supervisor policies: the reference coordinator, the protocol state-machines/*.yaml describe as
+// code. A runtime's own coordinator (stagehand's orchestrating-development on Herdr) is tested
+// against the same invariants with --supervisor. `orchestrating()` is the correct policy; each entry
+// of MUTATIONS breaks exactly one behaviour of it, so a mutation test shows which invariant notices
+// that one change.
 //
 // The correct policy, per wake (playbook: dormancy-and-wakes, single-writer, budgets-and-routing,
 // landing-changes, return-contract; state-machines/attention.yaml):
@@ -63,7 +65,7 @@ export function orchestrating({ break: breaks = [] } = {}) {
       return st.tasks.get(id);
     };
     return {
-      name: broken.size ? `orchestrating-work (broken: ${[...broken].join(', ')})` : 'orchestrating-work',
+      name: broken.size ? `reference-coordinator (broken: ${[...broken].join(', ')})` : 'reference-coordinator',
       onEvent(note, api) { decide(note, api, { st, T, broken, runtime }); },
     };
   };

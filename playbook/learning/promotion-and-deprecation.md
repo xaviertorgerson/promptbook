@@ -15,7 +15,7 @@ newer copy" behaves differently in each engine.
 |---|---|---|
 | trial | an untracked folder on one machine | fired usefully at least twice |
 | project | L2 `.agents/skills/<name>/` (portable) | routing eval green; one evidence entry |
-| pack | L3 `skills/` if engine- and stack-neutral, else an L4 pack | all gates below |
+| pack | L3 Skilldex `skills/` if engine- and stack-neutral, else an L4 pack | all gates below |
 | user | L1 fan-out to `~/.agents/skills` (and engine copies) via a pin | the owner wants it everywhere |
 
 Gates to L3 or an L4 pack:

@@ -5,11 +5,11 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { importEvals } from './lib/import-evals.mjs';
 
-const USAGE = `Import an agentic-template evals.md into the harness's three eval files.
+const USAGE = `Import an agentic-template evals.md into the evidence contract's three eval files.
 
   node tools/import-evals.mjs <evals.md> --out <skill>/evals
       --skill <name>        the skill's name in the headings (default: the evals.md folder's name)
-      --rename a=b,c=d      map the source's skill names to the harness's in route_to
+      --rename a=b,c=d      map the source's skill names to the library's in route_to
       --k <n>               pass^k for the imported scenarios (default 3)
       --force               overwrite routing.jsonl, scenarios.md, evidence.md if they exist
       --dry-run             print what would be written; write nothing

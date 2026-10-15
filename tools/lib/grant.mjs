@@ -11,6 +11,20 @@ const BUDGET_KEYS = ['max_usd', 'max_turns', 'max_minutes', 'max_tokens'];
 // Fields a narrowing, a revocation or a local x- note may add; everything else is the issue.
 export const MUTABLE_GRANT_FIELDS = new Set(['narrowed', 'revoked_at', 'revoked_by', 'revocation_reason']);
 
+// A grant's lifecycle state at a moment (epoch ms), read from the record and never stored in it
+// (CONTRACTS.md, grant lifecycle): pending before granted_at; live; expired at or past expires_at,
+// when it has one (a grant bounded by stop_when alone ends when a stop condition holds, which only
+// its coordinator can tell); revoked at or past revoked_at, which wins over expiry because it
+// names a person.
+export function grantState(g0, ms) {
+  if (!g0) return null;
+  const g = effectiveGrant(g0, ms);
+  if (g.revoked_at && Date.parse(g.revoked_at) <= ms) return 'revoked';
+  if (ms < Date.parse(g.granted_at)) return 'pending';
+  if (g.expires_at && ms >= Date.parse(g.expires_at)) return 'expired';
+  return 'live';
+}
+
 // The grant in force: the issued fields minus every narrowing entry dated at or before `ms`.
 export function effectiveGrant(g, ms = Infinity) {
   if (!g?.narrowed?.length) return g;
@@ -25,8 +39,8 @@ export function effectiveGrant(g, ms = Infinity) {
     }
     const r = n.reduce_limits ?? {};
     if (r.max_workers !== undefined) out.limits.max_workers = Math.min(out.limits.max_workers, r.max_workers);
-    for (const k of BUDGET_KEYS) if (r.budget?.[k] !== undefined) out.limits.budget[k] = Math.min(out.limits.budget[k] ?? Infinity, r.budget[k]);
-    if (r.expires_at && Date.parse(r.expires_at) < Date.parse(out.expires_at)) out.expires_at = r.expires_at;
+    for (const k of BUDGET_KEYS) if (r.budget?.[k] !== undefined) (out.limits.budget ??= {})[k] = Math.min(out.limits.budget[k] ?? Infinity, r.budget[k]);
+    if (r.expires_at && (!out.expires_at || Date.parse(r.expires_at) < Date.parse(out.expires_at))) out.expires_at = r.expires_at;
   }
   return out;
 }
@@ -62,9 +76,10 @@ export function narrowingFindings(g) {
     for (const k of BUDGET_KEYS) {
       if (r.budget?.[k] === undefined) continue;
       const was = cur.limits.budget?.[k];
-      if (was === undefined || r.budget[k] > was) bad(`/reduce_limits/budget/${k}`, `raises budget.${k} ${was ?? 'unset'} → ${r.budget[k]}: widening is a new grant`);
+      // An unset limit is no limit, so setting one narrows.
+      if (was !== undefined && r.budget[k] > was) bad(`/reduce_limits/budget/${k}`, `raises budget.${k} ${was} → ${r.budget[k]}: widening is a new grant`);
     }
-    if (r.expires_at && Date.parse(r.expires_at) > Date.parse(cur.expires_at)) bad('/reduce_limits/expires_at', `extends expires_at ${cur.expires_at} → ${r.expires_at}: renewal is a new grant`);
+    if (r.expires_at && cur.expires_at && Date.parse(r.expires_at) > Date.parse(cur.expires_at)) bad('/reduce_limits/expires_at', `extends expires_at ${cur.expires_at} → ${r.expires_at}: renewal is a new grant`);
     cur = effectiveGrant({ ...cur, narrowed: [n] });
   });
   return out;

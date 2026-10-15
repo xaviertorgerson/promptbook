@@ -30,14 +30,14 @@ inputs:
 risk: { level: medium, reasons: [the link is the only credential for housemates] }
 evaluator:
   - { kind: tests, ref: the project's test command for src/household and src/ledger }
-  - { kind: script, ref: harness trace . --strict }
+  - { kind: script, ref: promptbook trace . --strict }
   - { kind: agent-review, ref: evaluator }
 budget: { max_turns: 150, max_usd: 5, max_minutes: 120 }
 ---
 
 # SPLIT-3 · Settle a share from a household link
 
-<!-- From skills/planning-work/references/task-template.md. Fictional sample data. -->
+<!-- From Skilldex skills/planning-work/assets/task-template.task.md. Fictional sample data. -->
 
 ## Context
 CUJ-2 through UX-2: a housemate marks a share paid from the link, can undo for 24 hours, and the

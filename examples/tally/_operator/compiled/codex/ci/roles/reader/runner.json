@@ -1,5 +1,5 @@
 {
-  "generated_by": "harness compile-policy",
+  "generated_by": "promptbook compile-policy",
   "source": "agent-policy.yaml",
   "engine": "codex",
   "profile": "ci",
@@ -14,8 +14,8 @@
     "timeout_seconds": 5400
   },
   "enforcement": {
-    "max_turns": "harness-run",
+    "max_turns": "promptbook-run",
     "max_budget_usd": "none",
-    "timeout_seconds": "harness-run"
+    "timeout_seconds": "promptbook-run"
   }
 }

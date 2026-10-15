@@ -1,3 +1,0 @@
-{"prompt": "Give SEARCH-4 an isolated checkout with its own database and port block.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
-{"prompt": "Audit the old checkouts under ~/wt and remove only the ones whose work is safely pushed.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
-{"prompt": "SEARCH-4's PR is approved; merge it into main.", "expect": "no-trigger", "kind": "near-miss", "route_to": "landing-changes", "note": "held out: written after tuning, never used to change a description"}

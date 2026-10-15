@@ -1,16 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://harness.dev/schemas/run-record.schema.json",
+  "$id": "https://promptbook.dev/schemas/run-record.schema.json",
   "title": "Run record",
-  "description": "One JSON line per agent run, appended by the runner (never the agent). Exactly the line agentic-template's scripts/loop.mjs writes to .agent/loop-runs.jsonl; harness fields are optional additions. A run is an author's unless role says otherwise: an evaluator's run ends in a verdict and a reader's in a read, neither of which moves the task.",
-  "x-version": "1.3.0",
+  "description": "One JSON line per agent run, appended by the runner (never the agent). Exactly the line agentic-template's scripts/loop.mjs writes to .agent/loop-runs.jsonl; promptbook fields are optional additions. A run is an author's unless role says otherwise: an evaluator's run ends in a verdict and a reader's in a read, neither of which moves the task.",
+  "x-version": "1.4.0",
   "x-artifacts": [
     { "format": "jsonl", "paths": [".agent/loop-runs.jsonl", ".agent/runs/*.jsonl"], "suffixes": [".run-record.jsonl"] }
   ],
   "type": "object",
   "required": ["task", "session_id", "started_at", "ended_at", "exit", "outcome", "reason", "subtype", "num_turns", "total_cost_usd", "status_after"],
   "properties": {
-    "task": { "$ref": "common.schema.json#/$defs/taskId" },
+    "task": {
+      "description": "The workflow task id (<PREFIX>-<n>) when the work has one; otherwise the runtime's stable id, as task-record.task_id and return.task accept (a review of an outside pull request, a delegated job).",
+      "$ref": "common.schema.json#/$defs/nonEmptyString"
+    },
     "session_id": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
     "started_at": { "$ref": "common.schema.json#/$defs/dateTime" },
     "ended_at": { "$ref": "common.schema.json#/$defs/dateTime" },
@@ -24,7 +27,7 @@
       "enum": ["advanced", "stalled", "failed", "needs-human", "verdict", "read"]
     },
     "role": {
-      "description": "Harness: the session's part in the task. Absent: the author (the loop's coder run). evaluator and reader runs end in verdict and read.",
+      "description": "Promptbook: the session's part in the task. Absent: the author (the loop's coder run). evaluator and reader runs end in verdict and read.",
       "enum": ["author", "evaluator", "reader", "planner", "orchestrator", "merge", "other"]
     },
     "reason": { "type": ["string", "null"], "minLength": 1 },
@@ -37,7 +40,7 @@
     "total_cost_usd": { "type": ["number", "null"], "minimum": 0 },
     "usage": {
       "x-rule": "usage-counts-tokens",
-      "description": "Harness: the run's tokens over every model it called. input is what neither came from nor went to the prompt cache; cache_read and cache_write are what did, absent when the engine does not report them. null when the result reported none.",
+      "description": "Promptbook: the run's tokens over every model it called. input is what neither came from nor went to the prompt cache; cache_read and cache_write are what did, absent when the engine does not report them. null when the result reported none.",
       "anyOf": [
         {
           "type": "object",
@@ -57,8 +60,8 @@
       "description": "The task's workflow status read back from the task file after the run, or null if the file was gone.",
       "anyOf": [{ "$ref": "common.schema.json#/$defs/taskStatus" }, { "type": "null" }]
     },
-    "engine": { "description": "Harness: claude, codex, gemini, ...", "$ref": "common.schema.json#/$defs/slug" },
-    "runtime": { "description": "Harness: the runner that wrote the line (claude-loop, ci, stagehand).", "$ref": "common.schema.json#/$defs/slug" },
+    "engine": { "description": "Promptbook: claude, codex, gemini, ...", "$ref": "common.schema.json#/$defs/slug" },
+    "runtime": { "description": "Promptbook: the runner that wrote the line (claude-loop, ci, stagehand).", "$ref": "common.schema.json#/$defs/slug" },
     "model": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
     "status_before": { "$ref": "common.schema.json#/$defs/taskStatus" },
     "permission_mode": { "$ref": "common.schema.json#/$defs/nonEmptyString" },

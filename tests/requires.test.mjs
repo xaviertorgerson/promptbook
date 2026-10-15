@@ -12,12 +12,12 @@ import { checkRequires, hostEnv, parseHost, preconditionFailures } from '../tool
 // start until they pass.
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const TMP = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'harness-requires-'));
+const TMP = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'promptbook-requires-'));
 const FAKE = path.join(ROOT, 'fixtures/run/fake-engine.mjs');
-const harness = (...a) => spawnSync(process.execPath, [path.join(ROOT, 'tools/cli.mjs'), ...a], { encoding: 'utf8', timeout: 20_000 });
+const promptbook = (...a) => spawnSync(process.execPath, [path.join(ROOT, 'tools/cli.mjs'), ...a], { encoding: 'utf8', timeout: 20_000 });
 // spawnSync would block the event loop that answers the listening socket; a reachable host needs an
 // async child.
-const harnessAsync = (...a) => new Promise((resolve) => {
+const promptbookAsync = (...a) => new Promise((resolve) => {
   const c = spawn(process.execPath, [path.join(ROOT, 'tools/cli.mjs'), ...a], { stdio: ['ignore', 'pipe', 'pipe'] });
   let stdout = '';
   let stderr = '';
@@ -81,7 +81,7 @@ describe('check-requires probes', () => {
   });
 });
 
-describe('harness check-requires and harness run', () => {
+describe('promptbook check-requires and promptbook run', () => {
   const policy = (prodHosts, requires = ['prod-unreachable-from-this-host']) => {
     const file = path.join(TMP, `p-${Math.random().toString(36).slice(2)}.policy.yaml`);
     fs.writeFileSync(file, `policy_version: 1
@@ -100,34 +100,34 @@ accept_gaps:
   };
 
   it('check-requires exits 0 when every probe passes, 1 when one fails or is unknown, 2 on a usage error', async () => {
-    const ok = harness('check-requires', '--policy', policy([closed]), '--profile', 'devbox');
+    const ok = promptbook('check-requires', '--policy', policy([closed]), '--profile', 'devbox');
     assert.equal(ok.status, 0, ok.stderr + ok.stdout);
     assert.match(ok.stdout, /^PASS prod-unreachable-from-this-host: /m);
-    const reach = await harnessAsync('check-requires', '--policy', policy([open]), '--profile', 'devbox', '--json');
+    const reach = await promptbookAsync('check-requires', '--policy', policy([open]), '--profile', 'devbox', '--json');
     assert.equal(reach.status, 1, reach.stderr);
     assert.equal(JSON.parse(reach.stdout).results[0].ok, false);
-    assert.equal(harness('check-requires', '--policy', policy([closed], ['prod-unreachable-from-this-host', 'on-a-tailnet']), '--profile', 'devbox').status, 1);
-    assert.equal(harness('check-requires', '--policy', policy([closed]), '--profile', 'laptop').status, 0, 'nothing to check');
-    assert.equal(harness('check-requires', '--profile', 'devbox').status, 2);
+    assert.equal(promptbook('check-requires', '--policy', policy([closed], ['prod-unreachable-from-this-host', 'on-a-tailnet']), '--profile', 'devbox').status, 1);
+    assert.equal(promptbook('check-requires', '--policy', policy([closed]), '--profile', 'laptop').status, 0, 'nothing to check');
+    assert.equal(promptbook('check-requires', '--profile', 'devbox').status, 2);
   });
 
-  it('harness run refuses a bypass runner until its probes pass, then runs it', async () => {
-    const compile = (file, out) => harness('compile-policy', file, '--profile', 'devbox', '--engine', 'claude', '--out', out);
+  it('promptbook run refuses a bypass runner until its probes pass, then runs it', async () => {
+    const compile = (file, out) => promptbook('compile-policy', file, '--profile', 'devbox', '--engine', 'claude', '--out', out);
     const outOpen = path.join(TMP, 'open');
     assert.equal(compile(policy([open]), outOpen).status, 0);
     const runner = JSON.parse(fs.readFileSync(path.join(outOpen, 'runner.json'), 'utf8'));
     assert.deepEqual(runner.requires_config, { prod_hosts: [open], connect_timeout_ms: 2000 });
-    const refused = await harnessAsync('run', '--runner', path.join(outOpen, 'runner.json'), '--', process.execPath, FAKE, 'args');
+    const refused = await promptbookAsync('run', '--runner', path.join(outOpen, 'runner.json'), '--', process.execPath, FAKE, 'args');
     assert.equal(refused.status, 1, refused.stderr);
     assert.match(refused.stderr, /refused: .*prod-unreachable-from-this-host: 127\.0\.0\.1:\d+ connected/);
     assert.equal(refused.stdout, '', 'the engine never started');
     const outClosed = path.join(TMP, 'closed');
     assert.equal(compile(policy([closed]), outClosed).status, 0);
-    const ran = harness('run', '--runner', path.join(outClosed, 'runner.json'), '--', process.execPath, FAKE, 'args');
+    const ran = promptbook('run', '--runner', path.join(outClosed, 'runner.json'), '--', process.execPath, FAKE, 'args');
     assert.equal(ran.status, 0, ran.stderr);
     const hand = path.join(TMP, 'hand-runner.json');
     fs.writeFileSync(hand, JSON.stringify({ ...runner, requires: undefined }));
-    const noReq = harness('run', '--runner', hand, '--', process.execPath, FAKE, 'args');
+    const noReq = promptbook('run', '--runner', hand, '--', process.execPath, FAKE, 'args');
     assert.equal(noReq.status, 1);
     assert.match(noReq.stderr, /names no requires/);
   });

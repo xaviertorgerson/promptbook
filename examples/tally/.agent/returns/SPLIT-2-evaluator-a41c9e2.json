@@ -13,7 +13,7 @@
   },
   "verification": [
     { "command": "pnpm test -- tests/bills (x2)", "result": "pass" },
-    { "command": "harness trace . --strict", "result": "pass" },
+    { "command": "promptbook trace . --strict", "result": "pass" },
     { "command": "preview: two concurrent POST /bills with one key (x2)", "result": "fail" }
   ],
   "session": { "engine": "gemini", "session_id": "eval-a41c9e2-k2", "actor": "tally-evaluator", "role": "evaluator", "started_at": "2026-10-15T08:42:00Z", "ended_at": "2026-10-15T09:01:00Z", "outcome": "advanced", "run": ".agent/loop-runs.jsonl" }

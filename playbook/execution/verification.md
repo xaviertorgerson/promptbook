@@ -24,7 +24,7 @@ weak verifier just produces wrong work faster. One lucky pass hides a flaky succ
 - **Findings go back to the writer.** The evaluator reports material, evidence-backed findings and
   never edits. The writer resolves the selected ones; changed code needs re-evaluation of the full
   current head. Review counts are not approval.
-- **Measure consistency, not luck.** For evals of the harness itself, track pass^k (all k trials pass),
+- **Measure consistency, not luck.** For evals of the agent setup itself, track pass^k (all k trials pass),
   not pass@k. 75% per trial is about 42% over three.
 - **Record the verdict** in the run record and the task's agent log.
 

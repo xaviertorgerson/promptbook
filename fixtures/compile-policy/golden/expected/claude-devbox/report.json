@@ -9,6 +9,6 @@
     }
   ],
   "notes": [
-    "bypass tier devbox requires: prod-unreachable-from-this-host, non-root-container (harness check-requires probes each on the host; harness run refuses the profile's runs until they pass)"
+    "bypass tier devbox requires: prod-unreachable-from-this-host, non-root-container (promptbook check-requires probes each on the host; promptbook run refuses the profile's runs until they pass)"
   ]
 }

@@ -6,7 +6,7 @@ compatibility: Any agent that reads Agent Skills; needs Node 22 for tools/valida
 metadata:
   version: 1.0.0
   layer: L3
-  author: harness
+  author: promptbook
 ---
 
 # Writing requirements

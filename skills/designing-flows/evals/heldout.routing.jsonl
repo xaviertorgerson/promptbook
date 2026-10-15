@@ -1,3 +1,0 @@
-{"prompt": "Sketch the onboarding screens, including what a brand-new account with no data sees and what happens when the save fails.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
-{"prompt": "Walk the prototype through CUJ-3 and note where a user would get stuck.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
-{"prompt": "List the checkable requirements the onboarding journeys imply, in EARS form with ids.", "expect": "no-trigger", "kind": "near-miss", "route_to": "writing-requirements", "note": "held out: written after tuning, never used to change a description"}

@@ -10,7 +10,7 @@ import { validateFile } from './lib/validate.mjs';
 
 const USAGE = `Probe this host for a policy profile's named preconditions (its requires).
 
-  harness check-requires --policy <agent-policy.yaml> --profile <p> [--json]
+  promptbook check-requires --policy <agent-policy.yaml> --profile <p> [--json]
 
 Probes: ${Object.keys(PROBES).join(', ')}.
   prod-unreachable-from-this-host  a TCP connect to every requires_config.prod_hosts entry fails
@@ -20,7 +20,7 @@ Probes: ${Object.keys(PROBES).join(', ')}.
   non-root-container               both of the above
   sandbox-available                bubblewrap runs (Linux) or sandbox-exec runs (macOS)
 An unknown name fails closed. A bypass-tier profile that names none fails (HAR-4).
-Exit 0 every probe passed, 1 one failed, 2 usage error. harness run applies the same check to the
+Exit 0 every probe passed, 1 one failed, 2 usage error. promptbook run applies the same check to the
 requires in a runner.json before it starts a run.`;
 
 export async function main(argv = process.argv.slice(2)) {

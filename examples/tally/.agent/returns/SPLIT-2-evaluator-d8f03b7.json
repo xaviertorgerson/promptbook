@@ -10,7 +10,7 @@
   "criteria": { "met": ["AC-1", "AC-2", "AC-3", "AC-4"], "unmet": [] },
   "verification": [
     { "command": "pnpm test -- tests/bills (x2)", "result": "pass" },
-    { "command": "harness trace . --strict", "result": "pass" },
+    { "command": "promptbook trace . --strict", "result": "pass" },
     { "command": "preview: two concurrent POST /bills with one key (x2)", "result": "pass" },
     { "command": "fail-without-change check AC-1..AC-4", "result": "pass" }
   ],

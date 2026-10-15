@@ -26,7 +26,7 @@ inputs:
 risk: { level: medium, reasons: [revocation is the only way to cut off a forwarded link] }
 evaluator:
   - { kind: tests, ref: the project's test command for src/links }
-  - { kind: script, ref: harness trace . --strict }
+  - { kind: script, ref: promptbook trace . --strict }
   - { kind: agent-review, ref: evaluator }
 budget: { max_turns: 100, max_usd: 3, max_minutes: 90 }
 sessions:
@@ -35,7 +35,7 @@ sessions:
 
 # SPLIT-4 · Revoke a household link
 
-<!-- From skills/planning-work/references/task-template.md. Fictional sample data. -->
+<!-- From Skilldex skills/planning-work/assets/task-template.task.md. Fictional sample data. -->
 
 ## Context
 The organiser revokes a link (`DELETE /links/{id}`) and anyone holding it sees UX-2's Link revoked

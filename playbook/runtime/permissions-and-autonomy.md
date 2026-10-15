@@ -23,8 +23,8 @@ much a run may spend.**
    project's.
 5. **Bypass needs isolation.** Bypass defaults belong only on profiles where production is
    unreachable at the network level and the agent runs as non-root in a sandbox or container. The
-   profile names those preconditions (`requires`), each a probe of the host (`harness
-   check-requires`; `harness run` refuses to start until they pass); the compiler refuses a bypass
+   profile names those preconditions (`requires`), each a probe of the host (`promptbook
+   check-requires`; `promptbook run` refuses to start until they pass); the compiler refuses a bypass
    tier without them, and without the policy's own sandbox and egress deny unless each gap is
    accepted for that profile by name. A bypass on its own sandbox also forbids a sandbox-blocked
    command's unsandboxed retry, which bypass would run unasked.

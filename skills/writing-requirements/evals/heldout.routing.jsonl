@@ -1,3 +1,0 @@
-{"prompt": "Write the spec.md for the refunds epic: EARS requirements from its CUJs plus measurable NFRs.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
-{"prompt": "'The search should be quick' isn't checkable. Rewrite it as an NFR with a category and a measure.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
-{"prompt": "The refunds spec is approved; break it into tasks.", "expect": "no-trigger", "kind": "near-miss", "route_to": "planning-work", "note": "held out: written after tuning, never used to change a description"}

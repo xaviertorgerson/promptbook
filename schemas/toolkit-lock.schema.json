@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://harness.dev/schemas/toolkit-lock.schema.json",
+  "$id": "https://promptbook.dev/schemas/toolkit-lock.schema.json",
   "title": "Toolkit lock",
-  "description": "toolkit.lock (YAML) in an L2 project, or in L1 dotfiles: the exact harness (L3), the portable skill libraries it runs beside (L3), and the implementation packs (L4) this project runs, pinned by commit and tree hash. Dependencies point one way: everything pins one harness.",
-  "x-version": "1.2.0",
+  "description": "toolkit.lock (YAML) in an L2 project, or in L1 dotfiles: the exact promptbook commit (L3), the portable skill libraries it runs beside (L3), and the implementation packs (L4) this project runs, pinned by commit and tree hash. Dependencies point one way: everything pins one promptbook.",
+  "x-version": "2.0.0",
   "x-artifacts": [
     { "format": "yaml", "paths": ["toolkit.lock"], "suffixes": [".toolkit.lock"] }
   ],
@@ -13,7 +13,7 @@
     "lock_version": { "const": 1 },
     "generated_at": { "$ref": "common.schema.json#/$defs/dateTime" },
     "generated_by": {
-      "description": "Tool and version that wrote the lock, e.g. harness/lock@1.0.0.",
+      "description": "Tool and version that wrote the lock, e.g. promptbook/lock@1.0.0.",
       "type": "string",
       "pattern": "^[a-z0-9-]+/[a-z0-9-]+@[0-9]+\\.[0-9]+\\.[0-9]+$"
     },
@@ -22,9 +22,9 @@
       "minItems": 1,
       "items": { "$ref": "#/$defs/entry" },
       "x-unique-by": "name",
-      "x-rules": { "x-unique-by": "duplicate-name", "contains": "exactly-one-harness" },
+      "x-rules": { "x-unique-by": "duplicate-name", "contains": "exactly-one-promptbook" },
       "contains": {
-        "description": "Exactly one pinned harness: the L3 entry that is not a skill library (kind harness, or no kind).",
+        "description": "Exactly one pinned promptbook: the L3 entry that is not a skill library (kind promptbook, or no kind).",
         "type": "object",
         "required": ["layer"],
         "properties": { "layer": { "const": "L3" } },
@@ -45,8 +45,8 @@
         "name": { "$ref": "common.schema.json#/$defs/slug" },
         "layer": { "enum": ["L3", "L4"] },
         "kind": {
-          "description": "What the entry is. L3: harness (exactly one; an L3 entry with no kind is the harness) or skill-library (any number of portable skill sets, e.g. Skilldex). L4: engine-binding, stack-pack, runtime, domain-pack.",
-          "enum": ["harness", "skill-library", "engine-binding", "stack-pack", "runtime", "domain-pack"]
+          "description": "What the entry is. L3: promptbook (exactly one; an L3 entry with no kind is promptbook) or skill-library (any number of portable skill sets, e.g. Skilldex). L4: engine-binding, stack-pack, runtime, domain-pack.",
+          "enum": ["promptbook", "skill-library", "engine-binding", "stack-pack", "runtime", "domain-pack"]
         },
         "source": {
           "description": "A git URL or a local path.",
@@ -84,10 +84,25 @@
           "description": "The source is a mirror of an upstream; the upstream it tracks.",
           "type": "string",
           "pattern": "^https://[^\\s]+$"
+        },
+        "sets": {
+          "description": "A skill library's install sets this consumer copies into its skills folders, by the names in the library's SETS.yaml (Skilldex's: planning, delivery, personal, ...).",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/slug" }
         }
       },
       "patternProperties": { "^x-": {} },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "x-rule": "sets-on-skill-library",
+          "description": "Only a skill library has install sets.",
+          "if": { "required": ["sets"] },
+          "then": { "required": ["kind"], "properties": { "kind": { "const": "skill-library" } } }
+        }
+      ]
     }
   }
 }

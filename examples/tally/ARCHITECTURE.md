@@ -1,6 +1,6 @@
 # Architecture — Tally
 
-<!-- From skills/choosing-architecture/references/architecture-template.md. Fictional sample data. -->
+<!-- From Skilldex skills/choosing-architecture/assets/architecture-template.md. Fictional sample data. -->
 
 ## Quality attributes (ranked)
 
@@ -13,8 +13,8 @@
 
 ## Stack
 
-Pack: the stack pack's defaults (ADR-0002); a product pins that pack in its `toolkit.lock` beside the
-harness. This example pins only the harness and a skill library, so `harness lock --check` needs
+Pack: the stack pack's defaults (ADR-0002); a product pins that pack in its `toolkit.lock` beside
+promptbook. This example pins only promptbook and a skill library, so `promptbook lock --check` needs
 nothing outside the repository and one public source. Deviations: none.
 
 ## Context view

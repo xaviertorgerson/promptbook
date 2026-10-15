@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://harness.dev/schemas/epic.schema.json",
+  "$id": "https://promptbook.dev/schemas/epic.schema.json",
   "title": "Epic",
   "description": "The frontmatter and required sections of specs/<epic>/spec.md: the planning-layer state machine. The same file carries the requirement contract in its Requirements tables.",
   "x-version": "1.2.0",
@@ -37,7 +37,7 @@
       "minLength": 1
     },
     "mode": {
-      "description": "Harness: the default methodology for the epic's tasks; a task's own mode overrides it. Absent: spec-driven.",
+      "description": "Promptbook: the default methodology for the epic's tasks; a task's own mode overrides it. Absent: spec-driven.",
       "$ref": "common.schema.json#/$defs/mode"
     }
   },

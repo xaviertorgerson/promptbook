@@ -1,3 +1,0 @@
-{"prompt": "Our evaluator runs on the same model as the coder. Should it use a different family, and at what effort?", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
-{"prompt": "Overnight agent spend doubled this week; which roles can drop to a cheaper model tier?", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
-{"prompt": "A new model shipped; run the full effort sweep and ablations and delete what no longer pays.", "expect": "no-trigger", "kind": "near-miss", "route_to": "reviewing-harness", "note": "held out: written after tuning, never used to change a description"}

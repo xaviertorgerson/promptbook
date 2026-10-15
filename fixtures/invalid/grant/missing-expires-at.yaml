@@ -1,9 +1,0 @@
-id: GRANT-7
-granted_by: maria
-granted_to: { role: orchestrator }
-granted_at: "2026-10-12T08:00:00Z"
-source: chat transcript 2026-10-12
-scope: { objective: Run the backlog, repositories: [acme/billing] }
-actions: [select-tasks]
-limits: { max_workers: 2, budget: { max_usd: 10 } }
-revocable: true

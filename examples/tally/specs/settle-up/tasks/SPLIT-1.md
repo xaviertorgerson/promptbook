@@ -28,7 +28,7 @@ inputs:
 risk: { level: high, irreversible: false, reasons: [first pass through the real pipeline, proves the one-way ADR-0001] }
 evaluator:
   - { kind: tests, ref: the project's test command }
-  - { kind: script, ref: harness trace . --strict }
+  - { kind: script, ref: promptbook trace . --strict }
   - { kind: agent-review, ref: evaluator }
   - { kind: human, ref: code-owner }
 budget: { max_turns: 200, max_usd: 6, max_minutes: 150 }
@@ -39,7 +39,7 @@ sessions:
 
 # SPLIT-1 · Walking skeleton: one household's bill, read only through its link
 
-<!-- From skills/planning-work/references/skeleton-task-template.md. Fictional sample data. -->
+<!-- From Skilldex skills/planning-work/assets/skeleton-task-template.task.md. Fictional sample data. -->
 
 ## Context
 Tests the riskiest assumption (A3: link access can keep households apart) and the one-way ADR-0001

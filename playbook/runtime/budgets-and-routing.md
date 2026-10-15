@@ -70,4 +70,4 @@ cache warm → batch where latency allows → tune effort → only then change m
 ## Revisit when
 
 A model release changes the price ratio between tiers or the cache multipliers, or the effort sweep
-in [harness review](../learning/harness-review.md) moves the baseline.
+in [agent-setup review](../learning/agent-setup-review.md) moves the baseline.

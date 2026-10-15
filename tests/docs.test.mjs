@@ -78,19 +78,6 @@ describe('version labels', () => {
   });
 });
 
-describe('the delegating-authority skill', () => {
-  it('lists exactly authority.yaml\'s never-grantable ids, in its summary and its reference table', async () => {
-    const { parse } = await import('yaml');
-    const ids = parse(fs.readFileSync(path.join(ROOT, 'state-machines/authority.yaml'), 'utf8')).never_grantable.map((x) => x.id).sort();
-    const skill = fs.readFileSync(path.join(ROOT, 'skills/delegating-authority/SKILL.md'), 'utf8');
-    const summary = skill.split(/^## Never delegable$/m)[1].split(/^## /m)[0];
-    assert.deepEqual([...summary.matchAll(/`([a-z-]+)`/g)].map((m) => m[1]).sort(), ids);
-    const ref = fs.readFileSync(path.join(ROOT, 'skills/delegating-authority/references/authority.md'), 'utf8');
-    const table = ref.split(/^## Never grantable$/m)[1].split(/^## /m)[0];
-    assert.deepEqual([...table.matchAll(/^\| `([a-z-]+)` \|/gm)].map((m) => m[1]).sort(), ids);
-  });
-});
-
 describe('TOOLS.md and the simulator agree', () => {
   it('states the number of invariants and mutations the simulator has', async () => {
     const { INVARIANTS } = await import('../tools/lib/sim/invariants.mjs');

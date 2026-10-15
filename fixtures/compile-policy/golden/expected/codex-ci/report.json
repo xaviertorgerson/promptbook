@@ -3,7 +3,7 @@
   "warnings": [
     {
       "rule": "hook-trust",
-      "message": "Codex skips a new or changed user hook until it is reviewed and trusted (/hooks; trust is recorded against the hook's hash): trust the harness forbid guard once on this machine, or flags-anywhere forbids hold only in their prefix form until then"
+      "message": "Codex skips a new or changed user hook until it is reviewed and trusted (/hooks; trust is recorded against the hook's hash): trust the promptbook forbid guard once on this machine, or flags-anywhere forbids hold only in their prefix form until then"
     },
     {
       "rule": "glob-top-level-only",

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://harness.dev/schemas/requirement.schema.json",
+  "$id": "https://promptbook.dev/schemas/requirement.schema.json",
   "title": "Requirement",
   "description": "One row of a requirements table under '## Requirements' in specs/<epic>/spec.md, normalized: a legacy 'R<n>' id becomes REQ-<n>, columns map by header (CONTRACTS.md, Normalization).",
   "x-version": "1.2.0",

@@ -13,7 +13,7 @@ const SKILLS = path.join(ROOT, 'fixtures/lint/good/skills');
 const FAKE = `"${process.execPath}" "${path.join(ROOT, 'fixtures/eval-routing/fake-router.mjs')}"`;
 const fake = (mode) => runner(mode ? `FAKE_ROUTER_MODE=${mode} ${FAKE}` : FAKE);
 const cli = (...a) => spawnSync(process.execPath, [path.join(ROOT, 'tools/eval-routing.mjs'), ...a], { encoding: 'utf8', cwd: ROOT });
-const TMP = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'harness-evals-'));
+const TMP = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'promptbook-evals-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 describe('eval-routing', () => {
@@ -128,18 +128,21 @@ describe('eval-routing CLI', () => {
     assert.ok(lines.every((l) => l.answers.length === 3));
   });
 
-  it('--set installs only that set of the folder holding SETS.yaml, other folders whole; --cases reads another cases file', () => {
-    const r = cli('skills', 'fixtures/lint/good/skills', '--set', 'personal', '--cases', 'heldout.routing.jsonl');
+  it('--set installs only that set of the library its SETS.yaml names, other folders whole; --cases reads another cases file', () => {
+    const other = 'fixtures/lint/broken/description-overlap';
+    const r = cli('fixtures/lint/good/skills', other, '--set', 'shipping', '--cases', 'heldout.routing.jsonl');
     assert.equal(r.status, 0, r.stderr);
     const listed = [...r.stdout.matchAll(/^([a-z-]+) +\d+ case\(s\)/gm)].map((m) => m[1]);
-    const personal = [...setSkills(loadSets(path.join(ROOT, 'skills', SETS_FILE)).data, 'personal')];
-    const pinned = fs.readdirSync(SKILLS).filter((d) => fs.existsSync(path.join(SKILLS, d, 'SKILL.md')));
-    assert.deepEqual(listed.sort(), [...personal, ...pinned].sort());
-    assert.doesNotMatch(r.stdout, /^- orchestrating-work:/m, 'a skill outside the set is not in the catalog');
-    const heldout = personal.reduce((n, s) => n + fs.readFileSync(path.join(ROOT, 'skills', s, 'evals/heldout.routing.jsonl'), 'utf8').trim().split('\n').length, 0);
-    assert.match(r.stdout, new RegExp(`eval-routing: ${heldout} case\\(s\\) across ${listed.length} skill`), 'the pinned fixtures have no held-out file');
-    assert.equal(cli('skills', '--set', 'nobody').status, 2);
-    assert.equal(cli('fixtures/lint/good/skills', '--set', 'personal').status, 2, 'no SETS.yaml');
+    const shipping = [...setSkills(loadSets(path.join(ROOT, 'fixtures/lint/good', SETS_FILE)).data, 'shipping')];
+    assert.deepEqual(listed.sort(), [...shipping, 'sketching-widgets'].sort());
+    assert.doesNotMatch(r.stdout, /^- drafting-widgets:/m, 'a skill outside the set is not in the catalog');
+    assert.match(r.stdout, /eval-routing: 2 case\(s\) across 3 skill/, 'only shipping-widgets has held-out cases among them');
+    const named = cli('fixtures/lint/good/skills', '--set', 'everyday', '--sets', path.join('fixtures/lint/good', SETS_FILE));
+    assert.equal(named.status, 0, named.stderr);
+    assert.deepEqual([...named.stdout.matchAll(/^([a-z-]+) +\d+ case\(s\)/gm)].map((m) => m[1]).sort(), ['checking-widgets', 'drafting-widgets']);
+    assert.equal(cli('fixtures/lint/good/skills', '--set', 'nobody').status, 2);
+    assert.equal(cli(other, '--set', 'shipping').status, 2, 'no SETS.yaml in or above it');
+    assert.equal(cli(other, '--set', 'shipping', '--sets', 'no/such/SETS.yaml').status, 2);
   });
 
   it('usage errors exit 2', () => {

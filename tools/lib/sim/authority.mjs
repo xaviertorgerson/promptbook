@@ -1,19 +1,9 @@
-import { effectiveGrant } from '../grant.mjs';
+import { effectiveGrant, grantState } from '../grant.mjs';
 
 // Authority facts shared by the world, the supervisor and the invariants (state-machines/authority.yaml).
-// Every check reads the grant in force: the issued fields minus its narrowing (tools/lib/grant.mjs).
-
-// A grant's lifecycle state at a moment (epoch ms). Derived, never stored: the grant contract has no
-// status field (CONTRACTS.md, grant lifecycle). pending: before granted_at; live; expired: at or past
-// expires_at; revoked: at or past revoked_at (revocation wins over expiry, since it names a person).
-export function grantState(g0, ms) {
-  if (!g0) return null;
-  const g = effectiveGrant(g0, ms);
-  if (g.revoked_at && Date.parse(g.revoked_at) <= ms) return 'revoked';
-  if (ms < Date.parse(g.granted_at)) return 'pending';
-  if (ms >= Date.parse(g.expires_at)) return 'expired';
-  return 'live';
-}
+// Every check reads the grant in force: the issued fields minus its narrowing (tools/lib/grant.mjs),
+// and a grant's lifecycle state is grantState() there, the one grant verify reports.
+export { grantState };
 
 export function grantLiveAt(g, ms) {
   return grantState(g, ms) === 'live';

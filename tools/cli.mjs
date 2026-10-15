@@ -5,7 +5,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
-// `harness <command>`: one entry point for the tools. Each command is its own script, run in a child
+// `promptbook <command>`: one entry point for the tools. Each command is its own script, run in a child
 // process with the same arguments, so every tool keeps its own usage, flags and exit codes.
 
 const DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -13,7 +13,7 @@ const DIR = path.dirname(fileURLToPath(import.meta.url));
 export const COMMANDS = {
   validate: { script: 'validate.mjs', about: 'validate artifacts against their contracts' },
   trace: { script: 'validate.mjs', prefix: ['--trace'], about: 'check the trace graph of a project (validate --trace)' },
-  lint: { script: 'lint-skills.mjs', about: 'lint skills against the authoring rules' },
+  lint: { script: 'lint-skills.mjs', about: 'lint skills (a Skilldex checkout) against the authoring rules' },
   simulate: { script: 'simulate.mjs', about: 'simulate the runtime contracts under faults' },
   'compile-policy': { script: 'compile-policy.mjs', about: 'compile agent-policy.yaml into an engine\'s settings' },
   run: { script: 'run.mjs', about: 'launch an engine under its compiled runner.json and its caps' },
@@ -25,9 +25,9 @@ export const COMMANDS = {
   report: { script: 'report.mjs', about: 'total run records: cost, tokens and cache hit rate per task' },
 };
 
-const USAGE = `harness — the contracts' tools (Layer 3).
+const USAGE = `promptbook — the suite's formats, standards and the tools that check them (L3; SUITE.md).
 
-  harness <command> [args]      harness <command> --help for a command's own usage
+  promptbook <command> [args]   promptbook <command> --help for a command's own usage
 
 ${Object.entries(COMMANDS).map(([k, v]) => `  ${k.padEnd(16)} ${v.about}`).join('\n')}
 
@@ -41,12 +41,12 @@ export function main(argv = process.argv.slice(2)) {
   }
   const c = COMMANDS[cmd];
   if (!c) {
-    console.error(`harness: unknown command "${cmd}"\n\n${USAGE}`);
+    console.error(`promptbook: unknown command "${cmd}"\n\n${USAGE}`);
     return 2;
   }
   const r = spawnSync(process.execPath, [path.join(DIR, c.script), ...(c.prefix ?? []), ...rest], { stdio: 'inherit' });
   if (r.error) {
-    console.error(`harness: ${r.error.message}`);
+    console.error(`promptbook: ${r.error.message}`);
     return 2;
   }
   return r.status ?? 1;

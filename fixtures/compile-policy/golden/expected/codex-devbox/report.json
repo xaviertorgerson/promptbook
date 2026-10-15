@@ -3,7 +3,7 @@
   "warnings": [
     {
       "rule": "hook-trust",
-      "message": "Codex skips a new or changed user hook until it is reviewed and trusted (/hooks; trust is recorded against the hook's hash): trust the harness forbid guard once on this machine, or flags-anywhere forbids hold only in their prefix form until then"
+      "message": "Codex skips a new or changed user hook until it is reviewed and trusted (/hooks; trust is recorded against the hook's hash): trust the promptbook forbid guard once on this machine, or flags-anywhere forbids hold only in their prefix form until then"
     },
     {
       "rule": "glob-top-level-only",
@@ -49,7 +49,7 @@
     }
   ],
   "notes": [
-    "bypass tier devbox requires: prod-unreachable-from-this-host, non-root-container (harness check-requires probes each on the host; harness run refuses the profile's runs until they pass)",
+    "bypass tier devbox requires: prod-unreachable-from-this-host, non-root-container (promptbook check-requires probes each on the host; promptbook run refuses the profile's runs until they pass)",
     "mcp-restrictions.toml: merge each mcp_servers.<id>.disabled_tools (prod-db) into the config entry that defines that server; never add a table for a server no entry defines (Codex refuses an entry without command or url)"
   ]
 }

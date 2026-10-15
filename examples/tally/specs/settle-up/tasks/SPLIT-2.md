@@ -27,7 +27,7 @@ inputs:
 risk: medium
 evaluator:
   - { kind: tests, ref: the project's test command for src/bills }
-  - { kind: script, ref: harness trace . --strict }
+  - { kind: script, ref: promptbook trace . --strict }
   - { kind: agent-review, ref: evaluator }
 budget: { max_turns: 100, max_usd: 3, max_minutes: 90 }
 sessions:
@@ -38,7 +38,7 @@ sessions:
 
 # SPLIT-2 · Save a bill exactly once
 
-<!-- From skills/planning-work/references/task-template.md. Fictional sample data. -->
+<!-- From Skilldex skills/planning-work/assets/task-template.task.md. Fictional sample data. -->
 
 ## Context
 The save path of CUJ-1 (UX-1): a double tap or a retry on a slow network must not store a bill

@@ -1,5 +1,5 @@
 {
-  "description": "harness forbid guard, compiled from agent-policy.yaml (profile desk)",
+  "description": "promptbook forbid guard, compiled from agent-policy.yaml (profile desk)",
   "hooks": {
     "PreToolUse": [
       {
@@ -7,8 +7,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$HOME/.codex/hooks/harness/forbid-guard.mjs\" \"$HOME/.codex/hooks/harness/forbid.json\"",
-            "statusMessage": "harness forbid guard"
+            "command": "node \"$HOME/.codex/hooks/promptbook/forbid-guard.mjs\" \"$HOME/.codex/hooks/promptbook/forbid.json\"",
+            "statusMessage": "promptbook forbid guard"
           }
         ]
       }

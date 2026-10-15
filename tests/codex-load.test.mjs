@@ -17,7 +17,7 @@ import { toToml } from '../tools/lib/toml.mjs';
 // suite is skipped.
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const DOTFILES_L1_POLICY = process.env.HARNESS_DOTFILES_L1_POLICY ?? '/home/claude/wt-dotfiles-l1/home/.chezmoidata/agent-policy.yaml';
+const DOTFILES_L1_POLICY = process.env.PROMPTBOOK_DOTFILES_L1_POLICY ?? '/home/claude/wt-dotfiles-l1/home/.chezmoidata/agent-policy.yaml';
 // The dotfiles commit the compiled output beside the policy's data: home/.chezmoitemplates/agent-policy.
 const DOTFILES_COMPILED = path.join(path.dirname(path.dirname(DOTFILES_L1_POLICY)), '.chezmoitemplates/agent-policy');
 
@@ -25,7 +25,7 @@ const onPath = (cmd) => spawnSync(cmd, ['--version'], { encoding: 'utf8' }).stat
 const CODEX = process.env.CODEX_BIN || (onPath('codex') ? 'codex' : null);
 const SKIP = CODEX ? false : 'no Codex CLI: set CODEX_BIN=<path to codex> or put codex on PATH (npm install @openai/codex) to load the compiled Codex outputs';
 
-const TMP = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'harness-codex-load-'));
+const TMP = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'promptbook-codex-load-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 const rel = (f) => (f.startsWith(ROOT) ? path.relative(ROOT, f) : f);

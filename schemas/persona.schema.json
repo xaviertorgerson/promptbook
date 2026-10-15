@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://harness.dev/schemas/persona.schema.json",
+  "$id": "https://promptbook.dev/schemas/persona.schema.json",
   "title": "Persona",
   "description": "A user the brief serves. Journeys cite personas as their actor; a persona no journey cites is an orphan.",
   "x-version": "1.1.0",

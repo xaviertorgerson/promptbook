@@ -1,28 +1,28 @@
-# Compiled from agent-policy.yaml (profile devbox, tier autonomous) by harness compile-policy.
+# Compiled from agent-policy.yaml (profile devbox, tier autonomous) by promptbook compile-policy.
 # A fragment: merge into ~/.codex/config.toml; recompile rather than edit.
 
-default_permissions = "harness"
+default_permissions = "promptbook"
 approval_policy = "never"
 
-[permissions.harness]
-description = "Compiled from agent-policy.yaml (profile devbox, tier autonomous) by harness compile-policy"
+[permissions.promptbook]
+description = "Compiled from agent-policy.yaml (profile devbox, tier autonomous) by promptbook compile-policy"
 extends = ":workspace"
 
-[permissions.harness.filesystem]
+[permissions.promptbook.filesystem]
 "~/.ssh/**" = "deny"
 "/etc/shadow" = "deny"
 "~/.cache/pnpm" = "write"
 
-[permissions.harness.filesystem.":workspace_roots"]
+[permissions.promptbook.filesystem.":workspace_roots"]
 "**/.env" = "deny"
 "**/secrets/**" = "deny"
 ".git/hooks/**" = "read"
 "." = "write"
 
-[permissions.harness.network]
+[permissions.promptbook.network]
 enabled = true
 
-[permissions.harness.network.domains]
+[permissions.promptbook.network.domains]
 "**.internal.example.com" = "deny"
 "**.github.com" = "allow"
 "registry.npmjs.org" = "allow"

@@ -1,16 +1,16 @@
 # Adapter: Claude Code
 
-Where each harness contract lands when the engine is Claude Code, and how an engine-neutral
+Where each promptbook contract lands when the engine is Claude Code, and how an engine-neutral
 `agent-policy.yaml` compiles to Claude Code settings. Verified against the docs on 2026-10-13
 (Claude Code 2.1.29x); every claim cites the page it came from. Nothing in L3 depends on this file;
-L1 (dotfiles) and L4 (agentic-template's `.claude/` plugin) implement it.
+dotfiles (L1), stagecraft projects (L2) and Skilldex's plugin packaging implement it.
 
 ## Where artifacts land
 
 | Contract / artifact | Claude Code location | Notes |
 |---|---|---|
 | Instructions (L1/L2 AGENTS.md) | `~/.claude/CLAUDE.md`, project `CLAUDE.md` containing `@AGENTS.md` | Claude reads AGENTS.md natively only when no CLAUDE.md exists (v2.1.277+); the one-line import is the safe shim. [memory][mem] |
-| `skill` (L3 skills) | plugin `skills/<name>/SKILL.md`, or `.claude/skills/<name>/SKILL.md`, `~/.claude/skills/<name>/SKILL.md` | Claude Code does not read `.agents/skills/`; ship skills in the plugin or fan them out. [skills][skills] |
+| `skill` (Skilldex's skills) | plugin `skills/<name>/SKILL.md`, or `.claude/skills/<name>/SKILL.md`, `~/.claude/skills/<name>/SKILL.md` | Claude Code does not read `.agents/skills/`; ship skills in the plugin or fan them out. [skills][skills] |
 | Skill extensions | adapter-only frontmatter: `disable-model-invocation`, `user-invocable`, `context`, `agent`, `hooks`, `paths`, `model`, `effort`, `allowed-tools`, `argument-hint`, `when_to_use` | Never in an L3 SKILL.md (the `skill` schema rejects them). An L4 pack that needs one keeps its own copy of the skill. [skills][skills] |
 | Subagents (reviewer, coder, ...) | `.claude/agents/<name>.md`, `~/.claude/agents/`, plugin `agents/` | Frontmatter `name`, `description` required; `tools`, `disallowedTools`, `model`, `permissionMode`, `maxTurns`, `skills`, `isolation: worktree`, ... `permissionMode`, `hooks`, `mcpServers` are ignored for plugin subagents. [sub-agents][agents] |
 | Walls (policy `forbid`, `deny_read`) | `permissions.deny` in `.claude/settings.json` (L2) or `~/.claude/settings.json` (L1), plus a `PreToolUse` hook returning `deny` | Deny beats ask beats allow; a deny holds in every mode including bypass (ADR-0021). [permissions][perm] [hooks][hooks] |
@@ -20,7 +20,7 @@ L1 (dotfiles) and L4 (agentic-template's `.claude/` plugin) implement it.
 | Attention from runs | result `subtype` (`success`, `error_max_turns`, `error_max_budget_usd`, `error_during_execution`, `error_max_structured_output_retries`) | Mapped in `state-machines/attention.yaml` (`claude-headless`). [agent loop][loop] |
 | `budget` | `--max-turns`, `--max-budget-usd` | Spend can overshoot by one response. [agent loop][loop] |
 | `task-record`, `grant`, `toolkit-lock` | not read by Claude Code | Runtime and L2 files; Claude only sees them as files. |
-| Plugin packaging | `.claude-plugin/plugin.json` at the plugin root; components in `skills/`, `agents/`, `hooks/hooks.json`, `.mcp.json` | Skeleton below. [plugins reference][plug] |
+| Plugin packaging | `.claude-plugin/plugin.json` at the plugin root; components in `skills/`, `agents/`, `hooks/hooks.json`, `.mcp.json` | Below; Skilldex packages its install sets this way. [plugins reference][plug] |
 
 ## Policy compilation (`agent-policy.yaml` → settings.json)
 
@@ -39,7 +39,7 @@ L1 and never touches project settings. Rules:
 | `deny_read: [glob]` | `permissions.deny: ["Read(<glob>)"]` and `sandbox.filesystem.denyRead` | `**/.env` stays relative; `~/x` stays `~/x`; an absolute `/etc/x` becomes `//etc/x` (a single leading `/` is relative to the settings file). Read rules reach Grep/Glob best-effort and the file commands Claude recognizes in Bash (`cat`, `head`, `sed`, `tee`, redirections), "not ... a Python or Node script that opens files itself"; only the sandbox binds every process. So without `sandbox.enabled: true` the compile fails with a `sandbox` gap until it is accepted (no inert `sandbox.filesystem` is emitted then), and with `fail_if_unavailable` not true it warns `sandbox-may-fall-back`. [permissions][perm] [sandboxing][sbx] |
 | `forbid: {command: [a, b, ...]}` | `permissions.deny: ["Bash(a b *)"]` | One rule per expansion of an alternatives token. A space before `*` is the prefix boundary (`Bash(git diff *)` does not match `git diff-index`). A prefix rule "isn't a security boundary around the program": `git -C . push`, `/usr/bin/git push` and `sh -c '...'` are not matched, so the wall is the project's hook deny and the sandbox, and this rule is defense in depth. [permissions][perm] |
 | `forbid: {command: [a, b], flags_anywhere: [f, g*]}` | per expansion and flag: `Bash(a b f *)`, `Bash(*a* b* f)`, `Bash(*a* b* f *)`; for a flag ending in `*`: `Bash(a b g*)`, `Bash(*a* b* g*)` | A `*` "matches any text, including spaces" and "can go anywhere", so a `*` after each word lets options, wrappers and a path sit before or between the words (`git -C . push`, `env git push`, `/usr/bin/git push`), and the space before the flag keeps it a token (`git push origin feat/fix-x` is not `-f`). Deny rules also match past a leading assignment and the stripped wrappers. Wider than the engine-neutral matcher only where a word appears inside another token (`*git*` also matches `legit`), which errs toward denying. |
-| `hooks.forbid_guard: true` | `hooks.PreToolUse: [{matcher: "Bash", hooks: [{type: "command", command: "node \"$HOME/.claude/hooks/harness/forbid-guard.mjs\" \"$HOME/.claude/hooks/harness/forbid.json\""}]}]`, plus `hooks/forbid-guard.mjs` and `hooks/forbid.json` beside the settings | Install `hooks/` at `~/.claude/hooks/harness/` and merge the `PreToolUse` entry with any hand-written hooks. The guard reads the command as a shell splits it (compound commands, substitutions, `sh -c`, wrappers) and exits 2 on a forbid match (unattended, also on a command ask); it fails closed on input it cannot read. [hooks][hooks] |
+| `hooks.forbid_guard: true` | `hooks.PreToolUse: [{matcher: "Bash", hooks: [{type: "command", command: "node \"$HOME/.claude/hooks/promptbook/forbid-guard.mjs\" \"$HOME/.claude/hooks/promptbook/forbid.json\""}]}]`, plus `hooks/forbid-guard.mjs` and `hooks/forbid.json` beside the settings | Install `hooks/` at `~/.claude/hooks/promptbook/` and merge the `PreToolUse` entry with any hand-written hooks. The guard reads the command as a shell splits it (compound commands, substitutions, `sh -c`, wrappers) and exits 2 on a forbid match (unattended, also on a command ask); it fails closed on input it cannot read. [hooks][hooks] |
 | `forbid: {write: glob}` | `permissions.deny: ["Edit(<glob>)"]` | `Edit` rules apply to every built-in tool that edits files and to Bash redirection targets, not to a script that writes files itself: partial without the sandbox, the same `sandbox` gap as `deny_read`. |
 | `forbid: {tool: web-fetch, domain: d}` | `permissions.deny: ["WebFetch(domain:<d>)"]` | `**.host` → two rules, `host` and `*.host` (Claude's `*.host` excludes the apex). |
 | `forbid: {tool: "mcp:server[:tool]"}` | `permissions.deny: ["mcp__server"]` / `["mcp__server__tool"]` | No parenthesized MCP parameters (skipped at load). |
@@ -55,7 +55,7 @@ L1 and never touches project settings. Rules:
 | `sandbox.credentials: [{path, extract?, inject_hosts?}]` | `sandbox.credentials.files: [{path, mode: "mask", extract, injectHosts}]` and `sandbox.network.tlsTerminate: {}` | Sandboxed commands read a sentinel copy and the sandbox proxy restores the real value on requests to `injectHosts`, which must also be in `network.allowedDomains` (a warning names any that is not). Masking needs the proxy to terminate TLS, and Claude honors `mask` entries and `tlsTerminate` only from user, managed or `--settings` scope, which is where this fragment goes. Requires Claude Code v2.1.221+. On macOS a masked file is blocked, not masked. A glob or directory falls back to `deny`, so the policy takes one file per entry. [sandboxing][sbx] |
 | `sandbox.credentials: [{env, inject_hosts?}]` | `sandbox.credentials.envVars: [{name, mode: "mask", injectHosts}]` | Commands and their logs never hold the real value; a `deny` for the same variable in any scope wins. [sandboxing][sbx] |
 | `profiles.<p>.sandbox`, `profiles.<p>.egress` | as above, for that profile | Merged key by key over the top-level `sandbox` and `egress` before compiling. |
-| `budgets.<tier>` | `runner.json`: `args` `--max-turns`, `--max-budget-usd`; `caps` and `enforcement` for `harness run` | No settings key. Enforced by the engine: `max_turns` (`--max-turns`) and `max_usd` (`--max-budget-usd`; "spend can overshoot by one response"), which `harness run` also checks against the result line's `num_turns` and `total_cost_usd` after the run (exit 125 on a breach). Enforced by `harness run`: `max_minutes` (`caps.timeout_seconds`, a hard kill of the run's process group, exit 124). Not enforced: `max_tokens` (a `budgets` gap). |
+| `budgets.<tier>` | `runner.json`: `args` `--max-turns`, `--max-budget-usd`; `caps` and `enforcement` for `promptbook run` | No settings key. Enforced by the engine: `max_turns` (`--max-turns`) and `max_usd` (`--max-budget-usd`; "spend can overshoot by one response"), which `promptbook run` also checks against the result line's `num_turns` and `total_cost_usd` after the run (exit 125 on a breach). Enforced by `promptbook run`: `max_minutes` (`caps.timeout_seconds`, a hard kill of the run's process group, exit 124). Not enforced: `max_tokens` (a `budgets` gap). |
 | `accept_gaps` | — | Only consulted when a field cannot be represented. An entry covers the `profiles` it names; one without `profiles` covers every profile except a bypass-tier one, so the devbox's `sandbox` and `egress` gaps are accepted for it by name. |
 
 **Credential masks are not read denies.** Claude merges `Read(...)` deny rules into the sandbox's
@@ -81,18 +81,18 @@ outside the `autonomous` tier, any project-scope `defaultMode`.
   on a POSIX profile) — error, unless `accept_gaps` names `{engine: claude, field: forbid|deny_read}`;
 - a `forbid.command` whose first token is an alternatives list is expanded into one deny per
   alternative, never dropped;
-- `budgets.max_tokens` — no flag or setting, and `harness run` cannot meter tokens before a run ends: a `budgets` gap.
+- `budgets.max_tokens` — no flag or setting, and `promptbook run` cannot meter tokens before a run ends: a `budgets` gap.
 
-## Plugin manifest skeleton
+## Plugin packaging
 
-[`plugin.json`](plugin.json) packages the harness skills for Claude Code. Every field is one the
-plugin reference documents and `name` is the only required one. It declares no `skills` key: the
-default `skills/` directory is scanned anyway, and `skills` only adds directories to that scan.
-`version` pins installs until it changes; bump it with each harness release. Copy it to
-`.claude-plugin/plugin.json` at the root of the package that holds `skills/` (this repository's root),
-and run `claude plugin validate --strict .` in CI. The plugin name `harness` avoids the reserved
-`claude-`/`anthropic-` prefixes. No `hooks`, `agents` or `mcpServers`: walls belong to L2 projects
-and L1 policy, not to a skills package.
+promptbook holds no skills, so it ships no plugin; Skilldex packages its install sets as plugins in
+its `.claude-plugin/marketplace.json`. For any skills plugin: `.claude-plugin/plugin.json` at the
+root of the package that holds `skills/`, where `name` is the only required field and needs no
+`skills` key (the default `skills/` directory is scanned anyway; `skills` only adds directories).
+`version` pins installs until it changes, so bump it with each release, and a consumer's marketplace
+entry pins the source by `sha`. The name must avoid the reserved `claude-`/`anthropic-` prefixes.
+No `hooks`, `agents` or `mcpServers`: walls belong to L2 projects and L1 policy, not to a skills
+package. `claude plugin validate --strict .` checks a manifest in CI.
 
 [mem]: https://code.claude.com/docs/en/memory
 [skills]: https://code.claude.com/docs/en/skills

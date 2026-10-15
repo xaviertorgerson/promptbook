@@ -6,10 +6,10 @@ and exits 0 on success, 1 when a check fails, 2 on a usage error. `pnpm test` (`
 runs them all; Node 22 does not accept a bare directory there.
 
 ```
-harness <command> [args]          # package.json bin: tools/cli.mjs; or pnpm <command> / node tools/<tool>.mjs
+promptbook <command> [args]       # package.json bin: tools/cli.mjs; or pnpm <command> / node tools/<tool>.mjs
   validate        artifacts against their contracts                 tools/validate.mjs
   trace           the trace graph of a project (validate --trace)   tools/validate.mjs --trace
-  lint            skills against the authoring rules                tools/lint-skills.mjs
+  lint            skills (a Skilldex checkout) against the rules    tools/lint-skills.mjs
   simulate        the runtime contracts under faults                tools/simulate.mjs
   compile-policy  agent-policy.yaml into one engine's settings      tools/compile-policy.mjs
   run             an engine under its runner.json and its caps      tools/run.mjs
@@ -26,8 +26,8 @@ harness <command> [args]          # package.json bin: tools/cli.mjs; or pnpm <co
 The contract validator and the trace graph; see [CONTRACTS.md](CONTRACTS.md). A file's contract comes
 from its path in the project layout, else from its name's suffix (`*.grant.yaml`, `*.task.md`, …;
 `*.template.*` and `_`-prefixed templates such as `docs/ux/_UX-TEMPLATE.md` are skipped unless
-`--contract` names one), so `harness validate skills` checks every renamed example too.
-`harness trace <root>`
+`--contract` names one), so `promptbook validate <skilldex>/skills` checks every renamed example too.
+`promptbook trace <root>`
 is `validate --trace <root>`; `--readiness <dir>` writes each epic's report with the root's `HEAD` as
 `source_commit`, and `--no-timestamp` leaves it and `generated_at` out for a report committed with
 the plan; `--readiness <dir> --check` writes nothing and fails (exit 1) when a committed report is
@@ -40,8 +40,12 @@ test attribute, name nothing (CONTRACTS.md, Test names).
 
 ## lint
 
-`harness lint [dir]...` (default `skills`) checks a folder of skills, or one skill, against the
-authoring rules. Errors name a stable rule; `--strict` fails on warnings too.
+`promptbook lint [dir]...` checks a folder of skills, or one skill, against the authoring rules. The
+skills live in Skilldex: `promptbook lint <skilldex>/skills`, or `promptbook lint` from a Skilldex
+checkout (the default folder is `./skills`). Errors name a stable rule; `--strict` fails on warnings
+too. `--sets <file>` names the `SETS.yaml` of the library the linted skills install beside (a
+project's own skills beside Skilldex's): its sets are checked, a `--budget-set` name is read from it,
+and its skills are names a near-miss may route to.
 
 | Rule | Checks |
 |---|---|
@@ -49,29 +53,30 @@ authoring rules. Errors name a stable rule; `--strict` fails on warnings too.
 | `name-is-gerund` | the first word ends in -ing: `writing-requirements` |
 | `description-use-when`, `description-do-not-use-for` | a "Use when …" trigger and a "Do not use for … (neighbour)" clause; warnings if out of order or naming no neighbour |
 | `description-length` | a description over 400 characters fails, over 300 warns: every description stays loaded in every session |
-| `description-budget` (warning) | the scanned set's descriptions together exceed 8000 characters (one engine keeps skill metadata within 2% of context or 8000 characters); the longest are named. The budget binds what a machine installs, not one library: `--budget-set <file>` sums the descriptions of an installed set (a list of skill folders or folders of skills, one per line or a YAML list; or a `toolkit.lock`, whose local entries contribute the skills under `source/path`, the harness's under `skills/`, narrowed by an `x-skills` list; a remote entry is reported as `budget-set-unread`, a listed folder that is missing fails `budget-set-missing`) and warns over 8000 with the count from each source; `--budget-set <set>` names a set of a `SETS.yaml` instead (the linted folder's, else `./skills/`, else the harness's own) and checks what a session holding it loads; with no folder given only this check runs |
-| `sets-shape`, `sets-known`, `sets-disjoint`, `sets-cover`, `set-over-budget`, `set-not-installed` (warning) | a folder's `SETS.yaml` (the harness's: `skills/SETS.yaml`) names install sets: each a scope (`user`, `project`, or `library`, never installed), its own `skills` and/or the sets it `includes`, and what a session `loaded_with` it (another set, or an `external` pack measured at a pinned commit; `--external name=<dir>` reads the real descriptions). Every named skill and set exists; every skill is in exactly one set's own list and some installable set; a user or project set, with what loads beside it, stays within `budget.limit` less `budget.headroom` (8,000 less 10%); `--budget-set` on a library set warns. The sets line prints each total |
+| `description-budget` (warning) | the scanned set's descriptions together exceed 8000 characters (one engine keeps skill metadata within 2% of context or 8000 characters); the longest are named. The budget binds what a machine installs, not one library: `--budget-set <file>` sums the descriptions of an installed set (a list of skill folders or folders of skills, one per line or a YAML list; or a `toolkit.lock`, whose local entries contribute the skills under `source/path` (or `source/skills/`), narrowed to the install `sets` an entry names (read from the library's `SETS.yaml`; an unknown set fails `budget-set-sets`) and by an `x-skills` list; a remote entry is reported as `budget-set-unread`, a listed folder that is missing fails `budget-set-missing`) and warns over 8000 with the count from each source; `--budget-set <set>` names a set of a `SETS.yaml` instead (`--sets`, else the linted library's, else `./SETS.yaml` or `./skills/SETS.yaml`, as in a Skilldex checkout) and checks what a session holding it loads; with no folder given only this check runs |
+| `sets-shape`, `sets-known`, `sets-disjoint`, `sets-cover`, `set-over-budget`, `set-not-installed` (warning) | a skill library's `SETS.yaml` (Skilldex's), in its skills folder or at the root above it, or the one `--sets` names, names install sets: each a scope (`user`, `project`, or `library`, never installed), its own `skills` and/or the sets it `includes`, and what a session `loaded_with` it (another set, or an `external` pack measured at a pinned commit; `--external name=<dir>` reads the real descriptions). Every named skill and set exists; every skill is in exactly one set's own list and some installable set; a user or project set, with what loads beside it, stays within `budget.limit` less `budget.headroom` (8,000 less 10%); `--budget-set` on a library set warns. The sets line prints each total |
 | `deprecated-description` | a skill with `metadata.deprecated` is exempt from "Use when": its description starts with "Deprecated:" and names the replacement skill |
 | `parse-error` | the frontmatter is YAML; when a plain value holds ": " (the usual cause), the error says to quote it |
 | `body-length` | warn over 200 body lines, fail over 300 |
 | `engine-neutral` | no engine, runtime, forge or stack name in the description or body; `references/engine-notes.md` is exempt. The deny-list (Claude Code, Claude, Codex, Gemini, Antigravity, Herdr, Heeler, stagehand, OpenAI, Anthropic, Copilot, GitHub, GitLab, Forgejo, Cloudflare, Coolify, Hetzner, Angular, NestJS, Drizzle, pnpm) is replaced with `--deny-terms`, narrowed with `--allow-terms`; URLs are ignored |
 | `links-stay-in-skill` | no relative link leaves the skill folder (a skill installs alone) |
 | `evals-present`, `routing-counts`, `routing-kind-declared` | `routing.jsonl` with ≥ 4 positive, ≥ 3 near-miss with `route_to`, ≥ 2 negative, each case in the evidence contract's format |
-| `route-to-known`, `route-to-self` | a `route_to` names a scanned skill, a sibling of a linted skill, a pinned Skilldex skill (`reviewing-code`, `preparing-pull-requests`, `resolving-findings`, `writing-specifications`, `building-skills`), `--known`, or `none` |
+| `route-to-known`, `route-to-self` | a `route_to` names a scanned skill, a sibling of a linted skill, a skill that loads beside it (one of the `--sets` library, an `external` of the library's or the `--sets` `SETS.yaml`), `--known`, or `none` |
 | `scenarios-count`, `scenario-format`, `scenario-stop-condition` | ≥ 3 scenarios in `scenarios.md`, each with setup, prompt, pass criteria and k; one should hand to a human |
 | `evidence-count` and the evidence contract's rules | ≥ 1 dated entry; literature and vendor-reported cite a URL |
 | `imported-needs-review` | nothing `import-evals` could not fill is left: a routing case noted `needs route_to`, a scenario line marked `TODO(import)` |
 | `deprecated-never-triggers` | a skill with `metadata.deprecated` keeps only no-trigger cases |
 | `description-overlap` (warning) | two descriptions' trigger phrases (the "Use when" clause, stop words removed) share more than 0.3 Jaccard; the pair and the shared words are named. agentic-template's 19 skills peak at 0.17 |
 
-Fixtures: `fixtures/lint/good/skills` (four skills, one deprecated) and one overlay per broken rule
-in `fixtures/lint/broken/<rule>/`.
+Fixtures: `fixtures/lint/good/` (a library in Skilldex's layout: four skills under `skills/`, one
+deprecated, and a `SETS.yaml` at the root) and one overlay per broken rule in
+`fixtures/lint/broken/<rule>/`.
 
 ## simulate
 
-`harness simulate <scenario.yaml>` or `harness simulate --project <root>` runs a seeded,
+`promptbook simulate <scenario.yaml>` or `promptbook simulate --project <root>` runs a seeded,
 deterministic discrete-event model of the runtime contracts and checks 20 invariants after every
-event. The world: a supervisor policy (the `orchestrating-work` protocol as code), author and
+event. The world: a supervisor policy (the reference coordinator: the protocol `state-machines/` describes, as code; stagehand's coordinator is tested with `--supervisor`), author and
 evaluator sessions with read-only helpers, CI, a reviewer that reviews every pushed head (pass or
 changes-requested, `reviewer.reject_rate`), a merge queue that classifies conflicts and re-runs
 checks on the merged result (for the branches it serves), the orchestrator's own merge under a
@@ -164,7 +169,7 @@ task, a dependent in another epic waits for merged, and the human merges the bra
 
 ## compile-policy
 
-`harness compile-policy <agent-policy.yaml> --profile <p> --engine claude|codex|gemini [--out <dir>]`
+`promptbook compile-policy <agent-policy.yaml> --profile <p> --engine claude|codex|gemini [--out <dir>]`
 validates the policy, then emits one profile's settings, following `adapters/<engine>/README.md`.
 `--out` also writes `report.json`: the tier, every warning (an ask or allow dropped, a mode
 degraded), every accepted gap as `{field, message, reason}` (what it degrades and the operator's
@@ -177,11 +182,11 @@ on disk beside what it wrote, not only on stderr:
 
 Every `runner.json` carries `caps` (`max_turns`, `max_budget_usd`, `timeout_seconds`, null where the
 tier's budget sets none) and `enforcement`, which says per cap who enforces it: `engine` (a flag or
-setting the compile emits), `harness-run`, or `none` (said in a `spend-unmetered` warning). Codex and
+setting the compile emits), `promptbook-run`, or `none` (said in a `spend-unmetered` warning). Codex and
 Gemini report no cost, so an unattended profile on either needs `budgets.unattended.max_minutes` for
 a hard kill; no `accept_gaps` entry waives an unattended cap.
-| codex | `config.toml` (or `<profile>.config.toml` unattended: a `harness` permission profile, approval policy, network domains), `mcp-restrictions.toml` (MCP tool denies, to merge into the entries that define those servers: a server table without its transport does not load), `rules/harness.rules` (`prefix_rule` prompt / forbidden with justification and match examples; `allow` only where the profile accepts the `allow` gap, since an allow runs outside the sandbox, and never for an interpreter), `runner.json` |
-| gemini | `settings.json` (`defaultApprovalMode`, `tools.sandbox`, `tools.allowed`, `model.maxSessionTurns`), `policies/harness.toml` (user-tier `[[rule]]` deny / ask_user / allow), `runner.json` |
+| codex | `config.toml` (or `<profile>.config.toml` unattended: a `promptbook` permission profile, approval policy, network domains), `mcp-restrictions.toml` (MCP tool denies, to merge into the entries that define those servers: a server table without its transport does not load), `rules/promptbook.rules` (`prefix_rule` prompt / forbidden with justification and match examples; `allow` only where the profile accepts the `allow` gap, since an allow runs outside the sandbox, and never for an interpreter), `runner.json` |
+| gemini | `settings.json` (`defaultApprovalMode`, `tools.sandbox`, `tools.allowed`, `model.maxSessionTurns`), `policies/promptbook.toml` (user-tier `[[rule]]` deny / ask_user / allow), `runner.json` |
 
 When the policy names `roles`, an unattended compile writes one file set per role that runs on the
 engine under `roles/<role>/` (each `runner.json` names its `role`; the guard hook below stays at the
@@ -211,8 +216,8 @@ nothing is written. Refused outright: the bypass tier (`autonomous`) without a `
 its outside preconditions, or without `sandbox.enabled`, `sandbox.fail_if_unavailable` and
 `egress.default: deny` unless the missing field's gap is accepted for that profile by name
 (`accept_gaps` sandbox or egress with `profiles: [<it>]` and a reason; an entry without `profiles`
-never covers a bypass-tier profile) (HAR-4); `requires` (with `requires_config`) goes into `runner.json` and the notes, for `harness run` and
-`harness check-requires` to probe;
+never covers a bypass-tier profile) (HAR-4); `requires` (with `requires_config`) goes into `runner.json` and the notes, for `promptbook run` and
+`promptbook check-requires` to probe;
 an unattended tier without turn and spend caps (HAR-3); any `x-` extension that disables hooks (HAR-2); an `examples` entry its rule does
 not match. No output may carry `disableAllHooks`, `hooksConfig.enabled: false`, `disableYoloMode`,
 `tools.exclude`, a full-access mode, or a bypass key outside the bypass tier: every compile checks
@@ -235,9 +240,12 @@ describes.
 
 ## grant
 
-`harness grant verify <grant.yaml>... [--git] [--owners a,b] [--identities <file>] [--root <dir>]`
+`promptbook grant verify <grant.yaml>... [--git] [--owners a,b] [--identities <file>] [--root <dir>] [--at <time>]`
 answers "may a coordinator act under this file?" (`state-machines/authority.yaml` lifecycle.issue):
-the grant contract, schema and named checks; the file is under `.orchestrator/grants/` and not a
+the grant contract, schema and named checks; the grant is live now, or at `--at` (an ISO date-time),
+and each line names its lifecycle state, `(live)`, `(pending)`, `(expired)` or `(revoked)`, read from
+its dates and revocation (`grant-is-live` fails the other three; a grant bounded only by stop
+conditions has no expiry, and whether one holds is the coordinator's to tell); the file is under `.orchestrator/grants/` and not a
 draft under `drafts/` (`grant-on-protected-path`, `grant-is-draft`); `granted_by`, each
 `narrowed[].by` and `revoked_by` are owners of that path, read from the project's CODEOWNERS (the
 last matching rule, as the forges read it) or `--owners` (`granted-by-is-owner`,
@@ -251,15 +259,15 @@ it is by an owner, the issued fields equal the issuing commit's (`issued-fields-
 
 ## run
 
-`harness run --runner <runner.json> [--report <file>] [--grace <s>] -- <engine command...>` launches
+`promptbook run --runner <runner.json> [--report <file>] [--grace <s>] -- <engine command...>` launches
 one engine command under the `runner.json` compile-policy wrote: it appends the runner's `args` and
-enforces the caps marked `enforcement: harness-run`.
+enforces the caps marked `enforcement: promptbook-run`.
 
 | Engine | `max_turns` | `max_budget_usd` | `timeout_seconds` |
 |---|---|---|---|
-| claude | engine (`--max-turns`); checked after the run against the result's `num_turns` | engine (`--max-budget-usd`, may overshoot by one response); checked after the run against `total_cost_usd` | harness run |
-| codex | harness run: tool actions counted from `codex exec --json` (`--json` is in the runner's args) | **none**: Codex reports tokens, not cost (the run report records the tokens) | harness run |
-| gemini | engine (`model.maxSessionTurns`; headless exit 53) | **none**: no cost reported | harness run |
+| claude | engine (`--max-turns`); checked after the run against the result's `num_turns` | engine (`--max-budget-usd`, may overshoot by one response); checked after the run against `total_cost_usd` | promptbook run |
+| codex | promptbook run: tool actions counted from `codex exec --json` (`--json` is in the runner's args) | **none**: Codex reports tokens, not cost (the run report records the tokens) | promptbook run |
+| gemini | engine (`model.maxSessionTurns`; headless exit 53) | **none**: no cost reported | promptbook run |
 
 The timeout is a hard kill: SIGTERM to the run's process group, SIGKILL `--grace` seconds later
 (default 10). A run stopped at the timeout exits 124; one stopped at, or reporting a result past, a
@@ -271,7 +279,7 @@ A role's run takes its own `roles/<role>/runner.json`.
 
 ## check-requires
 
-`harness check-requires --policy <agent-policy.yaml> --profile <p> [--json]` probes this host for
+`promptbook check-requires --policy <agent-policy.yaml> --profile <p> [--json]` probes this host for
 the profile's `requires`, by name: `prod-unreachable-from-this-host` (a TCP connect to every
 `requires_config.prod_hosts` entry, `host[:port]`, 443 by default, must fail within
 `requires_config.connect_timeout_ms`, 3000 by default; a host that does not resolve counts as
@@ -279,17 +287,17 @@ unreachable, so list addresses to probe the route rather than the resolver; no h
 `non-root` (uid not 0), `container` (`/.dockerenv`, `/run/.containerenv`, `$container`, or a
 container cgroup in `/proc/1/cgroup`), `non-root-container` (both), `sandbox-available` (bubblewrap
 runs on Linux, `sandbox-exec` on macOS). An unknown name fails closed, and so does a bypass-tier
-profile that names none. Exit 0 when every probe passes, 1 when one fails. `harness run` runs the
+profile that names none. Exit 0 when every probe passes, 1 when one fails. `promptbook run` runs the
 same probes on the `requires` and `requires_config` in a `runner.json` and refuses to start the run
 when one fails; compile-policy warns `requires-unknown` and `requires-unprobed` for a name with no
 probe and for `prod-unreachable-from-this-host` without `prod_hosts`.
 
 ## lock
 
-`harness lock [--lock toolkit.lock]` fills each entry's `commit`, `tree` (the git tree id of `path`)
+`promptbook lock [--lock toolkit.lock]` fills each entry's `commit`, `tree` (the git tree id of `path`)
 and `version` (from a semver tag, else `package.json`/`plugin.json` in the path). Local sources are
 read with git plumbing, no network; remote sources use `git ls-remote` and a depth-1 blob-less fetch
-into `~/.cache/harness/lock`, and an unreachable remote fails with the reason (`--offline` skips
+into `~/.cache/promptbook/lock`, and an unreachable remote fails with the reason (`--offline` skips
 remotes with a warning). `--check` changes nothing and exits 1 on drift: a pinned commit that is
 gone, a different tree, a moved tag, a branch rewritten past the pin, a version the tag contradicts;
 a branch that moved ahead is a warning. A CI checkout often has no local branch: a local source's ref
@@ -301,7 +309,7 @@ commit itself fails `commit-exists` with the fix (fetch the full history). `--up
 
 ## eval-routing
 
-`harness eval-routing [dir]...` is a dry run: it prints each skill's case count and the router
+`promptbook eval-routing [dir]...` is a dry run: it prints each skill's case count and the router
 prompt, and sends nothing. `--runner "<cmd>"` sends each case's prompt on stdin to any command that
 prints text (a cheap-model CLI), takes the skill names on its last line, and judges: a trigger case
 needs its skill; a no-trigger case needs it absent and, for an installed `route_to`, the neighbour
@@ -309,15 +317,16 @@ named. The router sees only installed, non-deprecated skills' names and descript
 loader would. It reports failures and per-skill precision and recall. `--runs <k>` asks k times per
 case and passes a case only when all k pass (pass^k); `--model <label>` names the model; `--out
 <routing-results….jsonl>` writes one result per case in the evidence contract's `routingResult`
-shape, which `harness validate` checks and an evidence entry cites as its measured source. `--cases <file>` reads
+shape, which `promptbook validate` checks and an evidence entry cites as its measured source. `--cases <file>` reads
 each skill's cases from `evals/<file>` instead of `routing.jsonl` (the held-out cases are `heldout.routing.jsonl`);
-`--set <name>` installs only that set of the folder holding a `SETS.yaml` (other folders, a pinned pack, stay
-whole), so a set's routing is measured with what it actually loads. Ported from agentic-template's
+`--set <name>` installs only that set of the library a `SETS.yaml` names (`--sets <file>`, else the one in or above a
+given folder; other folders, a pinned pack, stay whole), so a set's routing is measured with what it actually loads.
+Run it from a Skilldex checkout (the default folder is `./skills`) or name `<skilldex>/skills`. Ported from agentic-template's
 `scripts/skill-evals.mjs`. Tests use `fixtures/eval-routing/fake-router.mjs`; no test calls a model.
 
 ## import-evals
 
-`harness import-evals <evals.md> --out <skill>/evals [--skill <name>] [--rename old=new,...] [--k n]
+`promptbook import-evals <evals.md> --out <skill>/evals [--skill <name>] [--rename old=new,...] [--k n]
 [--force] [--dry-run]` converts an agentic-template `evals.md` (a "Trigger routing" table, "Scenarios"
 with Fixture/Assertions, an "Evidence" list) into `routing.jsonl`, `scenarios.md` and `evidence.md`
 in the evidence contract's shapes. A trigger row is a positive case; a no-trigger row that names a
@@ -326,11 +335,12 @@ with `note: "needs route_to: <what the source said>"`. Scenarios keep their fixt
 and get a `TODO(import)` prompt (the source has none); evidence keeps its date (day or month) and
 text, kind audit or observed, citing the source file. Lint fails both markers
 (`imported-needs-review`) until a human resolves them. It refuses to overwrite without `--force`.
+A skill a project ports into Skilldex is imported there: `--out <skilldex>/skills/<name>/evals`.
 Fixtures: two real evals.md files under `fixtures/import-evals/`.
 
 ## report
 
-`harness report [file|dir]... [--since <date>] [--json]` totals run records: what the runs cost
+`promptbook report [file|dir]... [--since <date>] [--json]` totals run records: what the runs cost
 and why. A file is read as run-record JSONL; a directory is searched for the contract's paths
 (`.agent/loop-runs.jsonl`, `.agent/runs/*.jsonl`, `*.run-record.jsonl`); no path means the current
 directory, and a file reached twice is read once. Every line is validated against the run-record

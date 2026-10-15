@@ -13,11 +13,11 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FIX = path.join(ROOT, 'fixtures/compile-policy');
 const GOLDEN = path.join(FIX, 'golden');
 const UPDATE = process.env.UPDATE_GOLDEN === '1';
-const DOTFILES = process.env.HARNESS_DOTFILES ?? '/home/claude/dotfiles';
+const DOTFILES = process.env.PROMPTBOOK_DOTFILES ?? '/home/claude/dotfiles';
 // The dotfiles' L1 branch, whose policy raises the workstation to Claude's auto mode with x-claude.
-const DOTFILES_L1_POLICY = process.env.HARNESS_DOTFILES_L1_POLICY ?? '/home/claude/wt-dotfiles-l1/home/.chezmoidata/agent-policy.yaml';
-const STAGEHAND = process.env.HARNESS_STAGEHAND ?? '/tmp/claude-0/-home-claude/4cb75181-a255-5446-ad02-7fa332a70b56/scratchpad/repos_sh/stagehand';
-const TMP = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'harness-policy-'));
+const DOTFILES_L1_POLICY = process.env.PROMPTBOOK_DOTFILES_L1_POLICY ?? '/home/claude/wt-dotfiles-l1/home/.chezmoidata/agent-policy.yaml';
+const STAGEHAND = process.env.PROMPTBOOK_STAGEHAND ?? '/home/claude/stagehand';
+const TMP = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'promptbook-policy-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 const load = (f) => parse(fs.readFileSync(f, 'utf8'));
@@ -71,7 +71,7 @@ describe('compile-policy contract', () => {
     assert.match(unsafeKeys(settings({ disableAllHooks: true }), { tier: 'autonomous' }).join(), /disableAllHooks/);
     assert.match(unsafeKeys(settings({ permissions: { defaultMode: 'bypassPermissions' } }), { tier: 'ask' }).join(), /bypass mode outside/);
     assert.match(unsafeKeys(settings({ hooksConfig: { enabled: false } }), { tier: 'ask' }).join(), /hooksConfig\.enabled false/);
-    assert.match(unsafeKeys([{ path: 'config.toml', kind: 'settings-fragment', data: { permissions: { harness: { extends: ':danger-full-access' } } } }], { tier: 'ask' }).join(), /full-access/);
+    assert.match(unsafeKeys([{ path: 'config.toml', kind: 'settings-fragment', data: { permissions: { promptbook: { extends: ':danger-full-access' } } } }], { tier: 'ask' }).join(), /full-access/);
     assert.match(unsafeKeys([{ path: 'runner.json', kind: 'runner', data: { args: ['--approval-mode=yolo'] } }], { tier: 'unattended' }).join(), /bypass flag outside/);
     assert.deepEqual(unsafeKeys([{ path: 'runner.json', kind: 'runner', data: { args: ['--approval-mode=yolo'] } }], { tier: 'autonomous' }), []);
   });
@@ -84,7 +84,7 @@ describe('compile-policy contract', () => {
     }
     const claude = JSON.parse(compilePolicy(p, { profile: 'laptop', engine: 'claude' }).files[0].content);
     assert.ok(claude.permissions.deny.includes('Bash(claude --dangerously-skip-permissions *)'));
-    assert.ok(compilePolicy(p, { profile: 'laptop', engine: 'codex' }).files.find((f) => f.path === 'rules/harness.rules').content.includes('"--yolo"'));
+    assert.ok(compilePolicy(p, { profile: 'laptop', engine: 'codex' }).files.find((f) => f.path === 'rules/promptbook.rules').content.includes('"--yolo"'));
   });
 
   it('an unsafe key in the output is a compile error through the normal channel, never a thrown stack trace', () => {
@@ -150,7 +150,7 @@ describe('compile-policy contract', () => {
   });
 
   it('an ask in the unattended tier compiles to a denial, never to a prompt', () => {
-    const codex = compilePolicy(golden, { profile: 'ci', engine: 'codex' }).files.find((f) => f.path === 'rules/harness.rules').content;
+    const codex = compilePolicy(golden, { profile: 'ci', engine: 'codex' }).files.find((f) => f.path === 'rules/promptbook.rules').content;
     assert.match(codex, /pattern = \["psql"\],\n {4}decision = "forbidden"/);
     assert.doesNotMatch(codex, /"prompt"/);
     const claude = JSON.parse(compilePolicy(golden, { profile: 'ci', engine: 'claude' }).files.find((f) => f.path === 'runner.json').content);
@@ -169,7 +169,7 @@ describe('compile-policy contract', () => {
 
   it('Codex: every rule\'s match examples match its own pattern', () => {
     for (const profile of Object.keys(golden.profiles)) {
-      const text = compilePolicy(golden, { profile, engine: 'codex' }).files.find((f) => f.path === 'rules/harness.rules').content;
+      const text = compilePolicy(golden, { profile, engine: 'codex' }).files.find((f) => f.path === 'rules/promptbook.rules').content;
       const blocks = [...text.matchAll(/pattern = (\[.*\]),\n[\s\S]*?match = (\[.*\]),/g)];
       assert.ok(blocks.length >= 4, `${profile}: ${blocks.length} rules`);
       for (const [, pat, ex] of blocks) for (const e of JSON.parse(ex)) assert.ok(commandMatches(JSON.parse(pat), e.split(' ')), `${e} vs ${pat}`);
@@ -184,7 +184,7 @@ describe('compile-policy contract', () => {
     const list = { allow: 'allow', prompt: 'ask', forbidden: 'forbid' };
     const policy = { policy_version: 1, profiles: { box: { tier: 'ask' } }, deny_read: ['**/.env'], forbid: [], ask: [], allow: [], accept_gaps: [{ engine: 'codex', field: 'allow', reason: 'herdr talks to its own server outside the sandbox' }] };
     for (const r of rules) policy[list[r.decision]].push({ command: r.command });
-    const out = compilePolicy(policy, { profile: 'box', engine: 'codex' }).files.find((f) => f.path === 'rules/harness.rules').content;
+    const out = compilePolicy(policy, { profile: 'box', engine: 'codex' }).files.find((f) => f.path === 'rules/promptbook.rules').content;
     for (const r of rules) assert.ok(out.includes(`pattern = ${JSON.stringify(r.command).replace(/","/g, '", "').replace(/\["/g, '["').replace(/,\[/g, ', [')},\n    decision = "${r.decision}"`), `${JSON.stringify(r.command)} → ${r.decision}`);
   });
 
@@ -301,7 +301,7 @@ describe('compile-policy contract', () => {
     let n = 0;
     for (const p of policies) {
       for (const profile of Object.keys(p.profiles)) {
-        for (const f of compilePolicy(p, { profile, engine: 'gemini' }).files.filter((x) => x.path.endsWith('harness.toml'))) {
+        for (const f of compilePolicy(p, { profile, engine: 'gemini' }).files.filter((x) => x.path.endsWith('promptbook.toml'))) {
           for (const r of f.data.filter((x) => x.argsPattern)) {
             n += 1;
             assert.ok(!geminiDropsPattern(r.argsPattern), `${profile}/${f.path}: ${r.argsPattern}`);
@@ -310,7 +310,7 @@ describe('compile-policy contract', () => {
       }
     }
     assert.ok(n >= 20, `${n} patterns checked`);
-    const domain = compilePolicy(golden, { profile: 'laptop', engine: 'gemini' }).files.find((f) => f.path.endsWith('harness.toml')).data.find((r) => r.toolName === 'web_fetch' && r.decision === 'deny');
+    const domain = compilePolicy(golden, { profile: 'laptop', engine: 'gemini' }).files.find((f) => f.path.endsWith('promptbook.toml')).data.find((r) => r.toolName === 'web_fetch' && r.decision === 'deny');
     const fetch = new RegExp(domain.argsPattern);
     for (const url of ['https://internal.example.com/x', 'https://a.b.internal.example.com']) assert.ok(fetch.test(geminiArgs({ prompt: `read ${url}` })), url);
     assert.ok(!fetch.test(geminiArgs({ prompt: 'read https://notinternal.example.com.evil.org' })));
@@ -356,7 +356,7 @@ describe('compile-policy CLI', () => {
     const out = path.join(TMP, 'ok');
     const ok = cli('fixtures/compile-policy/golden/agent-policy.yaml', '--profile', 'ci', '--engine', 'codex', '--out', out);
     assert.equal(ok.status, 0, ok.stderr);
-    assert.ok(fs.existsSync(path.join(out, 'rules/harness.rules')) && fs.existsSync(path.join(out, 'ci.config.toml')));
+    assert.ok(fs.existsSync(path.join(out, 'rules/promptbook.rules')) && fs.existsSync(path.join(out, 'ci.config.toml')));
     const bad = path.join(TMP, 'bad');
     const no = cli('fixtures/compile-policy/refuse/bypass-preconditions.yaml', '--profile', 'laptop', '--engine', 'claude', '--out', bad);
     assert.equal(no.status, 1);
@@ -426,7 +426,7 @@ describe('review findings: the compiler never loosens a wall silently', () => {
 
 describe('review finding 1: a Codex allow rule runs outside the sandbox', () => {
   const { roles, ...tally } = load(path.join(ROOT, 'examples/tally/_operator/agent-policy.yaml'));
-  const codexRules = (r) => r.files.find((f) => f.path === 'rules/harness.rules').content;
+  const codexRules = (r) => r.files.find((f) => f.path === 'rules/promptbook.rules').content;
 
   it('an interpreter allow is never emitted, accepted gap or not: it would void deny_read and egress for any script', () => {
     for (const p of [tally, { ...tally, accept_gaps: [...tally.accept_gaps, { engine: 'codex', field: 'allow', reason: 'test' }] }]) {
@@ -507,15 +507,15 @@ describe('review finding 7: unattended, an ask Codex cannot represent is a denia
   });
 });
 
-describe('review finding 12: unattended caps are never waived; runner.json carries them for harness run', () => {
+describe('review finding 12: unattended caps are never waived; runner.json carries them for promptbook run', () => {
   const { roles, ...tally } = load(path.join(ROOT, 'examples/tally/_operator/agent-policy.yaml'));
   const runner = (r) => JSON.parse(r.files.find((f) => f.path === 'runner.json').content);
 
   it('every runner.json carries caps and says who enforces each', () => {
     const want = {
-      claude: { max_turns: 'engine', max_budget_usd: 'engine', timeout_seconds: 'harness-run' },
-      codex: { max_turns: 'harness-run', max_budget_usd: 'none', timeout_seconds: 'harness-run' },
-      gemini: { max_turns: 'engine', max_budget_usd: 'none', timeout_seconds: 'harness-run' },
+      claude: { max_turns: 'engine', max_budget_usd: 'engine', timeout_seconds: 'promptbook-run' },
+      codex: { max_turns: 'promptbook-run', max_budget_usd: 'none', timeout_seconds: 'promptbook-run' },
+      gemini: { max_turns: 'engine', max_budget_usd: 'none', timeout_seconds: 'promptbook-run' },
     };
     for (const engine of ENGINES) {
       const r = compilePolicy(tally, { profile: 'ci', engine });
@@ -524,7 +524,7 @@ describe('review finding 12: unattended caps are never waived; runner.json carri
       assert.deepEqual(runner(r).enforcement, want[engine], engine);
       assert.ok(!r.accepted.some((a) => a.field === 'budgets'), `${engine}: a budgets gap waived an unattended cap`);
     }
-    assert.ok(runner(compilePolicy(tally, { profile: 'ci', engine: 'codex' })).args.includes('--json'), 'harness run counts Codex tool actions from --json');
+    assert.ok(runner(compilePolicy(tally, { profile: 'ci', engine: 'codex' })).args.includes('--json'), 'promptbook run counts Codex tool actions from --json');
     const gem = compilePolicy(tally, { profile: 'ci', engine: 'gemini' });
     assert.equal(JSON.parse(gem.files.find((f) => f.path === 'settings.json').content).model.maxSessionTurns, 120);
     for (const engine of ['codex', 'gemini']) assert.ok(compilePolicy(tally, { profile: 'ci', engine }).warnings.some((w) => w.rule === 'spend-unmetered'), engine);
@@ -582,7 +582,7 @@ describe('review finding 14: a forbid that matches its flags anywhere in the com
     assert.ok(codex.errors.some((e) => e.field === 'forbid' && /anywhere/.test(e.message) && /\["git","push"\]/.test(e.message)), JSON.stringify(codex.errors));
     const guarded = deny('codex');
     assert.equal(guarded.ok, true, JSON.stringify(guarded.errors));
-    assert.match(guarded.files.find((f) => f.path === 'rules/harness.rules').content, /pattern = \["git", "push", \["--force", "-f", "--mirror"\]\],\n {4}decision = "forbidden"/);
+    assert.match(guarded.files.find((f) => f.path === 'rules/promptbook.rules').content, /pattern = \["git", "push", \["--force", "-f", "--mirror"\]\],\n {4}decision = "forbidden"/);
     assert.ok(!guarded.accepted.some((a) => /anywhere/.test(a.message)), 'the guard covers it');
     assert.ok(guarded.warnings.some((w) => w.rule === 'hook-trust'), 'Codex skips a hook until it is trusted');
     const gemini = deny('gemini');
@@ -591,7 +591,7 @@ describe('review finding 14: a forbid that matches its flags anywhere in the com
   });
 
   it('hooks.forbid_guard emits the guard and its rule list and registers it for the shell tool; the copy denies the evasions', () => {
-    for (const [engine, home] of [['claude', '$HOME/.claude/hooks/harness'], ['codex', '$HOME/.codex/hooks/harness']]) {
+    for (const [engine, home] of [['claude', '$HOME/.claude/hooks/promptbook'], ['codex', '$HOME/.codex/hooks/promptbook']]) {
       const r = deny(engine, 'ci');
       const file = (p) => r.files.find((f) => f.path === p);
       const reg = engine === 'claude' ? JSON.parse(file('settings.json').content).hooks : JSON.parse(file('hooks.json').content).hooks;
@@ -634,7 +634,7 @@ describe('review finding 15: roles narrow a profile\'s allowlist and egress per 
   it('the Tally evaluator (Gemini) is read-only: no write, push, PR or interpreter allow, and its write tools are denied', () => {
     const r = compilePolicy(tally, { profile: 'ci', engine: 'gemini' });
     assert.equal(r.ok, true, JSON.stringify(r.errors));
-    const policy = file(r, 'roles/evaluator/policies/harness.toml').content;
+    const policy = file(r, 'roles/evaluator/policies/promptbook.toml').content;
     const allows = policy.split('[[rule]]').filter((b) => /decision = "allow"/.test(b));
     assert.ok(allows.length > 0);
     for (const b of allows) assert.doesNotMatch(b, /write_file|replace|git push|gh pr|"node"|"pnpm"\n/, b);
@@ -687,7 +687,7 @@ describe('review finding 15: roles narrow a profile\'s allowlist and egress per 
 describe('Codex filesystem entries: a glob takes deny only (Codex 0.162.1 refuses to load anything else)', () => {
   const base = { policy_version: 1, profiles: { box: { tier: 'ask' }, ci: { tier: 'unattended' } }, deny_read: ['**/.env'], forbid: [], budgets: { unattended: { max_turns: 5, max_usd: 1, max_minutes: 10 } }, accept_gaps: [{ engine: 'codex', field: 'forbid', reason: 'apply_patch is refused by the project hook' }] };
   const codex = (p, profile = 'box') => compilePolicy({ ...base, ...p }, { profile, engine: 'codex' });
-  const roots = (r) => r.files.find((f) => f.path.endsWith('config.toml')).data.permissions.harness.filesystem?.[':workspace_roots'] ?? {};
+  const roots = (r) => r.files.find((f) => f.path.endsWith('config.toml')).data.permissions.promptbook.filesystem?.[':workspace_roots'] ?? {};
   // Every filesystem entry an output holds: [path, access].
   const entries = (data) => Object.values(data.permissions ?? {}).flatMap((prof) => Object.entries(prof.filesystem ?? {}).flatMap(([k, v]) => (typeof v === 'object' ? Object.entries(v) : [[k, v]])));
 
@@ -744,7 +744,7 @@ describe('Codex filesystem entries: a glob takes deny only (Codex 0.162.1 refuse
     const r = codex({ allow: [{ write: 'docs/**' }, { write: 'src/**/*.ts' }], sandbox: { enabled: true, writable_roots: ['~/.cache/pnpm', '~/.cache/*/tmp'] } });
     assert.equal(r.ok, true, JSON.stringify(r.errors));
     assert.equal(roots(r)['docs/**'], 'write');
-    const fsys = r.files[0].data.permissions.harness.filesystem;
+    const fsys = r.files[0].data.permissions.promptbook.filesystem;
     assert.equal(fsys['~/.cache/pnpm'], 'write');
     assert.equal(fsys['~/.cache/*/tmp'], undefined);
     assert.equal(roots(r)['src/**/*.ts'], undefined);

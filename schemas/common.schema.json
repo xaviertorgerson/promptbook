@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://harness.dev/schemas/common.schema.json",
+  "$id": "https://promptbook.dev/schemas/common.schema.json",
   "title": "Shared definitions",
   "description": "Ids, dates, references and status vocabularies every contract shares. Not an artifact itself.",
   "x-version": "1.4.0",

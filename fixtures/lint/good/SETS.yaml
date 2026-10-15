@@ -1,0 +1,28 @@
+# The good library's install sets, in a skill library's layout (Skilldex's: SETS.yaml at the root,
+# the skills under skills/). What a machine (user scope) or a project (project scope) installs, and
+# what a session loads beside it; checked against the 8,000-character always-loaded budget less 10%.
+budget: { limit: 8000, headroom: 0.10 }
+
+# Skills a session loads beside these that another library holds; a near-miss may route to them.
+external:
+  reviewers:
+    source: https://forge.example.com/acme/review-skills
+    commit: abc1234
+    skills: [reviewing-code, preparing-pull-requests]
+    chars: 520
+
+sets:
+  everyday:
+    scope: user
+    about: Drafting and checking widgets in any repository.
+    skills: [drafting-widgets, checking-widgets]
+    loaded_with: [reviewers]
+  shipping:
+    scope: project
+    about: Releasing widgets; the deprecated sorting stub stays one release.
+    skills: [shipping-widgets, sorting-widgets]
+    loaded_with: [everyday, reviewers]
+  all:
+    scope: library
+    about: Every widget skill; never installed whole.
+    includes: [everyday, shipping]

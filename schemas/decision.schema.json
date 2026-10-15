@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://harness.dev/schemas/decision.schema.json",
+  "$id": "https://promptbook.dev/schemas/decision.schema.json",
   "title": "Decision (ADR)",
   "description": "One '## ADR-NNNN: title' entry of DECISIONS.md, normalized from its '**Field:** value' lines (CONTRACTS.md, Normalization). Immutable once accepted; corrected by a superseding ADR.",
   "x-version": "1.2.0",

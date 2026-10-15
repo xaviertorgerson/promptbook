@@ -1,10 +1,20 @@
 # Contracts
 
-The harness defines the files every layer reads and writes, so that engines (Claude Code, Codex,
+Promptbook defines the files every layer reads and writes, so that engines (Claude Code, Codex,
 Gemini), runtimes (a CLI loop, CI agents, stagehand on Herdr) and methods can be swapped without
 touching the others. A contract is a JSON Schema 2020-12 file in `schemas/`, versioned with
 `x-version`; the state machines that govern the status fields are in `state-machines/`; the
-validator is `tools/validate.mjs`. Layers are explained in [LAYERS.md](LAYERS.md).
+validator is `tools/validate.mjs`. Layers are explained in [LAYERS.md](LAYERS.md), the five
+repositories of the suite in [SUITE.md](SUITE.md).
+
+Who writes what across the suite: a **stagecraft** project holds the plan and the queue (brief,
+journeys, requirements, ADRs, tasks, readiness reports) and its `toolkit.lock`; **stagehand** is the
+coordinator that reads a project's tasks and writes the runtime's records, task records in the
+`task-record` format and each delegation as a file in the `grant` format, recorded from the human's
+words; the sequential loop and the CI agents (stagecraft) write run records; **Skilldex** holds the
+skills and their evals, in the `skill` and `evidence` formats, and the skills that write the
+learning records; **dotfiles** hold the operator's `policy`. Promptbook holds the formats and the
+checks, and writes none of these artifacts itself.
 
 ```
 node tools/validate.mjs <file|dir>...           # each file against the contract its path implies
@@ -26,7 +36,7 @@ node tools/validate.mjs --list                  # contracts, versions, artifact 
   `*.grant.yaml`, `*.return.json`, `*.task-record.yaml`, `*.run-record.jsonl`, `*.policy.yaml`,
   `*.toolkit.lock`, `*.task.md`, `*.brief.md`, `*.persona.md` (frontmatter or a list),
   `*.adr.md`, `*.ux.md`, `*.spec.md` (epic and requirements), `*.cuj.md`, `*.readiness.md`,
-  `*.harness-review.md`, `*.reflection.md`, `*.evidence.md`, `*.routing.jsonl`. A suffix applies only when no path does; it binds no
+  `*.agent-setup-review.md`, `*.reflection.md`, `*.evidence.md`, `*.routing.jsonl`. A suffix applies only when no path does; it binds no
   frontmatter field, and an entry file (`<epic>.cuj.md`, `<epic>.ux.md`) takes its epic from the name
   before the suffix. A `*.template.*` file, or one whose name starts with `_` (agentic-template's
   `docs/ux/_UX-TEMPLATE.md`, `specs/<epic>/tasks/_TASK-TEMPLATE.md`), holds placeholders on purpose
@@ -44,7 +54,7 @@ node tools/validate.mjs --list                  # contracts, versions, artifact 
   `common.schema.json` and referenced with `$ref`.
 - **Versioning.** Each schema started at `1.0.0` and carries its own `x-version`
   (`validate.mjs --list` prints them). A change that makes a valid artifact invalid is a major
-  bump; a new optional field or enum value is minor. The harness is pre-1.0 as a whole (README).
+  bump; a new optional field or enum value is minor. Promptbook is pre-1.0 as a whole (README).
 
 ## Catalogue
 
@@ -57,18 +67,18 @@ node tools/validate.mjs --list                  # contracts, versions, artifact 
 | [ux-flow](#ux-flow) | `docs/ux/<epic>.md` entries | entries | designer | coder, trace check |
 | [decision](#decision) | `DECISIONS.md` (or `docs/adr/*.md`) entries | entries | anyone, reviewed | everyone; trace check |
 | [epic](#epic) | `specs/<epic>/spec.md` frontmatter | frontmatter-md | product owner | board, planner, trace check |
-| [task](#task) | `specs/<epic>/tasks/<ID>.md` | frontmatter-md | planner | board, loop, coder, reviewer, merge |
+| [task](#task) | `specs/<epic>/tasks/<ID>.md` | frontmatter-md | planner | board, loop, coder, reviewer, merge, stagehand |
 | [readiness-report](#readiness-report) | `specs/<epic>/readiness.md` | frontmatter-md | trace check (generated) | product owner at the spec gate |
-| [task-record](#task-record) | `.orchestrator/tasks/<id>.yaml` (runtime) | YAML | coordinator | coordinator, status board |
+| [task-record](#task-record) | `.orchestrator/tasks/<id>.yaml` (runtime) | YAML | the coordinator (stagehand) | a replacement coordinator, the status board |
 | [return](#return) | a subagent's hand-back | JSON | subagent | dispatcher |
-| [run-record](#run-record) | `.agent/loop-runs.jsonl` (runtime, gitignored) | JSONL | runner | humans, cost reports |
-| [grant](#grant) | `.orchestrator/grants/GRANT-n.yaml` | YAML | a human | coordinator |
-| [policy](#policy) | `agent-policy.yaml` (L1 dotfiles) | YAML | operator | policy compiler → engine settings |
-| [toolkit-lock](#toolkit-lock) | `toolkit.lock` (L1 and L2) | YAML | lock tool | sync, CI |
-| [skill](#skill) | `skills/<name>/SKILL.md` (L3, L4) | frontmatter-md | skill author | every engine's skill loader |
-| [evidence](#evidence) | `**/skills/<name>/evals/{evidence.md,routing.jsonl}` (a project's `.agents/skills/` too), `routing-results*.jsonl` | entries / JSONL | skill author, eval runs | skill reviews, routing evals |
-| [harness-review](#harness-review) | `harness-reviews/<date>-<label>.md` | Markdown record | the reviewing-harness skill | humans, the next review |
-| [reflection-report](#reflection-report) | `reflections/*.md` | frontmatter-md | the reflecting-on-runs skill | a curator, humans |
+| [run-record](#run-record) | `.agent/loop-runs.jsonl` (runtime, gitignored) | JSONL | runner (stagecraft's loop and CI agents) | humans, `promptbook report` |
+| [grant](#grant) | `.orchestrator/grants/GRANT-n.yaml` | YAML | a human (stagehand records it from the human's words) | the coordinator, `promptbook grant verify` |
+| [policy](#policy) | `agent-policy.yaml` (L1 dotfiles) | YAML | operator | `promptbook compile-policy` → engine settings |
+| [toolkit-lock](#toolkit-lock) | `toolkit.lock` (L1 and L2) | YAML | `promptbook lock` | stagecraft's sync and CI, dotfiles |
+| [skill](#skill) | `skills/<name>/SKILL.md` (Skilldex; a set's or a project's own) | frontmatter-md | skill author | every engine's skill loader, `promptbook lint` |
+| [evidence](#evidence) | `**/skills/<name>/evals/{evidence.md,routing.jsonl}` (Skilldex's, a project's `.agents/skills/` too), `routing-results*.jsonl` | entries / JSONL | skill author, `promptbook eval-routing` | skill reviews, routing evals |
+| [agent-setup-review](#agent-setup-review) | `agent-setup-reviews/<date>-<label>.md` | Markdown record | Skilldex's reviewing-agent-setup skill | humans, the next review |
+| [reflection-report](#reflection-report) | `reflections/*.md` | frontmatter-md | Skilldex's reflecting-on-runs skill | a curator, humans |
 
 `common` holds the shared definitions and is not an artifact.
 
@@ -91,7 +101,7 @@ trace check to legacy adoption (below).
 `evidence[]`. **Location.** Either one `docs/product/personas.md` with `## PER-n · Name` entries and
 `- **Role:** …` / `- **Goals:**` bullets, or one frontmatter file per persona under `personas/`.
 **Swap story.** Personas from research tools, interviews or analytics land in the same shape.
-**Compat.** New in the harness.
+**Compat.** New in promptbook.
 
 ### journey
 
@@ -145,7 +155,7 @@ title`, `**Status:**`, `**Date:**`, `**Decision:**`, `**Why:**`, `**Consequences
 in-progress → done; blocked). Not in the brief's table; added so the epic status is checked the
 same way as the task status. **Schema** `epic.schema.json` 1.2.0: agentic-template's spec
 frontmatter exactly (`epic`, `status`, `priority`, `size`, `business_value`, `initiative`, `owner`),
-`owner` required from `approved` on, plus the optional harness field `mode`, the default methodology
+`owner` required from `approved` on, plus the optional promptbook field `mode`, the default methodology
 of the epic's tasks (a task's own `mode` overrides it; absent everywhere, `spec-driven`); sections
 Problem, Scope, Requirements, Tasks, Acceptance. The trace check reports each task's effective mode
 (`--json`: `epics[].task_modes`) and an override of the epic's mode as `info`. **Compat.** Both
@@ -159,7 +169,7 @@ status is on its head, and the default branch's copy says `ready` until the task
 `workflow.yaml` `status_authority`); the body is the contract the coder builds against. **Schema** `task.schema.json`
 1.3.0. Required (agentic-template's fields, same meaning): `id`, `epic`, `status`, `priority`, `cuj`,
 `guiding_docs`, `branch`, `depends_on`, `owner`. Optional template fields: `parent`, `size`,
-`kickback_reason`. **Optional harness fields:**
+`kickback_reason`. **Optional promptbook fields:**
 
 | Field | Meaning |
 |---|---|
@@ -204,7 +214,7 @@ plan (a hand edit, or a plan change not regenerated), is timestamped, or has no 
 (repository, worktree, agents, native session ids, PRs, attention, next action, human decisions).
 **Schema** `task-record.schema.json` 1.3.0; `state.name` is attention (working | needs-human |
 complete), never a workflow status; needs-human requires `next_action`; complete forbids it.
-Harness additions: `runtime`, `grant`, `signals{role: {source, value, observed_at}}` (source: an
+Promptbook additions: `runtime`, `grant`, `signals{role: {source, value, observed_at}}` (source: an
 `attention.yaml` vocabulary — herdr, a2a, mcp-tasks, claude-headless, loop-outcome, ci — or
 codex-exec, forgejo, gitlab, other), structured `reviews[]` (each bound to the head it judged:
 `outcome` pass | fail | changes-requested | comment, `role` reviewer for a code review or evaluator for
@@ -213,7 +223,8 @@ worktree's derived `slug`, `worktree_path`, `database`, `ports{slot,first,last}`
 `services`, the last cleanup `audit{at, result: passed|blocked, blocked_by}` and
 `worktree_removed_at`, which requires an audit that passed), `updated_at`. **Swap story.** A different runtime (a CLI loop, a CI
 orchestrator, stagehand) keeps the same note; a coordinator can be replaced mid-task. **Compat.**
-A superset of stagehand's `assets/task-record.yaml`, which validates unchanged; the field map is in
+stagehand, the suite's coordinator, writes its records in this format: its template
+`assets/task-record.yaml` validates as it is, and the field map is in
 [adapters/herdr](adapters/herdr/README.md).
 
 ### return
@@ -231,12 +242,12 @@ is optional there.
 ### run-record
 
 **Purpose.** One JSON line per agent run, appended by the runner. **Schema** `run-record.schema.json`
-1.3.0: exactly `scripts/loop.mjs`'s line — `task`, `session_id`, `started_at`, `ended_at`, `exit`
+1.4.0: exactly `scripts/loop.mjs`'s line — `task`, `session_id`, `started_at`, `ended_at`, `exit`
 (code or signal), `outcome`, `reason`, `subtype`, `num_turns`, `total_cost_usd`, `status_after` —
 with null where loop.mjs writes null. `outcome` is advanced | stalled | failed | needs-human (the
 loop's since it pins dontAsk: a denied call left the task where it was) for an author's run, and
 verdict (an evaluator judged the criteria) or read (a reader or helper answered a question) for a
-run that is not the author's. Harness optional fields: `engine`, `runtime`, `role` (author |
+run that is not the author's. Promptbook optional fields: `engine`, `runtime`, `role` (author |
 evaluator | reader | planner | orchestrator | merge | other; absent, the author), `model`,
 `status_before`, `permission_mode`, `permission_denials` (a count, or one line per denied call as
 the dontAsk loop writes them), `attention`, `budget`, `grant`, `usage` (`input`, `output`,
@@ -250,7 +261,9 @@ ready/in-progress; a verdict is an evaluator's (`verdict-by-evaluator`), a read 
 (`run-kept-status`); `usage` holds only those four counts (`usage-counts-tokens`); ended ≥ started.
 1.2.0 added `role`, the three outcomes and denial lines, so an evaluator's or reader's run is logged
 as what it was instead of an author's "advanced"; 1.3.0 added `usage`, so a run's cost has its
-tokens and cache hit rate beside it (`harness report`, TOOLS.md).
+tokens and cache hit rate beside it (`promptbook report`, TOOLS.md); 1.4.0 lets `task` be the
+runtime's stable id when the work has no workflow task (a review of an outside pull request, a
+delegated job), as `task-record.task_id` and `return.task` already do.
 **Compat.** Lines from loop.mjs's own test runs are the fixture
 `fixtures/valid/run-record/loop-mjs-outcomes.jsonl`; the dontAsk loop's lines (agentic-template
 `fix/agent-run-caps`: `needs-human`, `permission_denials` as lines), produced with a fake engine, are
@@ -262,7 +275,7 @@ tokens and cache hit rate beside it (`harness report`, TOOLS.md).
 ### grant
 
 **Purpose.** A human delegating named decisions to a coordinator for a named scope, within limits,
-until an expiry (`state-machines/authority.yaml`). **Schema** `grant.schema.json` 2.0.0: `id`,
+until an expiry or a stop condition (`state-machines/authority.yaml`). **Schema** `grant.schema.json` 2.1.0: `id`,
 `granted_by`, `granted_to{role, agent, runtime}`, `granted_at`, `source`, `scope{objective,
 repositories, epics, tasks, requirements, non_goals}`, `actions[]`, `limits{max_workers, budget,
 stop_when}`, `expires_at`, `revocable: true`, `revoked_at/by/reason`, `narrowed[]` (structured:
@@ -270,6 +283,10 @@ stop_when}`, `expires_at`, `revocable: true`, `revoked_at/by/reason`, `narrowed[
 `select-tasks`, `approve-plan`, `dispose-findings` (with a `policy`), `finalize`, `publish-review`,
 and `merge{repo, target, protected_branch, strategy, requires}` where `requires` must include
 `independent-review` and `required-checks`; only an orchestrator or the merge role may hold merge.
+No grant is open-ended (`grant-is-bounded`): it names `expires_at` and `limits.budget`, or a
+non-empty `limits.stop_when`, and then may omit both (2.1.0): a coordinator records only what the
+human said, and an interactive runtime reports no spend, so such a grant is bounded by its stop
+conditions and by revocation. A grant with neither an expiry nor a stop condition is invalid.
 2.0.0 (breaking): `protected_branch` is required and `target` may not equal it
 (`merge-target-not-protected`): a merge grant lands on an epic's integration branch at most, and
 the protected branch is reached only by the merge role after a human's approval or by a human's
@@ -277,26 +294,29 @@ merge of the integration branch (workflow `land` is never grantable; `promote` i
 status field).** A grant's state is read from the record, never stored in it: *where* it is (the
 project's `.orchestrator/grants/GRANT-n.yaml`; it applies to that project only and is never moved or
 deleted, so the audit trail stays), its *dates* (`pending` before `granted_at`, `live` until
-`expires_at`, exclusive, then `expired`), its *revocation* (`revoked` from `revoked_at`, with
+`expires_at`, exclusive, then `expired`; a grant with no expiry stays live until a stop condition
+holds, which only its coordinator can tell, or it is revoked), its *revocation* (`revoked` from `revoked_at`, with
 `revoked_by` and `revocation_reason`; it wins over expiry), its *narrowing* (`narrowed[]`, append-only;
 the issued fields never change, and the grant in force is the issue minus every entry; an entry
 only removes what the grant holds, only lowers limits and the expiry and never empties a scope list,
 `narrowing-only-narrows`; widening is a new grant), its *provenance* (a live grant is the file the
 granting human committed under `.orchestrator/grants/`, a CODEOWNERS-protected path, `granted_by`
 one of its owners; agents write only `.orchestrator/grants/drafts/`, which validate as grants but are
-never live; `harness grant verify <file> --git` checks the owners, the last commit's author, the
-issued fields against the issuing commit, append-only narrowing and a source commit), and its
+never live; `promptbook grant verify <file> --git` checks the owners, the last commit's author, the
+issued fields against the issuing commit, append-only narrowing and a source commit, and reports
+the lifecycle state, failing a grant that is not live), and its
 *recorded uses* (every task record, run record and orchestrator
 commit that names its id). A coordinator derives the state before each delegated action
-(`authority.yaml` lifecycle.validity); the simulator's `grantState()` and `tools/lib/grant.mjs` `effectiveGrant()` are the reference. A coordinator
+(`authority.yaml` lifecycle.validity); `grantState()` and `effectiveGrant()` in `tools/lib/grant.mjs`, which the simulator and `grant verify` share, are the reference. A coordinator
 may hold several grants (a work grant and a merge grant, revocable alone): each action is exercised
 under the grant that delegates it, and the workers cap is the smallest `max_workers` among the live
 grants that dispatch work, so a merge-only grant's `max_workers` bounds its merges, not the epic's
 workers (`authority.yaml` lifecycle.limits, since 1.2.0). **Swap story.** Lets a
 coordinator (stagehand, a CI orchestrator, a future agent) stand in for named human decisions with an
 auditable, expiring record instead of a remembered chat line. **Compat.** stagehand's
-project-delegation grants map field by field ([adapters/herdr](adapters/herdr/README.md)); the
-harness adds a mandatory expiry.
+project-delegation grants map field by field ([adapters/herdr](adapters/herdr/README.md)); a
+grant bounded only by its stop conditions validates, so stagehand records an expiry or a budget
+only when the human states one.
 
 ### policy
 
@@ -331,10 +351,10 @@ a warning (it never takes effect).
 A profile may name `requires`: preconditions the operator keeps outside the policy, each a named
 probe of the host (`prod-unreachable-from-this-host` against `requires_config.prod_hosts` (1.4.0),
 `non-root`, `container`, `non-root-container`, `sandbox-available`; an unknown name fails closed).
-The bypass tier (autonomous) must name them (a validation warning, a compile error); `harness
+The bypass tier (autonomous) must name them (a validation warning, a compile error); `promptbook
 check-requires` probes them, and the compiler passes them with `requires_config` to the launcher in
-`runner.json`, with the run's `caps` and who enforces each (`engine`, `harness-run` or `none`).
-`harness run` is that launcher: it refuses to start a run until the probes pass. An unattended
+`runner.json`, with the run's `caps` and who enforces each (`engine`, `promptbook-run` or `none`).
+`promptbook run` is that launcher: it refuses to start a run until the probes pass. An unattended
 tier's caps are never waivable: on an engine that reports no cost the compile requires
 `budgets.unattended.max_minutes` for a hard kill.
 
@@ -367,13 +387,16 @@ profile's accepted gap.
 
 ### toolkit-lock
 
-**Purpose.** Pins the exact harness, the portable skill libraries and the L4 packs a project (or the
-dotfiles) runs. **Schema** `toolkit-lock.schema.json` 1.2.0: `lock_version`, `entries[]` of `{name,
+**Purpose.** Pins the exact promptbook, the portable skill libraries and the L4 packs a project (or the
+dotfiles) runs. **Schema** `toolkit-lock.schema.json` 2.0.0: `lock_version`, `entries[]` of `{name,
 layer (L3|L4), kind, source, path, ref, commit (full sha), tree (git tree id), version (semver,
 build metadata allowed: `0.0.0+fc572b6` for an untagged pin), autoUpdate (off | patch | minor |
-major), mirrored}`; names unique. `kind` at L3 is `harness` (exactly one; an L3 entry with no kind is
-the harness) or `skill-library` (any number, e.g. a Skilldex skill); at L4 `engine-binding`,
-`stack-pack`, `runtime` or `domain-pack` (a kind on the other layer is a warning). The tree id
+major), mirrored}`; names unique. `kind` at L3 is `promptbook` (exactly one; an L3 entry with no kind is
+promptbook) or `skill-library` (any number, e.g. a Skilldex skill); at L4 `engine-binding`,
+`stack-pack`, `runtime` or `domain-pack` (a kind on the other layer is a warning). A
+`skill-library` entry may name the install `sets` the consumer copies (Skilldex's `planning`,
+`delivery`, `personal`, …; `sets-on-skill-library`), so one pin of the whole library says what is
+installed, and `promptbook lint --budget-set toolkit.lock` measures exactly those sets. The tree id
 detects a rewritten tag or a force-pushed mirror. **Compat.** Replaces agentic-template's `.template-version` file and the
 plugin `version` pin as the single source.
 
@@ -381,12 +404,13 @@ plugin `version` pin as the single source.
 
 **Purpose.** A portable procedure. **Schema** `skill.schema.json` 1.0.0: the agentskills.io core
 fields only (read 2026-10-13): `name` (≤64, lowercase, single hyphens, equals its directory),
-`description` (≤1024), `license`, `compatibility` (≤500), `metadata` (string map; the harness reads
+`description` (≤1024), `license`, `compatibility` (≤500), `metadata` (string map; promptbook reads
 `metadata.version` (semver), `metadata.deprecated`, `metadata.layer`). `allowed-tools`, Claude
 Code's extensions (`disable-model-invocation`, `context`, `hooks`, `paths`, `model`, …) and anything
 else are rejected: engine extensions belong in adapters. Gerund names and "Use when … Do not use for
-…" descriptions are lint rules (`tools/lint-skills.mjs`, later). **Compat.** agentic-template's
-skills add `origin:` and live in `.claude/skills/`, which the L3 path deliberately does not match.
+…" descriptions are lint rules (`promptbook lint`, TOOLS.md). The skills live in Skilldex; promptbook
+holds none. **Compat.** agentic-template's skills add `origin:` and live in `.claude/skills/`,
+which the L3 path deliberately does not match.
 
 ### evidence
 
@@ -399,22 +423,22 @@ engine, model, skill_version, revisit; vendor-reported and literature must cite 
 cite a source); `#/$defs/routingCase` for `evals/routing.jsonl` lines (and `evals/heldout.routing.jsonl`, cases
 written after tuning and never used to change a description: `prompt`, `expect` trigger |
 no-trigger, `kind` positive | near-miss | negative, `route_to`); and `#/$defs/routingResult` for the
-lines `harness eval-routing --out` writes (`routing-results*.jsonl`: `skill`, `case` `<skill>:<line>` of the
+lines `promptbook eval-routing --out` writes (`routing-results*.jsonl`: `skill`, `case` `<skill>:<line>` of the
 cases file the run read, `prompt`, `expect`, `kind`, `route_to`, `model`, `runs`, `answers[]` per
 run, `passes`, `pass` — pass^k, every run — `errors`, `at`, `skill_version`; counts must agree), the measured source an
 evidence entry cites. The eval files validate wherever a skills folder is, dot-folder or not
-(`skills/`, a project's `.agents/skills/` or `.claude/skills/`, a user's `~/.agents/skills/`):
+(Skilldex's `skills/`, a project's `.agents/skills/` or `.claude/skills/`, a user's `~/.agents/skills/`):
 unlike `SKILL.md`, whose L3 contract an engine's own skill folder may extend, the eval shapes are
 the same everywhere; `*.evidence.md` and `*.routing.jsonl` name the contract outside one (1.3.0).
 **Compat.** agentic-template keeps both in one `evals.md` (a routing table and an Evidence list);
-`harness import-evals` converts one, marking what a human must still decide (TOOLS.md).
+`promptbook import-evals` converts one, marking what a human must still decide (TOOLS.md).
 
-### harness-review
+### agent-setup-review
 
-**Purpose.** The record a harness review leaves (after a model release, or quarterly): what was
+**Purpose.** The record an agent-setup review leaves (after a model release, or quarterly): what was
 reviewed with which suite, the baseline, one ablation per component and the decision each supports.
-**Schema** `harness-review.schema.json` 1.0.0, read from the reviewing-harness skill's Markdown as
-written: the title `# Harness review — YYYY-MM-DD — <model or quarter>` gives `date` and `label`; the
+**Schema** `agent-setup-review.schema.json` 2.0.0 (the record's new name: a breaking change), read from the reviewing-agent-setup skill's Markdown as
+written: the title `# Agent-setup review — YYYY-MM-DD — <model or quarter>` gives `date` and `label`; the
 header bullets `**Trigger:**`, `**Reviewed:**`, `**Suite:**`, `**Trials:**` (required), `**Spend cap /
 spent:**` and `**Noise …:**` give `trigger`, `reviewed`, `suite`, `trials`, `spend`, `noise`; the
 level-2 sections must include Baseline, Ablations, Decisions and Playbook (`review-has-sections`);
@@ -507,9 +531,9 @@ is an error only when the artifact claims readiness — the epic is approved, in
 the task is ready or later — and a warning before that (the to-do list for the spec gate).
 **Adoption:** a project with `docs/product/brief.md` is in *full* adoption and every rule applies.
 Without it the project is in *legacy* adoption (an agentic-template project from before the product
-layer): the product-layer rules are skipped (reported once as `info`), and every link the harness
+layer): the product-layer rules are skipped (reported once as `info`), and every link promptbook
 introduced — persona links, task → requirement, requirement → journey, UX, ADR `satisfies` — is a
-warning even on an approved epic, so adopting the harness never turns a green build red. Gaps that
+warning even on an approved epic, so adopting promptbook never turns a green build red. Gaps that
 keep an epic from `ready` are marked `blocks_readiness` in either mode. With no test files at all,
 criterion coverage is a single `tests-exist` warning while no task claims to be tested; once a task is
 at review or later it is an error and each of that task's criteria is uncovered, so a merged task
@@ -613,7 +637,8 @@ pass on the current head, required where a merge grant approves; the two are sep
 | both epics' `spec.md` and `cuj.md` | epic, requirement, journey | validate unchanged (12 `R<n>` rows normalized) |
 | `DECISIONS.md` (18 ADRs) | decision | validates; ADR-0001's `TODO(domain)` date is a warning |
 | `scripts/loop.mjs` run lines (the dontAsk loop's on `fix/agent-run-caps`, and with `usage` on `integration/agent-hardening`) | run-record | validate unchanged |
-| stagehand `assets/task-record.yaml` (filled) | task-record | validates unchanged |
-| stagehand project delegation | grant | expressible; the grant adds an expiry |
+| stagehand `assets/task-record.yaml` (the template, and a filled record) | task-record | validate as they are |
+| stagehand `assets/project-grant.yaml` (feat/promptbook-contracts) | grant | validates as it is; a grant with stop conditions and no stated expiry or budget is valid |
+| Skilldex skills (feat/suite-skill-library) | skill, evidence | `promptbook lint <skilldex>/skills` checks each skill, its evals and each install set |
 | Herdr `AgentStatus`, A2A 1.0 `TaskState`, MCP Tasks `TaskStatus`, Claude result subtypes, GitHub check runs | attention.yaml | every value mapped; none to a workflow status |
 | agentskills.io frontmatter | skill | core fields only; engine extensions rejected |

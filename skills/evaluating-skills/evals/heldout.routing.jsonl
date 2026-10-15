@@ -1,3 +1,0 @@
-{"prompt": "After shortening the landing-changes description, rerun its routing cases three times and show me any answer that flips.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
-{"prompt": "Write scenarios with pass criteria and a k for the delegating-authority skill, including one where it must stop for a human.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
-{"prompt": "Create a skill from scratch for triaging support tickets.", "expect": "no-trigger", "kind": "near-miss", "route_to": "building-skills", "note": "held out: written after tuning, never used to change a description"}

@@ -1,6 +1,6 @@
 # Adapter: Gemini CLI and Antigravity CLI
 
-Where each harness contract lands for Google's agents, and how `agent-policy.yaml` compiles to Gemini
+Where each promptbook contract lands for Google's agents, and how `agent-policy.yaml` compiles to Gemini
 CLI settings and policy-engine TOML. Verified against geminicli.com and antigravity.google on
 2026-10-13. Gemini CLI was replaced by Antigravity CLI (`agy`) for unpaid and Google One users on
 2026-06-18; paid API-key and enterprise users may still run Gemini CLI
@@ -19,9 +19,9 @@ compiled `settings.json` and policy file is loaded by Gemini CLI 0.64.0 (below).
 | Hooks | `hooks` in `settings.json`, keyed by event (`BeforeTool`, `AfterTool`, `SessionStart`, ...); `hooksConfig.enabled` is the master switch. A `BeforeTool` hook blocks with `{"decision": "deny"}` on stdout (exit 0) or exit 2 [hooks][hooks] [configuration][config] | "Not covered" by the migration guide |
 | MCP | `mcpServers` in settings.json | `~/.gemini/config/mcp_config.json`, `.agents/mcp_config.json`, URL key `serverUrl` |
 | `return`, `run-record` | a runner around `gemini -p` writes them | — |
-| Plugin packaging | extensions (`gemini-extension.json`); not shipped by the harness | `agy plugin import gemini` converts extensions to plugins |
+| Plugin packaging | extensions (`gemini-extension.json`); not shipped by promptbook | `agy plugin import gemini` converts extensions to plugins |
 
-## Policy compilation (`agent-policy.yaml` → `~/.gemini/settings.json` + `~/.gemini/policies/harness.toml`)
+## Policy compilation (`agent-policy.yaml` → `~/.gemini/settings.json` + `~/.gemini/policies/promptbook.toml`)
 
 Policy-engine facts the mapping relies on ([policy engine][policy]): rules carry `toolName`,
 `commandPrefix` (shorthand for `run_shell_command`), `commandRegex`, `argsPattern`, `decision`
@@ -45,7 +45,7 @@ non-interactive mode `ask_user` is treated as `deny`.
 | `forbid: {write: glob}` | `[[rule]] toolName = [<the file-writing tools>], argsPattern = "<regex>", decision = "deny"` | Same partial caveat as `deny_read`. |
 | `forbid: {tool: web-fetch, domain}` | `[[rule]] toolName = "web_fetch", argsPattern = "<domain regex>", decision = "deny"` | |
 | `forbid: {tool: "mcp:server[:tool]"}` | `[[rule]] toolName = "mcp_<server>_*"` (or the tool), `decision = "deny"`; or `mcpServers.<s>.excludeTools` | Avoid underscores in server aliases (the engine splits on the first one). |
-| `roles.<r>` (unattended) | `roles/<r>/settings.json`, `policies/harness.toml`, `runner.json` | The policy files are user-tier and machine-wide, so a role runs from its own environment (the evaluator's container). `read_only`: a deny for the file-writing tools with no `argsPattern`; shell writes stay the usual `forbid` gap. |
+| `roles.<r>` (unattended) | `roles/<r>/settings.json`, `policies/promptbook.toml`, `runner.json` | The policy files are user-tier and machine-wide, so a role runs from its own environment (the evaluator's container). `read_only`: a deny for the file-writing tools with no `argsPattern`; shell writes stay the usual `forbid` gap. |
 | `ask` | `[[rule]] ... decision = "ask_user"` | Denied when non-interactive. |
 | `allow` | `[[rule]] ... decision = "allow"` and `tools.allowed` | |
 | `egress.*` | — | **No equivalent**: the sandbox offers "open" or "proxied" profiles, not a domain list [sandbox][sandbox]. `default: deny` or any `deny_domains` → error unless accepted; with a proxy profile the operator's proxy enforces the list. |
@@ -53,15 +53,15 @@ non-interactive mode `ask_user` is treated as `deny`.
 | `sandbox.fail_if_unavailable` | — | **No equivalent**; error unless accepted. |
 | `sandbox.writable_roots` | — | Container mounts are the launcher's job. |
 | `sandbox.credentials` (masks) | — | **No equivalent**: sandboxed commands would read the credential unmasked; error unless `accept_gaps` names `{engine: gemini, field: sandbox}` (a container that mounts no credentials is the usual reason). |
-| `budgets` | `settings.json` `model.maxSessionTurns` for `max_turns`; `runner.json` `caps` and `enforcement` for `harness run` | `model.maxSessionTurns` is the session's turn limit ([configuration][config]); headless, exceeding it exits 53, "turn limit exceeded" ([headless][headless]), which `harness run` reports as the engine's own stop. `harness run` enforces `max_minutes` by a hard kill (exit 124). **Not enforced: `max_usd`** — the headless JSON reports tokens, not cost: unattended, a `spend-unmetered` warning and `max_minutes` is required; elsewhere `max_usd` (and `max_tokens` everywhere) is a `budgets` gap. |
+| `budgets` | `settings.json` `model.maxSessionTurns` for `max_turns`; `runner.json` `caps` and `enforcement` for `promptbook run` | `model.maxSessionTurns` is the session's turn limit ([configuration][config]); headless, exceeding it exits 53, "turn limit exceeded" ([headless][headless]), which `promptbook run` reports as the engine's own stop. `promptbook run` enforces `max_minutes` by a hard kill (exit 124). **Not enforced: `max_usd`** — the headless JSON reports tokens, not cost: unattended, a `spend-unmetered` warning and `max_minutes` is required; elsewhere `max_usd` (and `max_tokens` everywhere) is a `budgets` gap. |
 
 **Loaded by the real CLI.** `tests/gemini-load.test.mjs` (`GEMINI_BIN=<gemini> pnpm test`, or
 `gemini` on `PATH`; skipped otherwise) writes each compiled `settings.json` and
-`policies/harness.toml` (the goldens, the Tally evaluator, and fresh compiles of the fixture
+`policies/promptbook.toml` (the goldens, the Tally evaluator, and fresh compiles of the fixture
 policies as written and with every gap accepted) into a scratch `GEMINI_CLI_HOME` as the user tier
 and runs `gemini mcp list`, the one offline command found that loads both: settings the schema
 refuses print "Invalid configuration in …/settings.json", and a policy rule the loader cannot use
-prints "[USER] Policy file error in harness.toml" and is dropped while the command exits 0, so the
+prints "[USER] Policy file error in promptbook.toml" and is dropped while the command exits 0, so the
 test reads the output, and first proves both messages appear for a planted bad setting and rule.
 Measured on 2026-10-13: before the patterns above, each golden lost 8 of its 25 or 26 rules this
 way, 6 of them denies (every `deny_read`, the `.git/hooks` write deny, the internal-domain fetch deny).

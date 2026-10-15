@@ -1,3 +1,0 @@
-{"prompt": "PR 311 has its approval; get it into main through the queue.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
-{"prompt": "Only the lockfile conflicts on PR 298; sort that out and land it.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
-{"prompt": "PR 298 is merged; now get that exact build onto the UAT environment.", "expect": "no-trigger", "kind": "near-miss", "route_to": "releasing-changes", "note": "held out: written after tuning, never used to change a description"}

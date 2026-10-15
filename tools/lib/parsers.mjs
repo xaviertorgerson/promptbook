@@ -348,21 +348,21 @@ export function parseEvidence(text) {
 }
 
 // ---------------------------------------------------------------------------------------------- //
-// harness-reviews/<date>-<label>.md -> harness-review (the reviewing-harness skill's record)
+// agent-setup-reviews/<date>-<label>.md -> agent-setup-review (the reviewing-agent-setup skill's record)
 
 const REVIEW_FIELDS = { trigger: 'trigger', reviewed: 'reviewed', suite: 'suite', trials: 'trials', 'spend cap spent': 'spend', spend: 'spend', noise: 'noise' };
 const REVIEW_SECTIONS = [
-  ['baseline', /^baseline\b/], ['effort-sweep', /^effort sweep\b/], ['full-harness', /^full harness\b/], ['ablations', /^ablations?\b/],
+  ['baseline', /^baseline\b/], ['effort-sweep', /^effort sweep\b/], ['full-setup', /^full setup\b/], ['ablations', /^ablations?\b/],
   ['decisions', /^decisions\b/], ['playbook', /^playbook\b/], ['questions', /^questions\b/],
 ];
 
-export function parseHarnessReview(text) {
+export function parseAgentSetupReview(text) {
   const { lines } = prepare(text);
   const mask = fenceMask(lines);
   const hs = headings(lines, mask);
   const h1 = hs.find((h) => h.level === 1);
-  const m = h1?.text.match(/^Harness review\s*[—–-]\s*([0-9]{4}-[0-9]{2}-[0-9]{2})\s*[—–-]\s*(.+)$/i);
-  if (!m) return { records: [], errors: [{ keyword: 'entries', pointer: '', message: 'no "# Harness review — YYYY-MM-DD — <model or quarter>" title', line: h1 ? h1.index + 1 : 1 }] };
+  const m = h1?.text.match(/^Agent-setup review\s*[—–-]\s*([0-9]{4}-[0-9]{2}-[0-9]{2})\s*[—–-]\s*(.+)$/i);
+  if (!m) return { records: [], errors: [{ keyword: 'entries', pointer: '', message: 'no "# Agent-setup review — YYYY-MM-DD — <model or quarter>" title', line: h1 ? h1.index + 1 : 1 }] };
   const data = { date: m[1], label: clean(m[2]) };
   const fieldLines = { date: h1.index + 1, label: h1.index + 1 };
   const firstH2 = hs.find((h) => h.level === 2)?.index ?? lines.length;
@@ -413,7 +413,7 @@ export const PARSERS = {
   personas: parsePersonas,
   'ux-flows': parseUxFlows,
   evidence: parseEvidence,
-  'harness-review': parseHarnessReview,
+  'agent-setup-review': parseAgentSetupReview,
 };
 
 export { fenceMask };

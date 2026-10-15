@@ -7,14 +7,11 @@ import { fenceMask, headings, splitLines, stripComments } from './markdown.mjs';
 import { registry as sharedRegistry } from './registry.mjs';
 import { validateAs } from './validate.mjs';
 
-// The skill authoring rules (README "skills/", the skill catalog) as checks over a set of skill
+// The skill authoring rules (TOOLS.md, lint) as checks over a set of skill
 // folders. A finding is { severity, rule, file, line, message }; rule names are stable so fixtures
 // and CI can name them. The skill schema itself is checked by the validator (tools/lib/validate.mjs);
 // lint adds what JSON Schema cannot see: the description's shape, the body's size and neutrality,
 // links, and the evals folder.
-
-// Skilldex skills the harness pins rather than authors; a near-miss may route to them.
-export const PINNED_EXTERNAL = ['reviewing-code', 'preparing-pull-requests', 'resolving-findings', 'writing-specifications', 'building-skills'];
 
 // Engine, runtime, forge, host and stack names an L3 skill body or description must not carry.
 // references/engine-notes.md is the one place they may appear (adapters own the mapping).
@@ -157,11 +154,17 @@ export function lintSkills(targets, opts = {}) {
   const reg = opts.registry ?? sharedRegistry();
   const limits = { ...LIMITS, ...(opts.limits ?? {}) };
   const denyTerms = (opts.denyTerms ?? DEFAULT_DENY_TERMS).filter((t) => !(opts.allowTerms ?? []).some((a) => a.toLowerCase() === t.toLowerCase()));
-  const known = new Set([...PINNED_EXTERNAL, ...(opts.known ?? []), 'none']);
-  // Linting one skill folder still knows its siblings, so its near-misses can name them.
-  for (const t of targets.map((x) => path.resolve(x))) {
+  const known = new Set([...(opts.known ?? []), 'none']);
+  // Linting one skill folder still knows its siblings, so its near-misses can name them. A
+  // near-miss may also route to what loads beside: the skills of the --sets library, and the
+  // externals of every SETS.yaml that names the linted skills or that --sets gives.
+  const resolved = targets.map((x) => path.resolve(x));
+  for (const t of resolved) {
     if (fs.existsSync(path.join(t, 'SKILL.md'))) for (const d of skillDirs(path.dirname(t))) known.add(path.basename(d));
   }
+  if (opts.setsFile) for (const d of skillsUnder(setsLibrary(opts.setsFile))) known.add(path.basename(d));
+  const nearSets = [...resolved.map((t) => setsFileOf(fs.existsSync(path.join(t, 'SKILL.md')) ? path.dirname(t) : t)), opts.setsFile ?? null].filter(Boolean);
+  for (const file of nearSets) for (const e of Object.values(loadSets(file).data?.external ?? {})) for (const n of e.skills) known.add(n);
   const dirs = [...new Set(targets.flatMap((t) => skillDirs(path.resolve(t))))];
   const skills = dirs.map((dir) => ({ dir, name: path.basename(dir), findings: [] }));
   const names = new Set(skills.map((s) => s.name));
@@ -277,7 +280,7 @@ export function lintSkills(targets, opts = {}) {
       for (const c of cases.filter((x) => x.route_to)) {
         if (c.route_to === s.name) f('error', 'route-to-self', routing, c.line, `a no-trigger case routes to ${s.name} itself`);
         else if (!names.has(c.route_to) && !known.has(c.route_to)) {
-          f('error', 'route-to-known', routing, c.line, `route_to "${c.route_to}" is neither a scanned skill nor a pinned external (${PINNED_EXTERNAL.join(', ')}) nor "none"`);
+          f('error', 'route-to-known', routing, c.line, `route_to "${c.route_to}" is neither a scanned skill, a skill loaded beside it (the --sets library, a SETS.yaml external), --known, nor "none"`);
         }
       }
     }
@@ -325,14 +328,10 @@ export function lintSkills(targets, opts = {}) {
     overlaps.push({ severity: 'warning', rule: 'description-budget', score: total, message: `the ${skills.length} descriptions total ${total} characters, over the ${limits.descriptionBudget} an engine may keep loaded (2% of context or 8000 characters); longest: ${longest.join(', ')}` });
   }
 
-  // 9. Install sets: a folder of skills that holds SETS.yaml has every set checked against it.
-  const sets = [];
-  for (const t of [...new Set(targets.map((x) => path.resolve(x)))]) {
-    const file = path.join(t, SETS_FILE);
-    if (!fs.existsSync(file)) continue;
-    const here = skills.filter((s) => path.dirname(s.dir) === t);
-    sets.push(lintSets(file, here, { externalDirs: opts.externalDirs ?? {} }));
-  }
+  // 9. Install sets: the SETS.yaml of a linted library (in the folder, or at the root above its
+  // skills/), and the one --sets names, each checked against the skills of its library.
+  const setsFiles = [...new Set([...targets.map((x) => setsFileOf(path.resolve(x))).filter(Boolean), ...(opts.setsFile ? [path.resolve(opts.setsFile)] : [])])];
+  const sets = setsFiles.map((file) => lintSets(file, librarySkills(file), { externalDirs: opts.externalDirs ?? {} }));
 
   const all = [...skills.flatMap((s) => s.findings), ...overlaps, ...sets.flatMap((x) => x.findings)];
   const counts = { skills: skills.length, error: all.filter((x) => x.severity === 'error').length, warning: all.filter((x) => x.severity === 'warning').length };
@@ -347,12 +346,35 @@ export function lintSkills(targets, opts = {}) {
 
 // ------------------------------------------------------------------------------------- install sets
 
-// skills/SETS.yaml names what a machine (scope user) or a project (scope project) installs, and what
-// a session loads beside it (loaded_with: other sets, externals); scope library is the whole
-// library, never installed. Every installed set, with what it is loaded with, stays within the
-// always-loaded budget less its headroom.
+// A skill library's SETS.yaml (Skilldex's) names what a machine (scope user) or a project (scope
+// project) installs, and what a session loads beside it (loaded_with: other sets, externals); scope
+// library is the whole library, never installed. Every installed set, with what it is loaded with,
+// stays within the always-loaded budget less its headroom. The file sits beside the skills it names
+// or at the library's root above its skills/ folder.
 export const SETS_FILE = 'SETS.yaml';
 const SET_SCOPES = ['user', 'project', 'library'];
+
+// The folder whose skills a SETS.yaml names.
+export function setsLibrary(file) {
+  const dir = path.dirname(path.resolve(file));
+  return skillDirs(dir).length || !fs.existsSync(path.join(dir, 'skills')) ? dir : path.join(dir, 'skills');
+}
+
+// The SETS.yaml that names a folder's skills: in the folder, or at the root above a skills/ folder.
+export function setsFileOf(dir) {
+  const own = path.join(dir, SETS_FILE);
+  if (fs.existsSync(own)) return own;
+  const root = path.join(path.dirname(dir), SETS_FILE);
+  return path.basename(dir) === 'skills' && fs.existsSync(root) && setsLibrary(root) === dir ? root : null;
+}
+
+// Each skill of a SETS.yaml's library, with its description: { name, description }.
+function librarySkills(file) {
+  return skillDirs(setsLibrary(file)).map((d) => {
+    const { data: fm } = loadFrontmatter(path.join(d, 'SKILL.md'));
+    return { name: path.basename(d), description: typeof fm?.description === 'string' ? fm.description : '' };
+  });
+}
 
 export function loadSets(file) {
   const errors = [];
@@ -378,7 +400,7 @@ export function loadSets(file) {
   return { data: errors.length ? null : data, errors };
 }
 
-// The harness skill names a set installs (its skills and those of the sets it includes).
+// The skill names a set installs (its skills and those of the sets it includes).
 export function setSkills(data, name, stack = []) {
   const s = data.sets[name];
   if (!s || stack.includes(name)) return new Set();
@@ -418,9 +440,7 @@ export function budgetSetByName(setsFile, name, { externalDirs = {} } = {}) {
   const { data, errors } = loadSets(setsFile);
   if (!data) throw new Error(`${setsFile}: ${errors.join('; ')}`);
   if (!data.sets[name]) throw new Error(`${setsFile} has no set ${name} (sets: ${Object.keys(data.sets).join(', ')})`);
-  const dir = path.dirname(setsFile);
-  const skills = skillDirs(dir).map((d) => { const { data: fm } = loadFrontmatter(path.join(d, 'SKILL.md')); return { name: path.basename(d), chars: typeof fm?.description === 'string' ? fm.description.length : 0 }; });
-  const load = setLoad(data, name, new Map(skills.map((s) => [s.name, s.chars])), { externalDirs });
+  const load = setLoad(data, name, new Map(librarySkills(setsFile).map((s) => [s.name, s.description.length])), { externalDirs });
   const limit = Math.floor(data.budget.limit * (1 - data.budget.headroom));
   const findings = [];
   if (data.sets[name].scope !== 'library' && load.total > limit) findings.push({ severity: 'error', rule: 'set-over-budget', message: `${name} loads ${load.total} characters, over ${limit} (${data.budget.limit} less ${Math.round(data.budget.headroom * 100)}% headroom)` });
@@ -466,12 +486,13 @@ export function lintSets(file, skills, { externalDirs = {} } = {}) {
 // ------------------------------------------------------------------------------------- budget set
 
 // The always-loaded budget applies to what an engine actually loads: every skill a machine profile
-// installs (the harness's, a skill library's, a runtime's), not the folder being linted. A budget set
+// installs (a skill library's, a project's, a runtime's), not the folder being linted. A budget set
 // names that installed set, as either
 //   a list of skill folders or folders of skills (YAML list, or one path per line; # comments), or
 //   a toolkit.lock (or toolkit.yaml) in the toolkit-lock contract: each entry with a local source
-//   contributes the skills under source/path (the harness: source/skills), narrowed by an entry's
-//   x-skills list when it has one; a remote entry cannot be read and is reported, not guessed.
+//   contributes the skills under source/path (or source/skills), narrowed to the install sets its
+//   `sets` names (read from the library's SETS.yaml) and to its x-skills list, when it has them; a
+//   remote entry cannot be read and is reported, not guessed.
 // Paths are relative to the set's file; ~ is the home directory.
 const expandHome = (p) => (p === '~' || p.startsWith('~/') ? path.join(os.homedir(), p.slice(1)) : p);
 const isRemoteSource = (s) => /^(?:https:\/\/|ssh:\/\/|git@|file:)/.test(s);
@@ -497,7 +518,19 @@ export function budgetSet(file, { limit = LIMITS.descriptionBudget } = {}) {
         findings.push({ severity: 'warning', rule: 'budget-set-unread', message: `${e.name}: ${e.source} is remote; its skills are not counted (list the installed folders instead)` });
         continue;
       }
-      sources.push({ from: e.name, dir: resolve(path.join(e.source, e.path ?? (e.kind === 'harness' || (!e.kind && e.layer === 'L3') ? 'skills' : ''))), only: Array.isArray(e['x-skills']) ? e['x-skills'] : null });
+      const dir = resolve(path.join(e.source, e.path ?? ''));
+      let only = Array.isArray(e['x-skills']) ? new Set(e['x-skills']) : null;
+      if (Array.isArray(e.sets) && fs.existsSync(dir)) {
+        const lib = skillDirs(dir).length || !fs.existsSync(path.join(dir, 'skills')) ? dir : path.join(dir, 'skills');
+        const file = setsFileOf(lib);
+        const data = file ? loadSets(file).data : null;
+        if (!data) { findings.push({ severity: 'error', rule: 'budget-set-sets', message: `${e.name}: names sets ${e.sets.join(', ')}, but ${lib} has no valid ${SETS_FILE}` }); continue; }
+        const unknown = e.sets.filter((n) => !data.sets[n]);
+        if (unknown.length) { findings.push({ severity: 'error', rule: 'budget-set-sets', message: `${e.name}: ${file} has no set ${unknown.join(', ')} (sets: ${Object.keys(data.sets).join(', ')})` }); continue; }
+        const inSets = new Set(e.sets.flatMap((n) => [...setSkills(data, n)]));
+        only = only ? new Set([...only].filter((x) => inSets.has(x))) : inSets;
+      }
+      sources.push({ from: e.name, dir, only: only ? [...only] : null });
     }
   } else {
     const list = Array.isArray(data) ? data : text.split(/\r?\n/).map((l) => l.replace(/#.*$/, '').trim()).filter(Boolean);
