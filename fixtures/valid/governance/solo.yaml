@@ -1,0 +1,10 @@
+# One maintainer (heirloom's D-159, generalized): green required checks and the evaluator's verdict
+# on the head are the merge gate for low and medium risk. A human still approves high-risk tasks,
+# anything on a protected path, and screens until the visual diff is a required check.
+trust: solo
+decision: ADR-0022
+reversal_trigger: a second maintainer joins, the product takes paying customers, or an unreviewed change causes a production regression
+auto_land: { max_risk: medium }
+protected_paths: [".github/workflows/**", "CODEOWNERS", ".claude/**", "governance.yaml"]
+ui_paths: ["apps/web/**"]
+production: { approvals: 1, continuous: false }

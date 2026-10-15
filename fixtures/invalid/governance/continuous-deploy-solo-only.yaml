@@ -1,0 +1,6 @@
+# Invalid: a team project releasing continuously, with no human at the production gate.
+trust: team
+decision: ADR-0031
+reversal_trigger: a customer contract requiring two-person review
+protected_paths: ["governance.yaml"]
+production: { approvals: 1, continuous: true }

@@ -26,3 +26,8 @@ sets:
     scope: library
     about: Every widget skill; never installed whole.
     includes: [everyday, shipping]
+
+# The library's own bar: its skills are held to promptbook's style rules as errors. A library whose
+# maintainers write differently leaves this out (or lists only some skills) and gets warnings.
+lint:
+  strict: [name-is-gerund, description-use-when, description-do-not-use-for, description-length, deprecated-description, body-length, evals-present, routing-counts, routing-kind-declared, scenarios-count, scenario-format, evidence-count, deprecated-never-triggers]

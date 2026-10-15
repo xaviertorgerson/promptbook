@@ -1,0 +1,6 @@
+# Invalid: a team profile that lets medium risk land without a code owner's approval.
+trust: team
+decision: ADR-0031
+reversal_trigger: a customer contract requiring two-person review
+auto_land: { max_risk: medium }
+protected_paths: ["governance.yaml"]

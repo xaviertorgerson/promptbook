@@ -10,6 +10,81 @@ Contract versions are each schema's `x-version` and each state machine's `versio
 
 ## [Unreleased]
 
+### Final pass
+
+Trust profiles, a standards block that holds in every profile, and the contracts adapted to the
+tools other maintainers already run (stagehand's task records, Skilldex's skills).
+
+#### Added
+
+- **additive** — The `governance` contract 1.0.0 (`governance.yaml`): a project's recorded trust
+  profile, `trust: solo | team | regulated`, with the ADR that chose it and its reversal trigger,
+  `auto_land.max_risk` (absent: solo medium, team low, regulated none; never high or irreversible),
+  `protected_paths`, `ui_paths`, `visual_check`, `production`, `signed_commits`, `attestations`;
+  rules `auto-land-within-profile`, `regulated-evidence`, `continuous-deploy-solo-only` and
+  `governance-protects-itself`. The Tally example records its profile (`solo`, ADR-0005).
+- **additive** — workflow 1.6.0: `auto-land` (`human-review` → `merged`, by the merge role, never
+  grantable) lands a change with no human approval where the trust profile permits it, guarded by
+  `trust-permits`, `checks-green`, `independent-verification`, `no-protected-path`,
+  `visual-checked`, `lands-on-protected`, `mechanical-only` and `merged-checks-green`; status
+  authority `auto-land-is-the-platforms`. A project without `governance.yaml` behaves as before.
+- **additive** — `simulate`: a scenario's `governance` (validated), the platform's risk gate and
+  visual check, the scenarios `trust-solo`, `trust-team` and `trust-regulated`, the mutation
+  `orchestrator-auto-lands` and five broken risk-gate bindings (six cases), each caught.
+
+#### Changed
+
+- **additive** — SUITE.md says where a thing goes (owner, scope of effect, copied or pinned, shared
+  by independent consumers, opinion gradient, change rate, and the five repositories against them),
+  which file to edit to change a skill, a stack convention, a preference, autonomy, a wall, the trust
+  profile, a format, a check, the standards, a CI job, a deploy step, the coordinator or a practice,
+  and how to read what happened (history, task files, pull requests, ADRs, run records and
+  `promptbook report`); gate 2 reads the trust profile.
+- **behavioral** — The standards block is `v3`: six stack-neutral principles, one sentence each,
+  each with how it is enforced: ENG-9 design (deep modules, interfaces at boundaries, a pure core,
+  composition, no speculative abstraction), ENG-10 one fact in one place, ENG-11 config (one
+  module reads and validates the environment; secrets only at run time), ENG-12 models (the model
+  judges, code measures, every path works without it), ENG-13 spend caps that degrade to a manual
+  path, ENG-14 rehearse what is written down. The block grows from 1,551 to 2,454 characters (1,446
+  at `v1`); a test holds it under 2,500.
+- **breaking** — The standards block is `v2`: ENG-5 lands a change through a pull request whose
+  required checks pass, approved by a human where the project's trust profile requires it, and
+  adds "never bypass a required check"; it no longer requires a reviewed pull request in every
+  project. Loosening an invariant is breaking (standards/engineering.md): every consumer that
+  vendors the block re-renders it at the new pin.
+- **behavioral** — `simulate`: `merge-requires-authority` refuses any land without green checks and
+  the evaluator's pass on the landed head, on every path (approval, grant or auto-land), and judges
+  an auto-land against the recorded profile, never the platform's gate.
+- **additive** — task-record 1.4.0: any top-level key a runtime adds is accepted as its own
+  evidence (stagehand's records name their result, reviewed heads, feedback and human decisions as
+  they choose); the named fields stay typed, nested objects stay closed.
+
+#### Fixed
+
+- **behavioral** — `lint` no longer forces promptbook's description style on another maintainer's
+  skills. Errors are the Agent Skills spec's limits (frontmatter, name, a description of at most
+  1,024 characters), what breaks an installed skill and engine neutrality; the style rules
+  (`name-is-gerund`, `description-use-when`, `description-do-not-use-for`, the 300/400 length
+  advice, `deprecated-description`, `body-length` and the eval counts and formats) are warnings
+  unless the skill's library asks for them in its `SETS.yaml` (`lint: { strict: [...], skills:
+  [...] }`). "Do not use merely to …" is an exclusion clause; `evals-present` accepts one
+  `evals/evals.md` unless strict; "Claude Search Optimization" is a term of art, not an engine.
+- **behavioral** — `lock`: an untagged source with no manifest is versioned by its commit
+  (`0.0.0+<sha>`, the abbreviation's length kept), so `--update` no longer leaves a moved pin
+  with the old commit's version (`0.0.0+cd7bf12` after a move to `ca37b1f`); a first pin of such a
+  source gets one instead of a `version-known` error, and a hand-set version is kept. `--check`
+  flags a `0.0.0+<sha>` that names another commit than the pin (`version-matches`). A rewrite keeps
+  the file's flow style: `sets: [planning, delivery]` is no longer written as `[ planning, delivery ]`.
+- **additive** — The docs say what stagehand does, not what promptbook once asked of it: it keeps
+  its own task records (the `task-record` contract reads them), records a delegation as a project
+  note, follows a project's own instructions for its task queue, and writes none of promptbook's
+  optional `reviews`, `decisions`, `grant` or `signals` (adapters/herdr, CONTRACTS.md, SUITE.md,
+  README.md, LAYERS.md).
+- **behavioral** — The stagehand compatibility test checks a record filled from his
+  `assets/task-record.yaml` (`fixtures/valid/task-record/stagehand-development.yaml`, now with
+  `development_target` and `state.next_role`) and that it fills every key the template names; it no
+  longer validates the template's placeholders, nor a grant template stagehand does not ship.
+
 ### promptbook: one job in a suite of five repositories
 
 The harness is renamed **promptbook** and becomes the suite's master copy of formats, standards,

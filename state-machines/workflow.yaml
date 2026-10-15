@@ -8,7 +8,10 @@
 #
 # Source: agentic-template docs/workflow.md, docs/roles.md and docs/interjection.md (2026-10-13),
 # generalized. Authority for the orchestrator role, and every `grant:` below, is authority.yaml.
-version: 1.5.0
+# What a project lets land without a human's approval of the pull request is its recorded trust
+# profile (governance.yaml, schemas/governance.schema.json), read by auto-land's guards; heirloom
+# D-159 is the solo profile. Without one, every change waits for approve-pr.
+version: 1.6.0
 contract: workflow
 
 # Where task status lives, and who writes it there. Agents never push to the protected (default)
@@ -49,6 +52,14 @@ status_authority:
       content), or an immediate follow-up commit on the target by the merge role
       (chore(specs): <ID> -> merged). The merge role is the one automated role that writes the
       protected branch. merged and integrated are never written on the task branch.
+  - id: auto-land-is-the-platforms
+    text: >-
+      Where the project's trust profile permits it, a change lands on the protected branch with no
+      human approval (auto-land): the forge merges it once its required checks pass, a risk gate
+      computed from the profile, the task's risk and the PR's changed paths among them, and the
+      merge role records merged inside the merge or by a model-free step on the merge event. No
+      author, reviewer, evaluator or coordinator makes auto-land, and nothing about it is a grant.
+      A change the gate refuses waits for approve-pr as it would without a profile.
   - id: deps-read-the-dependents-target
     text: >-
       deps-merged reads the dependency's task file on the branch the dependent lands on: merged on
@@ -93,8 +104,8 @@ rules:
   - id: landing-target
     text: >-
       A task lands on the protected branch unless its lands_to names its epic's integration branch.
-      Only the merge role lands on the protected branch, after a human's approval; no grant covers
-      it. On the integration branch a task is integrated (tier 2, the merge role or a coordinator
+      Only the merge role lands on the protected branch: after a human's approval, or on auto-land
+      where the project's trust profile permits it; no grant covers it. On the integration branch a task is integrated (tier 2, the merge role or a coordinator
       under a merge grant for exactly that branch) and reaches merged only when a human merges that
       branch into the protected branch (tier 3). A dependent in the same epic builds on the integration branch,
       so an integrated dependency satisfies it; a dependent in another epic waits for merged.
@@ -110,7 +121,7 @@ roles:
   coder:        { kind: agent }
   reviewer:     { kind: agent, note: "Reviews every pushed head as code (inline comments, then pass or changes-requested); never approves, never pushes. Its pass is the independent-review guard." }
   evaluator:    { kind: agent, note: "Judges the current head against the task's criteria in a clean context and records a verdict (pass or fail); never edits, never approves, never commits a status (playbook: verification). Its pass is the independent-verification guard." }
-  merge:        { kind: agent, note: "The only automated role that lands on the protected branch, and only after a human's pr-approval." }
+  merge:        { kind: agent, note: "The only automated role that lands on the protected branch: after a human's pr-approval, or on auto-land where the project's trust profile permits it (the forge's merge and the model-free step that records merged). It never decides that a change may land." }
   train:        { kind: automation, note: "Promotes one built artifact through the stages; never retries a red hop." }
   orchestrator: { kind: agent, note: "A coordinator. Holds nothing by default; acts only through a grant (authority.yaml)." }
 
@@ -130,7 +141,10 @@ gates:
       A human reviews the change. A merge grant lets a coordinator stand in only for a change that
       lands on an epic's integration branch (never the protected branch), with the reviewer's pass
       and the evaluator's verdict on the current head and the required checks, and only where the
-      forge's branch protection admits it.
+      forge's branch protection admits it. A project's recorded trust profile may let a change land
+      on the protected branch without this gate (auto-land), only on green required checks and the
+      evaluator's verdict on the head, within the profile's risk ceiling, on no protected path, and
+      for a change to the screens only with a passing visual check.
   production-release:
     machine: release
     transition: release
@@ -157,6 +171,9 @@ guards:
   lands-on-protected:       { checks: "The task has no lands_to (or it names the protected branch): the change lands on the protected branch." }
   lands-on-integration:     { checks: "The task's lands_to names its epic's integration branch, and the change lands there." }
   integration-landed:       { checks: "The integration branch holding the change landed on the protected branch: a human merged it." }
+  trust-permits:            { checks: "The project records a trust profile (governance.yaml) whose auto-land ceiling (auto_land.max_risk, else the profile's: solo medium, team low, regulated none) covers the task's risk level, and the task is not irreversible. A task with no risk is low." }
+  no-protected-path:        { checks: "The PR's changed paths touch none of the trust profile's protected_paths." }
+  visual-checked:           { checks: "The PR's changed paths touch none of the trust profile's ui_paths, or the profile names a visual_check, a required check, that passed on the current head." }
   mechanical-only:          { checks: "Every conflict is mechanical (lockfiles, generated files, one-sided hunks)." }
   merged-checks-green:      { checks: "The full checks passed on the merged result, not only on the PR head." }
   dependency-cleared:       { checks: "The external dependency named when parking is resolved." }
@@ -197,6 +214,8 @@ machines:
           grant_guards: [lands-on-integration, independent-review, independent-verification, checks-green] }
       - { id: land,              from: merging,      to: merged,       by: [merge], guards: [lands-on-protected, mechanical-only, merged-checks-green],
           note: "The merge role, after a human's approval. Never grantable: a merge grant never targets the protected branch (authority.yaml merge.scope_rule)." }
+      - { id: auto-land,         from: human-review, to: merged,       by: [merge], guards: [trust-permits, checks-green, independent-verification, no-protected-path, visual-checked, lands-on-protected, mechanical-only, merged-checks-green],
+          note: "No human approval: the project's trust profile permits it (status_authority auto-land-is-the-platforms). The merge role records what the forge merged; never grantable, and never an author's, a reviewer's, an evaluator's or a coordinator's. The human spec gate and the production release are unchanged." }
       - { id: integrate,         from: merging,      to: integrated,   by: [merge], grant: merge, guards: [lands-on-integration, mechanical-only, merged-checks-green],
           note: "Tier 2: into the epic's integration branch, by the merge role or the orchestrator under a live merge grant whose repo, strategy and exact target (that branch) match." }
       - { id: return-to-human,   from: merging,      to: human-review, by: [merge], grant: merge, reason: true,

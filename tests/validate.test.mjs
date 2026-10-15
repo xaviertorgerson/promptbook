@@ -225,6 +225,7 @@ describe('contract by filename suffix (examples outside the project layout)', ()
     'loop.run-record.jsonl': ['run-record', V('run-record/loop-mjs-outcomes.jsonl')],
     'devbox.policy.yaml': ['policy', V('policy/bypass-container.yaml')],
     'project.toolkit.lock': ['toolkit-lock', V('toolkit-lock/skill-libraries/toolkit.lock')],
+    'solo.governance.yaml': ['governance', V('governance/solo.yaml')],
     'at-review.task.md': ['task', V('task/promptbook-fields.md')],
     'acme.brief.md': ['brief', V('brief/full/docs/product/brief.md')],
     'owen.persona.md': ['persona', V('persona/file/docs/product/personas/per-3.md')],
@@ -363,13 +364,18 @@ describe('run-record: who ran it', () => {
   });
 });
 
-describe('stagehand writes the promptbook formats', () => {
-  const assets = path.join(STAGEHAND, 'skills/orchestrating-development/assets');
-  it('its task-record and grant templates validate as they are, placeholders and all', { skip: !fs.existsSync(assets) && `no stagehand checkout at ${STAGEHAND}` }, () => {
-    for (const [file, contract] of [['task-record.yaml', 'task-record'], ['project-grant.yaml', 'grant']]) {
-      const r = validateFile(path.join(assets, file), { contract });
-      assert.equal(r.status, 'PASS', `${file}: ${JSON.stringify(r.results.flatMap((x) => x.findings))}`);
-    }
+describe('stagehand\'s task records', () => {
+  const template = path.join(STAGEHAND, 'skills/orchestrating-development/assets/task-record.yaml');
+  const filled = path.join(FIX, 'valid/task-record/stagehand-development.yaml');
+  // Key paths of a parsed record; an empty mapping in the template ({}) is a leaf the fill extends.
+  const keys = (o, p = '') => Object.entries(o).flatMap(([k, v]) => (v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length ? keys(v, `${p}${k}.`) : [`${p}${k}`]));
+
+  it('a record filled from his template validates, and fills every key the template names', { skip: !fs.existsSync(template) && `no stagehand checkout at ${STAGEHAND}` }, () => {
+    const r = validateFile(filled, { contract: 'task-record' });
+    assert.equal(r.status, 'PASS', JSON.stringify(r.results.flatMap((x) => x.findings)));
+    const have = keys(parse(fs.readFileSync(filled, 'utf8')));
+    const missing = keys(parse(fs.readFileSync(template, 'utf8'))).filter((k) => !have.some((h) => h === k || h.startsWith(`${k}.`)));
+    assert.deepEqual(missing, [], 'the fixture no longer fills his template: add the keys it names');
   });
 });
 

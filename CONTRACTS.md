@@ -9,9 +9,10 @@ repositories of the suite in [SUITE.md](SUITE.md).
 
 Who writes what across the suite: a **stagecraft** project holds the plan and the queue (brief,
 journeys, requirements, ADRs, tasks, readiness reports) and its `toolkit.lock`; **stagehand** is the
-coordinator that reads a project's tasks and writes the runtime's records, task records in the
-`task-record` format and each delegation as a file in the `grant` format, recorded from the human's
-words; the sequential loop and the CI agents (stagecraft) write run records; **Skilldex** holds the
+coordinator: it follows the project's own instructions for its task queue, keeps its own task
+records (which the `task-record` contract reads unchanged) and records each delegation as a project
+note in its private control state; the sequential loop and the CI agents (stagecraft) write run
+records, and a runtime that wants a checkable delegation writes it in the `grant` format; **Skilldex** holds the
 skills and their evals, in the `skill` and `evidence` formats, and the skills that write the
 learning records; **dotfiles** hold the operator's `policy`. Promptbook holds the formats and the
 checks, and writes none of these artifacts itself.
@@ -34,7 +35,7 @@ node tools/validate.mjs --list                  # contracts, versions, artifact 
   paths, or from `fixtures/{valid,invalid}/<contract>/`. A file outside the project layout (a
   skill's example) names its contract by suffix, declared as `x-artifacts[].suffixes`:
   `*.grant.yaml`, `*.return.json`, `*.task-record.yaml`, `*.run-record.jsonl`, `*.policy.yaml`,
-  `*.toolkit.lock`, `*.task.md`, `*.brief.md`, `*.persona.md` (frontmatter or a list),
+  `*.toolkit.lock`, `*.governance.yaml`, `*.task.md`, `*.brief.md`, `*.persona.md` (frontmatter or a list),
   `*.adr.md`, `*.ux.md`, `*.spec.md` (epic and requirements), `*.cuj.md`, `*.readiness.md`,
   `*.agent-setup-review.md`, `*.reflection.md`, `*.evidence.md`, `*.routing.jsonl`. A suffix applies only when no path does; it binds no
   frontmatter field, and an entry file (`<epic>.cuj.md`, `<epic>.ux.md`) takes its epic from the name
@@ -45,7 +46,7 @@ node tools/validate.mjs --list                  # contracts, versions, artifact 
 - **Rules have names.** Conditional rules carry `x-rule`; errors report that name, a JSON pointer,
   and a file line. Rules JSON Schema cannot express are named checks listed in `x-checks`
   (`tools/lib/checks.mjs`). Unknown fields are errors, except `x-*` keys, which are free for local
-  extensions.
+  extensions, and a task record's top-level keys, which a runtime fills with its own evidence.
 - **Ids.** `BRIEF`, `PER-n`, `CUJ-n` and `REQ-n`/`NFR-n` (per epic), `UX-n`, `ADR-nnnn`,
   `<PREFIX>-n` for tasks, `AC-n` per task, `GRANT-n`. A reference across epics is `<epic>/CUJ-n` or
   `<epic>/REQ-n`; within an epic the bare id is enough. ADRs belong to no epic, so they always qualify.
@@ -69,12 +70,13 @@ node tools/validate.mjs --list                  # contracts, versions, artifact 
 | [epic](#epic) | `specs/<epic>/spec.md` frontmatter | frontmatter-md | product owner | board, planner, trace check |
 | [task](#task) | `specs/<epic>/tasks/<ID>.md` | frontmatter-md | planner | board, loop, coder, reviewer, merge, stagehand |
 | [readiness-report](#readiness-report) | `specs/<epic>/readiness.md` | frontmatter-md | trace check (generated) | product owner at the spec gate |
-| [task-record](#task-record) | `.orchestrator/tasks/<id>.yaml` (runtime) | YAML | the coordinator (stagehand) | a replacement coordinator, the status board |
+| [task-record](#task-record) | `.orchestrator/tasks/<id>.yaml` (runtime) | YAML | the coordinator (stagehand's own records read as they are) | a replacement coordinator, the status board |
 | [return](#return) | a subagent's hand-back | JSON | subagent | dispatcher |
 | [run-record](#run-record) | `.agent/loop-runs.jsonl` (runtime, gitignored) | JSONL | runner (stagecraft's loop and CI agents) | humans, `promptbook report` |
-| [grant](#grant) | `.orchestrator/grants/GRANT-n.yaml` | YAML | a human (stagehand records it from the human's words) | the coordinator, `promptbook grant verify` |
+| [grant](#grant) | `.orchestrator/grants/GRANT-n.yaml` | YAML | a human (a runtime may draft it from the human's words) | the coordinator, `promptbook grant verify` |
 | [policy](#policy) | `agent-policy.yaml` (L1 dotfiles) | YAML | operator | `promptbook compile-policy` → engine settings |
 | [toolkit-lock](#toolkit-lock) | `toolkit.lock` (L1 and L2) | YAML | `promptbook lock` | stagecraft's sync and CI, dotfiles |
+| [governance](#governance) | `governance.yaml` (L2) | YAML | a human (owner), with the ADR that chose it | the forge's risk gate and auto-merge, the merge role (`auto-land`), `promptbook simulate` |
 | [skill](#skill) | `skills/<name>/SKILL.md` (Skilldex; a set's or a project's own) | frontmatter-md | skill author | every engine's skill loader, `promptbook lint` |
 | [evidence](#evidence) | `**/skills/<name>/evals/{evidence.md,routing.jsonl}` (Skilldex's, a project's `.agents/skills/` too), `routing-results*.jsonl` | entries / JSONL | skill author, `promptbook eval-routing` | skill reviews, routing evals |
 | [agent-setup-review](#agent-setup-review) | `agent-setup-reviews/<date>-<label>.md` | Markdown record | Skilldex's reviewing-agent-setup skill | humans, the next review |
@@ -212,8 +214,11 @@ plan (a hand edit, or a plan change not regenerated), is timestamped, or has no 
 
 **Purpose.** A runtime's recovery note for one task: what a replacement coordinator needs to resume
 (repository, worktree, agents, native session ids, PRs, attention, next action, human decisions).
-**Schema** `task-record.schema.json` 1.3.0; `state.name` is attention (working | needs-human |
-complete), never a workflow status; needs-human requires `next_action`; complete forbids it.
+**Schema** `task-record.schema.json` 1.4.0; `state.name` is attention (working | needs-human |
+complete), never a workflow status; needs-human requires `next_action`; complete forbids it. The
+fields named here are typed; any other top-level key is a runtime's own evidence and is accepted
+(1.4.0: stagehand's records carry the latest result, each PR's reviewed head and outcome, selected
+feedback and human decisions under names his template leaves open).
 Promptbook additions: `runtime`, `grant`, `signals{role: {source, value, observed_at}}` (source: an
 `attention.yaml` vocabulary — herdr, a2a, mcp-tasks, claude-headless, loop-outcome, ci — or
 codex-exec, forgejo, gitlab, other), structured `reviews[]` (each bound to the head it judged:
@@ -223,8 +228,11 @@ worktree's derived `slug`, `worktree_path`, `database`, `ports{slot,first,last}`
 `services`, the last cleanup `audit{at, result: passed|blocked, blocked_by}` and
 `worktree_removed_at`, which requires an audit that passed), `updated_at`. **Swap story.** A different runtime (a CLI loop, a CI
 orchestrator, stagehand) keeps the same note; a coordinator can be replaced mid-task. **Compat.**
-stagehand, the suite's coordinator, writes its records in this format: its template
-`assets/task-record.yaml` validates as it is, and the field map is in
+stagehand, the suite's coordinator, keeps its own records from its `assets/task-record.yaml`, and
+this contract reads them as they are: a record filled from the template validates
+(`fixtures/valid/task-record/stagehand-development.yaml`), its unnamed evidence included. The
+promptbook additions above (`runtime`, `grant`, `signals`, `reviews`, `decisions`, `resources`) are
+promptbook-optional; stagehand writes none of them. The field map is in
 [adapters/herdr](adapters/herdr/README.md).
 
 ### return
@@ -313,10 +321,11 @@ under the grant that delegates it, and the workers cap is the smallest `max_work
 grants that dispatch work, so a merge-only grant's `max_workers` bounds its merges, not the epic's
 workers (`authority.yaml` lifecycle.limits, since 1.2.0). **Swap story.** Lets a
 coordinator (stagehand, a CI orchestrator, a future agent) stand in for named human decisions with an
-auditable, expiring record instead of a remembered chat line. **Compat.** stagehand's
-project-delegation grants map field by field ([adapters/herdr](adapters/herdr/README.md)); a
-grant bounded only by its stop conditions validates, so stagehand records an expiry or a budget
-only when the human states one.
+auditable, expiring record instead of a remembered chat line. **Compat.** stagehand records a
+delegation as a project note, not a grant file; the parts of its note map onto a grant's fields
+([adapters/herdr](adapters/herdr/README.md)), and a grant bounded only by its stop conditions
+validates, so a runtime drafting one from the human's words records an expiry or a budget only
+when the human states one.
 
 ### policy
 
@@ -390,7 +399,7 @@ profile's accepted gap.
 **Purpose.** Pins the exact promptbook, the portable skill libraries and the L4 packs a project (or the
 dotfiles) runs. **Schema** `toolkit-lock.schema.json` 2.0.0: `lock_version`, `entries[]` of `{name,
 layer (L3|L4), kind, source, path, ref, commit (full sha), tree (git tree id), version (semver,
-build metadata allowed: `0.0.0+fc572b6` for an untagged pin), autoUpdate (off | patch | minor |
+build metadata allowed: `0.0.0+fc572b6` for an untagged pin, which names the pinned commit and moves with it), autoUpdate (off | patch | minor |
 major), mirrored}`; names unique. `kind` at L3 is `promptbook` (exactly one; an L3 entry with no kind is
 promptbook) or `skill-library` (any number, e.g. a Skilldex skill); at L4 `engine-binding`,
 `stack-pack`, `runtime` or `domain-pack` (a kind on the other layer is a warning). A
@@ -399,6 +408,31 @@ promptbook) or `skill-library` (any number, e.g. a Skilldex skill); at L4 `engin
 installed, and `promptbook lint --budget-set toolkit.lock` measures exactly those sets. The tree id
 detects a rewritten tag or a force-pushed mirror. **Compat.** Replaces agentic-template's `.template-version` file and the
 plugin `version` pin as the single source.
+
+### governance
+
+**Purpose.** A project's recorded trust profile: which changes land on the protected branch on
+green required checks and the evaluator's verdict without a human's approval of the pull request
+(workflow `auto-land`), and which always wait for one. One per project, `governance.yaml`, chosen by
+a human (at bootstrap, say) and recorded in an ADR with its reversal trigger. Without one, nothing
+lands without a human's approval, as before. **Schema** `governance.schema.json` 1.0.0: `trust`
+(solo | team | regulated), `decision` (the ADR), `reversal_trigger`, `auto_land.max_risk` (none |
+low | medium; absent, the profile's ceiling: solo medium, team low, regulated none; never high, and
+never an irreversible task), `protected_paths` (globs; a change touching one waits for a human),
+`ui_paths` and `visual_check` (a change to a UI path auto-lands only when that required check passed
+on its head), `production{approvals, continuous}`, `signed_commits`, `attestations`. Rules:
+`auto-land-within-profile` (team low at most, regulated none), `regulated-evidence` (two production
+approvers, signed commits, build attestations), `continuous-deploy-solo-only`, and
+`governance-protects-itself` (the file is one of its own protected paths, so an agent cannot widen
+what lands without a human by editing it). **What no profile changes:** the spec is a human's
+(`spec-approval`, never grantable); an agent never approves its own work or bypasses a required
+check; agents never push to the default branch (the forge merges, and only the merge role records
+`merged`); a release to production is a human's (one tap, two people when regulated; continuous
+only where a solo project's human chose it). **Swap story.** The forge enforces it: a risk gate
+computed from this file, the task's risk and the PR's changed paths is a required check, auto-merge
+is armed where it passes, and code owners own the protected paths; any forge with required checks
+and auto-merge can. **Compat.** New. heirloom's D-159 ("CI gates replace human PR approval") is
+`trust: solo`.
 
 ### skill
 
@@ -595,6 +629,7 @@ sequenceDiagram
   alt criteria met and gates green
     F-->>R: reviewer's review and evaluator's verdict, each bound to the head
     A->>B: status → human-review
+    Note over F,D: trust profile permits it (governance.yaml): the risk gate passes, the forge auto-merges, and the merge role records auto-land → merged; no approval
     H->>F: approve PR (gate 2): a forge review of the head, not a commit; or a merge grant's holder, for an integration branch
     C->>R: the approval in reviews/decisions
     C->>D: merge role lands; the merge carries status → merged on the protected branch
@@ -610,13 +645,18 @@ means what is `state-machines/attention.yaml`; what a human may delegate is
 `state-machines/authority.yaml`. The invariant that ties them: **status is a commit by an authorized
 role on the branch where it lives (or, for approve-pr, a forge event); a runtime signal is a hint
 that changes attention at most.** Where it lives is `workflow.yaml` `status_authority` (workflow
-1.5.0): a claim creates the task branch (the rejected new-ref push is the compare-and-swap);
+1.6.0): a claim creates the task branch (the rejected new-ref push is the compare-and-swap);
 in-flight status is on the task branch; approvals are forge events bound to the head, voided by any
 commit after them; only the landing actor writes `merged` or `integrated`, on the target;
 `deps-merged` reads the dependent's own target.
 
 Landing (workflow since 1.2.0, authority since 1.1.0). `land` (→ `merged`, the protected branch) is the
-merge role's alone, after a human's approval (never grantable since workflow 1.4.0). `integrate` (→
+merge role's alone, after a human's approval (never grantable since workflow 1.4.0). `auto-land`
+(`human-review` → `merged`, since 1.6.0) is the merge role's too, with no approval at all, where the
+project's recorded trust profile permits it: its guards are `trust-permits` (the profile's ceiling
+covers the task's risk, and the task is not irreversible), `checks-green`,
+`independent-verification`, `no-protected-path`, `visual-checked`, `lands-on-protected`,
+`mechanical-only` and `merged-checks-green`; it is never grantable and never a coordinator's. `integrate` (→
 `integrated`) and `return-to-human` are the merge role's, or the orchestrator's under a live
 `merge` grant whose repo, strategy and exact target match — the target being the task's `lands_to`,
 an integration branch, never the protected branch (a runtime with no separate merge role). `promote` (`integrated` → `merged`) is a human's, after the
@@ -637,8 +677,8 @@ pass on the current head, required where a merge grant approves; the two are sep
 | both epics' `spec.md` and `cuj.md` | epic, requirement, journey | validate unchanged (12 `R<n>` rows normalized) |
 | `DECISIONS.md` (18 ADRs) | decision | validates; ADR-0001's `TODO(domain)` date is a warning |
 | `scripts/loop.mjs` run lines (the dontAsk loop's on `fix/agent-run-caps`, and with `usage` on `integration/agent-hardening`) | run-record | validate unchanged |
-| stagehand `assets/task-record.yaml` (the template, and a filled record) | task-record | validate as they are |
-| stagehand `assets/project-grant.yaml` (feat/promptbook-contracts) | grant | validates as it is; a grant with stop conditions and no stated expiry or budget is valid |
+| stagehand `assets/task-record.yaml` (`main` 48aff9a; `feat/promptbook-contracts` 5e5336f), filled as the coordinator fills it | task-record | validates as it is, its unnamed evidence included; a test checks the fill covers every key of the template |
+| stagehand's project note (a delegation) | grant | not a grant file; its parts map onto a grant's fields ([adapters/herdr](adapters/herdr/README.md)) |
 | Skilldex skills (feat/suite-skill-library) | skill, evidence | `promptbook lint <skilldex>/skills` checks each skill, its evals and each install set |
 | Herdr `AgentStatus`, A2A 1.0 `TaskState`, MCP Tasks `TaskStatus`, Claude result subtypes, GitHub check runs | attention.yaml | every value mapped; none to a workflow status |
 | agentskills.io frontmatter | skill | core fields only; engine extensions rejected |

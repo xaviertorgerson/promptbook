@@ -43,34 +43,42 @@ test attribute, name nothing (CONTRACTS.md, Test names).
 `promptbook lint [dir]...` checks a folder of skills, or one skill, against the authoring rules. The
 skills live in Skilldex: `promptbook lint <skilldex>/skills`, or `promptbook lint` from a Skilldex
 checkout (the default folder is `./skills`). Errors name a stable rule; `--strict` fails on warnings
-too. `--sets <file>` names the `SETS.yaml` of the library the linted skills install beside (a
+too. Errors are the Agent Skills spec's hard limits (the frontmatter, the name, a description of at
+most 1,024 characters), what breaks an installed skill (a link out of its folder, a malformed eval
+file, a route to no skill) and engine neutrality. promptbook's authoring style is advice: the rules
+marked *style* below are warnings unless the skill's own library asks for them in its `SETS.yaml`,
+`lint: { strict: [rule...], skills: [name...] }` (`skills` absent: every skill of the library), so a
+library can hold the skills it maintains to the full bar while another maintainer's skills beside
+them keep their own style. `evals-present` accepts one `evals/evals.md` (a test plan in prose)
+unless it is strict, when it wants `routing.jsonl`, `scenarios.md` and `evidence.md`. `--sets <file>` names the `SETS.yaml` of the library the linted skills install beside (a
 project's own skills beside Skilldex's): its sets are checked, a `--budget-set` name is read from it,
 and its skills are names a near-miss may route to.
 
 | Rule | Checks |
 |---|---|
 | the skill contract (`agentskills-core-fields-only`, `name-matches-path`, …) | frontmatter via the validator |
-| `name-is-gerund` | the first word ends in -ing: `writing-requirements` |
-| `description-use-when`, `description-do-not-use-for` | a "Use when …" trigger and a "Do not use for … (neighbour)" clause; warnings if out of order or naming no neighbour |
-| `description-length` | a description over 400 characters fails, over 300 warns: every description stays loaded in every session |
+| `name-is-gerund` (style) | the first word ends in -ing: `writing-requirements` |
+| `description-use-when`, `description-do-not-use-for` (style) | a "Use when …" trigger and a "Do not use …" clause ("Do not use for …", "Do not use merely to …"); warnings if out of order or naming no neighbour |
+| `description-length` (style) | a description over 400 characters is the style rule (an error when strict), over 300 always a warning: every description stays loaded in every session; over 1,024 is the skill contract's error |
 | `description-budget` (warning) | the scanned set's descriptions together exceed 8000 characters (one engine keeps skill metadata within 2% of context or 8000 characters); the longest are named. The budget binds what a machine installs, not one library: `--budget-set <file>` sums the descriptions of an installed set (a list of skill folders or folders of skills, one per line or a YAML list; or a `toolkit.lock`, whose local entries contribute the skills under `source/path` (or `source/skills/`), narrowed to the install `sets` an entry names (read from the library's `SETS.yaml`; an unknown set fails `budget-set-sets`) and by an `x-skills` list; a remote entry is reported as `budget-set-unread`, a listed folder that is missing fails `budget-set-missing`) and warns over 8000 with the count from each source; `--budget-set <set>` names a set of a `SETS.yaml` instead (`--sets`, else the linted library's, else `./SETS.yaml` or `./skills/SETS.yaml`, as in a Skilldex checkout) and checks what a session holding it loads; with no folder given only this check runs |
-| `sets-shape`, `sets-known`, `sets-disjoint`, `sets-cover`, `set-over-budget`, `set-not-installed` (warning) | a skill library's `SETS.yaml` (Skilldex's), in its skills folder or at the root above it, or the one `--sets` names, names install sets: each a scope (`user`, `project`, or `library`, never installed), its own `skills` and/or the sets it `includes`, and what a session `loaded_with` it (another set, or an `external` pack measured at a pinned commit; `--external name=<dir>` reads the real descriptions). Every named skill and set exists; every skill is in exactly one set's own list and some installable set; a user or project set, with what loads beside it, stays within `budget.limit` less `budget.headroom` (8,000 less 10%); `--budget-set` on a library set warns. The sets line prints each total |
-| `deprecated-description` | a skill with `metadata.deprecated` is exempt from "Use when": its description starts with "Deprecated:" and names the replacement skill |
+| `sets-shape`, `sets-known`, `sets-disjoint`, `sets-cover`, `set-over-budget`, `set-not-installed` (warning) | a skill library's `SETS.yaml` (Skilldex's), in its skills folder or at the root above it, or the one `--sets` names, names install sets: each a scope (`user`, `project`, or `library`, never installed), its own `skills` and/or the sets it `includes`, and what a session `loaded_with` it (another set, or an `external` pack measured at a pinned commit; `--external name=<dir>` reads the real descriptions). Every named skill and set exists; every skill is in exactly one set's own list and some installable set; a user or project set, with what loads beside it, stays within `budget.limit` less `budget.headroom` (8,000 less 10%); `--budget-set` on a library set warns; a `lint` block names only rules lint can make strict and skills the library holds. The sets line prints each total |
+| `deprecated-description` (style) | a skill with `metadata.deprecated` is exempt from "Use when": its description starts with "Deprecated:" and names the replacement skill |
 | `parse-error` | the frontmatter is YAML; when a plain value holds ": " (the usual cause), the error says to quote it |
-| `body-length` | warn over 200 body lines, fail over 300 |
-| `engine-neutral` | no engine, runtime, forge or stack name in the description or body; `references/engine-notes.md` is exempt. The deny-list (Claude Code, Claude, Codex, Gemini, Antigravity, Herdr, Heeler, stagehand, OpenAI, Anthropic, Copilot, GitHub, GitLab, Forgejo, Cloudflare, Coolify, Hetzner, Angular, NestJS, Drizzle, pnpm) is replaced with `--deny-terms`, narrowed with `--allow-terms`; URLs are ignored |
+| `body-length` (style) | warn over 200 body lines; over 300 is the style rule |
+| `engine-neutral` | no engine, runtime, forge or stack name in the description or body; `references/engine-notes.md` is exempt. The deny-list (Claude Code, Claude, Codex, Gemini, Antigravity, Herdr, Heeler, stagehand, OpenAI, Anthropic, Copilot, GitHub, GitLab, Forgejo, Cloudflare, Coolify, Hetzner, Angular, NestJS, Drizzle, pnpm) is replaced with `--deny-terms`, narrowed with `--allow-terms`; URLs are ignored, and so is a term of art that holds a listed word but names a practice (Claude Search Optimization) |
 | `links-stay-in-skill` | no relative link leaves the skill folder (a skill installs alone) |
-| `evals-present`, `routing-counts`, `routing-kind-declared` | `routing.jsonl` with ≥ 4 positive, ≥ 3 near-miss with `route_to`, ≥ 2 negative, each case in the evidence contract's format |
+| `evals-present`, `routing-counts` (style), `routing-kind-declared` (style) | evals, as one `evals/evals.md` or (strict) as `routing.jsonl` with ≥ 4 positive, ≥ 3 near-miss with `route_to`, ≥ 2 negative, each case in the evidence contract's format |
 | `route-to-known`, `route-to-self` | a `route_to` names a scanned skill, a sibling of a linted skill, a skill that loads beside it (one of the `--sets` library, an `external` of the library's or the `--sets` `SETS.yaml`), `--known`, or `none` |
-| `scenarios-count`, `scenario-format`, `scenario-stop-condition` | ≥ 3 scenarios in `scenarios.md`, each with setup, prompt, pass criteria and k; one should hand to a human |
-| `evidence-count` and the evidence contract's rules | ≥ 1 dated entry; literature and vendor-reported cite a URL |
+| `scenarios-count`, `scenario-format` (style), `scenario-stop-condition` | ≥ 3 scenarios in `scenarios.md`, each with setup, prompt, pass criteria and k; one should hand to a human |
+| `evidence-count` (style) and the evidence contract's rules | ≥ 1 dated entry; literature and vendor-reported cite a URL |
 | `imported-needs-review` | nothing `import-evals` could not fill is left: a routing case noted `needs route_to`, a scenario line marked `TODO(import)` |
-| `deprecated-never-triggers` | a skill with `metadata.deprecated` keeps only no-trigger cases |
+| `deprecated-never-triggers` (style) | a skill with `metadata.deprecated` keeps only no-trigger cases |
 | `description-overlap` (warning) | two descriptions' trigger phrases (the "Use when" clause, stop words removed) share more than 0.3 Jaccard; the pair and the shared words are named. agentic-template's 19 skills peak at 0.17 |
 
 Fixtures: `fixtures/lint/good/` (a library in Skilldex's layout: four skills under `skills/`, one
-deprecated, and a `SETS.yaml` at the root) and one overlay per broken rule in
-`fixtures/lint/broken/<rule>/`.
+deprecated, and a `SETS.yaml` at the root that holds them strict) and one overlay per broken rule in
+`fixtures/lint/broken/<rule>/`, each linted outside the library: a style rule's overlay is a warning
+there and an error when strict.
 
 ## simulate
 
@@ -88,13 +96,18 @@ status is committed on it (compare-and-swap per ref), the default branch's copy 
 the task lands, approve-pr is a forge event bound to the PR head and the branch's version (a commit
 after it voids it), landing writes `merged` or `integrated` on the target inside the merge, and the
 targets (the protected branch and each epic's integration branch) admit a merge only with a valid
-approval of the head, and a runtime whose
+approval of the head, a platform that, where the scenario records a trust profile (`governance`),
+computes the risk gate from it, the task's risk and the PR's changed paths, runs the visual check on
+a screen change, and auto-merges what the gate passes (the merge role records `auto-land`, with no
+approval) while the human reviews the rest, and a runtime whose
 signals (working, blocked, done, idle, unknown) are lossy and duplicable, with events-lost notices.
 
 A scenario names tasks (`depends_on`, `touches`, `size`, `risk`, `criteria`, `budget`, `lands_to`,
 `branch`: default `task/<id>`),
 the policy tier and its `forbid`/`ask`/`budgets`, its grants (`grant`, or `grants` for several,
 e.g. a work grant and a separate merge grant; each validated against the grant contract), the
+project's trust profile (`governance`, validated against the governance contract; `checks.visual_change_rate`
+is how often the visual check finds changed screens), the
 supervisor's caps, the evaluator's and the reviewer's latency and reject rate, the merge queue's
 `queue_targets` (default every branch), the human's behaviour (`on_integration: merge|hold`), and faults: `concurrent_claims` (a rival runtime),
 `crash`, `lost_events`, `duplicate_wakes`, `unknown_signals`, `no_progress`, `budget_exhaustion`,
@@ -114,11 +127,11 @@ spec gate).
 | `approval-bound-to-head` | approve-pr is a forge event bound to the PR head and the task branch's version, never a commit; nothing lands on an approval a later commit voided |
 | `status-where-it-lives` | in-flight status is committed on the task branch while it exists; `merged` and `integrated` only on the target, by the landing actor; no agent but the merge role writes the protected branch |
 | `transitions-allowed` | every status change is a `workflow.yaml` transition from its from-state by a listed role, or the orchestrator under a live grant of its `grant`; reasons where needed; humans are humans |
-| `guards-hold` | the transition's guards hold on the evidence (deps merged, an integrated dependency counting only in the same epic; checks green, criteria met and named in tests, independent review (the reviewer role's pass on the current head), independent verification (the evaluator role's pass on the current head, every task), lands on the protected or the integration branch as `lands_to` says, mechanical-only, merged checks green, integration landed, question answered); a grant adds its grant guards |
+| `guards-hold` | the transition's guards hold on the evidence (deps merged, an integrated dependency counting only in the same epic; checks green, criteria met and named in tests, independent review (the reviewer role's pass on the current head), independent verification (the evaluator role's pass on the current head, every task), lands on the protected or the integration branch as `lands_to` says, mechanical-only, merged checks green, integration landed, question answered; auto-land's trust-permits, no-protected-path and visual-checked, recomputed from the recorded profile, never read from the platform's gate); a grant adds its grant guards |
 | `human-gates-by-humans` | gates are passed by a human approver, or by the orchestrator under a live grant where the gate is grantable |
 | `signals-never-advance-workflow` | a commit decided on a runtime signal is one the evidence and authority justify on their own |
 | `attention-consistent` | records carry attention only; needs-human names the next action; complete only when the human has nothing left |
-| `merge-requires-authority` | a change lands on a branch only by the merge role, a human, or the orchestrator under a merge grant live when it decided for that exact branch; an agent lands only with its `land`/`integrate` commit and after checks on the merged result of that head; with an approval of that head by a human or such a grant, plus `authority.yaml`'s `always_requires`, and never over a semantic conflict or red merged checks |
+| `merge-requires-authority` | a change lands on a branch only by the merge role, a human, or the orchestrator under a merge grant live when it decided for that exact branch; an agent lands only with its `land`/`auto-land`/`integrate` commit and after checks on the merged result of that head; never without green checks and the evaluator's pass on the landed head; with an approval of that head by a human or such a grant, plus `authority.yaml`'s `always_requires`, or, with no approval, as the merge role's auto-land that the recorded trust profile permits; and never over a semantic conflict or red merged checks |
 | `lanes-disjoint` | claimed tasks never have overlapping `touches` |
 | `cap-workers`, `cap-depth`, `cap-run`, `cap-spend` | workers (authors, evaluators and the readers they start; the runtime refuses a reader when every slot is taken), delegation depth, per-run turns and spend, per-task and runtime budgets |
 | `no-progress-stops` | after a stalled run or a ceiling, no rerun until a human decides |
@@ -130,10 +143,14 @@ spec gate).
 
 Transition tables, roles, gates, guards, side states, the merge requirements and the claimed statuses
 are read from `state-machines/*.yaml` and the task schema; a guard the simulator has no evidence
-model for is an error, never a pass. `--break <mutation>` swaps in one of 25
-deliberately broken supervisors (`--list` names them); the tests run each, plus four broken world
+model for is an error, never a pass. `--break <mutation>` swaps in one of 26
+deliberately broken supervisors (`--list` names them); the tests run each, plus ten broken world
 bindings (bypass that skips walls, a forge without CAS, a merge queue that resolves semantic
-conflicts, no branch protection), and require the named invariant to catch it. Among them:
+conflicts, no branch protection, and a risk gate that ignores the task's risk, reads every profile
+as solo (on team and on regulated), ignores protected paths, ignores screen changes, or arms
+auto-merge on a draft before the verdict), and require the named invariant to catch it; with
+`orchestrator-auto-lands` (the coordinator lands a green PR itself as if auto-land were its own:
+`transitions-allowed`, `merge-requires-authority`) they show each auto-land guard is load-bearing. Among them:
 `cross-epic-integrated` (a dependent in another epic treats an integrated dependency as merged:
 `guards-hold`, deps-merged), `finalize-unverified` (a PR marked ready with no evaluator
 verdict: `guards-hold`, independent-verification), `approve-over-reviewer` (the evaluator's pass
@@ -163,7 +180,9 @@ an evaluator's run ends in `verdict`, never an author's `advanced`) and `.task-r
 their contracts' shapes. A violation prints a `reproduce:` command. Scenarios:
 `fixtures/scenarios/{happy-path, parallel-overlap, crash-lost-events, merge-without-grant,
 budget-exhaustion, unattended-ask, evaluator-rejection, grant-expiry, wall-bypass,
-integration-branch}.yaml`; `integration-branch` is tier 2 and 3: the orchestrator lands an epic's
+integration-branch, trust-solo, trust-team, trust-regulated}.yaml`; the three `trust-*` scenarios
+are one project per trust profile (solo: low and medium risk auto-land; team: low risk, and a screen
+change when the visual check passes; regulated: nothing); `integration-branch` is tier 2 and 3: the orchestrator lands an epic's
 tasks on `integration/<epic>` under its merge grant, a same-epic dependent builds on an integrated
 task, a dependent in another epic waits for merged, and the human merges the branch to main.
 
@@ -295,17 +314,21 @@ probe and for `prod-unreachable-from-this-host` without `prod_hosts`.
 ## lock
 
 `promptbook lock [--lock toolkit.lock]` fills each entry's `commit`, `tree` (the git tree id of `path`)
-and `version` (from a semver tag, else `package.json`/`plugin.json` in the path). Local sources are
+and `version` (from a semver tag, else `package.json`/`plugin.json` in the path, else `0.0.0+<sha>`,
+the pinned commit, which a moved pin rewrites; a version a human set by hand on an untagged source is
+kept). Local sources are
 read with git plumbing, no network; remote sources use `git ls-remote` and a depth-1 blob-less fetch
 into `~/.cache/promptbook/lock`, and an unreachable remote fails with the reason (`--offline` skips
 remotes with a warning). `--check` changes nothing and exits 1 on drift: a pinned commit that is
-gone, a different tree, a moved tag, a branch rewritten past the pin, a version the tag contradicts;
+gone, a different tree, a moved tag, a branch rewritten past the pin, a version the tag or the manifest contradicts, a `0.0.0+<sha>` that
+names another commit than the pin;
 a branch that moved ahead is a warning. A CI checkout often has no local branch: a local source's ref
 resolves as a tag, a branch, or `refs/remotes/origin/<ref>`, and when a detached or shallow checkout
 holds none of them, `--check` verifies the pin by its recorded commit and tree ("ref not present;
 verified by commit", warning `ref-absent`) instead of failing; a shallow clone that lacks the pinned
 commit itself fails `commit-exists` with the fix (fetch the full history). `--update [name...]` moves pins within each entry's
-`autoUpdate` (never to a prerelease), or a named entry to its newest tag. Comments survive.
+`autoUpdate` (never to a prerelease), or a named entry to its newest tag. Comments survive, and so
+does the file's flow style: a `sets: [planning, delivery]` stays compact, a padded `[ a, b ]` stays padded.
 
 ## eval-routing
 

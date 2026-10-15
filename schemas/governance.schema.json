@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://promptbook.dev/schemas/governance.schema.json",
+  "title": "Governance",
+  "description": "A project's recorded trust profile: which changes may land on green required checks and an independent verdict without a human's approval of the pull request (workflow.yaml auto-land), and which always wait for one. A human chooses it, records why in an ADR with its reversal trigger, and changes it only by a commit to a protected path (authority.yaml never_grantable: change-policy). A project without one lands nothing without a human's approval. In every profile the spec is a human's to approve, an agent never approves its own work or bypasses a required check, and production is a human's release.",
+  "x-version": "1.0.0",
+  "x-artifacts": [
+    { "format": "yaml", "paths": ["governance.yaml"], "suffixes": [".governance.yaml", ".governance.yml"] }
+  ],
+  "type": "object",
+  "required": ["trust", "decision", "reversal_trigger", "protected_paths"],
+  "properties": {
+    "trust": {
+      "description": "solo: one maintainer; green required checks and the evaluator's verdict are the merge gate for low and medium risk. team: a code owner approves medium and high risk; low risk lands on green. regulated: every pull request is human-approved.",
+      "enum": ["solo", "team", "regulated"]
+    },
+    "decision": {
+      "description": "The ADR that chose this profile and says why.",
+      "$ref": "common.schema.json#/$defs/adrId"
+    },
+    "reversal_trigger": {
+      "description": "What moves the project to a stricter profile: a second maintainer, paying customers, a production regression from an unreviewed change.",
+      "$ref": "common.schema.json#/$defs/nonEmptyString"
+    },
+    "auto_land": {
+      "description": "Which tasks may land without a human's approval. Absent, the profile's ceiling applies: solo medium, team low, regulated none. Never high, and never an irreversible task.",
+      "type": "object",
+      "properties": {
+        "max_risk": {
+          "description": "The highest task risk that may auto-land (task risk, its level; a task with no risk is low). none turns auto-land off.",
+          "enum": ["none", "low", "medium"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "protected_paths": {
+      "description": "Path globs where checks are blind to what matters (walls, workflows, CODEOWNERS, this file): a change touching one always waits for a human's approval.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "common.schema.json#/$defs/nonEmptyString" }
+    },
+    "ui_paths": {
+      "description": "Path globs whose changes a person sees. A change touching one auto-lands only when visual_check names a required check that passed on its head.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "common.schema.json#/$defs/nonEmptyString" }
+    },
+    "visual_check": {
+      "description": "The required check that compares the changed screens (a visual diff). Absent, every change to a UI path waits for a human.",
+      "$ref": "common.schema.json#/$defs/nonEmptyString"
+    },
+    "production": {
+      "description": "The production gate (workflow.yaml release). It stays a human's in every profile; continuous lets the train release on its own checks with automatic rollback, a human's config choice, solo only.",
+      "type": "object",
+      "properties": {
+        "approvals": { "description": "Humans who approve a production release.", "type": "integer", "minimum": 1, "maximum": 2 },
+        "continuous": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "signed_commits": { "description": "The protected branch accepts signed commits only.", "type": "boolean" },
+    "attestations": { "description": "Every released artifact carries a build attestation.", "type": "boolean" }
+  },
+  "patternProperties": { "^x-": {} },
+  "additionalProperties": false,
+  "x-checks": ["governance-protects-itself"],
+  "allOf": [
+    {
+      "x-rule": "auto-land-within-profile",
+      "description": "team auto-lands low risk at most; regulated auto-lands nothing.",
+      "if": { "required": ["trust"], "properties": { "trust": { "const": "team" } } },
+      "then": { "properties": { "auto_land": { "properties": { "max_risk": { "enum": ["none", "low"] } } } } }
+    },
+    {
+      "x-rule": "auto-land-within-profile",
+      "if": { "required": ["trust"], "properties": { "trust": { "const": "regulated" } } },
+      "then": { "properties": { "auto_land": { "properties": { "max_risk": { "const": "none" } } } } }
+    },
+    {
+      "x-rule": "regulated-evidence",
+      "description": "regulated: two production approvers, signed commits and build attestations.",
+      "if": { "required": ["trust"], "properties": { "trust": { "const": "regulated" } } },
+      "then": {
+        "required": ["production", "signed_commits", "attestations"],
+        "properties": {
+          "production": { "required": ["approvals"], "properties": { "approvals": { "minimum": 2 } } },
+          "signed_commits": { "const": true },
+          "attestations": { "const": true }
+        }
+      }
+    },
+    {
+      "x-rule": "continuous-deploy-solo-only",
+      "description": "Only a solo project may release continuously; team and regulated keep a human at the production gate.",
+      "if": { "required": ["production"], "properties": { "production": { "required": ["continuous"], "properties": { "continuous": { "const": true } } } } },
+      "then": { "properties": { "trust": { "const": "solo" } } }
+    }
+  ]
+}

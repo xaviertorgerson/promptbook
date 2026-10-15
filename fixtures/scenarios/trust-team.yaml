@@ -1,0 +1,22 @@
+name: trust-team
+description: >-
+  Several maintainers (governance trust team): low risk lands on green checks and the verdict; a
+  code owner approves medium and high risk and every protected path. The profile names a visual
+  check, so a low-risk screen change lands unseen when the visual diff passes on its head and waits
+  for a human when it shows changed screens.
+seed: 1
+governance:
+  trust: team
+  decision: ADR-0031
+  reversal_trigger: an audit or a customer contract that requires two-person review of every change
+  protected_paths: [".github/**", "CODEOWNERS", "governance.yaml"]
+  ui_paths: ["apps/web/**"]
+  visual_check: visual-diff
+  production: { approvals: 1 }
+checks: { visual_change_rate: 0.5 }
+tasks:
+  - { id: TEAM-1, size: S, risk: low, touches: ["src/billing/**"] }
+  - { id: TEAM-2, size: S, risk: medium, touches: ["src/rating/**"] }
+  - { id: TEAM-3, size: S, risk: high, touches: ["src/ledger/**"] }
+  - { id: TEAM-4, size: XS, risk: low, touches: [".github/CODEOWNERS"] }
+  - { id: TEAM-5, size: S, risk: low, touches: ["apps/web/src/invoice/**"] }

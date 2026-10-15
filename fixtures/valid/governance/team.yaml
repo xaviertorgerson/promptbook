@@ -1,0 +1,9 @@
+# Several maintainers: a code owner approves medium and high risk and every protected path; low risk
+# lands on green checks and the verdict. UI changes land unseen only once the visual diff is required.
+trust: team
+decision: ADR-0031
+reversal_trigger: an audit or a customer contract that requires two-person review of every change
+protected_paths: [".github/**", "CODEOWNERS", "governance.yaml", "ops/**"]
+ui_paths: ["apps/web/src/**"]
+visual_check: visual-diff
+production: { approvals: 1 }

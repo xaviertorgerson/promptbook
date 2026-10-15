@@ -1,0 +1,9 @@
+# Tally's trust profile (ADR-0005): dana is the only maintainer, so green required checks and the
+# evaluator's verdict land a low- or medium-risk change on main with no approval. Nothing in the
+# settle-up epic does: SPLIT-1 is high risk, and the rest land on its integration branch.
+trust: solo
+decision: ADR-0005
+reversal_trigger: a second maintainer joins, a household pays for Tally, or a change merged without review causes a production regression
+protected_paths: [".github/**", "CODEOWNERS", ".orchestrator/grants/**", "governance.yaml"]
+ui_paths: ["src/web/**"]
+production: { approvals: 1 }

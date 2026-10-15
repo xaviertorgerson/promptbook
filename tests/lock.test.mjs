@@ -6,7 +6,7 @@ import path from 'node:path';
 import { after, before, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { parse, stringify } from 'yaml';
-import { processLock, versionFromRef, withinAutoUpdate } from '../tools/lib/lock.mjs';
+import { flowPadding, processLock, untaggedVersion, versionFromRef, withinAutoUpdate } from '../tools/lib/lock.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const TMP = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'promptbook-lock-'));
@@ -182,6 +182,63 @@ describe('lock', () => {
     assert.match(r.stdout, /^MOVED promptbook v2\.0\.0 /m);
     assert.equal(lockOf(dir).entries[0].version, '2.0.0');
     assert.equal(cli(dir, '--check').status, 0);
+  });
+
+  it('an untagged source is versioned by its commit: a first pin gets 0.0.0+<sha>, the version follows a moved pin, and --check flags one that names another commit', () => {
+    const lib = path.join(TMP, 'untagged');
+    fs.mkdirSync(lib);
+    git(lib, 'init', '-q', '-b', 'main');
+    write(path.join(lib, 'skills/a/SKILL.md'), 'a\n');
+    git(lib, 'add', '.');
+    git(lib, 'commit', '-q', '-m', 'one');
+    const one = git(lib, 'rev-parse', 'HEAD');
+    const entry = { name: 'skilldex', layer: 'L3', kind: 'skill-library', source: '../untagged', sets: ['planning', 'delivery'], ref: 'main', autoUpdate: 'off' };
+    const dir = project('untagged-project', [promptbookEntry(), entry]);
+    assert.equal(cli(dir).status, 0);
+    assert.equal(lockOf(dir).entries[1].version, `0.0.0+${one.slice(0, 7)}`, 'a first pin of an untagged source');
+
+    write(path.join(lib, 'skills/a/SKILL.md'), 'b\n');
+    git(lib, 'commit', '-q', '-am', 'two');
+    const two = git(lib, 'rev-parse', 'HEAD');
+    const r = cli(dir, '--update', 'skilldex');
+    assert.equal(r.status, 0, r.stdout);
+    assert.equal(lockOf(dir).entries[1].commit, two);
+    assert.equal(lockOf(dir).entries[1].version, `0.0.0+${two.slice(0, 7)}`, 'the version moved with the pin');
+    assert.equal(cli(dir, '--check').status, 0);
+
+    // A stale one, as an earlier lock left it: drift, and a plain lock rewrites it from the pin.
+    const l = lockOf(dir);
+    l.entries[1].version = `0.0.0+${one.slice(0, 7)}`;
+    write(path.join(dir, 'toolkit.lock'), stringify(l));
+    const res = processLock(lockOf(dir), { mode: 'check', lockDir: dir });
+    assert.ok(rules(res).includes('error:version-matches'), rules(res).join());
+    assert.match(res.entries[1].findings.find((x) => x.rule === 'version-matches').message, new RegExp(`names commit ${one.slice(0, 7)}, the lock pins ${two.slice(0, 12)}`));
+    assert.equal(cli(dir, '--check').status, 1);
+    assert.equal(cli(dir).status, 0);
+    assert.equal(lockOf(dir).entries[1].version, `0.0.0+${two.slice(0, 7)}`);
+    assert.equal(lockOf(dir).entries[1].commit, two, 'the pin itself did not move');
+
+    // A version a human set by hand on an untagged source is theirs: kept, and not checked against the commit.
+    l.entries[1].version = '0.4.0';
+    write(path.join(dir, 'toolkit.lock'), stringify(l));
+    assert.deepEqual(rules(processLock(lockOf(dir), { mode: 'check', lockDir: dir })).filter((x) => x.startsWith('error')), []);
+    assert.equal(untaggedVersion(two, `0.0.0+${one.slice(0, 12)}`), `0.0.0+${two.slice(0, 12)}`, 'the abbreviation keeps its length');
+  });
+
+  it('a rewrite keeps the file\'s flow style: [a, b] stays compact, [ a, b ] stays padded', () => {
+    for (const [style, sets] of [['compact', '[planning, delivery]'], ['padded', '[ planning, delivery ]']]) {
+      const dir = path.join(TMP, `flow-${style}`);
+      fs.mkdirSync(dir, { recursive: true });
+      write(path.join(dir, 'toolkit.lock'), `# pinned\nlock_version: 1\nentries:\n  - name: promptbook\n    layer: L3\n    kind: promptbook\n    source: ../pack\n    ref: v1.0.0\n    autoUpdate: minor\n  - name: skilldex\n    layer: L3\n    kind: skill-library\n    source: ../pack\n    sets: ${sets}\n    ref: main\n    autoUpdate: off\n`);
+      assert.equal(cli(dir).status, 0);
+      assert.equal(cli(dir, '--update').status, 0);
+      const text = fs.readFileSync(path.join(dir, 'toolkit.lock'), 'utf8');
+      assert.ok(text.includes(`    sets: ${sets}\n`), `${style}: ${text}`);
+    }
+    assert.equal(flowPadding('sets: [a, b]\n'), false);
+    assert.equal(flowPadding('# sets: [ a ]\nsets: [a]\n'), false, 'a comment does not decide');
+    assert.equal(flowPadding('x: { a: 1 }\n'), true);
+    assert.equal(flowPadding('x: []\ny: 1\n'), false, 'no flow collection with content: compact');
   });
 
   it('a version that disagrees with the tag is drift', () => {

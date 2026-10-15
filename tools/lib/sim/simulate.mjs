@@ -16,8 +16,12 @@ export function machines() {
   return machinesCache;
 }
 
-export function simulate(sc, { seed = sc.seed, policy = orchestrating(), rivalPolicy = null, engine = 'correct', forgeProtection = true, cas = true, mergeBot = 'correct', trace = true, only = null } = {}) {
+export function simulate(sc, { seed = sc.seed, policy = orchestrating(), rivalPolicy = null, engine = 'correct', forgeProtection = true, cas = true, mergeBot = 'correct', platform = 'correct', trace = true, only = null } = {}) {
   const m = machines();
+  if (sc.governance) {
+    const errors = validateData('governance', sc.governance);
+    if (errors.length) throw new Error(`${sc.source}: governance is not a valid trust profile: ${errors.join('; ')}`);
+  }
   for (const g of sc.grants) {
     const errors = validateData('grant', g);
     if (errors.length) throw new Error(`${sc.source}: grant ${g.id ?? '?'} is not a valid grant: ${errors.join('; ')}`);
@@ -25,7 +29,7 @@ export function simulate(sc, { seed = sc.seed, policy = orchestrating(), rivalPo
       if (a.protected_branch !== sc.target) throw new Error(`${sc.source}: grant ${g.id} names ${a.protected_branch} as ${a.repo}'s protected branch; the scenario's is ${sc.target}`);
     }
   }
-  const world = new World(sc, { seed, machines: m, policies: { main: policy, rival: rivalPolicy ?? policy }, engine, forgeProtection, cas, mergeBot, trace });
+  const world = new World(sc, { seed, machines: m, policies: { main: policy, rival: rivalPolicy ?? policy }, engine, forgeProtection, cas, mergeBot, platform, trace });
   const checker = new Checker({ machines: m, only });
   world.run(checker);
   return { world, trace: world.trace, summary: summarize(world, checker), violations: checker.violations };

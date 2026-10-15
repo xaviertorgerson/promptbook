@@ -16,14 +16,18 @@ Treat merge authority as tiers, each granted explicitly and revocably:
 | 1 | the merge role, after human approval | the protected branch | mechanical conflicts only; CI re-run on the merged result |
 | 2 | the coordinator, under a grant | a per-epic integration branch | the reviewer's pass and the evaluator's verdict on the current head; required checks green; within the grant's limits |
 | 3 | a human | integration → protected branch | the epic's acceptance evidence |
+| profile | the platform; the merge role records it | the protected branch | the project's recorded trust profile permits it: required checks and the evaluator's verdict green on the head, risk within the profile's ceiling, no protected path, a passing visual check for a screen change |
 
 - **Grants name scope.** A merge grant names the repository, the target branch, the strategy and the
   required evidence, plus limits (max workers, budget) and an expiry. It is revocable at any time and
   applies to one project. Workers never hold merge authority; only the coordinator exercises a grant.
-- **The protected branch stays human.** No grant covers it: a merge grant names the protected
-  branch only to say its target is not it, and the grant contract rejects one whose target is.
-  Branch protection, required reviews from code owners (agents are never code owners) and required
-  checks enforce this, not prose.
+- **The protected branch is the project's policy, never a delegation.** No grant covers it: a merge
+  grant names the protected branch only to say its target is not it. What may land there without a
+  human's approval is a trust profile a human records with its reversal trigger: one maintainer
+  makes green checks the gate for low and medium risk, a team for low risk, a regulated project for
+  nothing. In every profile a human keeps high risk, protected paths and changes the checks cannot
+  see. Branch protection, required checks (the risk gate among them) and code-owner review (agents
+  are never code owners) enforce it, not prose.
 - **An approval is a forge event, and landing writes the target.** Approving a PR (a human's, or a
   grant holder's) is a review on the forge bound to the head, never a commit on the task branch: a
   commit after it voids it. The landing actor writes `merged` (or `integrated`) on the branch it
@@ -36,6 +40,10 @@ Treat merge authority as tiers, each granted explicitly and revocably:
 
 ## Evidence
 
+- 2026-10-14 · practice · heirloom D-159: with one maintainer, a human approving the owner's own
+  agent's PR is "ceremony, not safety"; required checks merge it, a UI change still meets the owner
+  until a visual check is required, and production stays one human tap
+  ([DECISIONS.md](https://github.com/xaviertorgerson/heirloom/blob/74104b0/DECISIONS.md)).
 - 2026-09-30 · practice · stagehand: merge authority must identify repositories, target branches,
   strategy and required evidence; only the coordinator exercises it, through PRs after current-head
   independent review ([project-delegation.md](https://github.com/QuentinTorg/stagehand/blob/main/skills/orchestrating-development/references/project-delegation.md)).
@@ -48,12 +56,14 @@ Treat merge authority as tiers, each granted explicitly and revocably:
 - 2026-02-11 · vendor · OpenAI auto-merged small refactor PRs with minimal gates and called that
   irresponsible in a low-throughput environment ([OpenAI](https://openai.com/index/harness-engineering/)).
 - recommendation · the per-epic integration branch (tier 2) is this playbook's extension of
-  stagehand's grant; no source measures it.
+  stagehand's merge delegation; no source measures it.
 
 ## Contracts used
 
 `grant` (scope, actions incl. `merge{repo,target,protected_branch,strategy}`, limits, expiry,
-revocable), `state-machines/authority.yaml`, `state-machines/workflow.yaml` (`status_authority`;
+revocable), `governance` (the trust profile: `trust`, `auto_land.max_risk`, `protected_paths`,
+`ui_paths`, `visual_check`), `state-machines/authority.yaml`, `state-machines/workflow.yaml` (`status_authority`;
+`human-review` → `merged` by `auto-land`, the merge role's, where the trust profile permits it;
 `human-review` → `merging` by the approval, a forge event; → `merged` by `land`, the merge role's,
 written on the protected branch; with `lands_to: integration/<epic>`, `merging` → `integrated` by
 `integrate` at tier 2, written on that branch, then `promote` → `merged` by the human at tier 3; the

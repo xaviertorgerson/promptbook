@@ -14,7 +14,7 @@ that make the suite; each has one job and touches the others only through the in
 | **Must not contain** | Skills (all live in Skilldex), runtime coordination (stagehand), any stack (stagecraft's sets). |
 | **Interface** | JSON Schemas and the `promptbook` CLI (`package.json` `bin`: `tools/cli.mjs`); SUITE.md. |
 | **Versioning** | Semver tags, pre-1.0: pin a commit and tree in `toolkit.lock` (kind `promptbook`). Each schema carries its own `x-version` and each state machine its `version`; every change is classed additive, behavioral or breaking in [CHANGELOG.md](CHANGELOG.md). |
-| **Consumers** | stagecraft (the gates in CI, `lock`), dotfiles (`compile-policy`, the standards block), stagehand (the `task-record` and `grant` formats, `grant verify`), Skilldex (`lint` and `eval-routing` run against it). |
+| **Consumers** | stagecraft (the gates in CI, `lock`), dotfiles (`compile-policy`, the standards block), Skilldex (`lint` and `eval-routing` run against it). promptbook reads stagehand's task records; stagehand depends on none of it. |
 
 The thesis, from the research behind it: engineer the setup around the model, not the swarm. Keep
 one writer per change, parallel readers, and a separate judge; keep state in files and git; load
@@ -52,18 +52,24 @@ what else loads.
 template sync renders the standards block into `AGENTS.md` and keeps the walls current.
 `promptbook validate` checks the queue and product artifacts against the schemas, and
 `promptbook trace . --readiness specs --check` the trace graph from brief to test names and the
-committed readiness reports.
+committed readiness reports. A project that lets changes land on green checks records its trust
+profile in `governance.yaml` (`solo`, `team` or `regulated`, with the ADR that chose it): the forge's
+risk gate reads it, and the workflow's `auto-land` is the only way a change reaches the protected
+branch without a human's approval.
 
-**A runtime (stagehand, the loop, CI agents).** It binds through `adapters/<name>/`: it reads `task`
-files, writes `task-record` and `run-record`, maps its own signals to the `attention` machine,
-honors `grant`s (checked with `promptbook grant verify`), and never advances workflow status on a
-runtime signal. `promptbook simulate --supervisor <module>` runs a runtime's own supervisor against
+**A runtime (stagehand, the loop, CI agents).** It binds through `adapters/<name>/`. One that adopts
+promptbook's formats reads `task` files, writes `task-record` and `run-record`, maps its own signals
+to the `attention` machine, honors `grant`s (checked with `promptbook grant verify`), and never
+advances workflow status on a runtime signal. stagehand keeps its own task records, which the
+`task-record` contract reads as they are, records a delegation as a project note, and follows a
+project's own instructions for its queue ([adapters/herdr](adapters/herdr/README.md)). `promptbook simulate --supervisor <module>` runs a runtime's own supervisor against
 every invariant; without the flag the simulation runs promptbook's reference coordinator, the
 protocol the state machines describe, as code.
 
-**The skills (Skilldex).** `promptbook lint <skilldex>/skills` checks every skill against the
-authoring rules and every install set against the 8,000-character always-loaded description budget
-with 10% headroom; `promptbook eval-routing` measures routing, `--set <name>` with only that set
+**The skills (Skilldex).** `promptbook lint <skilldex>/skills` checks every skill against the Agent
+Skills spec's limits and engine neutrality, gives promptbook's authoring style as advice unless the
+library's `SETS.yaml` holds a skill to it (`lint: { strict: [...] }`), and checks every install set
+against the 8,000-character always-loaded description budget with 10% headroom; `promptbook eval-routing` measures routing, `--set <name>` with only that set
 installed.
 
 ## Core vs optional
@@ -74,7 +80,7 @@ reaches, and stays out until its trigger holds.
 | | Core | Optional, and when |
 |---|---|---|
 | Practice | `standards/engineering.md`; the playbook pages you cite | — |
-| Contracts | task, epic, decision, readiness-report; brief, persona, journey, requirement and ux-flow when a product is planned (without a brief the trace check runs as legacy adoption); policy and toolkit-lock; return and run-record; skill and evidence | grant and task-record: a coordinator runs several agents under delegated authority. agent-setup-review and reflection-report: there are runs to review |
+| Contracts | task, epic, decision, readiness-report; brief, persona, journey, requirement and ux-flow when a product is planned (without a brief the trace check runs as legacy adoption); policy and toolkit-lock; return and run-record; skill and evidence | governance: a project lets some changes land on green checks without a human's approval. grant and task-record: a coordinator runs several agents under delegated authority. agent-setup-review and reflection-report: there are runs to review |
 | Tools | `validate` (with `trace` and `--readiness --check`), `compile-policy`, `lock` | `lint` and `eval-routing`: a skill or a set changes. `simulate`: changing the state machines, or checking a runtime's supervisor. `grant`: grants are in use. `import-evals`: once, porting a project's skill to Skilldex. `report`: there are run records to read. `run`, `check-requires`: unattended or bypass profiles |
 | Engines | the adapter of the engine you run | every other adapter; only one engine's permissions are measured (Status) |
 
@@ -87,7 +93,8 @@ reaches, and stays out until its trigger holds.
    `promptbook trace . --readiness specs --check` in CI.
 3. **Each task.** One writer at a time, with Skilldex's delivery set: implementing-task claims and
    builds it, verifying-work gives the separate verdict, landing-changes lands it after your
-   approval. No coordinator, grants, task records or simulator.
+   approval, or on green checks and that verdict where the repository's trust profile
+   (`governance.yaml`, `trust: solo`) permits it. No coordinator, grants, task records or simulator.
 
 Add the rest when its trigger fires: stagehand and grants when you hand agents a batch of tasks to
 run without you; the reflection and review records once there are runs to learn from.

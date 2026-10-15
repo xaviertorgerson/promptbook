@@ -47,6 +47,7 @@ export const MUTATIONS = {
   'terminal-on-task-branch': 'lands under its merge grant but writes the integrated status as a commit on the task branch, not on the target',
   'land-on-stale-approval': 'after approving under its merge grant, has the author push one more fix and lands that head on the approval of the old one',
   'approve-over-reviewer': 'takes the evaluator\'s pass as the review: finalizes without waiting for the reviewer and approves under its merge grant while the reviewer requested changes on that head',
+  'orchestrator-auto-lands': 'lands a ready PR itself once its checks are green, as if the trust profile\'s auto-land were the coordinator\'s to make',
 };
 
 const PRIORITY = { P0: 0, P1: 1, P2: 2, P3: 3 };
@@ -267,6 +268,7 @@ function decide(note, api, { st, T, broken }) {
       }
       case 'human-review': {
         if (t.lastTransition === 'return-to-human' || !p) break;
+        if (broken.has('orchestrator-auto-lands') && p.checks[p.head] === 'green' && !v.merging) { api.merge(t.id, { autoLand: true }); break; }
         const review = broken.has('approve-over-reviewer') ? verdictOf(p) : reviewerOf(p);
         const independent = review?.verdict === 'pass' && review.by !== p.author;
         const anyMergeGrant = v.grantsLive.some((g) => hasAction(g, 'merge'));

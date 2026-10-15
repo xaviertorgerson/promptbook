@@ -1,0 +1,20 @@
+name: trust-solo
+description: >-
+  One maintainer's trust profile (governance trust solo, heirloom D-159): low and medium risk land
+  on green checks and the evaluator's verdict with no human approval (auto-land, by the merge role).
+  A high-risk task, an irreversible one, a change to a protected path and a screen change with no
+  visual check yet each wait for the human's approve-pr.
+seed: 1
+governance:
+  trust: solo
+  decision: ADR-0022
+  reversal_trigger: a second maintainer joins, the product takes paying customers, or an unreviewed change causes a production regression
+  protected_paths: [".github/workflows/**", "CODEOWNERS", "governance.yaml"]
+  ui_paths: ["apps/web/**"]
+tasks:
+  - { id: SOLO-1, size: S, risk: low, touches: ["src/billing/**"] }
+  - { id: SOLO-2, size: S, risk: medium, touches: ["src/rating/**"] }
+  - { id: SOLO-3, size: S, risk: high, touches: ["src/ledger/**"] }
+  - { id: SOLO-4, size: XS, risk: low, touches: [".github/workflows/ci.yml"] }
+  - { id: SOLO-5, size: S, risk: low, touches: ["apps/web/src/invoice/**"] }
+  - { id: SOLO-6, size: S, risk: { level: medium, irreversible: true }, touches: ["src/migrations/**"] }

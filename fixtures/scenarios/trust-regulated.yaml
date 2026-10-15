@@ -1,0 +1,18 @@
+name: trust-regulated
+description: >-
+  A regulated project (governance trust regulated): every pull request waits for a human's
+  approval, whatever its risk and paths; nothing auto-lands. The protected paths are the usual ones,
+  so the profile's ceiling (none) alone keeps a low-risk change to ordinary code with the human.
+seed: 1
+governance:
+  trust: regulated
+  decision: ADR-0040
+  reversal_trigger: none planned; a change of regulator or scope is a new decision
+  protected_paths: [".github/**", "CODEOWNERS", "governance.yaml"]
+  production: { approvals: 2 }
+  signed_commits: true
+  attestations: true
+tasks:
+  - { id: REG-1, size: S, risk: low, touches: ["src/billing/**"] }
+  - { id: REG-2, size: S, risk: medium, touches: ["src/rating/**"] }
+  - { id: REG-3, size: XS, risk: low, touches: ["docs/**"] }

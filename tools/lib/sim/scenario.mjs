@@ -7,7 +7,8 @@ import { loadFrontmatterMarkdown, readText } from '../loaders.mjs';
 import { DISPATCH_ACTIONS } from './authority.mjs';
 
 // A simulation scenario: the tasks, the actors and their latencies, the L1 policy tier the runtime
-// runs under, its grants (grant: one, or grants: a list, e.g. a work grant and a merge grant), and
+// runs under, its grants (grant: one, or grants: a list, e.g. a work grant and a merge grant), the
+// project's trust profile (governance: a governance contract document, or null for none), and
 // the faults to inject. Every key has a default, so a scenario
 // names only what it is about. Unknown keys are errors (a typo must not silently do nothing).
 
@@ -25,6 +26,7 @@ export const DEFAULTS = {
   supervisor: { max_workers: 3, max_depth: 1, no_progress_runs: 1, max_review_rounds: 3, max_ci_rounds: 3, max_crash_restarts: 2, checkin_minutes: 60, budget_usd: null },
   grant: null,
   grants: [],
+  governance: null,
   human: {
     name: 'owner',
     review_minutes: [30, 240],
@@ -47,7 +49,9 @@ export const DEFAULTS = {
     helper_rate: 0.3,
     helper_minutes: [5, 15],
   },
-  checks: { minutes: [5, 15], red_rate: 0.05, merged_red_rate: 0.02 },
+  // visual_change_rate: how often the visual check (governance visual_check) finds changed screens on a
+  // head that touches a UI path, which then waits for a human.
+  checks: { minutes: [5, 15], red_rate: 0.05, merged_red_rate: 0.02, visual_change_rate: 0.3 },
   evaluator: { minutes: [10, 30], reject_rate: 0.05 },
   // The reviewer role (a forge-event agent, not a runtime worker): a code review of every pushed head.
   reviewer: { minutes: [5, 20], reject_rate: 0.05 },

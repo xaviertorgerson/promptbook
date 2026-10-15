@@ -1,4 +1,5 @@
-# stagehand's assets/task-record.yaml with every field filled; promptbook reads it unchanged.
+# stagehand's assets/task-record.yaml with every key it names filled in, as the coordinator fills it.
+# promptbook reads it unchanged; a test checks it still fills every key of his template.
 task_id: "billing-rerate"
 mode: "development"
 objective: "Re-rating a period never double-bills"
@@ -11,6 +12,13 @@ repository:
   base: "main"
   base_commit: "4f1c2d9"
   branch: "feat/bill-3-idempotent-rerate"
+development_target:
+  path: "vendor/rating"
+  remote: "origin"
+  base: "main"
+  base_commit: "a17be02"
+  branch: "feat/idempotent-rerate"
+  containing_repository_pointer_update: "planned"
 workspace:
   id: "w4"
   label: "billing rerate"
@@ -26,6 +34,14 @@ wake:
     reviewer: "watch-12"
 pull_requests: ["https://github.com/acme/billing/pull/233"]
 state:
-  name: "needs-human"
-  summary: "Awaiting finalization approval"
-  next_action: "Authorize the reviewer to finalize PR #233"
+  name: "working"
+  summary: "Reviewer checking the fix"
+  next_role: "reviewer"
+  next_action: "Re-review PR #233 at its pushed head"
+# The optional evidence his template leaves unnamed ("latest result/verification reference, per-PR
+# reviewed head/outcome, selected feedback, and relevant human decisions"), in his own words.
+result: "pnpm test at 9c1e4ab: 214 passed"
+reviewed: { "https://github.com/acme/billing/pull/233": { head: "5d2a7c0", outcome: "changes requested" } }
+feedback: ["Re-rating twice in one period must not create a second invoice line"]
+human_decisions:
+  - { action: "Finalize PR #233 once the reviewer passes it", scope: "billing-rerate", source: "chat, 2026-10-14 09:12" }

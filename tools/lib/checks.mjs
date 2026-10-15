@@ -81,6 +81,14 @@ export const CHECKS = {
       : []));
   },
 
+  // The trust profile is policy: a change to it waits for a human like any wall, so the file is one of
+  // its own protected paths (an agent cannot widen what lands without a human by editing it).
+  'governance-protects-itself'({ data }) {
+    const paths = Array.isArray(data?.protected_paths) ? data.protected_paths.filter((g) => typeof g === 'string') : [];
+    if (!paths.length || paths.some((g) => globToRegExp(g).test('governance.yaml'))) return [];
+    return [{ rule: 'governance-protects-itself', pointer: '/protected_paths', message: 'no protected path covers governance.yaml: an agent could change what lands without a human; add governance.yaml' }];
+  },
+
   // narrowed[] removes only what the grant in force holds and lowers only limits (tools/lib/grant.mjs).
   'narrowing-only-narrows'({ data }) {
     return narrowingFindings(data);

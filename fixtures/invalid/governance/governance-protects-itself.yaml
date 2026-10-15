@@ -1,0 +1,6 @@
+# Invalid: the trust profile is not one of its own protected paths, so an agent could widen what
+# lands without a human by editing it.
+trust: solo
+decision: ADR-0022
+reversal_trigger: a second maintainer joins
+protected_paths: [".github/workflows/**", "CODEOWNERS"]

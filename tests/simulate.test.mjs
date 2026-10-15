@@ -34,7 +34,7 @@ const firstViolation = (runs) => runs.flatMap((r) => r.violations)[0];
 describe('simulate: every scenario holds every invariant under the correct supervisor', () => {
   const files = fs.readdirSync(SCEN).filter((f) => f.endsWith('.yaml')).sort();
   it('has the scenarios the contracts need', () => {
-    for (const n of ['happy-path', 'parallel-overlap', 'crash-lost-events', 'merge-without-grant', 'budget-exhaustion', 'unattended-ask', 'evaluator-rejection', 'grant-expiry', 'wall-bypass', 'integration-branch']) assert.ok(files.includes(`${n}.yaml`), n);
+    for (const n of ['happy-path', 'parallel-overlap', 'crash-lost-events', 'merge-without-grant', 'budget-exhaustion', 'unattended-ask', 'evaluator-rejection', 'grant-expiry', 'wall-bypass', 'integration-branch', 'trust-solo', 'trust-team', 'trust-regulated']) assert.ok(files.includes(`${n}.yaml`), n);
   });
   for (const f of files) {
     it(`${f} × ${SEEDS} seeds: zero violations`, () => {
@@ -280,6 +280,72 @@ describe('simulate: the faults happen and are handled as the contracts say', () 
   });
 });
 
+describe('simulate: trust profiles (governance) decide what lands without a human', () => {
+  const landings = (r) => {
+    const commits = r.trace.flatMap((l) => l.commits ?? []);
+    const out = {};
+    for (const c of commits) {
+      if (c.transition === 'auto-land' || c.transition === 'land') out[c.task] = { how: c.transition, by: c.by, role: c.role };
+      if (c.transition === 'approve-pr') out[`${c.task}:approved`] = { by: c.by, role: c.role };
+    }
+    return out;
+  };
+  const verdictOnLanded = (r, id) => {
+    const pr = r.world.forge.prs.get(id);
+    return pr.reviews.some((x) => x.head === pr.merged.head && x.role === 'evaluator' && x.verdict === 'pass') && pr.checks.get(pr.merged.head) === 'green';
+  };
+
+  it('solo: low and medium risk auto-land by the merge role with no approval; high, irreversible, protected and screen changes wait for the human', () => {
+    for (const r of runAll(loadScenario(path.join(SCEN, 'trust-solo.yaml')), 10, { trace: true })) {
+      assert.deepEqual(r.violations, []);
+      const l = landings(r);
+      for (const id of ['SOLO-1', 'SOLO-2']) {
+        assert.deepEqual(l[id], { how: 'auto-land', by: 'merge-bot', role: 'merge' }, `${id} auto-lands`);
+        assert.equal(l[`${id}:approved`], undefined, `${id}: nobody approved it`);
+        assert.ok(verdictOnLanded(r, id), `${id}: green checks and the evaluator's pass on the landed head`);
+      }
+      for (const id of ['SOLO-3', 'SOLO-4', 'SOLO-5', 'SOLO-6']) {
+        assert.equal(l[id].how, 'land', `${id} lands after an approval`);
+        assert.equal(l[`${id}:approved`].role, 'owner', `${id}: the human approved it`);
+      }
+      assert.equal(r.summary.merged, 6);
+    }
+  });
+
+  it('team: low risk auto-lands; medium, high and protected wait for a code owner; a screen change lands unseen only when the visual check passed on its head', () => {
+    const outcomes = new Set();
+    for (const r of runAll(loadScenario(path.join(SCEN, 'trust-team.yaml')), 20, { trace: true })) {
+      assert.deepEqual(r.violations, []);
+      const l = landings(r);
+      assert.equal(l['TEAM-1'].how, 'auto-land');
+      for (const id of ['TEAM-2', 'TEAM-3', 'TEAM-4']) assert.equal(l[`${id}:approved`]?.role, 'owner', `${id} waits for a human`);
+      const pr = r.world.forge.prs.get('TEAM-5');
+      const passed = pr.visual.get(pr.merged.head) === 'pass';
+      if (l['TEAM-5'].how === 'auto-land') assert.ok(passed, 'TEAM-5 auto-landed only on a passing visual check');
+      outcomes.add(l['TEAM-5'].how);
+    }
+    assert.deepEqual([...outcomes].sort(), ['auto-land', 'land'], 'across seeds the visual check both passes and shows changed screens');
+  });
+
+  it('regulated: every change waits for a human\'s approval, whatever its risk; nothing auto-lands', () => {
+    for (const r of runAll(loadScenario(path.join(SCEN, 'trust-regulated.yaml')), 10, { trace: true })) {
+      assert.deepEqual(r.violations, []);
+      const l = landings(r);
+      for (const id of ['REG-1', 'REG-2', 'REG-3']) {
+        assert.equal(l[id].how, 'land');
+        assert.equal(l[`${id}:approved`].role, 'owner');
+      }
+    }
+  });
+
+  it('without a recorded trust profile nothing auto-lands; an invalid profile is refused', () => {
+    for (const r of runAll(loadScenario(path.join(SCEN, 'happy-path.yaml')), 5, { trace: true })) assert.ok(!r.trace.some((l) => (l.commits ?? []).some((c) => c.transition === 'auto-land')));
+    const gov = { trust: 'team', decision: 'ADR-0031', reversal_trigger: 'x', auto_land: { max_risk: 'medium' }, protected_paths: ['governance.yaml'] };
+    assert.throws(() => simulate(normalize({ name: 'bad-gov', governance: gov, tasks: [{ id: 'G-1' }] }), { trace: false }), /not a valid trust profile: \/auto_land\/max_risk/);
+    assert.throws(() => simulate(normalize({ name: 'bad-gov', governance: { ...gov, auto_land: undefined, protected_paths: ['CODEOWNERS'] }, tasks: [{ id: 'G-1' }] }), { trace: false }), /governance-protects-itself/);
+  });
+});
+
 // Each broken policy (or broken world binding), the scenario that exercises it, and the invariant(s)
 // that must name it. A mutation passes when, across MUTANT_SEEDS seeds, at least one named
 // invariant fires.
@@ -314,6 +380,15 @@ const MUTANTS = [
   { world: { cas: false }, label: 'forge without compare-and-swap', scenario: 'parallel-overlap', caught: ['one-owner-per-claimed-task'] },
   { world: { mergeBot: 'resolve-semantic' }, label: 'merge queue resolves semantic conflicts', scenario: 'grant-expiry', over: { merge: { queue_targets: null } }, caught: ['guards-hold', 'merge-requires-authority'] },
   { world: { forgeProtection: false }, label: 'forge without branch protection', scenario: 'merge-without-grant', caught: ['merge-requires-authority'] },
+  // The platform's risk gate, each auto-land guard skipped in turn: the invariants recompute it from
+  // the recorded profile, so a gate that lets a change through without a human is named.
+  { break: 'orchestrator-auto-lands', scenario: 'trust-solo', caught: ['transitions-allowed', 'merge-requires-authority'], message: /auto-land|only the merge role/ },
+  { world: { platform: 'ignore-risk' }, label: 'risk gate ignores the task\'s risk (solo)', scenario: 'trust-solo', caught: ['guards-hold', 'merge-requires-authority'], message: /trust-permits|-risk task/ },
+  { world: { platform: 'ignore-profile' }, label: 'risk gate reads every profile as solo (team)', scenario: 'trust-team', caught: ['guards-hold', 'merge-requires-authority'], message: /trust-permits|team profile/ },
+  { world: { platform: 'ignore-profile' }, label: 'risk gate reads every profile as solo (regulated)', scenario: 'trust-regulated', caught: ['guards-hold', 'merge-requires-authority'], message: /trust-permits|regulated profile/ },
+  { world: { platform: 'ignore-protected' }, label: 'risk gate ignores protected paths', scenario: 'trust-solo', caught: ['guards-hold', 'merge-requires-authority'], message: /no-protected-path|protected path/ },
+  { world: { platform: 'ignore-ui' }, label: 'risk gate ignores screen changes', scenario: 'trust-solo', caught: ['guards-hold', 'merge-requires-authority'], message: /visual-checked|visual check/ },
+  { world: { platform: 'land-on-green' }, label: 'auto-merge armed on a draft: lands on green checks before the verdict', scenario: 'trust-solo', caught: ['transitions-allowed', 'guards-hold', 'merge-requires-authority'], message: /independent-verification|independent verdict|from review/ },
 ];
 
 describe('simulate: mutation tests — every broken supervisor is caught by a named invariant', () => {

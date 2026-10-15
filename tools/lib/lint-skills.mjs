@@ -12,6 +12,21 @@ import { validateAs } from './validate.mjs';
 // and CI can name them. The skill schema itself is checked by the validator (tools/lib/validate.mjs);
 // lint adds what JSON Schema cannot see: the description's shape, the body's size and neutrality,
 // links, and the evals folder.
+//
+// Errors are the Agent Skills spec's hard limits (the frontmatter, the name, a description of at most
+// 1,024 characters), what breaks an installed skill (a link out of its folder, a malformed eval file,
+// a route to no skill) and engine neutrality. promptbook's authoring style is advice: the rules in
+// STYLE are warnings unless the skill's library asks for them in its SETS.yaml
+// (lint: { strict: [rule...], skills: [name...] }), so one library's maintainers keep their own
+// style while another's skills in the same library stay strict.
+
+// Style heuristics: warnings unless strict. evals-present is strict-able too: by default it accepts
+// a single evals/evals.md, strict it wants routing.jsonl, scenarios.md and evidence.md.
+export const STYLE = new Set([
+  'name-is-gerund', 'description-use-when', 'description-do-not-use-for', 'description-length', 'deprecated-description',
+  'body-length', 'routing-counts', 'routing-kind-declared', 'scenarios-count', 'scenario-format', 'evidence-count', 'deprecated-never-triggers',
+]);
+export const STRICTABLE = new Set([...STYLE, 'evals-present']);
 
 // Engine, runtime, forge, host and stack names an L3 skill body or description must not carry.
 // references/engine-notes.md is the one place they may appear (adapters own the mapping).
@@ -19,6 +34,10 @@ export const DEFAULT_DENY_TERMS = [
   'Claude Code', 'Claude', 'Codex', 'Gemini', 'Antigravity', 'Herdr', 'Heeler', 'stagehand', 'OpenAI', 'Anthropic', 'Copilot',
   'GitHub', 'GitLab', 'Forgejo', 'Cloudflare', 'Coolify', 'Hetzner', 'Angular', 'NestJS', 'Drizzle', 'pnpm',
 ];
+
+// Terms of art that contain a deny-listed word but name a practice, not a product: they are read
+// as one word, so "Claude Search Optimization (CSO)" is not a mention of an engine.
+export const TERMS_OF_ART = ['Claude Search Optimization'];
 
 export const LIMITS = {
   bodyWarn: 200,
@@ -48,8 +67,8 @@ const STOP = new Set(`a an and are as at be but by can could for from has have i
 const stem = (w) => (w.length > 5 && w.endsWith('ing') ? w.slice(0, -3) : w.length > 4 && w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w);
 
 export function triggerTokens(description) {
-  const m = description.match(/use when([\s\S]*?)(?:\bdo not use for\b|$)/i);
-  const text = m ? m[1] : description;
+  const m = description.match(/use when([\s\S]*?)(?:\bdo not use\b|$)/i);
+  const text = m ? m[1] : description.split(/\bdo not use\b/i)[0];
   return new Set(text.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2 && !STOP.has(w)).map(stem));
 }
 
@@ -168,9 +187,19 @@ export function lintSkills(targets, opts = {}) {
   const dirs = [...new Set(targets.flatMap((t) => skillDirs(path.resolve(t))))];
   const skills = dirs.map((dir) => ({ dir, name: path.basename(dir), findings: [] }));
   const names = new Set(skills.map((s) => s.name));
+  // The rules a skill is held to strictly: what its own library's SETS.yaml asks (lint.strict, for
+  // the skills lint.skills names, or all of them), and opts.strictRules.
+  const strictFor = (s) => {
+    const file = setsFileOf(path.dirname(s.dir));
+    const lint = file ? loadSets(file).data?.lint : null;
+    const own = lint && (!lint.skills || lint.skills.includes(s.name)) ? lint.strict ?? [] : [];
+    return new Set([...(opts.strictRules ?? []), ...own]);
+  };
 
   for (const s of skills) {
-    const f = (severity, rule, file, line, message) => s.findings.push({ severity, rule, file: file ? path.relative(s.dir, file) || path.basename(file) : null, line: line ?? null, message });
+    const strict = strictFor(s);
+    s.strict = [...strict];
+    const f = (severity, rule, file, line, message) => s.findings.push({ severity: severity === 'error' && STYLE.has(rule) && !strict.has(rule) ? 'warning' : severity, rule, file: file ? path.relative(s.dir, file) || path.basename(file) : null, line: line ?? null, message });
     const skillFile = path.join(s.dir, 'SKILL.md');
     const { data, body, bodyLine, parseHint } = loadFrontmatter(skillFile);
     s.description = typeof data?.description === 'string' ? data.description : '';
@@ -187,17 +216,18 @@ export function lintSkills(targets, opts = {}) {
     // 2. The description is a routing trigger, short enough to stay loaded. A deprecated skill's
     // description no longer triggers: it says "Deprecated:" first and names the replacement.
     const d = s.description;
-    if (d.length > limits.descriptionFail) f('error', 'description-length', skillFile, 3, `description is ${d.length} characters (limit ${limits.descriptionFail}; aim under ${limits.descriptionWarn}: the discriminating feature, the strongest triggers, one "Do not use for" neighbour; longer trigger lists go in the body)`);
+    if (d.length > limits.descriptionFail) f('error', 'description-length', skillFile, 3, `description is ${d.length} characters (over ${limits.descriptionFail}; aim under ${limits.descriptionWarn}: the discriminating feature, the strongest triggers, one "Do not use for" neighbour; longer trigger lists go in the body)`);
     else if (d.length > limits.descriptionWarn) f('warning', 'description-length', skillFile, 3, `description is ${d.length} characters (aim under ${limits.descriptionWarn}; limit ${limits.descriptionFail})`);
     if (d && s.deprecated) {
       if (!/^Deprecated:/.test(d)) f('error', 'deprecated-description', skillFile, 3, 'a deprecated skill\'s description starts with "Deprecated:" and names its replacement, so no router picks it');
       else if (![...names, ...known].some((n) => n !== 'none' && n !== s.name && d.includes(n))) f('error', 'deprecated-description', skillFile, 3, 'the "Deprecated:" description names no replacement skill');
     } else if (d) {
-      const useAt = d.search(/\bUse when\b/);
-      const notAt = d.search(/\bDo not use for\b/);
+      const useAt = d.search(/\bUse when\b/i);
+      // "Do not use for …", "Do not use merely to …", "Do not use when …": any exclusion clause.
+      const notAt = d.search(/\bDo not use\b/i);
       if (useAt === -1) f('error', 'description-use-when', skillFile, 3, 'description has no "Use when …" trigger clause');
       else if (useAt > 0) f('warning', 'description-leads-with-use-when', skillFile, 3, 'description should open with "Use when"');
-      if (notAt === -1) f('error', 'description-do-not-use-for', skillFile, 3, 'description has no "Do not use for … (<neighbour>)" clause');
+      if (notAt === -1) f('error', 'description-do-not-use-for', skillFile, 3, 'description has no "Do not use …" clause naming what it is not for (and the neighbour skill that is)');
       else if (useAt !== -1 && notAt < useAt) f('warning', 'description-clause-order', skillFile, 3, '"Do not use for" comes before "Use when"');
       else if (!/\b[a-z]{2,}ing(?:-[a-z0-9]+)+\b/.test(d.slice(notAt)) && ![...names, ...known].some((n) => n !== 'none' && d.slice(notAt).includes(n))) {
         f('warning', 'do-not-use-names-neighbour', skillFile, 3, '"Do not use for" names no neighbouring skill, e.g. "(mapping-journeys)"');
@@ -206,13 +236,17 @@ export function lintSkills(targets, opts = {}) {
 
     // 3. Body size.
     const bodyLines = body.replace(/\s+$/, '').split(/\r?\n/).length;
-    if (bodyLines > limits.bodyFail) f('error', 'body-length', skillFile, bodyLine, `body is ${bodyLines} lines (limit ${limits.bodyFail}; keep under ${limits.bodyWarn}, move detail to references/)`);
+    if (bodyLines > limits.bodyFail) f('error', 'body-length', skillFile, bodyLine, `body is ${bodyLines} lines (over ${limits.bodyFail}; keep under ${limits.bodyWarn}, move detail to references/)`);
     else if (bodyLines > limits.bodyWarn) f('warning', 'body-length', skillFile, bodyLine, `body is ${bodyLines} lines (aim under ${limits.bodyWarn}; move detail to references/)`);
 
     // 4. Engine and vendor neutrality of the description and the body (URLs aside: a citation is not
     // a procedure step). One finding per line, naming the longest term that matched.
     const terms = [...denyTerms].sort((a, b) => b.length - a.length).map((t) => ({ t, re: termRegExp(t) }));
-    const named = (line) => terms.find(({ re }) => re.test(line.replace(/\bhttps?:\/\/\S+/g, '')))?.t;
+    const arts = TERMS_OF_ART.map((t) => new RegExp(termRegExp(t).source, 'gi'));
+    const named = (line) => {
+      const text = arts.reduce((x, re) => x.replace(re, ' '), line.replace(/\bhttps?:\/\/\S+/g, ''));
+      return terms.find(({ re }) => re.test(text))?.t;
+    };
     if (named(d)) f('error', 'engine-neutral', skillFile, 3, `description names "${named(d)}"; engine notes go in ${ENGINE_NOTES}`);
     splitLines(body).forEach((l, i) => {
       const t = named(l);
@@ -241,10 +275,13 @@ export function lintSkills(targets, opts = {}) {
     const scenarios = path.join(evals, 'scenarios.md');
     const evidence = path.join(evals, 'evidence.md');
     // A deprecated skill keeps routing (its old prompts, now routed elsewhere) and evidence (why it
-    // went); its scenarios go with its body.
+    // went); its scenarios go with its body. Unless the library holds the skill to evals-present
+    // strictly, one evals/evals.md (a test plan in prose) is evals enough.
     const required = s.deprecated ? [[routing, 'routing.jsonl'], [evidence, 'evidence.md']] : [[routing, 'routing.jsonl'], [scenarios, 'scenarios.md'], [evidence, 'evidence.md']];
-    for (const [file, what] of required) {
-      if (!fs.existsSync(file)) f('error', 'evals-present', file, null, `evals/${what} is missing`);
+    const plan = path.join(evals, 'evals.md');
+    if (strict.has('evals-present') || !fs.existsSync(plan)) {
+      const missing = required.filter(([file]) => !fs.existsSync(file));
+      for (const [file, what] of missing) f('error', 'evals-present', file, null, `evals/${what} is missing${strict.has('evals-present') ? '' : ' (or keep one evals/evals.md)'}`);
     }
 
     if (fs.existsSync(routing)) {
@@ -339,7 +376,7 @@ export function lintSkills(targets, opts = {}) {
   const counts = { skills: skills.length, error: all.filter((x) => x.severity === 'error').length, warning: all.filter((x) => x.severity === 'warning').length };
   for (const s of skills) s.status = s.findings.some((x) => x.severity === 'error') ? 'FAIL' : 'PASS';
   return {
-    skills: skills.map(({ dir, name, status, findings, description, deprecated }) => ({ dir, name, status, deprecated, description, findings })),
+    skills: skills.map(({ dir, name, status, findings, description, deprecated, strict }) => ({ dir, name, status, deprecated, description, strict, findings })),
     overlaps,
     sets,
     counts,
@@ -385,7 +422,12 @@ export function loadSets(file) {
   const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
   const strings = (v) => Array.isArray(v) && v.every((x) => typeof x === 'string');
   if (!isObj(data)) return { data: null, errors: ['a mapping with budget, external and sets'] };
-  for (const k of Object.keys(data)) if (!['budget', 'external', 'sets'].includes(k)) errors.push(`${k}: unknown key (budget, external, sets)`);
+  for (const k of Object.keys(data)) if (!['budget', 'external', 'sets', 'lint'].includes(k)) errors.push(`${k}: unknown key (budget, external, sets, lint)`);
+  if (data.lint !== undefined) {
+    if (!isObj(data.lint) || !strings(data.lint.strict ?? []) || (data.lint.skills !== undefined && !strings(data.lint.skills))) errors.push('lint: { strict: [rule names], skills: [skill names] } (skills optional: every skill of the library)');
+    for (const k of Object.keys(isObj(data.lint) ? data.lint : {})) if (!['strict', 'skills'].includes(k)) errors.push(`lint.${k}: unknown key (strict, skills)`);
+    for (const r of Array.isArray(data.lint?.strict) ? data.lint.strict : []) if (!STRICTABLE.has(r)) errors.push(`lint.strict: ${r} is no rule lint can make strict (${[...STRICTABLE].join(', ')})`);
+  }
   if (!isObj(data.budget) || !Number.isInteger(data.budget.limit) || !(data.budget.headroom >= 0 && data.budget.headroom < 1)) errors.push('budget: { limit: <characters>, headroom: <0..1> }');
   for (const [n, e] of Object.entries(data.external ?? {})) {
     if (!isObj(e) || !strings(e.skills) || !Number.isInteger(e.chars)) errors.push(`external.${n}: { source, commit, skills: [names], chars: <measured> }`);
@@ -458,6 +500,7 @@ export function lintSets(file, skills, { externalDirs = {} } = {}) {
   if (!data) return { file, findings, sets: [] };
   const chars = new Map(skills.map((s) => [s.name, s.description.length]));
   const names = new Set(skills.map((s) => s.name));
+  for (const sk of data.lint?.skills ?? []) if (!names.has(sk)) f('error', 'sets-known', `lint.skills names ${sk}, which is no skill here`);
   for (const [n, s] of Object.entries(data.sets)) {
     for (const sk of s.skills ?? []) if (!names.has(sk)) f('error', 'sets-known', `sets.${n} names ${sk}, which is no skill here`);
     for (const inc of s.includes ?? []) if (!data.sets[inc]) f('error', 'sets-known', `sets.${n} includes ${inc}, which is no set`);
