@@ -3,8 +3,9 @@
 Five repositories, one job each, so that no procedure is written twice. Each README opens with its
 mandate in the shape below; this page holds all five, the rules that decide where a thing goes and
 which file to edit to change it, the four ways they touch each other, the path from a new machine to
-a first feature, how to read what happened, and the 2026 practice each mandate follows. As of
-2026-10-14. Herdr and Heeler are third-party: dotfiles pins and installs them, and no repository of
+a first feature, how to read what happened, and the 2026 practice each mandate follows. The steps,
+from a new machine to a release and back up to the libraries, are [docs/getting-started.md](docs/getting-started.md). As of
+2026-10-15. Herdr and Heeler are third-party: dotfiles pins and installs them, and no repository of
 the suite holds them.
 
 ## In one sentence
@@ -164,6 +165,9 @@ Combined, separate, and why, in one line each:
   CLI, library later), a pack per domain that cuts across kinds (advertising, marketing site,
   business-in-a-box). Each is a manifest of the paths it owns plus a gate that keeps its terms out
   of the core, so the core stays generic and the opinions come out of the box for those who want them.
+- **No sixth "suite" repository.** This page and `docs/getting-started.md` are the suite's home; each
+  README opens with its mandate so it reads alone. A repository of symlinks and pointers would be one
+  more copy to drift, and a dotfiles apply already places every pinned checkout side by side in `~/src`.
 - **Quentin's and Xavier's concepts meet at two files**: the task-file format (stagehand reads a
   project's `specs/`) and the install set (`SETS.yaml`). Nothing else crosses, so neither workflow
   constrains the other.

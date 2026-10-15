@@ -38,6 +38,10 @@ artifact goes, and how the repositories moved there, is [LAYERS.md](LAYERS.md).
 
 ## Use it
 
+Alone: pin it in any repository that keeps work items as files and run `validate`, `trace`, `lint`
+and `lock` over them; nothing here needs another repository of the suite. With the suite:
+[docs/getting-started.md](docs/getting-started.md) is the path from a machine to a release.
+
 **A machine (dotfiles).** Pin promptbook and Skilldex by commit; render the standards block from
 `standards/engineering.md` into the global instruction file; write `agent-policy.yaml` against
 `schemas/policy.schema.json` (tiers per machine profile, `deny_read`, `forbid`, `ask`, `egress`,

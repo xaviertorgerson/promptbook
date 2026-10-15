@@ -10,6 +10,14 @@ Contract versions are each schema's `x-version` and each state machine's `versio
 
 ## [Unreleased]
 
+### The suite's home
+
+#### Added
+
+- **additive** — `docs/getting-started.md`: the steps from a new machine to a project, a feature and
+  a release, how upstream changes come down, and where each kind of learning goes back up. SUITE.md
+  records that there is no sixth "suite" repository: this repository is the suite's home.
+
 ### The operator layer
 
 #### Added
