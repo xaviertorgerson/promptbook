@@ -15,8 +15,28 @@ Contract versions are each schema's `x-version` and each state machine's `versio
 Trust profiles, a standards block that holds in every profile, and the contracts adapted to the
 tools other maintainers already run (stagehand's task records and delegation, Skilldex's skills).
 
+#### Added
+
+- **additive** — The `governance` contract 1.0.0 (`governance.yaml`): a project's recorded trust
+  profile, `trust: solo | team | regulated`, with the ADR that chose it and its reversal trigger,
+  `auto_land.max_risk` (absent: solo medium, team low, regulated none; never high or irreversible),
+  `protected_paths`, `ui_paths`, `visual_check`, `production`, `signed_commits`, `attestations`;
+  rules `auto-land-within-profile`, `regulated-evidence`, `continuous-deploy-solo-only` and
+  `governance-protects-itself`. The Tally example records its profile (`solo`, ADR-0005).
+- **additive** — workflow 1.6.0: `auto-land` (`human-review` → `merged`, by the merge role, never
+  grantable) lands a change with no human approval where the trust profile permits it, guarded by
+  `trust-permits`, `checks-green`, `independent-verification`, `no-protected-path`,
+  `visual-checked`, `lands-on-protected`, `mechanical-only` and `merged-checks-green`; status
+  authority `auto-land-is-the-platforms`. A project without `governance.yaml` behaves as before.
+- **additive** — `simulate`: a scenario's `governance` (validated), the platform's risk gate and
+  visual check, the scenarios `trust-solo`, `trust-team` and `trust-regulated`, the mutation
+  `orchestrator-auto-lands` and six broken risk-gate bindings, each caught.
+
 #### Changed
 
+- **behavioral** — `simulate`: `merge-requires-authority` refuses any land without green checks and
+  the evaluator's pass on the landed head, on every path (approval, grant or auto-land), and judges
+  an auto-land against the recorded profile, never the platform's gate.
 - **additive** — task-record 1.4.0: any top-level key a runtime adds is accepted as its own
   evidence (stagehand's records name their result, reviewed heads, feedback and human decisions as
   they choose); the named fields stay typed, nested objects stay closed.

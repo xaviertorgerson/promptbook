@@ -54,3 +54,20 @@ lag the system browser; a page that fails there fails the journey that settles t
 **Reversed when:** the pilot's analytics show a browser outside the matrix opening more than 5% of household links.
 **Satisfies:** settle-up/NFR-4
 **Consequences:** The build targets the matrix's oldest engine; a new chat app in the pilot adds a row to the matrix before its households are invited.
+
+## ADR-0005: Green checks are the merge gate while dana is the only maintainer
+**Status:** Accepted
+**Date:** 2026-10-13
+**Decision:** Tally records the solo trust profile (`governance.yaml`): a low- or medium-risk change
+that lands on `main` merges on its required checks and the evaluator's verdict, with no approval.
+High risk, the protected paths and every screen change wait for dana until a visual check is
+required.
+**Why:** dana is the only maintainer, so approving her own agents' pull requests checks nothing a
+second person would; her attention goes to what checks cannot see.
+**Options considered:**
+- Every pull request approved by dana — rejected: one person approving her own agents' work is a stamp, not a review.
+- Green checks for every change, screens included — rejected: no check yet sees a broken page.
+- The solo profile, chosen — checks decide what they can see; dana decides the rest.
+**Door:** two-way
+**Reversed when:** a second maintainer joins, a household pays for Tally, or a change merged without review causes a production regression.
+**Consequences:** No task in settle-up auto-lands: SPLIT-1 is high risk, and SPLIT-2..4 land on the epic's integration branch, which dana's merge grant and her merge of the branch govern.

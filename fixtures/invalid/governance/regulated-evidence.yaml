@@ -1,0 +1,6 @@
+# Invalid: regulated with one production approver and no signed commits or attestations.
+trust: regulated
+decision: ADR-0040
+reversal_trigger: none planned
+protected_paths: ["**/*"]
+production: { approvals: 1 }

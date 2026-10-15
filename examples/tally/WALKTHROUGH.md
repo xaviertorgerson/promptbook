@@ -41,7 +41,7 @@ node tools/cli.mjs compile-policy examples/tally/_operator/agent-policy.yaml --p
 | Layer | In this example | Decides |
 |---|---|---|
 | L1 personal | [`_operator/agent-policy.yaml`](_operator/agent-policy.yaml) and its compiled settings, copied from dana's dotfiles | how often an agent asks: `workstation` auto-edit, `devbox` bypass (only with `requires` and the accepted egress gap), `ci` unattended (an ask is a denial) |
-| L2 project | `docs/`, `specs/`, `DECISIONS.md`, `ARCHITECTURE.md`, `tests/`, [`toolkit.lock`](toolkit.lock): what a stagecraft project holds | what is built, which promptbook and Skilldex it pins, and what is never allowed (its walls, the hook and deny rules stagecraft installs, are not reproduced here) |
+| L2 project | `docs/`, `specs/`, `DECISIONS.md`, `ARCHITECTURE.md`, `tests/`, [`toolkit.lock`](toolkit.lock), [`governance.yaml`](governance.yaml) (the solo trust profile, ADR-0005): what a stagecraft project holds | what is built, which promptbook and Skilldex it pins, and what is never allowed (its walls, the hook and deny rules stagecraft installs, are not reproduced here) |
 | L3 shared | promptbook, this repository, pinned by `toolkit.lock`: the schemas every file validates against and the tools in the commands above; Skilldex, pinned beside it: the skills named below | the contracts and the procedures |
 | L4 runtime | `.orchestrator/` (the grants dana committed, the coordinator's task records), `.agent/` (run records, returns, verdicts) — runtime state a product keeps untracked, committed here so the example is whole | how much a run may spend, and every binding to an engine |
 
@@ -77,7 +77,7 @@ handling-credentials) and compiles it per engine; nothing in the product reads i
 | 13 | 08:30 | dana claims SPLIT-1: risk high never runs unattended; worktree slot 0 on the workstation | managing-worktrees | SPLIT-1 → in-progress; record `resources` | — | working | L1 `workstation` (auto-edit) |
 | 14 | 12:52 | Skeleton built in her session; tests named `SPLIT-1 AC-n`; draft PR #1 | implementing-task, writing-tests | `tests/skeleton.test.ts`; → review | — | working | L2 |
 | 15 | 13:34 | Evaluator passes 3c9a1f4 (k = 2), including ADR-0001's tenancy probe | verifying-work | `.agent/verdicts/SPLIT-1-3c9a1f4.md`; run record 1 (role evaluator, outcome `verdict`) | independent verification · tally-evaluator | working | L1 `ci` |
-| 16 | 14:01 | **Gate 2, pr-approval**: dana approves; the merge agent lands on `main` after merged checks; staging serves the image by digest (AC-4, AC-5) | landing-changes, releasing-changes | → human-review → merging → **merged** | pr-approval · dana | complete | L4 merge role |
+| 16 | 14:01 | **Gate 2, pr-approval**: dana approves (risk high: the solo trust profile keeps it with her); the merge agent lands on `main` after merged checks; staging serves the image by digest (AC-4, AC-5) | landing-changes, releasing-changes | → human-review → merging → **merged** | pr-approval · dana | complete | L4 merge role |
 | 17 | 14:31 | Cleanup audit passes; worktree removed | managing-worktrees | record `resources.audit`, `worktree_removed_at` | — | complete | L4 |
 | 18 | 14:40 | `integration/settle-up` created from `main`@7e21c0b, protected, required checks on | landing-changes | the branch | — | — | L2 forge |
 

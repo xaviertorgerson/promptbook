@@ -1,3 +1,4 @@
+import { riskPermitted, touchesProtected, touchesUi } from '../governance.mjs';
 import { grantFor, grantHas, grantLiveAt, landingTarget, workerCap } from './authority.mjs';
 import { Heap, makeRng, round } from './util.mjs';
 
@@ -19,6 +20,10 @@ import { Heap, makeRng, round } from './util.mjs';
 //              for the branches it serves), the orchestrator's own merge under a merge grant, and the
 //              human (owner role, who also merges an integration branch into the target), each with
 //              seeded latencies and scripted behaviour.
+//   platform   where the project records a trust profile (sc.governance): the forge's risk gate, a
+//              required check computed from the profile, the task's risk and the PR's changed paths,
+//              and auto-merge, which the merge role lands and records as auto-land with no approval.
+//              A change the gate refuses waits for the human's approve-pr.
 //
 // A status changes only by a commit the forge accepts; nothing here moves a status on a signal. The
 // supervisor sees a snapshot (its pull) and acts through the api: dispatch, evaluate, commit (as
@@ -49,8 +54,18 @@ export const ENGINES = {
   },
 };
 
+// The platform's risk gate (the trust profile as a required check). 'correct' reads every auto-land
+// guard; each other binding skips one, for the mutation tests: the invariants recompute the guards
+// from the recorded profile and must catch the change it lets through.
+export const PLATFORMS = new Set(['correct', 'ignore-risk', 'ignore-profile', 'ignore-protected', 'ignore-ui', 'land-on-green']);
+
+const passedOn = (pr, head, role) => {
+  const r = pr ? [...pr.reviews].reverse().find((x) => x.head === head && x.role === role) : null;
+  return r?.verdict === 'pass' && r.by !== pr.author;
+};
+
 export class World {
-  constructor(sc, { seed, machines, policies, engine = 'correct', forgeProtection = true, cas = true, mergeBot = 'correct', trace = true }) {
+  constructor(sc, { seed, machines, policies, engine = 'correct', forgeProtection = true, cas = true, mergeBot = 'correct', platform = 'correct', trace = true }) {
     this.sc = sc;
     this.m = machines;
     this.seed = seed;
@@ -67,6 +82,9 @@ export class World {
     // compare-and-swap), and a merge queue that lands over semantic conflicts and red merged checks.
     this.cas = cas;
     this.mergeBot = mergeBot;
+    if (!PLATFORMS.has(platform)) throw new Error(`unknown platform ${platform} (known: ${[...PLATFORMS].join(', ')})`);
+    this.platform = platform;
+    this.autoLanding = new Set();
     this.traceOn = trace;
     this.trace = [];
     this.stats = { pushesRejected: 0, claimsLost: 0, signalsLost: 0, notices: 0, duplicates: 0, wallsBlocked: 0, landsRejected: 0, mergesLanded: 0, humanActions: 0, needsHuman: 0, prompts: 0, denials: 0, crashes: 0, helpersRefused: 0 };
@@ -103,6 +121,7 @@ export class World {
       const head = this.rng.hex(7);
       const pr = this.newPr(t.id, t.owner ?? 'unknown', head);
       pr.checks.set(head, 'green');
+      if (this.visualApplies(t.id)) pr.visual.set(head, 'pass');
       pr.coverage.set(head, new Set(t.criteria));
       pr.reviews.push({ head, verdict: 'pass', by: 'prior-reviewer', role: 'reviewer', at: 0 });
       pr.reviews.push({ head, verdict: 'pass', by: 'prior-evaluator', role: 'evaluator', at: 0 });
@@ -177,7 +196,7 @@ export class World {
     for (const t of this.sc.tasks) {
       if (t.status === 'merging') this.mergeEnqueue(t.id);
       if (t.status === 'integrated') this.humanNotify({ kind: 'integration', task: t.id, ref: this.branchOf(t.id).name });
-      if (t.status === 'human-review') this.humanNotify({ kind: 'review', task: t.id });
+      if (t.status === 'human-review') this.reviewOrAutoLand(t.id);
     }
     const expiry = this.sc.faults.grant_expiry;
     for (const g of expiry ? this.sc.grants.filter((x) => !expiry.grant || x.id === expiry.grant) : []) {
@@ -425,7 +444,7 @@ export class World {
     const exists = this.forge.refs.has(branch);
     switch (c.transition) {
       case 'claim': return { ref: branch, newRef: true };
-      case 'land': case 'promote': return { ref: this.forge.target.name };
+      case 'land': case 'auto-land': case 'promote': return { ref: this.forge.target.name };
       case 'integrate': return { ref: this.branchOf(c.task).name };
       case 'redo': case 'respec': return { ref: this.forge.target.name, deleteRef: exists ? branch : null };
       default: return { ref: exists ? branch : this.forge.target.name };
@@ -450,7 +469,7 @@ export class World {
   }
 
   newPr(task, author, head) {
-    const pr = { number: (this.prSeq += 1), task, author, head, base: this.branchOf(task).landed.length, ready: false, checks: new Map(), reviews: [], approval: null, coverage: new Map(), merged: null };
+    const pr = { number: (this.prSeq += 1), task, author, head, base: this.branchOf(task).landed.length, ready: false, checks: new Map(), visual: new Map(), reviews: [], approval: null, coverage: new Map(), merged: null };
     this.forge.prs.set(task, pr);
     return pr;
   }
@@ -515,7 +534,10 @@ export class World {
   // item, the merge queue, and the human's integration item once nothing on that branch is in flight.
   afterChange(c, t, before) {
     this.webhook({ what: 'status', task: c.task, value: t.status });
-    if (t.status === 'human-review') this.humanNotify({ kind: c.transition === 'return-to-human' ? 'conflict' : 'review', task: c.task, ref: c.reason ?? null });
+    if (t.status === 'human-review') {
+      if (c.transition === 'return-to-human') this.humanNotify({ kind: 'conflict', task: c.task, ref: c.reason ?? null });
+      else this.reviewOrAutoLand(c.task);
+    }
     if (t.status === 'merging') this.mergeEnqueue(c.task);
     // An integration branch with nothing in flight is the human's to merge (tier 3): tell them when a
     // task lands there, and when the last task in flight on it leaves the claimed states.
@@ -566,12 +588,14 @@ export class World {
     const branch = this.branchOf(task);
     const approved = this.approvalValid(task);
     const green = pr?.checks.get(pr?.head) === 'green';
-    const admit = !this.forgeProtection || (approved && green);
-    const entry = { task, head: pr?.head ?? null, target: branch.name, by: who.actor, role: who.role, actorKind: who.kind, injected: Boolean(who.injected), grantLive: who.grantLive ?? null, grantSnapshot: who.grantSnapshot ?? null, approval: pr?.approval ? { ...pr.approval } : null, branchVersion: this.branchRef(task)?.version ?? null, mergeState: this.merge.state.get(task) ?? null, coverage: [...(pr?.coverage.get(pr?.head) ?? [])], admitted: Boolean(admit) };
+    // Under a trust profile the forge requires no approval of a change its risk gate passed.
+    const gated = Boolean(who.autoLand) && this.autoLandGate(task).pass;
+    const admit = !this.forgeProtection || (green && (approved || gated));
+    const entry = { task, head: pr?.head ?? null, target: branch.name, by: who.actor, role: who.role, actorKind: who.kind, injected: Boolean(who.injected), autoLand: Boolean(who.autoLand), grantLive: who.grantLive ?? null, grantSnapshot: who.grantSnapshot ?? null, approval: pr?.approval ? { ...pr.approval } : null, branchVersion: this.branchRef(task)?.version ?? null, mergeState: this.merge.state.get(task) ?? null, coverage: [...(pr?.coverage.get(pr?.head) ?? [])], admitted: Boolean(admit) };
     this.ev.lands.push(entry);
     if (!admit || !pr) {
       this.stats.landsRejected += 1;
-      this.effect({ land: 'rejected', task, by: who.actor, why: !pr ? 'no PR' : !approved ? 'no valid approval of this head' : 'checks not green' });
+      this.effect({ land: 'rejected', task, by: who.actor, why: !pr ? 'no PR' : !green ? 'checks not green' : 'no valid approval of this head' });
       this.webhook({ what: 'push-rejected', task });
       return false;
     }
@@ -603,7 +627,7 @@ export class World {
     target.version += 1;
     this.forge.changes += 1;
     this.refresh(task);
-    const c = { id: `c${(this.commitSeq += 1)}`, task, transition, from: 'merging', to, expectOwner: t.owner, merge: true, ref: target.name, decidedAt: this.t, decidedMs: this.startMs + this.t * 60000, ...who.commitAs };
+    const c = { id: `c${(this.commitSeq += 1)}`, task, transition, from: before.status, to, expectOwner: t.owner, merge: true, ref: target.name, decidedAt: this.t, decidedMs: this.startMs + this.t * 60000, ...who.commitAs };
     this.ev.commits.push({ commit: c, before, after: { status: t.status, owner: t.owner }, appliedAt: this.t, ref: target.name, newRef: false, branchBefore: Boolean(this.branchRef(task)) });
     this.afterChange(c, t, before);
     return true;
@@ -1067,8 +1091,12 @@ export class World {
       const pr = this.forge.prs.get(task);
       const status = this.rng.chance(this.sc.checks.red_rate) ? 'red' : 'green';
       pr.checks.set(head, status);
-      this.effect({ checks: status, head });
+      const visual = this.visualApplies(task) ? (this.rng.chance(this.sc.checks.visual_change_rate) ? 'changed' : 'pass') : null;
+      if (visual) pr.visual.set(head, visual);
+      this.effect({ checks: status, head, ...(visual ? { visual } : {}) });
       for (const rt of this.runtimes.values()) this.deliver(rt, { kind: 'ci', task, value: status === 'green' ? 'success' : 'failure', head });
+      // The broken platform that arms auto-merge on a draft: it lands on green checks alone.
+      if (this.platform === 'land-on-green' && status === 'green' && pr.head === head && this.forge.tasks.get(task).status === 'review' && this.autoLandGate(task).pass) this.autoLandEnqueue(task);
     });
   }
 
@@ -1078,21 +1106,70 @@ export class World {
     this.mergeNext();
   }
 
-  // The merge queue (role merge): one change at a time, for the branches it serves.
+  // ----------------------------------------------------------------------------- the trust profile
+
+  // A change that touches a UI path gets the visual check's result on each head, when the profile
+  // names one (governance visual_check).
+  visualApplies(task) {
+    const gov = this.sc.governance;
+    return Boolean(gov?.visual_check) && touchesUi(gov, this.meta.get(task).spec.touches);
+  }
+
+  // The platform's risk gate for the PR's current head: what the forge reads before it merges with
+  // no approval. this.platform names a broken binding that skips one guard.
+  autoLandGate(task) {
+    const gov = this.sc.governance;
+    if (!gov) return { pass: false, why: ['no trust profile'] };
+    const spec = this.meta.get(task).spec;
+    const pr = this.forge.prs.get(task);
+    const b = this.platform;
+    const why = [];
+    if (spec.lands_to) why.push('lands on an integration branch');
+    const profile = b === 'ignore-profile' ? { ...gov, trust: 'solo', auto_land: { max_risk: 'medium' } } : gov;
+    if (b !== 'ignore-risk' && !riskPermitted(profile, spec.risk)) why.push(`risk ${spec.risk.level}${spec.risk.irreversible ? ', irreversible' : ''} above the ${gov.trust} profile's ceiling`);
+    if (b !== 'ignore-protected' && touchesProtected(gov, spec.touches)) why.push('touches a protected path');
+    if (b !== 'ignore-ui' && touchesUi(gov, spec.touches) && !(gov.visual_check && pr?.visual.get(pr.head) === 'pass')) why.push('changes screens the visual check has not passed');
+    if (pr?.checks.get(pr?.head) !== 'green') why.push('checks not green');
+    if (b !== 'land-on-green' && !passedOn(pr, pr?.head, 'evaluator')) why.push('no verdict on the head');
+    return { pass: why.length === 0, why };
+  }
+
+  // A PR marked ready: the platform auto-merges it when its gate passes; else the human reviews it.
+  reviewOrAutoLand(task) {
+    const gate = this.autoLandGate(task);
+    if (gate.pass) this.autoLandEnqueue(task);
+    else {
+      if (this.sc.governance) this.effect({ gate: 'refused', task, why: gate.why });
+      this.humanNotify({ kind: 'review', task });
+    }
+  }
+
+  autoLandEnqueue(task) {
+    this.autoLanding.add(task);
+    this.effect({ gate: 'passed', task, auto_merge: 'armed' });
+    if (!this.merge.queue.includes(task)) this.merge.queue.push(task);
+    this.mergeNext();
+  }
+
+  // The merge queue (role merge): one change at a time, for the branches it serves, and every
+  // change the platform auto-merges.
   mergeNext() {
     if (this.merge.busy || !this.merge.queue.length) return;
     const task = this.merge.queue.shift();
-    if (this.forge.tasks.get(task).status !== 'merging') { this.mergeNext(); return; }
+    const st = this.forge.tasks.get(task).status;
+    const auto = this.autoLanding.has(task) && st !== 'merging' && (st === 'human-review' || (this.platform === 'land-on-green' && st === 'review'));
+    if (st !== 'merging' && !auto) { this.autoLanding.delete(task); this.mergeNext(); return; }
     this.merge.busy = true;
     const as = { actor: 'merge-bot', actorKind: 'agent', role: 'merge' };
     const who = {
       actor: 'merge-bot',
       role: 'merge',
+      autoLand: auto,
       push: (c) => this.push({ ...c, ...as }),
-      lander: { actor: 'merge-bot', role: 'merge', kind: 'agent', injected: false },
+      lander: { actor: 'merge-bot', role: 'merge', kind: 'agent', injected: false, autoLand: auto },
       commitAs: as,
     };
-    this.mergeProcess(task, who, () => { this.merge.busy = false; this.mergeNext(); });
+    this.mergeProcess(task, who, () => { this.autoLanding.delete(task); this.merge.busy = false; this.mergeNext(); });
   }
 
   // The orchestrator merges a change itself (a runtime with no merge role for that branch), one at a
@@ -1100,7 +1177,8 @@ export class World {
   // broken bindings the mutations need: staleOk (land on an approval a later commit voided) and
   // statusRef (where the landing writes the terminal status).
   orchestratorMerge(rt, task, note, opts = {}) {
-    if (rt.mergingTask || this.forge.tasks.get(task)?.status !== 'merging') return false;
+    const st = this.forge.tasks.get(task)?.status;
+    if (rt.mergingTask || !(st === 'merging' || (opts.autoLand && st === 'human-review'))) return false;
     rt.mergingTask = task;
     const ms = this.startMs + this.t * 60000;
     // Merge authority comes from a merge grant only, whatever else the runtime holds.
@@ -1112,7 +1190,8 @@ export class World {
       actor: rt.name,
       role: 'orchestrator',
       push: (c) => this.push({ ...c, ...as }),
-      lander: { actor: rt.name, role: 'orchestrator', kind: 'agent', injected: false, ...grant },
+      autoLand: Boolean(opts.autoLand),
+      lander: { actor: rt.name, role: 'orchestrator', kind: 'agent', injected: false, autoLand: Boolean(opts.autoLand), ...grant },
       commitAs: as,
     };
     this.effect({ merge: 'orchestrator', task, grant: grant.grant });
@@ -1139,10 +1218,26 @@ export class World {
         this.merge.state.set(task, { conflict, mergedChecks, head: pr.head, by: who.actor });
         this.effect({ mergedChecks });
         const t = this.forge.tasks.get(task);
+        const resolves = who.role === 'merge' && this.mergeBot !== 'correct';
+        // Auto-land: no approval to hold. A change that no longer passes the gate, or that conflicts
+        // or goes red on the merged result, waits for the human; nothing is committed.
+        if (who.autoLand && t.status !== 'merging') {
+          const gate = this.autoLandGate(task);
+          const why = (conflict === 'semantic' || mergedChecks === 'red') && !resolves ? (conflict === 'semantic' ? 'semantic conflict with a change that landed first' : 'checks failed on the merged result') : !gate.pass ? gate.why.join('; ') : null;
+          if (why) {
+            this.effect({ auto_land: 'stopped', task, why });
+            this.humanNotify({ kind: conflict === 'semantic' || mergedChecks === 'red' ? 'conflict' : 'review', task, ref: why });
+            done();
+            return;
+          }
+          if (this.landMerge(task, who, 'auto-land')) this.webhook({ what: 'merged', task });
+          else this.humanNotify({ kind: 'review', task, ref: 'the forge refused the auto-merge' });
+          done();
+          return;
+        }
         // Someone else landed it, or a human moved it, while this merge ran: nothing to commit.
         if (t.status !== 'merging') { done(); return; }
         const handBack = (reason) => who.push({ task, transition: 'return-to-human', from: 'merging', to: 'human-review', expectOwner: t.owner, retry: (x) => x.status === 'merging', onReject: done, onAccept: done, reason });
-        const resolves = who.role === 'merge' && this.mergeBot !== 'correct';
         if ((conflict === 'semantic' || mergedChecks === 'red') && !resolves) {
           handBack(conflict === 'semantic' ? 'semantic conflict with a change that landed first' : 'checks failed on the merged result');
           return;

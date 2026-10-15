@@ -1,0 +1,10 @@
+# Every pull request human-approved; two people release to production; signed commits and build
+# attestations.
+trust: regulated
+decision: ADR-0040
+reversal_trigger: none planned; a change of regulator or scope is a new decision
+auto_land: { max_risk: none }
+protected_paths: ["**/*"]
+production: { approvals: 2 }
+signed_commits: true
+attestations: true

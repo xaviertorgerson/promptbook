@@ -88,13 +88,18 @@ status is committed on it (compare-and-swap per ref), the default branch's copy 
 the task lands, approve-pr is a forge event bound to the PR head and the branch's version (a commit
 after it voids it), landing writes `merged` or `integrated` on the target inside the merge, and the
 targets (the protected branch and each epic's integration branch) admit a merge only with a valid
-approval of the head, and a runtime whose
+approval of the head, a platform that, where the scenario records a trust profile (`governance`),
+computes the risk gate from it, the task's risk and the PR's changed paths, runs the visual check on
+a screen change, and auto-merges what the gate passes (the merge role records `auto-land`, with no
+approval) while the human reviews the rest, and a runtime whose
 signals (working, blocked, done, idle, unknown) are lossy and duplicable, with events-lost notices.
 
 A scenario names tasks (`depends_on`, `touches`, `size`, `risk`, `criteria`, `budget`, `lands_to`,
 `branch`: default `task/<id>`),
 the policy tier and its `forbid`/`ask`/`budgets`, its grants (`grant`, or `grants` for several,
 e.g. a work grant and a separate merge grant; each validated against the grant contract), the
+project's trust profile (`governance`, validated against the governance contract; `checks.visual_change_rate`
+is how often the visual check finds changed screens), the
 supervisor's caps, the evaluator's and the reviewer's latency and reject rate, the merge queue's
 `queue_targets` (default every branch), the human's behaviour (`on_integration: merge|hold`), and faults: `concurrent_claims` (a rival runtime),
 `crash`, `lost_events`, `duplicate_wakes`, `unknown_signals`, `no_progress`, `budget_exhaustion`,
@@ -114,11 +119,11 @@ spec gate).
 | `approval-bound-to-head` | approve-pr is a forge event bound to the PR head and the task branch's version, never a commit; nothing lands on an approval a later commit voided |
 | `status-where-it-lives` | in-flight status is committed on the task branch while it exists; `merged` and `integrated` only on the target, by the landing actor; no agent but the merge role writes the protected branch |
 | `transitions-allowed` | every status change is a `workflow.yaml` transition from its from-state by a listed role, or the orchestrator under a live grant of its `grant`; reasons where needed; humans are humans |
-| `guards-hold` | the transition's guards hold on the evidence (deps merged, an integrated dependency counting only in the same epic; checks green, criteria met and named in tests, independent review (the reviewer role's pass on the current head), independent verification (the evaluator role's pass on the current head, every task), lands on the protected or the integration branch as `lands_to` says, mechanical-only, merged checks green, integration landed, question answered); a grant adds its grant guards |
+| `guards-hold` | the transition's guards hold on the evidence (deps merged, an integrated dependency counting only in the same epic; checks green, criteria met and named in tests, independent review (the reviewer role's pass on the current head), independent verification (the evaluator role's pass on the current head, every task), lands on the protected or the integration branch as `lands_to` says, mechanical-only, merged checks green, integration landed, question answered; auto-land's trust-permits, no-protected-path and visual-checked, recomputed from the recorded profile, never read from the platform's gate); a grant adds its grant guards |
 | `human-gates-by-humans` | gates are passed by a human approver, or by the orchestrator under a live grant where the gate is grantable |
 | `signals-never-advance-workflow` | a commit decided on a runtime signal is one the evidence and authority justify on their own |
 | `attention-consistent` | records carry attention only; needs-human names the next action; complete only when the human has nothing left |
-| `merge-requires-authority` | a change lands on a branch only by the merge role, a human, or the orchestrator under a merge grant live when it decided for that exact branch; an agent lands only with its `land`/`integrate` commit and after checks on the merged result of that head; with an approval of that head by a human or such a grant, plus `authority.yaml`'s `always_requires`, and never over a semantic conflict or red merged checks |
+| `merge-requires-authority` | a change lands on a branch only by the merge role, a human, or the orchestrator under a merge grant live when it decided for that exact branch; an agent lands only with its `land`/`auto-land`/`integrate` commit and after checks on the merged result of that head; never without green checks and the evaluator's pass on the landed head; with an approval of that head by a human or such a grant, plus `authority.yaml`'s `always_requires`, or, with no approval, as the merge role's auto-land that the recorded trust profile permits; and never over a semantic conflict or red merged checks |
 | `lanes-disjoint` | claimed tasks never have overlapping `touches` |
 | `cap-workers`, `cap-depth`, `cap-run`, `cap-spend` | workers (authors, evaluators and the readers they start; the runtime refuses a reader when every slot is taken), delegation depth, per-run turns and spend, per-task and runtime budgets |
 | `no-progress-stops` | after a stalled run or a ceiling, no rerun until a human decides |
@@ -130,10 +135,14 @@ spec gate).
 
 Transition tables, roles, gates, guards, side states, the merge requirements and the claimed statuses
 are read from `state-machines/*.yaml` and the task schema; a guard the simulator has no evidence
-model for is an error, never a pass. `--break <mutation>` swaps in one of 25
-deliberately broken supervisors (`--list` names them); the tests run each, plus four broken world
+model for is an error, never a pass. `--break <mutation>` swaps in one of 26
+deliberately broken supervisors (`--list` names them); the tests run each, plus ten broken world
 bindings (bypass that skips walls, a forge without CAS, a merge queue that resolves semantic
-conflicts, no branch protection), and require the named invariant to catch it. Among them:
+conflicts, no branch protection, and a risk gate that ignores the task's risk, reads every profile
+as solo (on team and on regulated), ignores protected paths, ignores screen changes, or arms
+auto-merge on a draft before the verdict), and require the named invariant to catch it; with
+`orchestrator-auto-lands` (the coordinator lands a green PR itself as if auto-land were its own:
+`transitions-allowed`, `merge-requires-authority`) they show each auto-land guard is load-bearing. Among them:
 `cross-epic-integrated` (a dependent in another epic treats an integrated dependency as merged:
 `guards-hold`, deps-merged), `finalize-unverified` (a PR marked ready with no evaluator
 verdict: `guards-hold`, independent-verification), `approve-over-reviewer` (the evaluator's pass
@@ -163,7 +172,9 @@ an evaluator's run ends in `verdict`, never an author's `advanced`) and `.task-r
 their contracts' shapes. A violation prints a `reproduce:` command. Scenarios:
 `fixtures/scenarios/{happy-path, parallel-overlap, crash-lost-events, merge-without-grant,
 budget-exhaustion, unattended-ask, evaluator-rejection, grant-expiry, wall-bypass,
-integration-branch}.yaml`; `integration-branch` is tier 2 and 3: the orchestrator lands an epic's
+integration-branch, trust-solo, trust-team, trust-regulated}.yaml`; the three `trust-*` scenarios
+are one project per trust profile (solo: low and medium risk auto-land; team: low risk, and a screen
+change when the visual check passes; regulated: nothing); `integration-branch` is tier 2 and 3: the orchestrator lands an epic's
 tasks on `integration/<epic>` under its merge grant, a same-epic dependent builds on an integrated
 task, a dependent in another epic waits for merged, and the human merges the branch to main.
 

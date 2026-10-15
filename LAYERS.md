@@ -10,14 +10,15 @@ contract names are defined in [CONTRACTS.md](CONTRACTS.md).
 | Layer | Repositories | Holds | Seen by |
 |---|---|---|---|
 | **L1 personal** | **dotfiles** (chezmoi, private) | taste, the autonomy tier per machine profile, installed agents and runtimes (Herdr; on the devbox, stagehand's control workspace and its wake relay) at their pins, the pinned checkouts cloned, Skilldex's personal set, secrets wiring, personal MCP | the user's own sessions on the user's machines, every repo |
-| **L2 project** | **each product repo, started from stagecraft** and kept in step by its template sync | a thin `AGENTS.md` map, walls (hook denies, permission deny rules), the `specs/` queue, product docs, `DECISIONS.md`, `knowledge/`, `toolkit.lock`, read-only MCP config | every agent, collaborator, cloud session and CI job on that repo |
+| **L2 project** | **each product repo, started from stagecraft** and kept in step by its template sync | a thin `AGENTS.md` map, walls (hook denies, permission deny rules), the trust profile (`governance.yaml`: what lands without a human), the `specs/` queue, product docs, `DECISIONS.md`, `knowledge/`, `toolkit.lock`, read-only MCP config | every agent, collaborator, cloud session and CI job on that repo |
 | **L3 shared** | **promptbook** (the formats, standards, playbook and the tools that check them) and **Skilldex** (every portable skill, with its evals and install sets) | engine- and stack-neutral contracts and procedures | whoever pins them |
 | **L4 implementations** | **stagecraft's sets** (`sets/webapp-saas/`, one per kind of project), **stagehand** (parallel coordination on Herdr), stagecraft's sequential loop and CI agents, and the engines and runtimes themselves (Claude Code, Codex, Gemini; Herdr, Heeler) | bindings of L3 to an engine, stack or runtime | whoever selects them in `toolkit.lock` or installs them in L1 |
 
 **Precedence, in one line: L1 decides how often an agent asks, L2 decides what is never allowed, L4
 decides how much a run may spend; L3 defines the contracts all three speak.** No layer can loosen a
 layer that decides something else: a personal bypass cannot lift a project deny, and a runtime budget
-cannot authorize what a wall forbids.
+cannot authorize what a wall forbids. What may land without a human's approval is L2 too, the
+project's trust profile: no personal setting and no runtime grant makes green checks the merge gate.
 
 Dependencies point one way. L1, L2 and L4 depend on a pinned L3; L2 selects its L4 set through
 `toolkit.lock`; L3 depends on nothing (Skilldex is checked by promptbook's tools, and depends on
@@ -58,6 +59,7 @@ are relative to the repo root. "Unverified" marks a path documented inconsistent
 | Walls | L2 | hook scripts plus deny rules, delivered by stagecraft's template sync | `.claude/settings.json` `PreToolUse` hooks and `permissions.deny` | `.codex/rules/*.rules` (`forbidden`); hooks via `hooks.json` (project path unverified); trusted projects only | `.gemini/settings.json` (hooks format unverified) |
 | Personal deny rules (secrets, credentials) | L1, added on top of L2 | `agent-policy.yaml` `deny_read`, `forbid` | `~/.claude/settings.json` `permissions.deny`; sandbox `filesystem.denyRead` | `~/.codex/rules/*.rules` | `~/.gemini/settings.json` |
 | Egress allowlist | L1 per profile; L2 may narrow | `agent-policy.yaml` `egress` | sandbox `network.allowedDomains` | config permission profile | unverified |
+| Trust profile (what lands without a human's approval) | L2 | `governance.yaml` (`governance` schema), with the ADR that chose it; one of its own protected paths | none: the forge enforces it (required checks with the risk gate, auto-merge, code owners) | same | same |
 
 ### Skills, subagents, tools
 

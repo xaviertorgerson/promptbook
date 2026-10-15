@@ -1,3 +1,4 @@
+import { riskPermitted, touchesProtected, touchesUi } from '../governance.mjs';
 import { registry as sharedRegistry } from '../registry.mjs';
 import { grantHas, landingTarget, recordGrant, workerCap } from './authority.mjs';
 import { isHuman } from './machines.mjs';
@@ -14,11 +15,11 @@ export const INVARIANTS = {
   'approval-bound-to-head': 'approve-pr is a forge event bound to the PR head and the task branch version it approved, never a commit; any later commit on the task branch voids it, and nothing lands on a void approval (workflow: status_authority gate-events).',
   'status-where-it-lives': 'In-flight status is committed on the task branch while it exists (the default branch\'s copy otherwise); merged and integrated are written only on the target (the protected branch, or the epic\'s integration branch) by the landing actor, never on the task branch; no agent but the merge role writes the protected branch (workflow: status_authority).',
   'transitions-allowed': 'Every status change is a transition in workflow.yaml, from its from-state, by a role its `by` lists (or the orchestrator under a live grant naming the transition\'s `grant`), with a reason where it needs one; human roles are humans; owner changes only by a claim or a human (workflow: transitions-are-commits).',
-  'guards-hold': 'Every guard of the transition holds on the evidence when it is applied (deps-merged, with an integrated dependency counting only in the same epic; owner-free, draft-pr-open, checks-green, criteria-met, criteria-named-in-tests, pr-ready, independent-review (a reviewer-role pass on the current head), independent-verification (an evaluator-role pass on the current head, every task), lands-on-protected, lands-on-integration, mechanical-only, merged-checks-green, integration-landed, question-answered); a grant adds its grant_guards (workflow guards; authority: finalize, merge).',
+  'guards-hold': 'Every guard of the transition holds on the evidence when it is applied (deps-merged, with an integrated dependency counting only in the same epic; owner-free, draft-pr-open, checks-green, criteria-met, criteria-named-in-tests, pr-ready, independent-review (a reviewer-role pass on the current head), independent-verification (an evaluator-role pass on the current head, every task), lands-on-protected, lands-on-integration, mechanical-only, merged-checks-green, integration-landed, question-answered, and auto-land\'s trust-permits, no-protected-path and visual-checked, read from the recorded trust profile, never from the platform\'s gate); a grant adds its grant_guards (workflow guards; authority: finalize, merge).',
   'human-gates-by-humans': 'A gate transition (workflow.yaml gates) is made by a human approver, or, where the gate is grantable, by the orchestrator under a live grant of that action (authority.yaml).',
   'signals-never-advance-workflow': 'A commit decided on a runtime signal (agent state, CI result, events-lost notice) is still one the evidence and the actor\'s authority justify on their own; a wake is a hint (attention.yaml: signals-never-advance-workflow).',
   'attention-consistent': 'Task records carry attention only (working, needs-human, complete); needs-human names the next action; complete names none and is recorded only once the evidence shows nothing is left for the human (attention.yaml: idle-is-not-complete).',
-  'merge-requires-authority': 'A change lands on a branch (the protected target, or an epic\'s integration branch) only by the merge role, a human, or the orchestrator under a merge grant live when it decided for that exact branch; an agent lands only together with its land or integrate commit and after checks on the merged result of that head; with an approval of the landed head by a human or by the orchestrator under such a grant, a reviewer-role pass on that head (independent-review) and green checks; never over a semantic conflict or red merged checks (authority.yaml merge; playbook: landing-changes).',
+  'merge-requires-authority': 'A change lands on a branch (the protected target, or an epic\'s integration branch) only by the merge role, a human, or the orchestrator under a merge grant live when it decided for that exact branch; an agent lands only together with its land, auto-land or integrate commit and after checks on the merged result of that head; with green checks and the evaluator\'s pass on the landed head (no land without an independent verdict); with an approval of the landed head by a human or by the orchestrator under such a grant, plus a reviewer-role pass on that head (independent-review), or, with no approval, as an auto-land by the merge role that the project\'s recorded trust profile permits (risk within its ceiling, no protected path, the visual check for a UI change); never over a semantic conflict or red merged checks (authority.yaml merge; workflow auto-land; playbook: landing-changes).',
   'lanes-disjoint': 'Claimed tasks (in-progress through merging) never have overlapping touches: overlapping tasks are one lane and run in sequence (playbook: single-writer).',
   'cap-workers': 'Live workers per runtime (authors, evaluators and the readers they start) never exceed the supervisor\'s max_workers, nor the limits.max_workers of any live grant that delegates dispatch (select-tasks, approve-plan, dispose-findings, finalize); a merge-only grant caps nothing (playbook: budgets-and-routing).',
   'cap-depth': 'No helper is spawned below the delegation depth cap; helpers do not spawn helpers by default (playbook: topologies).',
@@ -92,6 +93,10 @@ export class Checker {
       case 'mechanical-only': return w.merge.state.get(c.task)?.conflict !== 'semantic';
       case 'merged-checks-green': return w.merge.state.get(c.task)?.mergedChecks === 'green';
       case 'question-answered': return m.questionAnswered || w.forge.decisions.some((d) => d.task === c.task && d.kind === 'question');
+      // auto-land: read from the recorded profile (sc.governance), never from the platform's gate.
+      case 'trust-permits': return Boolean(w.sc.governance) && riskPermitted(w.sc.governance, m.spec.risk);
+      case 'no-protected-path': return !touchesProtected(w.sc.governance, m.spec.touches);
+      case 'visual-checked': return !touchesUi(w.sc.governance, m.spec.touches) || (Boolean(w.sc.governance?.visual_check) && pr?.visual?.get(head) === 'pass');
       default:
         // A guard the simulator does not know is a gap in the model, never a pass.
         if (UNMODELED.has(guard)) return true;
@@ -210,12 +215,27 @@ export class Checker {
       // An agent lands with its status commit and only after the checks on the merged result of that
       // head; a human's merge is recorded by a commit that follows (promote).
       if (!human) {
-        if (!ev.commits.some((e) => e.commit.task === l.task && ['land', 'integrate'].includes(e.commit.transition))) why.push('landed without its land or integrate commit');
+        if (!ev.commits.some((e) => e.commit.task === l.task && ['land', 'auto-land', 'integrate'].includes(e.commit.transition))) why.push('landed without its land, auto-land or integrate commit');
         if (!l.mergeState || l.mergeState.head !== l.head) why.push('no checks on the merged result of the landed head');
         else if (l.mergeState.conflict === 'semantic' || l.mergeState.mergedChecks !== 'green') why.push(`landed over ${l.mergeState.conflict === 'semantic' ? 'a semantic conflict' : 'red checks on the merged result'}`);
       }
+      // No land without an independent verdict on the head it lands (a human's merge of an
+      // integration branch carries heads that each had theirs when they integrated).
+      if (!l.via && !passedBy(pr, l.head, 'evaluator')) why.push('no independent verdict (the evaluator\'s pass) on the landed head');
       const a = l.approval;
-      if (!a || a.head !== l.head) why.push('no approval of the landed head');
+      const approvedHead = a && a.head === l.head;
+      if (l.autoLand && !approvedHead) {
+        // No approval: the recorded trust profile must permit it, recomputed here from the evidence.
+        const gov = sc.governance;
+        if (l.role !== 'merge') why.push(`auto-landed by ${l.by} (${l.role}); only the merge role records what the platform merges`);
+        if (!gov) why.push('auto-landed with no trust profile recorded');
+        else {
+          if (landingTarget(sc, spec) !== sc.target) why.push(`auto-landed on ${l.target}: auto-land is onto the protected branch only`);
+          if (!riskPermitted(gov, spec.risk)) why.push(`auto-landed a ${spec.risk.level}${spec.risk.irreversible ? ', irreversible' : ''}-risk task; the ${gov.trust} profile lets nothing above its ceiling land without a human`);
+          if (touchesProtected(gov, spec.touches)) why.push('auto-landed a change to a protected path');
+          if (touchesUi(gov, spec.touches) && !(gov.visual_check && pr.visual?.get(l.head) === 'pass')) why.push('auto-landed a screen change the visual check did not pass');
+        }
+      } else if (!approvedHead) why.push('no approval of the landed head');
       else if (a.actorKind !== 'human') {
         const g = a.grantSnapshot;
         if (a.role !== 'orchestrator' || !g) why.push(`approved by ${a.by} (${a.role}) with no grant`);

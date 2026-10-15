@@ -35,7 +35,7 @@ node tools/validate.mjs --list                  # contracts, versions, artifact 
   paths, or from `fixtures/{valid,invalid}/<contract>/`. A file outside the project layout (a
   skill's example) names its contract by suffix, declared as `x-artifacts[].suffixes`:
   `*.grant.yaml`, `*.return.json`, `*.task-record.yaml`, `*.run-record.jsonl`, `*.policy.yaml`,
-  `*.toolkit.lock`, `*.task.md`, `*.brief.md`, `*.persona.md` (frontmatter or a list),
+  `*.toolkit.lock`, `*.governance.yaml`, `*.task.md`, `*.brief.md`, `*.persona.md` (frontmatter or a list),
   `*.adr.md`, `*.ux.md`, `*.spec.md` (epic and requirements), `*.cuj.md`, `*.readiness.md`,
   `*.agent-setup-review.md`, `*.reflection.md`, `*.evidence.md`, `*.routing.jsonl`. A suffix applies only when no path does; it binds no
   frontmatter field, and an entry file (`<epic>.cuj.md`, `<epic>.ux.md`) takes its epic from the name
@@ -76,6 +76,7 @@ node tools/validate.mjs --list                  # contracts, versions, artifact 
 | [grant](#grant) | `.orchestrator/grants/GRANT-n.yaml` | YAML | a human (a runtime may draft it from the human's words) | the coordinator, `promptbook grant verify` |
 | [policy](#policy) | `agent-policy.yaml` (L1 dotfiles) | YAML | operator | `promptbook compile-policy` → engine settings |
 | [toolkit-lock](#toolkit-lock) | `toolkit.lock` (L1 and L2) | YAML | `promptbook lock` | stagecraft's sync and CI, dotfiles |
+| [governance](#governance) | `governance.yaml` (L2) | YAML | a human (owner), with the ADR that chose it | the forge's risk gate and auto-merge, the merge role (`auto-land`), `promptbook simulate` |
 | [skill](#skill) | `skills/<name>/SKILL.md` (Skilldex; a set's or a project's own) | frontmatter-md | skill author | every engine's skill loader, `promptbook lint` |
 | [evidence](#evidence) | `**/skills/<name>/evals/{evidence.md,routing.jsonl}` (Skilldex's, a project's `.agents/skills/` too), `routing-results*.jsonl` | entries / JSONL | skill author, `promptbook eval-routing` | skill reviews, routing evals |
 | [agent-setup-review](#agent-setup-review) | `agent-setup-reviews/<date>-<label>.md` | Markdown record | Skilldex's reviewing-agent-setup skill | humans, the next review |
@@ -408,6 +409,31 @@ installed, and `promptbook lint --budget-set toolkit.lock` measures exactly thos
 detects a rewritten tag or a force-pushed mirror. **Compat.** Replaces agentic-template's `.template-version` file and the
 plugin `version` pin as the single source.
 
+### governance
+
+**Purpose.** A project's recorded trust profile: which changes land on the protected branch on
+green required checks and the evaluator's verdict without a human's approval of the pull request
+(workflow `auto-land`), and which always wait for one. One per project, `governance.yaml`, chosen by
+a human (at bootstrap, say) and recorded in an ADR with its reversal trigger. Without one, nothing
+lands without a human's approval, as before. **Schema** `governance.schema.json` 1.0.0: `trust`
+(solo | team | regulated), `decision` (the ADR), `reversal_trigger`, `auto_land.max_risk` (none |
+low | medium; absent, the profile's ceiling: solo medium, team low, regulated none; never high, and
+never an irreversible task), `protected_paths` (globs; a change touching one waits for a human),
+`ui_paths` and `visual_check` (a change to a UI path auto-lands only when that required check passed
+on its head), `production{approvals, continuous}`, `signed_commits`, `attestations`. Rules:
+`auto-land-within-profile` (team low at most, regulated none), `regulated-evidence` (two production
+approvers, signed commits, build attestations), `continuous-deploy-solo-only`, and
+`governance-protects-itself` (the file is one of its own protected paths, so an agent cannot widen
+what lands without a human by editing it). **What no profile changes:** the spec is a human's
+(`spec-approval`, never grantable); an agent never approves its own work or bypasses a required
+check; agents never push to the default branch (the forge merges, and only the merge role records
+`merged`); a release to production is a human's (one tap, two people when regulated; continuous
+only where a solo project's human chose it). **Swap story.** The forge enforces it: a risk gate
+computed from this file, the task's risk and the PR's changed paths is a required check, auto-merge
+is armed where it passes, and code owners own the protected paths; any forge with required checks
+and auto-merge can. **Compat.** New. heirloom's D-159 ("CI gates replace human PR approval") is
+`trust: solo`.
+
 ### skill
 
 **Purpose.** A portable procedure. **Schema** `skill.schema.json` 1.0.0: the agentskills.io core
@@ -603,6 +629,7 @@ sequenceDiagram
   alt criteria met and gates green
     F-->>R: reviewer's review and evaluator's verdict, each bound to the head
     A->>B: status → human-review
+    Note over F,D: trust profile permits it (governance.yaml): the risk gate passes, the forge auto-merges, and the merge role records auto-land → merged; no approval
     H->>F: approve PR (gate 2): a forge review of the head, not a commit; or a merge grant's holder, for an integration branch
     C->>R: the approval in reviews/decisions
     C->>D: merge role lands; the merge carries status → merged on the protected branch
@@ -618,13 +645,18 @@ means what is `state-machines/attention.yaml`; what a human may delegate is
 `state-machines/authority.yaml`. The invariant that ties them: **status is a commit by an authorized
 role on the branch where it lives (or, for approve-pr, a forge event); a runtime signal is a hint
 that changes attention at most.** Where it lives is `workflow.yaml` `status_authority` (workflow
-1.5.0): a claim creates the task branch (the rejected new-ref push is the compare-and-swap);
+1.6.0): a claim creates the task branch (the rejected new-ref push is the compare-and-swap);
 in-flight status is on the task branch; approvals are forge events bound to the head, voided by any
 commit after them; only the landing actor writes `merged` or `integrated`, on the target;
 `deps-merged` reads the dependent's own target.
 
 Landing (workflow since 1.2.0, authority since 1.1.0). `land` (→ `merged`, the protected branch) is the
-merge role's alone, after a human's approval (never grantable since workflow 1.4.0). `integrate` (→
+merge role's alone, after a human's approval (never grantable since workflow 1.4.0). `auto-land`
+(`human-review` → `merged`, since 1.6.0) is the merge role's too, with no approval at all, where the
+project's recorded trust profile permits it: its guards are `trust-permits` (the profile's ceiling
+covers the task's risk, and the task is not irreversible), `checks-green`,
+`independent-verification`, `no-protected-path`, `visual-checked`, `lands-on-protected`,
+`mechanical-only` and `merged-checks-green`; it is never grantable and never a coordinator's. `integrate` (→
 `integrated`) and `return-to-human` are the merge role's, or the orchestrator's under a live
 `merge` grant whose repo, strategy and exact target match — the target being the task's `lands_to`,
 an integration branch, never the protected branch (a runtime with no separate merge role). `promote` (`integrated` → `merged`) is a human's, after the
