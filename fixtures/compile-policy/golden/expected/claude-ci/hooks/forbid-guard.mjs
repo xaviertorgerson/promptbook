@@ -210,7 +210,7 @@ function segmentsMeet(a, b) {
 function pathsMeet(x, y) {
   const A = x.split('/').filter(Boolean);
   const B = y.split('/').filter(Boolean);
-  const meet = (a, b) => !(WILD.test(a[0]) && b.startsWith('.') && !WILD.test(b)) && segmentsMeet(a, b);
+  const meet = (a, b) => !(WILD.test(a[0]) && b.startsWith('.')) && segmentsMeet(a, b);
   const memo = new Map();
   const go = (i, j) => {
     const key = `${i},${j}`;

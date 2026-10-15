@@ -674,6 +674,9 @@ describe('Claude Code\'s sandbox on Linux ignores glob patterns in Read and Edit
     }
     for (const c of ['cat .env.example', 'cat ~/.ssh/id_ed25519.pub', 'ls ~/.ssh', 'ls ~/.aws', 'cat *', 'cat README.md', 'git status']) assert.equal(hook(c).status, 0, c);
     assert.deepEqual(readDenyHit(['**/.env'], 'cat .env', { home, cwd }), { word: '.env', glob: '**/.env' });
+    assert.equal(readDenyHit(['**/.env.*.local'], 'cat *', { home, cwd }), null, "the shell's * never expands to a dotfile, even against a wildcard deny");
+    assert.deepEqual(readDenyHit(['**/.env.*.local'], 'cat .env.prod.local', { home, cwd }), { word: '.env.prod.local', glob: '**/.env.*.local' });
+    assert.deepEqual(readDenyHit(['**/.env.*.local'], 'cat .env.*', { home, cwd }), { word: '.env.*', glob: '**/.env.*.local' }, 'a word that starts with the dot can still name one');
   });
 });
 
