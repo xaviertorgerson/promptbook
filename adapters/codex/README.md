@@ -19,7 +19,7 @@ reference, refused again on 2026-10-13); those claims are marked *unverified*.
 | Hooks | `~/.codex/hooks.json`, `<repo>/.codex/hooks.json`, or `[hooks]` in `config.toml`; plugins may bundle hooks | Events include `PreToolUse`, `PermissionRequest`, `PostToolUse`, `SessionStart`, `Stop`. A `PreToolUse` deny is `hookSpecificOutput.permissionDecision: "deny"` or exit 2 — the same protocol as Claude Code, so agentic-template's hooks run on both. Project hooks load only when trusted. [hooks][hooks] |
 | `return` | `codex exec --output-schema <schema>` *(unverified: the non-interactive page could not be fetched)* | Otherwise a JSON file the subagent writes under `.agent/returns/`. |
 | `run-record` | a runner around `codex exec` writes the same JSONL line; `subtype` holds the run's terminal event | No Codex-native run log is assumed. |
-| Plugin packaging | portable root `plugin.json` + `skills/`, with `.codex-plugin/plugin.json` as the compatibility manifest | Skeleton below. [build plugins][plugins] |
+| Plugin packaging | portable root `plugin.json` + `skills/`, with `.codex-plugin/plugin.json` as the compatibility manifest | Below; Skilldex packages its install sets this way. [build plugins][plugins] |
 
 ## Policy compilation (`agent-policy.yaml` → `config.toml` + `rules/promptbook.rules`)
 
@@ -70,10 +70,11 @@ unbounded `**` deny on Linux ("Non-macOS sandboxing does not support unbounded `
 `glob_scan_max_depth`"): the deny loads and applies; the compiler sets no depth, which is the
 operator's trade between scan time and coverage.
 
-## Plugin manifest skeleton
+## Plugin packaging
 
-[`plugin.json`](plugin.json) is the `.codex-plugin/plugin.json` compatibility manifest: `name`,
-`version`, `description`, `author`, `homepage`, `repository`, `license`, `keywords`, an explicit
+promptbook holds no skills, so it ships no plugin; Skilldex packages its install sets. For a skills
+plugin, the `.codex-plugin/plugin.json` compatibility manifest carries `name`, `version`,
+`description`, `author`, `homepage`, `repository`, `license`, `keywords`, an explicit
 `skills: "./skills/"` (Codex needs it, Claude does not), and an `interface` block with the fields the
 build guide lists. The portable root `plugin.json` (schema
 `https://agent-plugins.org/schemas/1.0.0/plugin.schema.json`) is the newer entry point; when it has an

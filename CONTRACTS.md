@@ -65,8 +65,8 @@ node tools/validate.mjs --list                  # contracts, versions, artifact 
 | [grant](#grant) | `.orchestrator/grants/GRANT-n.yaml` | YAML | a human | coordinator |
 | [policy](#policy) | `agent-policy.yaml` (L1 dotfiles) | YAML | operator | policy compiler → engine settings |
 | [toolkit-lock](#toolkit-lock) | `toolkit.lock` (L1 and L2) | YAML | lock tool | sync, CI |
-| [skill](#skill) | `skills/<name>/SKILL.md` (L3, L4) | frontmatter-md | skill author | every engine's skill loader |
-| [evidence](#evidence) | `**/skills/<name>/evals/{evidence.md,routing.jsonl}` (a project's `.agents/skills/` too), `routing-results*.jsonl` | entries / JSONL | skill author, eval runs | skill reviews, routing evals |
+| [skill](#skill) | `skills/<name>/SKILL.md` (Skilldex; a pack's or a project's own) | frontmatter-md | skill author | every engine's skill loader |
+| [evidence](#evidence) | `**/skills/<name>/evals/{evidence.md,routing.jsonl}` (Skilldex's, a project's `.agents/skills/` too), `routing-results*.jsonl` | entries / JSONL | skill author, eval runs | skill reviews, routing evals |
 | [setup-review](#setup-review) | `setup-reviews/<date>-<label>.md` | Markdown record | the reviewing-agent-setup skill | humans, the next review |
 | [reflection-report](#reflection-report) | `reflections/*.md` | frontmatter-md | the reflecting-on-runs skill | a curator, humans |
 
@@ -385,8 +385,9 @@ fields only (read 2026-10-13): `name` (≤64, lowercase, single hyphens, equals 
 `metadata.version` (semver), `metadata.deprecated`, `metadata.layer`). `allowed-tools`, Claude
 Code's extensions (`disable-model-invocation`, `context`, `hooks`, `paths`, `model`, …) and anything
 else are rejected: engine extensions belong in adapters. Gerund names and "Use when … Do not use for
-…" descriptions are lint rules (`tools/lint-skills.mjs`, later). **Compat.** agentic-template's
-skills add `origin:` and live in `.claude/skills/`, which the L3 path deliberately does not match.
+…" descriptions are lint rules (`promptbook lint`, TOOLS.md). The skills live in Skilldex; promptbook
+holds none. **Compat.** agentic-template's skills add `origin:` and live in `.claude/skills/`,
+which the L3 path deliberately does not match.
 
 ### evidence
 
@@ -403,7 +404,7 @@ lines `promptbook eval-routing --out` writes (`routing-results*.jsonl`: `skill`,
 cases file the run read, `prompt`, `expect`, `kind`, `route_to`, `model`, `runs`, `answers[]` per
 run, `passes`, `pass` — pass^k, every run — `errors`, `at`, `skill_version`; counts must agree), the measured source an
 evidence entry cites. The eval files validate wherever a skills folder is, dot-folder or not
-(`skills/`, a project's `.agents/skills/` or `.claude/skills/`, a user's `~/.agents/skills/`):
+(Skilldex's `skills/`, a project's `.agents/skills/` or `.claude/skills/`, a user's `~/.agents/skills/`):
 unlike `SKILL.md`, whose L3 contract an engine's own skill folder may extend, the eval shapes are
 the same everywhere; `*.evidence.md` and `*.routing.jsonl` name the contract outside one (1.3.0).
 **Compat.** agentic-template keeps both in one `evals.md` (a routing table and an Evidence list);

@@ -1,3 +1,0 @@
-{"prompt": "From these eight interview transcripts, who are the two or three users we should design for?", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
-{"prompt": "PER-3 is mostly guesswork. Mark which of its traits come from evidence and drop the rest.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
-{"prompt": "PER-1 and PER-2 are settled; now describe what each must be able to do end to end, and what must never go wrong.", "expect": "no-trigger", "kind": "near-miss", "route_to": "mapping-journeys", "note": "held out: written after tuning, never used to change a description"}

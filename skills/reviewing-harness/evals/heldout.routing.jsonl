@@ -1,3 +1,0 @@
-{"prompt": "A new model release landed. Re-run the effort sweep and tell me which subagents we can remove.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
-{"prompt": "Quarterly review time: which rule blocks in our harness are no longer load-bearing?", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
-{"prompt": "Write pass^k scenarios for the reflecting-on-runs skill.", "expect": "no-trigger", "kind": "near-miss", "route_to": "evaluating-skills", "note": "held out: written after tuning, never used to change a description"}

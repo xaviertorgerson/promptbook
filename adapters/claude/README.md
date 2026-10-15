@@ -3,14 +3,14 @@
 Where each promptbook contract lands when the engine is Claude Code, and how an engine-neutral
 `agent-policy.yaml` compiles to Claude Code settings. Verified against the docs on 2026-10-13
 (Claude Code 2.1.29x); every claim cites the page it came from. Nothing in L3 depends on this file;
-L1 (dotfiles) and L4 (agentic-template's `.claude/` plugin) implement it.
+dotfiles (L1), stagecraft projects (L2) and Skilldex's plugin packaging implement it.
 
 ## Where artifacts land
 
 | Contract / artifact | Claude Code location | Notes |
 |---|---|---|
 | Instructions (L1/L2 AGENTS.md) | `~/.claude/CLAUDE.md`, project `CLAUDE.md` containing `@AGENTS.md` | Claude reads AGENTS.md natively only when no CLAUDE.md exists (v2.1.277+); the one-line import is the safe shim. [memory][mem] |
-| `skill` (L3 skills) | plugin `skills/<name>/SKILL.md`, or `.claude/skills/<name>/SKILL.md`, `~/.claude/skills/<name>/SKILL.md` | Claude Code does not read `.agents/skills/`; ship skills in the plugin or fan them out. [skills][skills] |
+| `skill` (Skilldex's skills) | plugin `skills/<name>/SKILL.md`, or `.claude/skills/<name>/SKILL.md`, `~/.claude/skills/<name>/SKILL.md` | Claude Code does not read `.agents/skills/`; ship skills in the plugin or fan them out. [skills][skills] |
 | Skill extensions | adapter-only frontmatter: `disable-model-invocation`, `user-invocable`, `context`, `agent`, `hooks`, `paths`, `model`, `effort`, `allowed-tools`, `argument-hint`, `when_to_use` | Never in an L3 SKILL.md (the `skill` schema rejects them). An L4 pack that needs one keeps its own copy of the skill. [skills][skills] |
 | Subagents (reviewer, coder, ...) | `.claude/agents/<name>.md`, `~/.claude/agents/`, plugin `agents/` | Frontmatter `name`, `description` required; `tools`, `disallowedTools`, `model`, `permissionMode`, `maxTurns`, `skills`, `isolation: worktree`, ... `permissionMode`, `hooks`, `mcpServers` are ignored for plugin subagents. [sub-agents][agents] |
 | Walls (policy `forbid`, `deny_read`) | `permissions.deny` in `.claude/settings.json` (L2) or `~/.claude/settings.json` (L1), plus a `PreToolUse` hook returning `deny` | Deny beats ask beats allow; a deny holds in every mode including bypass (ADR-0021). [permissions][perm] [hooks][hooks] |
@@ -20,7 +20,7 @@ L1 (dotfiles) and L4 (agentic-template's `.claude/` plugin) implement it.
 | Attention from runs | result `subtype` (`success`, `error_max_turns`, `error_max_budget_usd`, `error_during_execution`, `error_max_structured_output_retries`) | Mapped in `state-machines/attention.yaml` (`claude-headless`). [agent loop][loop] |
 | `budget` | `--max-turns`, `--max-budget-usd` | Spend can overshoot by one response. [agent loop][loop] |
 | `task-record`, `grant`, `toolkit-lock` | not read by Claude Code | Runtime and L2 files; Claude only sees them as files. |
-| Plugin packaging | `.claude-plugin/plugin.json` at the plugin root; components in `skills/`, `agents/`, `hooks/hooks.json`, `.mcp.json` | Skeleton below. [plugins reference][plug] |
+| Plugin packaging | `.claude-plugin/plugin.json` at the plugin root; components in `skills/`, `agents/`, `hooks/hooks.json`, `.mcp.json` | Below; Skilldex packages its install sets this way. [plugins reference][plug] |
 
 ## Policy compilation (`agent-policy.yaml` → settings.json)
 
@@ -83,16 +83,16 @@ outside the `autonomous` tier, any project-scope `defaultMode`.
   alternative, never dropped;
 - `budgets.max_tokens` — no flag or setting, and `promptbook run` cannot meter tokens before a run ends: a `budgets` gap.
 
-## Plugin manifest skeleton
+## Plugin packaging
 
-[`plugin.json`](plugin.json) packages promptbook skills for Claude Code. Every field is one the
-plugin reference documents and `name` is the only required one. It declares no `skills` key: the
-default `skills/` directory is scanned anyway, and `skills` only adds directories to that scan.
-`version` pins installs until it changes; bump it with each promptbook release. Copy it to
-`.claude-plugin/plugin.json` at the root of the package that holds `skills/` (this repository's root),
-and run `claude plugin validate --strict .` in CI. The plugin name `promptbook` avoids the reserved
-`claude-`/`anthropic-` prefixes. No `hooks`, `agents` or `mcpServers`: walls belong to L2 projects
-and L1 policy, not to a skills package.
+promptbook holds no skills, so it ships no plugin; Skilldex packages its install sets as plugins in
+its `.claude-plugin/marketplace.json`. For any skills plugin: `.claude-plugin/plugin.json` at the
+root of the package that holds `skills/`, where `name` is the only required field and needs no
+`skills` key (the default `skills/` directory is scanned anyway; `skills` only adds directories).
+`version` pins installs until it changes, so bump it with each release, and a consumer's marketplace
+entry pins the source by `sha`. The name must avoid the reserved `claude-`/`anthropic-` prefixes.
+No `hooks`, `agents` or `mcpServers`: walls belong to L2 projects and L1 policy, not to a skills
+package. `claude plugin validate --strict .` checks a manifest in CI.
 
 [mem]: https://code.claude.com/docs/en/memory
 [skills]: https://code.claude.com/docs/en/skills

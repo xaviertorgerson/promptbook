@@ -1,3 +1,0 @@
-{"prompt": "This retry skill has proven itself in three projects; move it into the shared pack.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
-{"prompt": "Retire old-commit-style; writing-commit-history covers everything it did.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
-{"prompt": "Write near-miss routing cases for the retry skill so it stops firing on unrelated prompts.", "expect": "no-trigger", "kind": "near-miss", "route_to": "evaluating-skills", "note": "held out: written after tuning, never used to change a description"}

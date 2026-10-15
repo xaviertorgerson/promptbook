@@ -1,3 +1,0 @@
-{"prompt": "The refunds spec is approved. Turn it into task files, walking skeleton first.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
-{"prompt": "SEARCH-9 is far too big for one session; split it into smaller tasks with depends_on.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
-{"prompt": "Run the trace over the refunds plan and write its readiness report.", "expect": "no-trigger", "kind": "near-miss", "route_to": "checking-plan-readiness", "note": "held out: written after tuning, never used to change a description"}

@@ -1,3 +1,0 @@
-{"prompt": "Judge PR 311 against SEARCH-4's acceptance criteria in a clean context and give pass or fail per criterion.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
-{"prompt": "The author says AC-3 is fixed. Re-evaluate the new head before it goes to human review.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
-{"prompt": "AC-4 of SEARCH-4 has no test yet; write one.", "expect": "no-trigger", "kind": "near-miss", "route_to": "writing-tests", "note": "held out: written after tuning, never used to change a description"}

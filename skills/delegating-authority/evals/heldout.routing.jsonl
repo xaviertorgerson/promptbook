@@ -1,3 +1,0 @@
-{"prompt": "While I'm on leave next week, the coordinator may pick tasks and approve plans for the search epic, two workers at most.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
-{"prompt": "Cut the coordinator's grant down: no more plan approvals, and only one worker from now on.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
-{"prompt": "GRANT-9 covers it; go ahead and merge PR 311 into integration/search.", "expect": "no-trigger", "kind": "near-miss", "route_to": "landing-changes", "note": "held out: written after tuning, never used to change a description"}

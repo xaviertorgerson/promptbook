@@ -3,10 +3,9 @@
 The engine-neutral layer of a four-layer toolkit for agent-driven software work: a dated,
 evidence-cited **playbook**, the **standards** every project and every personal setup share, the
 **contracts** (schemas and state machines) that let engines, runtimes and methods be swapped, and
-portable **skills**, **evals** and **tools** that check all of it. The practices, the standards and
-the skills' instructions name no engine, runtime, forge or stack (the skill lint enforces it for
-skills). Names appear only where a binding or a fact needs them: `adapters/`, each skill's
-`references/engine-notes.md`, evidence lines that cite a vendor, the signal vocabularies
+the **tools** that check all of it, skills included (the skills themselves live in Skilldex). The
+practices and the standards name no engine, runtime, forge or stack. Names appear only where a
+binding or a fact needs them: `adapters/`, evidence lines that cite a vendor, the signal vocabularies
 `state-machines/attention.yaml` maps, optional contract fields that record which engine or runtime
 ran, and the policy compiler's per-engine emitters. Promptbook depends on nothing.
 
@@ -39,9 +38,9 @@ including where every artifact goes and how existing repos move, is [LAYERS.md](
    `tools/compile-policy.mjs` from a chezmoi run script. The compiler's contract is to refuse a tier
    that disables hooks, and a bypass tier that names no `requires` (the preconditions it relies on,
    such as production being unreachable from the host).
-4. A run script fans pinned skills into `~/.agents/skills/` (an install set, `personal` or `solo`,
-   never the whole library: Core vs optional) and copies them for engines that do not read that
-   directory (`adapters/<engine>/README.md` says which).
+4. A run script fans Skilldex's `personal` install set (its `SETS.yaml`, never the whole library)
+   into `~/.agents/skills/` and copies it for engines that do not read that directory
+   (`adapters/<engine>/README.md` says which).
 
 **L2, a project.** From the template, or by adoption into an existing repo:
 
@@ -70,27 +69,24 @@ reaches, and stays out until its trigger holds.
 | Practice | `standards/engineering.md`; the playbook pages you cite | — |
 | Contracts | task, epic, decision, readiness-report; brief, persona, journey, requirement and ux-flow when a product is planned (without a brief the trace check runs as legacy adoption); policy and toolkit-lock; return and run-record; skill and evidence | grant and task-record: a coordinator runs several agents under delegated authority. setup-review and reflection-report: there are runs to review |
 | Tools | `validate` (with `trace` and `--readiness --check`), `lint`, `compile-policy`, `lock` | `simulate`: changing the state machines, or checking a runtime's supervisor. `grant`: grants are in use. `eval-routing`: a description changes. `import-evals`: once, migrating an agentic-template project. `report`: there are run records to read |
-| Skills | the `solo` set of [`skills/SETS.yaml`](skills/SETS.yaml) | the `coordinator` set (several agents at once) and the `maintainer` set (changing promptbook itself) |
+| Skills | in Skilldex: lint them with `promptbook lint <skilldex>/skills` | `eval-routing` when a description changes |
 | Engines | the adapter of the engine you run | every other adapter; only one engine's permissions are measured (Status) |
 
-[`skills/SETS.yaml`](skills/SETS.yaml) names the install sets: `personal` (user scope, any
-repository), `planning`, `delivery`, `coordinator` and `maintainer` (project scope), `solo`
-(personal, planning and delivery at user scope) and `full` (the library, never installed whole). Each
-installable set fits the 8,000-character always-loaded description budget with 10% headroom beside
-the five pinned Skilldex skills; `promptbook lint skills` checks every set and `promptbook lint
---budget-set <set>` prints one. The totals are in [skills/ROUTING-RESULTS.md](skills/ROUTING-RESULTS.md).
+Skilldex's `SETS.yaml` names its install sets; `promptbook lint <skilldex>/skills` checks each
+installable set against the 8,000-character always-loaded description budget with 10% headroom, and
+`promptbook lint --budget-set <set> --sets <skilldex>/skills/SETS.yaml` prints one.
 
 ### Minimum adoption for one developer
 
 1. **Machine.** Pin this repo, render the standards block into your personal instructions, write
    `agent-policy.yaml` with one profile per machine and compile it (`promptbook compile-policy`), and
-   install the `solo` set into `~/.agents/skills/` (`promptbook lint --budget-set solo` checks it with
-   what else you install).
+   install Skilldex's `personal` set into `~/.agents/skills/` (`promptbook lint --budget-set personal
+   --sets <skilldex>/skills/SETS.yaml` checks it with what else you install).
 2. **Each repository.** A `toolkit.lock` pinning promptbook, checked by `promptbook lock` in CI; tasks
    as `specs/<epic>/tasks/<ID>.md` with acceptance criteria, and `promptbook validate` plus
    `promptbook trace . --readiness specs --check` in CI.
-3. **Each task.** One writer at a time: implementing-task claims and builds it, verifying-work gets
-   the separate verdict, landing-changes lands it after your approval. No coordinator, grants,
+3. **Each task.** One writer at a time: Skilldex's implementing-task claims and builds it,
+   verifying-work gets the separate verdict, landing-changes lands it after your approval. No coordinator, grants,
    task-records or simulator.
 
 Add the rest when its trigger fires: a coordinator and grants when you hand agents a batch of tasks
@@ -107,7 +103,6 @@ to run without you; the reflection and review contracts once there are runs to l
 | `schemas/` | JSON Schema 2020-12, one per contract |
 | `state-machines/` | `workflow`, `attention` and `authority` |
 | `adapters/` | thin, documented mappings to engines, runtimes and CI |
-| `skills/` | portable skills (gerund names, core frontmatter only) with `evals/` |
 | `tools/` | `validate` (and `trace`), `simulate`, `compile-policy`, `run`, `check-requires`, `lock`, `grant`, `lint-skills`, `eval-routing`, `import-evals`, `report` (Node 22; [TOOLS.md](TOOLS.md)) |
 | `tests/`, `fixtures/` | `node --test` suites and valid/invalid examples per contract |
 | [`examples/`](examples/tally/WALKTHROUGH.md) | a worked product run through every contract: Tally, from brief to the human merging its integration branch |

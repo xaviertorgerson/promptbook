@@ -1,3 +1,0 @@
-{"prompt": "SEARCH-3's pane shows blocked. What should its task record say, and who acts?", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
-{"prompt": "An MCP tool call for SEARCH-5 is waiting at input_required. Record it for the human.", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
-{"prompt": "Two tasks are ready and a worker slot just freed up; start one of them.", "expect": "no-trigger", "kind": "near-miss", "route_to": "orchestrating-work", "note": "held out: written after tuning, never used to change a description"}

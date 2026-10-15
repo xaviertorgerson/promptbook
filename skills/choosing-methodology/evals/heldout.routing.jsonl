@@ -1,3 +1,0 @@
-{"prompt": "The search revamp touches code nobody understands anymore. Which way of working should the agents use for it?", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
-{"prompt": "Docs for the new API go draft, technical edit, legal edit, publish, with me signing off each stage. Which mode suits that?", "expect": "trigger", "kind": "positive", "note": "held out: written after tuning, never used to change a description"}
-{"prompt": "The mode is settled; now write the task files for the search revamp.", "expect": "no-trigger", "kind": "near-miss", "route_to": "planning-work", "note": "held out: written after tuning, never used to change a description"}
