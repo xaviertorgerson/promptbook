@@ -348,7 +348,7 @@ export function parseEvidence(text) {
 }
 
 // ---------------------------------------------------------------------------------------------- //
-// setup-reviews/<date>-<label>.md -> setup-review (the reviewing-agent-setup skill's record)
+// agent-setup-reviews/<date>-<label>.md -> agent-setup-review (the reviewing-agent-setup skill's record)
 
 const REVIEW_FIELDS = { trigger: 'trigger', reviewed: 'reviewed', suite: 'suite', trials: 'trials', 'spend cap spent': 'spend', spend: 'spend', noise: 'noise' };
 const REVIEW_SECTIONS = [
@@ -356,13 +356,13 @@ const REVIEW_SECTIONS = [
   ['decisions', /^decisions\b/], ['playbook', /^playbook\b/], ['questions', /^questions\b/],
 ];
 
-export function parseSetupReview(text) {
+export function parseAgentSetupReview(text) {
   const { lines } = prepare(text);
   const mask = fenceMask(lines);
   const hs = headings(lines, mask);
   const h1 = hs.find((h) => h.level === 1);
-  const m = h1?.text.match(/^Setup review\s*[—–-]\s*([0-9]{4}-[0-9]{2}-[0-9]{2})\s*[—–-]\s*(.+)$/i);
-  if (!m) return { records: [], errors: [{ keyword: 'entries', pointer: '', message: 'no "# Setup review — YYYY-MM-DD — <model or quarter>" title', line: h1 ? h1.index + 1 : 1 }] };
+  const m = h1?.text.match(/^Agent-setup review\s*[—–-]\s*([0-9]{4}-[0-9]{2}-[0-9]{2})\s*[—–-]\s*(.+)$/i);
+  if (!m) return { records: [], errors: [{ keyword: 'entries', pointer: '', message: 'no "# Agent-setup review — YYYY-MM-DD — <model or quarter>" title', line: h1 ? h1.index + 1 : 1 }] };
   const data = { date: m[1], label: clean(m[2]) };
   const fieldLines = { date: h1.index + 1, label: h1.index + 1 };
   const firstH2 = hs.find((h) => h.level === 2)?.index ?? lines.length;
@@ -413,7 +413,7 @@ export const PARSERS = {
   personas: parsePersonas,
   'ux-flows': parseUxFlows,
   evidence: parseEvidence,
-  'setup-review': parseSetupReview,
+  'agent-setup-review': parseAgentSetupReview,
 };
 
 export { fenceMask };

@@ -115,7 +115,7 @@ dana's merge of the integration branch carries them there and she records `promo
 
 | # | Step | Skill | Artifact | Decided by |
 |---|---|---|---|---|
-| 30 | A model release: replay four of this epic's failures, ablate the reader and the evaluator's second trial; too few tasks to remove anything; walls not ablated | reviewing-agent-setup | `setup-reviews/2026-10-15-model-5.6.md` | dana |
+| 30 | A model release: replay four of this epic's failures, ablate the reader and the evaluator's second trial; too few tasks to remove anything; walls not ablated | reviewing-agent-setup | `agent-setup-reviews/2026-10-15-model-5.6.md` | dana |
 | 31 | Two deltas from the window: idempotency asserted on stored state under a race (accepted, a pull request on promptbook, L3); an allow for `psql` (rejected: it widens an unattended agent's reach and would lose to the ask anyway) | reflecting-on-runs | `reflections/2026-10-15-settle-up.md` | dana |
 
 ### After the snapshot — replayed by `simulate.yaml`

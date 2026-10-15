@@ -1,4 +1,4 @@
-# Setup review — 2026-10-13 — model-5.5
+# Agent-setup review — 2026-10-13 — model-5.5
 
 - **Trigger:** model-5.5 released 2026-10-08
 - **Reviewed:** promptbook 0.2.0 @ 9dfd497; packs core-pack 1.0.0, cli-runtime 1.0.0 (from toolkit.lock)

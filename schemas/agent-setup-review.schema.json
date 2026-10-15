@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://promptbook.dev/schemas/setup-review.schema.json",
-  "title": "Setup review",
-  "description": "The record the reviewing-agent-setup skill writes after a model release or a quarter: what was reviewed with which suite, the baseline, the ablations (one component removed per row) and the decisions they support. Markdown: a '# Setup review — YYYY-MM-DD — <model or quarter>' title, '- **Field:** value' header bullets, and level-2 sections.",
+  "$id": "https://promptbook.dev/schemas/agent-setup-review.schema.json",
+  "title": "Agent-setup review",
+  "description": "The record the reviewing-agent-setup skill writes after a model release or a quarter: what was reviewed with which suite, the baseline, the ablations (one component removed per row) and the decisions they support. Markdown: a '# Agent-setup review — YYYY-MM-DD — <model or quarter>' title, '- **Field:** value' header bullets, and level-2 sections.",
   "x-version": "2.0.0",
   "x-artifacts": [
-    { "format": "markdown-entries", "parser": "setup-review", "paths": ["setup-reviews/*.md"], "suffixes": [".setup-review.md"] }
+    { "format": "markdown-entries", "parser": "agent-setup-review", "paths": ["agent-setup-reviews/*.md"], "suffixes": [".agent-setup-review.md"] }
   ],
   "type": "object",
   "required": ["date", "label", "trigger", "reviewed", "suite", "trials", "sections"],

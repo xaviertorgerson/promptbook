@@ -12,7 +12,7 @@ each step, and the commands that validate, trace and simulate it.
 | `_operator/` | the operator's L1 policy and its compiled settings (copied from dotfiles) |
 | `.orchestrator/` | grants and task records (runtime state, committed for the example) |
 | `.agent/` | run records, returns, verdicts and reads |
-| `setup-reviews/`, `reflections/` | the learning records |
+| `agent-setup-reviews/`, `reflections/` | the learning records |
 | `simulate.yaml` | the walkthrough's faults as a simulator scenario |
 
 All people, research, numbers, commits and links are fictional sample data.

@@ -67,7 +67,7 @@ reaches, and stays out until its trigger holds.
 | | Core | Optional, and when |
 |---|---|---|
 | Practice | `standards/engineering.md`; the playbook pages you cite | — |
-| Contracts | task, epic, decision, readiness-report; brief, persona, journey, requirement and ux-flow when a product is planned (without a brief the trace check runs as legacy adoption); policy and toolkit-lock; return and run-record; skill and evidence | grant and task-record: a coordinator runs several agents under delegated authority. setup-review and reflection-report: there are runs to review |
+| Contracts | task, epic, decision, readiness-report; brief, persona, journey, requirement and ux-flow when a product is planned (without a brief the trace check runs as legacy adoption); policy and toolkit-lock; return and run-record; skill and evidence | grant and task-record: a coordinator runs several agents under delegated authority. agent-setup-review and reflection-report: there are runs to review |
 | Tools | `validate` (with `trace` and `--readiness --check`), `lint`, `compile-policy`, `lock` | `simulate`: changing the state machines, or checking a runtime's supervisor. `grant`: grants are in use. `eval-routing`: a description changes. `import-evals`: once, migrating an agentic-template project. `report`: there are run records to read |
 | Skills | in Skilldex: lint them with `promptbook lint <skilldex>/skills` | `eval-routing` when a description changes |
 | Engines | the adapter of the engine you run | every other adapter; only one engine's permissions are measured (Status) |
@@ -125,7 +125,7 @@ on master); the other adapters are written from documentation and marked unverif
    engine or vendor; bindings go in `adapters/`.
 3. If the practice changes a contract, change the schema, fixtures and tests in the same pull request.
 4. Add a `CHANGELOG.md` line and bump the playbook's "as of" date. Deleting a practice that no longer
-   pays its way is a welcome change; [setup-review](playbook/learning/setup-review.md) is how
+   pays its way is a welcome change; [agent-setup-review](playbook/learning/agent-setup-review.md) is how
    those deletions are found.
 
 The research this repo was built from is "Agentic orchestration patterns 2026" (2026-10-12) and its

@@ -26,7 +26,7 @@ node tools/validate.mjs --list                  # contracts, versions, artifact 
   `*.grant.yaml`, `*.return.json`, `*.task-record.yaml`, `*.run-record.jsonl`, `*.policy.yaml`,
   `*.toolkit.lock`, `*.task.md`, `*.brief.md`, `*.persona.md` (frontmatter or a list),
   `*.adr.md`, `*.ux.md`, `*.spec.md` (epic and requirements), `*.cuj.md`, `*.readiness.md`,
-  `*.setup-review.md`, `*.reflection.md`, `*.evidence.md`, `*.routing.jsonl`. A suffix applies only when no path does; it binds no
+  `*.agent-setup-review.md`, `*.reflection.md`, `*.evidence.md`, `*.routing.jsonl`. A suffix applies only when no path does; it binds no
   frontmatter field, and an entry file (`<epic>.cuj.md`, `<epic>.ux.md`) takes its epic from the name
   before the suffix. A `*.template.*` file, or one whose name starts with `_` (agentic-template's
   `docs/ux/_UX-TEMPLATE.md`, `specs/<epic>/tasks/_TASK-TEMPLATE.md`), holds placeholders on purpose
@@ -67,7 +67,7 @@ node tools/validate.mjs --list                  # contracts, versions, artifact 
 | [toolkit-lock](#toolkit-lock) | `toolkit.lock` (L1 and L2) | YAML | lock tool | sync, CI |
 | [skill](#skill) | `skills/<name>/SKILL.md` (Skilldex; a pack's or a project's own) | frontmatter-md | skill author | every engine's skill loader |
 | [evidence](#evidence) | `**/skills/<name>/evals/{evidence.md,routing.jsonl}` (Skilldex's, a project's `.agents/skills/` too), `routing-results*.jsonl` | entries / JSONL | skill author, eval runs | skill reviews, routing evals |
-| [setup-review](#setup-review) | `setup-reviews/<date>-<label>.md` | Markdown record | the reviewing-agent-setup skill | humans, the next review |
+| [agent-setup-review](#agent-setup-review) | `agent-setup-reviews/<date>-<label>.md` | Markdown record | the reviewing-agent-setup skill | humans, the next review |
 | [reflection-report](#reflection-report) | `reflections/*.md` | frontmatter-md | the reflecting-on-runs skill | a curator, humans |
 
 `common` holds the shared definitions and is not an artifact.
@@ -419,12 +419,12 @@ the same everywhere; `*.evidence.md` and `*.routing.jsonl` name the contract out
 **Compat.** agentic-template keeps both in one `evals.md` (a routing table and an Evidence list);
 `promptbook import-evals` converts one, marking what a human must still decide (TOOLS.md).
 
-### setup-review
+### agent-setup-review
 
-**Purpose.** The record a setup review leaves (after a model release, or quarterly): what was
+**Purpose.** The record an agent-setup review leaves (after a model release, or quarterly): what was
 reviewed with which suite, the baseline, one ablation per component and the decision each supports.
-**Schema** `setup-review.schema.json` 2.0.0 (the record's new name: a breaking change), read from the reviewing-agent-setup skill's Markdown as
-written: the title `# Setup review — YYYY-MM-DD — <model or quarter>` gives `date` and `label`; the
+**Schema** `agent-setup-review.schema.json` 2.0.0 (the record's new name: a breaking change), read from the reviewing-agent-setup skill's Markdown as
+written: the title `# Agent-setup review — YYYY-MM-DD — <model or quarter>` gives `date` and `label`; the
 header bullets `**Trigger:**`, `**Reviewed:**`, `**Suite:**`, `**Trials:**` (required), `**Spend cap /
 spent:**` and `**Noise …:**` give `trigger`, `reviewed`, `suite`, `trials`, `spend`, `noise`; the
 level-2 sections must include Baseline, Ablations, Decisions and Playbook (`review-has-sections`);

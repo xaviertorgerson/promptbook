@@ -261,5 +261,5 @@ How the layers change over time. Each step has its own page.
 - **Evals** decide every promotion and every bump. → [evals-and-evidence](playbook/learning/evals-and-evidence.md)
 - **The reflector** reads evidence logs and run records on a schedule and opens small delta pull
   requests against L2 knowledge, L3 skills or L4 packs, never auto-merged. → [reflection-loop](playbook/learning/reflection-loop.md)
-- **Setup review** on each model release runs an effort sweep and deletes components that are no
-  longer load-bearing, in whichever layer they live. → [setup-review](playbook/learning/setup-review.md)
+- **Agent-setup review** on each model release runs an effort sweep and deletes components that are no
+  longer load-bearing, in whichever layer they live. → [agent-setup-review](playbook/learning/agent-setup-review.md)

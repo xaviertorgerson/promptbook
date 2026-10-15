@@ -1,4 +1,4 @@
-# Setup review
+# Agent-setup review
 
 ## Problem
 
@@ -43,7 +43,7 @@ On each major model release from a lab the toolkit routes to, and quarterly othe
 
 ## Contracts used
 
-`setup-review` (the record: `setup-reviews/<date>-<label>.md`, its header, baseline, ablations
+`agent-setup-review` (the record: `agent-setup-reviews/<date>-<label>.md`, its header, baseline, ablations
 with a decision per row, decisions, playbook dates), `run-record` (baseline and sweep costs),
 `evidence` (routing results with pass^k), `toolkit-lock` (the model and pack versions reviewed),
 `skill` (`metadata.deprecated` for removals).

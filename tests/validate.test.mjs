@@ -234,7 +234,7 @@ describe('contract by filename suffix (examples outside the project layout)', ()
     'rating-engine.spec.md': ['epic,requirement', V('epic/real-template-migration.md')],
     'rating-engine.cuj.md': ['journey', V('journey/real-rating-engine/specs/rating-engine/cuj.md')],
     'template-migration.readiness.md': ['readiness-report', V('readiness-report/generated-legacy/specs/template-migration/readiness.md')],
-    '2026-10-13-model-5-5.setup-review.md': ['setup-review', V('setup-review/model-release.md')],
+    '2026-10-13-model-5-5.agent-setup-review.md': ['agent-setup-review', V('agent-setup-review/model-release.md')],
     'one-window.reflection.md': ['reflection-report', V('reflection-report/one-window.md')],
   };
   const dir = path.join(TMP, 'skill-examples/references/examples');
