@@ -57,6 +57,9 @@ interfaces between them are in [SUITE.md](SUITE.md).
 - **behavioral** — `lint` checks a library's `.claude-plugin/marketplace.json` against its
   `SETS.yaml` when both exist (`marketplace-sets`): one plugin per installable set, each listing
   exactly that set's skills, so the two cannot drift apart.
+- **behavioral** — `trace --check`'s "regenerate" hint repeats the `--tests` and `--test-pattern`
+  options it was given, shell-quoted; without them the regenerated report counted other tests and
+  failed the next check.
 
 #### Added
 
