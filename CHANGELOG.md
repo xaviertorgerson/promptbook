@@ -10,6 +10,25 @@ Contract versions are each schema's `x-version` and each state machine's `versio
 
 ## [Unreleased]
 
+### Review fixes: names, budgets, the guard
+
+#### Changed
+
+- **behavioral** — `install-sets` refuses a skill name that is not one (`^[a-z0-9][a-z0-9-]*$`) in a
+  pinned `SETS.yaml` or in `VENDORED.json`, before anything is copied or removed: a hostile set could
+  name `../../victim`.
+- **behavioral** — the default description budget is 10,000 characters (Claude Code lists skills
+  within about 1% of its context window; Codex within 2%); a library's `SETS.yaml` still sets its own.
+- **behavioral** — the forbid guard's read denies also see a shell assignment's value
+  (`f=~/.ssh/id; cat $f`), an interpreter's `-c`/`-e` program string, and the path after a git
+  revision (`git show HEAD:.env`), matching the dotfiles sh guard on the cases the review found apart.
+
+#### Added
+
+- **additive** — `SETS.yaml` `lint.allow_terms`: names a library lets its skills use without an
+  `engine-neutral` finding (a forge in a skill about pull requests), so `promptbook lint <skilldex>/skills`
+  passes as documented without `--allow-terms`.
+
 ### One installer for skill sets
 
 #### Added

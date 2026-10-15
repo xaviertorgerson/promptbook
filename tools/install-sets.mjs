@@ -104,6 +104,14 @@ function materialize(dir, commit, sub) {
   return { tmp, lib: path.join(tmp, sub === '.' ? '' : sub) };
 }
 
+// A skill name is a folder name and nothing else: a pinned SETS.yaml or a record that names
+// `../../victim` must never reach rmSync or cpSync. The Agent Skills name grammar, no dots or slashes.
+const SKILL_NAME = /^[a-z0-9][a-z0-9-]{0,63}$/;
+export function checkName(name, where) {
+  if (typeof name !== 'string' || !SKILL_NAME.test(name)) throw new Error(`${where} names ${JSON.stringify(name)}, which is not a skill name (lowercase letters, digits and hyphens): nothing was installed or removed`);
+  return name;
+}
+
 // What the entry's sets install, read with the library's own SETS.yaml at the pin: the skill names,
 // what loads beside them (other sets named loaded_with), and the budget less headroom.
 function readSets(lib, entry) {
@@ -115,7 +123,7 @@ function readSets(lib, entry) {
     parts.push(...out.skills);
     limit = Math.min(limit, out.limit);
   }
-  const skills = [...new Set(parts.filter((p) => entry.sets.includes(p.from)).map((p) => p.name))].sort();
+  const skills = [...new Set(parts.filter((p) => entry.sets.includes(p.from)).map((p) => checkName(p.name, `${entry.name}'s SETS.yaml`)))].sort();
   const loadedWith = {};
   for (const p of parts.filter((x) => !entry.sets.includes(x.from))) {
     const w = (loadedWith[p.from] ??= { chars: 0, skills: [] });
@@ -144,7 +152,11 @@ export class Installer {
   }
   where(entry) { return isLocal(entry.source) ? path.resolve(path.dirname(this.lockFile), entry.source) : `../${entry.name}`; }
   skillFolders(dir) { return fs.existsSync(this.at(dir)) ? fs.readdirSync(this.at(dir), { withFileTypes: true }).filter((e) => e.isDirectory() && fs.existsSync(this.at(dir, e.name, 'SKILL.md'))).map((e) => e.name) : []; }
-  readRecord() { return fs.existsSync(this.at(RECORD)) ? JSON.parse(fs.readFileSync(this.at(RECORD), 'utf8')).libraries ?? {} : {}; }
+  readRecord() {
+    const libs = fs.existsSync(this.at(RECORD)) ? JSON.parse(fs.readFileSync(this.at(RECORD), 'utf8')).libraries ?? {} : {};
+    for (const [lib, r] of Object.entries(libs)) { checkName(lib, RECORD); for (const n of Object.keys(r.skills ?? {})) checkName(n, `${RECORD} (${lib})`); }
+    return libs;
+  }
 
   // A project skill (any folder the record does not name) that takes an installed name, by folder or
   // by the name in its frontmatter: engines resolve such a collision in opposite directions.

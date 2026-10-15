@@ -43,10 +43,13 @@ export const LIMITS = {
   bodyWarn: 200,
   bodyFail: 300,
   // A description is always in context: keep each short, and the whole set under the smallest
-  // engine's always-loaded budget (one engine caps skill metadata at 2% of context or 8000 chars).
+  // engine's always-loaded budget. Claude Code lists skills within about 1% of its context window
+  // (around 10,000 characters at 200k tokens) and drops the least-used descriptions first; Codex
+  // keeps 2% of the window in tokens and falls back to 8,000 characters only when the window is
+  // unknown. A library's SETS.yaml sets its own `budget`; this is the default for a bare folder.
   descriptionWarn: 300,
   descriptionFail: 400,
-  descriptionBudget: 8000,
+  descriptionBudget: 10000,
   positive: 4,
   nearMiss: 3,
   negative: 2,
@@ -189,12 +192,15 @@ export function lintSkills(targets, opts = {}) {
   const names = new Set(skills.map((s) => s.name));
   // The rules a skill is held to strictly: what its own library's SETS.yaml asks (lint.strict, for
   // the skills lint.skills names, or all of them), and opts.strictRules.
+  const libraryLint = (s) => { const file = setsFileOf(path.dirname(s.dir)); return file ? loadSets(file).data?.lint ?? null : null; };
   const strictFor = (s) => {
-    const file = setsFileOf(path.dirname(s.dir));
-    const lint = file ? loadSets(file).data?.lint : null;
+    const lint = libraryLint(s);
     const own = lint && (!lint.skills || lint.skills.includes(s.name)) ? lint.strict ?? [] : [];
     return new Set([...(opts.strictRules ?? []), ...own]);
   };
+  // The terms a library allows its skills to name (lint.allow_terms in its SETS.yaml: a forge's
+  // name in a skill about pull requests), beside the caller's --allow-terms.
+  const denyFor = (s) => { const allow = libraryLint(s)?.allow_terms ?? []; return denyTerms.filter((t) => !allow.some((a) => a.toLowerCase() === t.toLowerCase())); };
 
   for (const s of skills) {
     const strict = strictFor(s);
@@ -241,7 +247,7 @@ export function lintSkills(targets, opts = {}) {
 
     // 4. Engine and vendor neutrality of the description and the body (URLs aside: a citation is not
     // a procedure step). One finding per line, naming the longest term that matched.
-    const terms = [...denyTerms].sort((a, b) => b.length - a.length).map((t) => ({ t, re: termRegExp(t) }));
+    const terms = denyFor(s).sort((a, b) => b.length - a.length).map((t) => ({ t, re: termRegExp(t) }));
     const arts = TERMS_OF_ART.map((t) => new RegExp(termRegExp(t).source, 'gi'));
     const named = (line) => {
       const text = arts.reduce((x, re) => x.replace(re, ' '), line.replace(/\bhttps?:\/\/\S+/g, ''));
@@ -364,7 +370,7 @@ export function lintSkills(targets, opts = {}) {
   const library = targets.length > 0 && targets.every((x) => setsFileOf(path.resolve(x)));
   if (!library && total > limits.descriptionBudget) {
     const longest = [...skills].sort((a, b) => b.description.length - a.description.length).slice(0, 3).map((s) => `${s.name} ${s.description.length}`);
-    overlaps.push({ severity: 'warning', rule: 'description-budget', score: total, message: `the ${skills.length} descriptions total ${total} characters, over the ${limits.descriptionBudget} an engine may keep loaded (2% of context or 8000 characters); longest: ${longest.join(', ')}` });
+    overlaps.push({ severity: 'warning', rule: 'description-budget', score: total, message: `the ${skills.length} descriptions total ${total} characters, over the ${limits.descriptionBudget} an engine may keep loaded (about 1% of a 200k window); longest: ${longest.join(', ')}` });
   }
 
   // 9. Install sets: the SETS.yaml of a linted library (in the folder, or at the root above its
@@ -424,8 +430,8 @@ export function loadSets(file) {
   if (!isObj(data)) return { data: null, errors: ['a mapping with budget, external and sets'] };
   for (const k of Object.keys(data)) if (!['budget', 'external', 'sets', 'lint'].includes(k)) errors.push(`${k}: unknown key (budget, external, sets, lint)`);
   if (data.lint !== undefined) {
-    if (!isObj(data.lint) || !strings(data.lint.strict ?? []) || (data.lint.skills !== undefined && !strings(data.lint.skills))) errors.push('lint: { strict: [rule names], skills: [skill names] } (skills optional: every skill of the library)');
-    for (const k of Object.keys(isObj(data.lint) ? data.lint : {})) if (!['strict', 'skills'].includes(k)) errors.push(`lint.${k}: unknown key (strict, skills)`);
+    if (!isObj(data.lint) || !strings(data.lint.strict ?? []) || (data.lint.skills !== undefined && !strings(data.lint.skills)) || (data.lint.allow_terms !== undefined && !strings(data.lint.allow_terms))) errors.push('lint: { strict: [rule names], skills: [skill names], allow_terms: [names] } (skills optional: every skill of the library)');
+    for (const k of Object.keys(isObj(data.lint) ? data.lint : {})) if (!['strict', 'skills', 'allow_terms'].includes(k)) errors.push(`lint.${k}: unknown key (strict, skills, allow_terms)`);
     for (const r of Array.isArray(data.lint?.strict) ? data.lint.strict : []) if (!STRICTABLE.has(r)) errors.push(`lint.strict: ${r} is no rule lint can make strict (${[...STRICTABLE].join(', ')})`);
   }
   if (!isObj(data.budget) || !Number.isInteger(data.budget.limit) || !(data.budget.headroom >= 0 && data.budget.headroom < 1)) errors.push('budget: { limit: <characters>, headroom: <0..1> }');
@@ -631,7 +637,7 @@ export function budgetSet(file, { limit = LIMITS.descriptionBudget } = {}) {
   if (total > limit) {
     const longest = [...skills].sort((a, b) => b.chars - a.chars).slice(0, 3).map((s) => `${s.name} ${s.chars}`);
     const byFrom = Object.entries(skills.reduce((m, s) => ({ ...m, [s.from]: (m[s.from] ?? 0) + 1 }), {})).map(([k, n]) => `${n} from ${k}`).join(', ');
-    findings.push({ severity: 'warning', rule: 'description-budget', score: total, message: `the installed set's ${skills.length} descriptions total ${total} characters, over the ${limit} an engine may keep loaded (2% of context or 8000 characters), so some may be cut before a router sees them (${byFrom}; longest: ${longest.join(', ')}); install a per-profile subset` });
+    findings.push({ severity: 'warning', rule: 'description-budget', score: total, message: `the installed set's ${skills.length} descriptions total ${total} characters, over the ${limit} an engine may keep loaded (about 1% of a 200k window), so some may be cut before a router sees them (${byFrom}; longest: ${longest.join(', ')}); install a per-profile subset` });
   }
   return { file: path.resolve(file), skills, total, limit, findings };
 }

@@ -247,11 +247,27 @@ function wordPath(word, { home, cwd }) {
 
 // The first word of the command (its arguments, --flag=value values and redirection targets) that
 // names a path a read deny matches: { word, glob }, or null. Program names are not paths read.
+// Interpreters whose -c/-e string is a program: the paths it names are read as plainly as `cat`'s.
+const INTERPRETERS = /^(?:python[0-9.]*|node|nodejs|perl|ruby|php|sh|bash|zsh|dash|ksh)$/;
+const STRING_FLAGS = new Set(['-c', '-e', '-p', '--eval', '--print']);
+// The path-like tokens inside a program string or an assignment value: anything with a slash, a
+// leading dot, ~ or $HOME, cut at quotes, brackets and separators.
+const pathTokens = (text) => text.split(/[\s'"`()\[\]{},;=<>|&]+/).filter((t) => /^(?:~|\$HOME|\$\{HOME\}|\.{0,2}\/|\.[A-Za-z0-9_])/.test(t) || t.startsWith('/'));
+
 export function readDenyHit(globs, command, { home = os.homedir(), cwd = process.cwd() } = {}) {
   if (!globs?.length) return null;
   const targets = [];
   const commands = Array.isArray(command) ? expandArgv(command.map(String), targets) : splitCommands(command, targets);
-  const words = [...commands.flatMap((argv) => unwrap(argv).slice(1)), ...targets];
+  const words = [...targets];
+  for (const argv of commands) {
+    // `f=~/.ssh/id; cat $f`: the assignment's value is a path the command reads.
+    for (const w of argv) if (ASSIGNMENT.test(w)) words.push(...pathTokens(w.slice(w.indexOf('=') + 1)));
+    const a = unwrap(argv);
+    words.push(...a.slice(1));
+    if (a.length && INTERPRETERS.test(base(a[0]))) for (let i = 1; i < a.length; i += 1) if (STRING_FLAGS.has(a[i]) && a[i + 1]) words.push(...pathTokens(a[i + 1]));
+    // `git show HEAD:.env`, `git cat-file -p HEAD:.env`: the path after the revision.
+    for (const w of a.slice(1)) { const m = w.match(/^[A-Za-z0-9_.~^@{}/-]+:(\.?[^:\s]+)$/); if (m) words.push(m[1]); }
+  }
   const ctx = { home, cwd };
   // The most specific deny names the hit: a glob that matches anywhere (**/...) is tried last.
   const denies = globs.map((g) => ({ glob: g, abs: absoluteGlob(g, ctx) })).sort((a, b) => Number(a.glob.startsWith('**/')) - Number(b.glob.startsWith('**/')));

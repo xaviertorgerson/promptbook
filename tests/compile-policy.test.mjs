@@ -673,6 +673,12 @@ describe('Claude Code\'s sandbox on Linux ignores glob patterns in Read and Edit
       assert.match(h.stderr, /names a path the operator's policy denies reading \(deny_read /, c);
     }
     for (const c of ['cat .env.example', 'cat ~/.ssh/id_ed25519.pub', 'ls ~/.ssh', 'ls ~/.aws', 'cat *', 'cat README.md', 'git status']) assert.equal(hook(c).status, 0, c);
+    // Parity with the dotfiles sh guard: assignment values, interpreter program strings, git revision paths.
+    for (const c of ['f=~/.ssh/id_ed25519; cat $f', 'python3 -c "open(\'.env\').read()"', `node -e "require('fs').readFileSync('${home}/.aws/credentials')"`, 'git show HEAD:.env', 'git cat-file -p HEAD:.env', 'ruby -e \'File.read("~/.ssh/id_ed25519")\'']) {
+      assert.equal(hook(c).status, 2, c);
+    }
+    assert.equal(hook('python3 -c "print(1)"').status, 0);
+    assert.equal(hook('git show HEAD:README.md').status, 0);
     assert.deepEqual(readDenyHit(['**/.env'], 'cat .env', { home, cwd }), { word: '.env', glob: '**/.env' });
     assert.equal(readDenyHit(['**/.env.*.local'], 'cat *', { home, cwd }), null, "the shell's * never expands to a dotfile, even against a wildcard deny");
     assert.deepEqual(readDenyHit(['**/.env.*.local'], 'cat .env.prod.local', { home, cwd }), { word: '.env.prod.local', glob: '**/.env.*.local' });

@@ -158,3 +158,19 @@ test('a lock with no skill library installs nothing and says so', () => {
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /names no skill library with install sets/);
 });
+
+test('a set or a record that names a path instead of a skill installs and removes nothing', () => {
+  write(path.join(lib, 'skills/SETS.yaml'), SETS.replace('skills: [alpha, beta]', "skills: [alpha, '../../victim']"));
+  git(lib, 'commit', '-qam', 'hostile set');
+  write(path.join(project, 'toolkit.lock'), lockFor(pinOf(lib, 'skills')));
+  write(path.join(project, 'victim/keep.txt'), 'mine\n');
+  const r = run();
+  assert.equal(r.status, 1, r.stdout);
+  assert.match(r.stderr, /names "\.\.\/\.\.\/victim", which is not a skill name/);
+  assert.ok(fs.existsSync(path.join(project, 'victim/keep.txt')));
+  assert.ok(!fs.existsSync(path.join(project, '.claude/skills/alpha')), 'nothing was installed either');
+  write(path.join(project, '.claude/skills/VENDORED.json'), JSON.stringify({ libraries: { skilldex: { commit: 'x', tree: 'y', path: 'skills', sets: ['core'], skills: { '../../../outside': 'z' } } } }));
+  const c = run('--check');
+  assert.equal(c.status, 1, c.stdout);
+  assert.match(c.stderr, /VENDORED\.json \(skilldex\) names "\.\.\/\.\.\/\.\.\/outside"/);
+});

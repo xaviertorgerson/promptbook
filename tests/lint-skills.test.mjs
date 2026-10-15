@@ -113,7 +113,7 @@ describe('lint-skills', () => {
     assert.match(e.message, /quote values that contain ": "/);
   });
 
-  it('a description over 300 characters warns, over 400 fails; a folder over the 8000-character budget warns unless it is a library with install sets', () => {
+  it('a description over 300 characters warns, over 400 fails; a folder over the 10,000-character budget warns unless it is a library with install sets', () => {
     const dir = overlay('description-length');
     const skill = path.join(dir, 'drafting-widgets/SKILL.md');
     const text = fs.readFileSync(skill, 'utf8');
@@ -143,6 +143,21 @@ describe('lint-skills', () => {
     assert.ok(rules(r, 'error').has('engine-neutral'));
     const ok = lintSkills([overlay('engine-neutral')], { allowTerms: ['Claude Code', 'Claude'] });
     assert.ok(!rules(ok, 'error').has('engine-neutral'));
+  });
+
+  it('a library allows terms its skills may name through lint.allow_terms in its SETS.yaml', () => {
+    const lib = path.join(TMP, 'allow-lib');
+    fs.mkdirSync(path.join(lib, 'skills'), { recursive: true });
+    fs.cpSync(path.join(GOOD, 'drafting-widgets'), path.join(lib, 'skills/drafting-widgets'), { recursive: true });
+    const skill = path.join(lib, 'skills/drafting-widgets/SKILL.md');
+    fs.writeFileSync(skill, fs.readFileSync(skill, 'utf8').replace('# Drafting widgets', '# Drafting widgets\n\nOpen the draft on GitHub.'));
+    const sets = (lint) => fs.writeFileSync(path.join(lib, 'SETS.yaml'), `budget: { limit: 10000, headroom: 0.10 }\nsets:\n  everyday:\n    scope: user\n    skills: [drafting-widgets]\n${lint}`);
+    sets('');
+    assert.ok(rules(lintSkills([path.join(lib, 'skills')]), 'error').has('engine-neutral'), 'GitHub is on the deny-list');
+    sets('lint:\n  allow_terms: [GitHub]\n');
+    assert.ok(!rules(lintSkills([path.join(lib, 'skills')]), 'error').has('engine-neutral'), 'the library allowed it');
+    sets('lint:\n  allow_terms: GitHub\n');
+    assert.ok(lintSkills([path.join(lib, 'skills')]).sets.flatMap((x) => x.findings).some((x) => x.rule === 'sets-shape'), 'allow_terms is a list');
   });
 
   it('warns between 200 and 300 body lines and fails above', () => {
@@ -223,7 +238,7 @@ describe('lint --budget-set: the installed set\'s description budget', () => {
   for (let i = 0; i < 24; i += 1) {
     const n = `weighing-thing-${String.fromCharCode(97 + i)}`;
     fs.mkdirSync(path.join(HEAVY, n), { recursive: true });
-    fs.writeFileSync(path.join(HEAVY, n, 'SKILL.md'), `---\nname: ${n}\ndescription: ${'x'.repeat(350)}\n---\n`);
+    fs.writeFileSync(path.join(HEAVY, n, 'SKILL.md'), `---\nname: ${n}\ndescription: ${'x'.repeat(450)}\n---\n`);
   }
 
   it('one library alone fits; that library plus another a profile also installs is over, and says so', () => {
@@ -232,9 +247,9 @@ describe('lint --budget-set: the installed set\'s description budget', () => {
     assert.deepEqual(alone.findings, []);
     const devbox = budgetSet(write('devbox.yaml', `# what the devbox installs\n- ${HEAVY}\n- ${GOOD}\n- ${path.join(GOOD, 'drafting-widgets')}\n`));
     assert.equal(devbox.skills.length, 28, 'a skill listed twice counts once');
-    assert.ok(devbox.total > 8000, `${devbox.total}`);
+    assert.ok(devbox.total > 10000, `${devbox.total}`);
     const w = devbox.findings.find((f) => f.rule === 'description-budget');
-    assert.ok(w && w.severity === 'warning' && /28 descriptions total \d+ characters, over the 8000/.test(w.message), JSON.stringify(devbox.findings));
+    assert.ok(w && w.severity === 'warning' && /28 descriptions total \d+ characters, over the 10000/.test(w.message), JSON.stringify(devbox.findings));
     assert.match(w.message, /24 from .*heavy\/skills, 4 from /);
   });
 
@@ -268,7 +283,7 @@ describe('lint --budget-set: the installed set\'s description budget', () => {
     const over = write('over.txt', `${HEAVY}\n${GOOD}\n`);
     const r = cli('--budget-set', over);
     assert.equal(r.status, 0, r.stdout + r.stderr);
-    assert.match(r.stdout, /^budget set .*: 28 skill\(s\), \d+ of 8000 characters$/m);
+    assert.match(r.stdout, /^budget set .*: 28 skill\(s\), \d+ of 10000 characters$/m);
     assert.match(r.stdout, /warning description-budget — the installed set's 28 descriptions/);
     assert.equal(cli('--budget-set', over, '--strict').status, 1);
     const j = JSON.parse(cli('--budget-set', over, '--json').stdout);
