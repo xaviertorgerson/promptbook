@@ -112,7 +112,8 @@ lifecycle:
       narrowed[] was only appended to (promptbook grant verify --git).
   validity: >-
     A grant is live when granted_at <= now, now < expires_at when it has one, and revoked_at is
-    absent. A coordinator checks liveness before every delegated action, not once at start.
+    absent. A coordinator checks liveness before every delegated action, not once at start
+    (promptbook grant verify reports the state and fails a grant that is not live).
   expiry: >-
     Required unless the grant names a stop condition (limits.stop_when), which then bounds it with
     revocation; a grant with neither is invalid (grant contract rule grant-is-bounded). On expiry,

@@ -240,9 +240,12 @@ describes.
 
 ## grant
 
-`promptbook grant verify <grant.yaml>... [--git] [--owners a,b] [--identities <file>] [--root <dir>]`
+`promptbook grant verify <grant.yaml>... [--git] [--owners a,b] [--identities <file>] [--root <dir>] [--at <time>]`
 answers "may a coordinator act under this file?" (`state-machines/authority.yaml` lifecycle.issue):
-the grant contract, schema and named checks; the file is under `.orchestrator/grants/` and not a
+the grant contract, schema and named checks; the grant is live now, or at `--at` (an ISO date-time),
+and each line names its lifecycle state, `(live)`, `(pending)`, `(expired)` or `(revoked)`, read from
+its dates and revocation (`grant-is-live` fails the other three; a grant bounded only by stop
+conditions has no expiry, and whether one holds is the coordinator's to tell); the file is under `.orchestrator/grants/` and not a
 draft under `drafts/` (`grant-on-protected-path`, `grant-is-draft`); `granted_by`, each
 `narrowed[].by` and `revoked_by` are owners of that path, read from the project's CODEOWNERS (the
 last matching rule, as the forges read it) or `--owners` (`granted-by-is-owner`,

@@ -2,7 +2,7 @@ import { effectiveGrant, grantState } from '../grant.mjs';
 
 // Authority facts shared by the world, the supervisor and the invariants (state-machines/authority.yaml).
 // Every check reads the grant in force: the issued fields minus its narrowing (tools/lib/grant.mjs),
-// and a grant's lifecycle state is grantState() there.
+// and a grant's lifecycle state is grantState() there, the one grant verify reports.
 export { grantState };
 
 export function grantLiveAt(g, ms) {

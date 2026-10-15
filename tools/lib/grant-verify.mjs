@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { parse } from 'yaml';
 import { globToRegExp, toPosix } from './glob.mjs';
-import { MUTABLE_GRANT_FIELDS, narrowingFindings } from './grant.mjs';
+import { grantState, MUTABLE_GRANT_FIELDS, narrowingFindings } from './grant.mjs';
 import { validateData } from './validate.mjs';
 
 // promptbook grant verify: what a coordinator checks about a grant file before acting under it
@@ -49,13 +49,15 @@ const sameIdentity = (handle, author, identities) => {
 // Every check a coordinator runs on a grant file before acting under it. opts: root (the project
 // root; default: the file's git top level, else the folder above .orchestrator), owners (handles,
 // overriding CODEOWNERS), identities ({handle: [git author emails or names]}), git (check the
-// history). Returns { file, live, findings: [{ severity, rule, message }] }.
-export function verifyGrant(file, { root = null, owners = null, identities = {}, git: useGit = false } = {}) {
+// history), at (epoch ms the grant must be live at; default now). Returns { file, state, live,
+// findings: [{ severity, rule, message }] }: state is the grant's lifecycle state at `at` (pending,
+// live, expired, revoked), and live means it is on the live path, verifies, and is live then.
+export function verifyGrant(file, { root = null, owners = null, identities = {}, git: useGit = false, at = Date.now() } = {}) {
   const findings = [];
   const add = (rule, message, severity = 'error') => findings.push({ severity, rule, message });
   const abs = path.resolve(file);
   let g;
-  try { g = parse(fs.readFileSync(abs, 'utf8')); } catch (e) { add('parse-error', e.message); return { file, live: false, findings }; }
+  try { g = parse(fs.readFileSync(abs, 'utf8')); } catch (e) { add('parse-error', e.message); return { file, state: null, live: false, findings }; }
   for (const m of validateData('grant', g)) add('grant-contract', m);
   // The project root: given, else the folder that holds .orchestrator/, else the git top level.
   const marker = `${path.sep}.orchestrator${path.sep}`;
@@ -111,5 +113,12 @@ export function verifyGrant(file, { root = null, owners = null, identities = {},
     }
   }
   if (g && !findings.some((f) => f.rule === 'grant-contract')) for (const f of narrowingFindings(g)) add(f.rule, `${f.pointer}: ${f.message}`);
-  return { file, live: live && !findings.some((f) => f.severity === 'error'), findings };
+  // Nothing acts under a grant that is not live now: before granted_at, at or past expires_at, or
+  // revoked (authority.yaml lifecycle.validity). Renewing is a new grant.
+  const state = g && typeof g === 'object' && g.granted_at ? grantState(g, at) : null;
+  const when = new Date(at).toISOString();
+  if (state === 'pending') add('grant-is-live', `pending at ${when}: granted_at is ${g.granted_at}`);
+  else if (state === 'expired') add('grant-is-live', `expired at ${when}: expires_at was ${g.expires_at}; renewing is a new grant from the human`);
+  else if (state === 'revoked') add('grant-is-live', `revoked at ${g.revoked_at} by ${g.revoked_by ?? 'an unnamed human'}${g.revocation_reason ? ` (${g.revocation_reason})` : ''}`);
+  return { file, state, live: live && state === 'live' && !findings.some((f) => f.severity === 'error'), findings };
 }

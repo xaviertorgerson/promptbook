@@ -290,10 +290,11 @@ only removes what the grant holds, only lowers limits and the expiry and never e
 granting human committed under `.orchestrator/grants/`, a CODEOWNERS-protected path, `granted_by`
 one of its owners; agents write only `.orchestrator/grants/drafts/`, which validate as grants but are
 never live; `promptbook grant verify <file> --git` checks the owners, the last commit's author, the
-issued fields against the issuing commit, append-only narrowing and a source commit), and its
+issued fields against the issuing commit, append-only narrowing and a source commit, and reports
+the lifecycle state, failing a grant that is not live), and its
 *recorded uses* (every task record, run record and orchestrator
 commit that names its id). A coordinator derives the state before each delegated action
-(`authority.yaml` lifecycle.validity); `grantState()` and `effectiveGrant()` in `tools/lib/grant.mjs` are the reference. A coordinator
+(`authority.yaml` lifecycle.validity); `grantState()` and `effectiveGrant()` in `tools/lib/grant.mjs`, which the simulator and `grant verify` share, are the reference. A coordinator
 may hold several grants (a work grant and a merge grant, revocable alone): each action is exercised
 under the grant that delegates it, and the workers cap is the smallest `max_workers` among the live
 grants that dispatch work, so a merge-only grant's `max_workers` bounds its merges, not the epic's

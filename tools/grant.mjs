@@ -7,9 +7,10 @@ import { verifyGrant } from './lib/grant-verify.mjs';
 
 const USAGE = `Check a grant before acting under it.
 
-  promptbook grant verify <grant.yaml>... [--git] [--owners a,b] [--identities <file.yaml>] [--root <dir>]
+  promptbook grant verify <grant.yaml>... [--git] [--owners a,b] [--identities <file.yaml>] [--root <dir>] [--at <time>]
 
-  The grant contract (schema and named checks); the file is a live grant under .orchestrator/grants/
+  The grant contract (schema and named checks); the grant is live now (or --at an ISO date-time):
+  granted, not expired, not revoked; the file is a live grant under .orchestrator/grants/
   (a draft under drafts/ is reported, not live); granted_by, every narrowed[].by and revoked_by are
   owners of that path (the project's CODEOWNERS rule for it, or --owners); narrowed[] only narrows
   (removes what the grant in force holds, lowers limits and the expiry, never empties a scope list).
@@ -22,7 +23,7 @@ const USAGE = `Check a grant before acting under it.
 Exit 0 when every grant verifies, 1 when one does not, 2 on a usage error.`;
 
 export function main(argv = process.argv.slice(2)) {
-  const VALUED = new Set(['--owners', '--identities', '--root']);
+  const VALUED = new Set(['--owners', '--identities', '--root', '--at']);
   const value = (n) => { const i = argv.indexOf(n); return i === -1 ? undefined : argv[i + 1]; };
   const usage = (m) => { console.error(`grant: ${m}\n\n${USAGE}`); return 2; };
   if (argv.includes('--help') || argv.includes('-h')) { console.log(USAGE); return 0; }
@@ -35,13 +36,15 @@ export function main(argv = process.argv.slice(2)) {
     try { identities = parse(fs.readFileSync(value('--identities'), 'utf8')) ?? {}; } catch (e) { return usage(`--identities: ${e.message}`); }
   }
   const owners = value('--owners') ? value('--owners').split(',').map((s) => s.trim()).filter(Boolean) : null;
-  const results = files.map((f) => verifyGrant(f, { git: argv.includes('--git'), owners, identities, root: value('--root') ?? null }));
+  const at = value('--at') === undefined ? Date.now() : Date.parse(value('--at'));
+  if (Number.isNaN(at)) return usage(`--at takes an ISO date-time, not ${value('--at')}`);
+  const results = files.map((f) => verifyGrant(f, { git: argv.includes('--git'), owners, identities, root: value('--root') ?? null, at }));
   const failed = results.some((r) => r.findings.some((x) => x.severity === 'error'));
   if (argv.includes('--json')) console.log(JSON.stringify(results, null, 2));
   else {
     for (const r of results) {
       const errors = r.findings.filter((x) => x.severity === 'error');
-      console.log(`${errors.length ? 'FAIL' : 'PASS'} ${r.file}${r.live ? ' (live)' : ''}`);
+      console.log(`${errors.length ? 'FAIL' : 'PASS'} ${r.file}${r.state ? ` (${r.state})` : ''}`);
       for (const x of r.findings) console.log(`  ${x.severity === 'error' ? '' : `${x.severity} `}${x.rule}: ${x.message}`);
     }
   }
