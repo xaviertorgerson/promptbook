@@ -9,7 +9,10 @@ import { blocks, boldFields, fenceMask, fieldBullets, headings, isPlaceholder, l
 // stub = an unfilled template entry: reported as a warning, never schema-validated.
 
 const ids = (s, re) => [...new Set((s ?? '').match(re) ?? [])];
-const ADR_RE = /ADR-[0-9]{4}/g;
+// A decision id: ADR-NNNN (the ADR template's), or D-NNN (a decision log's, as heirloom writes it).
+export const DECISION_ID = '(?:ADR-[0-9]{4}|D-[0-9]{3,4})';
+export const DECISION_ID_RE = new RegExp(`^${DECISION_ID}$`);
+const ADR_RE = new RegExp(`\\b${DECISION_ID}\\b`, 'g');
 const clean = (s) => (s ?? '').replace(/`/g, '').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').trim();
 const yesNo = (s) => (/^(yes|true|y)$/i.test(clean(s)) ? true : /^(no|false|n)$/i.test(clean(s)) ? false : clean(s));
 
@@ -196,7 +199,9 @@ const DECISION_FIELDS = {
   status: 'status_text', date: 'date', decision: 'decision', why: 'why', context: 'context', consequences: 'consequences',
   supersedes: 'supersedes', 'reversed when': 'reversal_trigger', 'reversal trigger': 'reversal_trigger',
   door: 'door', satisfies: 'satisfies', options: 'options', 'options considered': 'options', alternatives: 'options',
+  'trigger that reverses it': 'reversal_trigger',
 };
+const DECISION_LABELS = new Set(Object.keys(DECISION_FIELDS));
 
 // The ADR ids a "**Supersedes:**" line supersedes. The line is clauses split by ";"; a clause that
 // opens with another relation ("extends ADR-0007", "confirms ADR-0008's queue choice", "refines
@@ -209,21 +214,32 @@ export function supersededIn(line) {
 function statusOf(text) {
   const status = (clean(text).match(/^[A-Za-z]+/) ?? [''])[0].toLowerCase();
   const segments = (re) => [...clean(text).matchAll(re)].map((m) => m[0]);
-  const superseded = segments(/supersed[^;.]*/gi).flatMap((s) => ids(s, ADR_RE));
-  const refined = segments(/refined[^;.]*/gi).flatMap((s) => ids(s, ADR_RE));
-  return { status, superseded: [...new Set(superseded)], refined: [...new Set(refined)] };
+  // "superseded by X" names a successor; "supersedes X" (a newer decision's status line) does not.
+  const superseded = segments(/superseded[^;.·]*/gi).flatMap((s) => ids(s, ADR_RE));
+  const refined = segments(/refined[^;.·]*/gi).flatMap((s) => ids(s, ADR_RE));
+  const supersedes = segments(/supersedes[^;.·]*/gi).flatMap((s) => ids(s, ADR_RE));
+  return { status, superseded: [...new Set(superseded)], refined: [...new Set(refined)], supersedes: [...new Set(supersedes)] };
 }
 
+// A decision-log entry with no Status line is prose: its status is what its own words say
+// ("superseded by D-059" in its heading or a line), else in force; any Why, Context or Decision
+// paragraph it labels is kept.
+const PROSE_SUPERSEDED = new RegExp(`\\bsuperseded\\b[^.;:()]*?\\bby\\s+(${DECISION_ID})`, 'gi');
+const PROSE_REFINED = new RegExp(`\\b(?:refined|amended)\\b[^.;:()]*?\\bby\\s+(${DECISION_ID})`, 'gi');
+const PROSE_SUPERSEDES = /\bsupersedes\b([^.;)]*)/gi;
+const matched = (text, re) => [...new Set([...text.matchAll(re)].map((m) => m[1]))];
+
+// Entries are headings "ADR-NNNN: title" or "D-NNN — title", at any heading level.
 export function parseDecisions(text) {
   const { lines } = prepare(text);
   const records = [];
-  for (const b of blocks(lines, /^(ADR-[0-9]{4})\s*[:—–-]\s*(.+)$/, { maxLevel: 2, minLevel: 1 })) {
+  for (const b of blocks(lines, new RegExp(`^(${DECISION_ID})\\s*[:—–-]\\s*(.+)$`), { maxLevel: 6, minLevel: 1 })) {
     const [, id, title] = b.match;
     const data = { id, title: title.trim() };
     const fieldLines = { id: b.heading.index + 1, title: b.heading.index + 1 };
     const placeholders = [];
     const extra = {};
-    for (const f of boldFields(b.lines, b.mask)) {
+    for (const f of boldFields(b.lines, b.mask, { periodLabels: DECISION_LABELS })) {
       const key = DECISION_FIELDS[normLabel(f.label)];
       const line = b.start + f.index + 1;
       if (!key) { extra[f.label] = f.value; fieldLines.extra = line; continue; }
@@ -236,6 +252,7 @@ export function parseDecisions(text) {
         fieldLines.status = line;
         if (s.superseded.length) { data.superseded_by = s.superseded; fieldLines.superseded_by = line; }
         if (s.refined.length) { data.refined_by = s.refined; fieldLines.refined_by = line; }
+        if (s.supersedes.length && !data.supersedes_ids) { data.supersedes_ids = s.supersedes; fieldLines.supersedes_ids = line; }
       } else if (key === 'date') {
         if (!isPlaceholder(f.value)) data.date = f.value;
       } else if (key === 'supersedes') {
@@ -249,6 +266,25 @@ export function parseDecisions(text) {
         data.options = bullets.length ? bullets : [f.value];
       } else data[key] = f.value;
     }
+    // With no Date line, the date a Status line states ("accepted · 2026-10-12 · …") dates it.
+    if (!('date' in data) && data.status_text && !placeholders.includes('date')) {
+      const d = clean(data.status_text).match(/\b(\d{4}-\d{2}-\d{2})\b/)?.[1];
+      if (d) { data.date = d; fieldLines.date = fieldLines.status_text; }
+    }
+    if (!('status_text' in data)) {
+      const body = b.lines.filter((l, i) => !b.mask[i]).join('\n').trim();
+      const words = `${title}\n${body}`;
+      data.form = 'prose';
+      data.decision ??= body.replace(/\s+/g, ' ') || title.trim();
+      const superseded = matched(words, PROSE_SUPERSEDED);
+      const refined = matched(words, PROSE_REFINED);
+      const supersedes = [...words.matchAll(PROSE_SUPERSEDES)].flatMap((m) => ids(m[1], ADR_RE)).filter((x) => x !== id);
+      data.status = superseded.length ? 'superseded' : 'accepted';
+      if (superseded.length) data.superseded_by = superseded;
+      if (refined.length) data.refined_by = refined;
+      if (supersedes.length) data.supersedes_ids = [...new Set(supersedes)];
+      for (const k of ['form', 'decision', 'status', 'superseded_by', 'refined_by', 'supersedes_ids']) fieldLines[k] ??= b.heading.index + 1;
+    }
     if (Object.keys(extra).length) data.extra = extra;
     if (placeholders.length) data.placeholders = placeholders;
     const warnings = placeholders.map((p) => `${id} ${p} is a template placeholder`);
@@ -260,7 +296,7 @@ export function parseDecisions(text) {
     if (seen.has(r.data.id)) errors.push({ keyword: 'unique', pointer: `/${r.data.id}`, message: `${r.data.id} is defined twice (lines ${seen.get(r.data.id)} and ${r.line})`, line: r.line });
     else seen.set(r.data.id, r.line);
   }
-  if (!records.length) errors.push({ keyword: 'entries', pointer: '', message: 'no "## ADR-NNNN: title" entries', line: 1 });
+  if (!records.length) errors.push({ keyword: 'entries', pointer: '', message: 'no decision entries (a heading "ADR-NNNN: title" or "D-NNN — title")', line: 1 });
   return { records, errors };
 }
 

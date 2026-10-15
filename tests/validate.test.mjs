@@ -597,6 +597,36 @@ describe('trace graph', () => {
     });
   });
 
+  describe('a decision log: D-NNN entries at any heading level, prose or labelled', () => {
+    const log = '\n## Decision log\n\n### D-001 — Invoices are rendered PDFs\nThe rendered PDF is the legal artifact.\n\n### D-002 — A4 paper everywhere (superseded by D-003)\nOne page size.\n\n### D-003 — Letter for US households\n**Status:** accepted · 2026-10-12 · supersedes D-002\n\n**Context.** US households print on Letter.\n\n**Decision.** Letter in the US, A4 elsewhere.\n\n**Consequences.** Two page sizes.\n';
+    const withLog = (docs) => project('complete', {
+      'DECISIONS.md': (t) => `${t}${log}`,
+      'specs/invoicing/tasks/INV-1.md': (t) => t.replace('  - DECISIONS.md#ADR-0001\n', `  - DECISIONS.md#ADR-0001\n${docs.map((d) => `  - DECISIONS.md#${d}\n`).join('')}`),
+    });
+
+    it('parses each entry: prose is in force unless its words say superseded; a Status line dates a labelled one', () => {
+      const r = validateFile(path.join(withLog([]), 'DECISIONS.md'));
+      assert.equal(r.status, 'PASS', JSON.stringify(errorsOf(r)));
+      const { records } = PARSERS.decisions(fs.readFileSync(path.join(withLog([]), 'DECISIONS.md'), 'utf8'));
+      const d = Object.fromEntries(records.map((x) => [x.data.id, x.data]));
+      assert.deepEqual(Object.keys(d), ['ADR-0001', 'D-001', 'D-002', 'D-003']);
+      assert.deepEqual([d['D-001'].form, d['D-001'].status, d['D-001'].decision], ['prose', 'accepted', 'The rendered PDF is the legal artifact.']);
+      assert.deepEqual([d['D-002'].status, d['D-002'].superseded_by], ['superseded', ['D-003']]);
+      assert.equal(d['D-003'].form, undefined, 'a Status line makes it the ADR form');
+      assert.deepEqual([d['D-003'].status, d['D-003'].date, d['D-003'].decision, d['D-003'].supersedes_ids], ['accepted', '2026-10-12', 'Letter in the US, A4 elsewhere.', ['D-002']]);
+      assert.equal(d['D-003'].context, 'US households print on Letter.');
+    });
+
+    it('trace sees them: a task citing a superseded one is warned, one citing a missing one is an error', () => {
+      const r = trace(withLog(['D-001', 'D-002', 'D-009']));
+      const by = (rule) => r.gaps.filter((g) => g.rule === rule).map((g) => g.message);
+      assert.deepEqual(by('artifact-valid'), []);
+      assert.ok(by('cites-current-decision').some((m) => /INV-1 reads D-002, which is superseded by D-003/.test(m)), JSON.stringify(by('cites-current-decision')));
+      assert.ok(by('decision-exists').some((m) => /D-009 is not in DECISIONS\.md/.test(m)), JSON.stringify(by('decision-exists')));
+      assert.ok(!by('decision-exists').some((m) => /D-001|D-002/.test(m)));
+    });
+  });
+
   describe('plan shape', () => {
     const adr = '\n## ADR-0002: Invoices are stored as rendered PDFs\n**Status:** Proposed\n**Date:** 2026-10-12\n**Decision:** Store the rendered PDF.\n**Why:** The rendered file is the legal artifact.\n**Door:** one-way\n**Reversed when:** a regulator requires structured invoices.\n**Consequences:** Re-rendering is not a feature.\n';
     const plan = (status, { skeletonRoot = false } = {}) => project('complete', {

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { criteria, DEFAULT_TEST_GLOBS, namingIndexes, testNames } from './ears.mjs';
 import { findFiles, globsOverlap, toPosix } from './glob.mjs';
 import { loadFrontmatterMarkdown, readText } from './loaders.mjs';
-import { parseDecisions, parseEpicAdrs, parseJourneys, parsePersonas, parseRequirements, parseTaskIndex, parseUxFlows } from './parsers.mjs';
+import { DECISION_ID_RE, parseDecisions, parseEpicAdrs, parseJourneys, parsePersonas, parseRequirements, parseTaskIndex, parseUxFlows } from './parsers.mjs';
 import { fenceMask, headings, section, splitLines, stripComments } from './markdown.mjs';
 import { registry as sharedRegistry } from './registry.mjs';
 import { inferContracts, validateAs } from './validate.mjs';
@@ -286,7 +286,7 @@ export function trace(root, opts = {}) {
         const [file, anchor] = doc.split('#');
         if (!exists(path.join(root, file))) {
           egap({ rule: 'guiding-doc-exists', severity: 'error', subject: t.id, message: `${t.id} guiding doc ${doc} does not exist`, file: t.file, line: null });
-        } else if (anchor && /^ADR-[0-9]{4}$/.test(anchor)) {
+        } else if (anchor && DECISION_ID_RE.test(anchor)) {
           if (!p.decisions.has(anchor)) egap({ rule: 'decision-exists', severity: 'error', subject: t.id, message: `${t.id} guiding doc ${doc}: ${anchor} is not in DECISIONS.md`, file: t.file, line: null });
           else if (adrStatus(anchor) === 'superseded') egap({ rule: 'cites-current-decision', severity: 'warning', subject: t.id, message: `${t.id} reads ${anchor}, which is superseded by ${(p.decisions.get(anchor).superseded_by ?? []).join(', ')}`, file: t.file, line: null });
         }
@@ -360,7 +360,7 @@ export function trace(root, opts = {}) {
     // One-way doors the epic relies on are decided before it is ready.
     const cited = new Set([...e.adrs.ids, ...[...e.requirements.values()].flatMap((r) => r.adrs ?? [])]);
     for (const d of p.decisions.values()) if ((d.satisfies ?? []).some((r) => r.startsWith(`${e.slug}/`))) cited.add(d.id);
-    for (const t of e.tasks.values()) for (const doc of t.guiding_docs ?? []) { const a = doc.split('#')[1]; if (a && /^ADR-[0-9]{4}$/.test(a)) cited.add(a); }
+    for (const t of e.tasks.values()) for (const doc of t.guiding_docs ?? []) { const a = doc.split('#')[1]; if (a && DECISION_ID_RE.test(a)) cited.add(a); }
     for (const id of [...cited].sort()) {
       const d = p.decisions.get(id);
       if (d?.door === 'one-way' && d.status === 'proposed') egap({ rule: 'one-way-door-decided', severity: missing({ introduced: true, claims: epicClaims }), subject: id, message: `${id} (${d.title}) is a one-way door still proposed; decide it before the epic is ready`, file: d.file, line: d.line, blocks_readiness: true });

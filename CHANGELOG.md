@@ -23,6 +23,15 @@ decision log that is not in the ADR form, were invisible.
   `describe('BOOK-12 …')` counts for BOOK-12 AC-3; a flat name reads as before. A member call such
   as `regex.test("…")` is no longer a test name. On heirloom, `criterion-named-in-test` falls from
   401 to 291 and `ambiguous-criterion-id` from 144 to 125.
+- **additive** — decision 1.3.0 (with common 1.5.0, requirement 1.3.0 and governance 1.1.0): a
+  decision id is `ADR-NNNN` or a decision log's `D-NNN`, and an entry with no `**Status:**` line is
+  `form: prose`, needing only its id, title, status and decision: in force unless its heading or a
+  line says "superseded by <id>". heirloom's 156 `### D-NNN` decisions validate as written.
+- **behavioral** — The decision parser reads entries at any heading level, labels written
+  `**Context.**` as well as `**Context:**` (for the labels it maps), `**Trigger that reverses it:**`
+  as the reversal trigger, and the date a Status line states when there is no Date line; a Status
+  line's "supersedes ADR-0007" fills `supersedes_ids` instead of being read as superseded by it.
+  `trace` checks `DECISIONS.md#D-NNN` anchors like `#ADR-NNNN` ones.
 
 ### Final pass
 

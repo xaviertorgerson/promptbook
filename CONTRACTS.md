@@ -47,7 +47,7 @@ node tools/validate.mjs --list                  # contracts, versions, artifact 
   and a file line. Rules JSON Schema cannot express are named checks listed in `x-checks`
   (`tools/lib/checks.mjs`). Unknown fields are errors, except `x-*` keys, which are free for local
   extensions, and a task record's top-level keys, which a runtime fills with its own evidence.
-- **Ids.** `BRIEF`, `PER-n`, `CUJ-n` and `REQ-n`/`NFR-n` (per epic), `UX-n`, `ADR-nnnn`,
+- **Ids.** `BRIEF`, `PER-n`, `CUJ-n` and `REQ-n`/`NFR-n` (per epic), `UX-n`, `ADR-nnnn` (or a decision log's `D-nnn`),
   `<PREFIX>-n` for tasks, `AC-n` per task, `GRANT-n`. A reference across epics is `<epic>/CUJ-n` or
   `<epic>/REQ-n`; within an epic the bare id is enough. ADRs belong to no epic, so they always qualify.
 - **Shared definitions** (ids, dates, status enums, `mode`, `role` — the workflow roles, `evaluator`
@@ -119,7 +119,7 @@ agentic-template's `cuj.md` unchanged (both epics validate as-is). New optional 
 
 **Purpose.** One checkable behaviour (functional, REQ) or one measurable quality (non-functional,
 NFR) of an epic; tasks implement requirements and ADRs satisfy them. **Schema**
-`requirement.schema.json` 1.2.0: `id`, `source_id`, `epic`, `kind`, `statement`, `ears` (set by the
+`requirement.schema.json` 1.3.0 (its ADR column takes `D-nnn` ids too): `id`, `source_id`, `epic`, `kind`, `statement`, `ears` (set by the
 parser), `module`, `verified_by`, `cujs[]`, `adrs[]`; an NFR also requires `category` (performance,
 reliability, availability, security, privacy, accessibility, usability, operability, observability,
 cost, compliance, compatibility, maintainability, portability, scalability; the playbook's list is
@@ -140,16 +140,23 @@ may live in any design tool; only its link is in git. **Compat.** New; agentic-t
 
 **Purpose.** An Architecture Decision Record: the immutable why, the options rejected, whether the
 door is one-way, what would reverse it, and the requirements it satisfies. **Schema**
-`decision.schema.json` 1.2.0: `id` ADR-nnnn, `title`, `status` (proposed | accepted | superseded |
+`decision.schema.json` 1.3.0: `id` ADR-nnnn or D-nnn, `title`, `status` (proposed | accepted | superseded |
 deprecated | rejected), `status_text`, `superseded_by[]`, `refined_by[]`, `date`, `supersedes`,
 `supersedes_ids[]`, `decision`, `why` (or `context`, the Nygard form's `**Context:**`, which stands in
 for it: `missing-why` only when neither is there), `consequences`, optional `options[]`, `door`,
 `reversal_trigger`, `satisfies[]` (`<epic>/REQ-n`), `extra{}`, `placeholders[]`. Rules: a superseded
 ADR names its successor; a one-way door names its reversal trigger; a date is required unless still
 the template's `TODO(domain)` (warning). **Swap story.** One `DECISIONS.md` or one file per ADR under
-`docs/adr/`; the parser reads both. **Compat.** Describes agentic-template's format (`## ADR-NNNN:
+`docs/adr/`; the parser reads both. **Prose form** (1.3.0): an entry with no `**Status:**` line is a
+decision-log entry (`form: prose`): `status`, `title` and `decision` (its Decision paragraph, else its
+text) are required, `status_text`, `consequences`, `why` and `date` are not; it is `superseded` when
+its heading or a line says "superseded by <id>" (those ids are `superseded_by`; "amended by" or
+"refined by" ids are `refined_by`; "supersedes <id>" fills `supersedes_ids`), else `accepted`.
+**Compat.** Describes agentic-template's format (`## ADR-NNNN:
 title`, `**Status:**`, `**Date:**`, `**Decision:**`, `**Why:**`, `**Consequences:**`, and the newer
-`**Supersedes:**`, `**Reversed when:**`); all 18 ADRs validate unchanged.
+`**Supersedes:**`, `**Reversed when:**`); all 18 ADRs validate unchanged. Reads heirloom's decision
+log as written: 156 `### D-nnn — title` entries, prose or labelled `**Context.**`, `**Decision.**`, all
+valid.
 
 ### epic
 
@@ -415,7 +422,8 @@ plugin `version` pin as the single source.
 green required checks and the evaluator's verdict without a human's approval of the pull request
 (workflow `auto-land`), and which always wait for one. One per project, `governance.yaml`, chosen by
 a human (at bootstrap, say) and recorded in an ADR with its reversal trigger. Without one, nothing
-lands without a human's approval, as before. **Schema** `governance.schema.json` 1.0.0: `trust`
+lands without a human's approval, as before. **Schema** `governance.schema.json` 1.1.0 (1.1.0: the
+`decision` may be a decision log's `D-nnn`): `trust`
 (solo | team | regulated), `decision` (the ADR), `reversal_trigger`, `auto_land.max_risk` (none |
 low | medium; absent, the profile's ceiling: solo medium, team low, regulated none; never high, and
 never an irreversible task), `protected_paths` (globs; a change touching one waits for a human),
@@ -508,9 +516,13 @@ Implemented in `tools/lib/parsers.mjs`; every parser keeps file line numbers for
   is non-functional. Rows whose statement is a placeholder (`…`, `<…>`) are skipped; a duplicate id
   after normalization is an error. A section with no real row is an error (`no-entries`) from
   `draft` on, and a warning while the epic is `intake` or `scoping` (a stub spec).
-- **Decisions** (`DECISIONS.md`). Each `## ADR-NNNN: title` starts an entry; each line starting
-  `**Label:**` starts a field that runs to the next such line (multi-line values and inner bold text
-  are kept). `status` is the first word of the Status line; ADR ids after "superseded" in it become
+- **Decisions** (`DECISIONS.md`). Each heading `ADR-NNNN: title` or `D-NNN — title` (`:`, `—`, `–` or
+  `-`), at any heading level, starts an entry that runs to the next heading of its level or higher;
+  each line starting `**Label:**` starts a field that runs to the next such line (multi-line values
+  and inner bold text are kept), and so does `**Label.**` when the label is one the parser maps
+  (`**Context.**`, `**Decision.**`, `**Why.**`), so a bold sentence opening a paragraph stays prose.
+  `**Trigger that reverses it:**` is `reversal_trigger`; with no Date line, a date the Status line
+  states is the date. `status` is the first word of the Status line; ADR ids after "superseded" in it become
   `superseded_by` ("superseded in part by" counts), after "refined" `refined_by`. In
   `**Supersedes:**`, clauses opening with "extends", "confirms", "refines", "fills" name related ADRs,
   not superseded ones. Template tokens (`TODO(domain)`) are recorded in `placeholders` and reported as

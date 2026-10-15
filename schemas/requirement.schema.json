@@ -3,7 +3,7 @@
   "$id": "https://promptbook.dev/schemas/requirement.schema.json",
   "title": "Requirement",
   "description": "One row of a requirements table under '## Requirements' in specs/<epic>/spec.md, normalized: a legacy 'R<n>' id becomes REQ-<n>, columns map by header (CONTRACTS.md, Normalization).",
-  "x-version": "1.2.0",
+  "x-version": "1.3.0",
   "x-artifacts": [
     { "format": "markdown-entries", "parser": "requirements", "paths": ["specs/*/spec.md"], "suffixes": [".spec.md"], "bind": { "epic": 1 } }
   ],
