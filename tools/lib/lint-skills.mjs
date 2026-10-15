@@ -43,10 +43,11 @@ export const LIMITS = {
   bodyWarn: 200,
   bodyFail: 300,
   // A description is always in context: keep each short, and the whole set under the smallest
-  // engine's always-loaded budget. Claude Code lists skills within about 1% of its context window
-  // (around 10,000 characters at 200k tokens) and drops the least-used descriptions first; Codex
-  // keeps 2% of the window in tokens and falls back to 8,000 characters only when the window is
-  // unknown. A library's SETS.yaml sets its own `budget`; this is the default for a bare folder.
+  // engine's always-loaded budget. Claude Code lists skills within skillListingBudgetFraction of
+  // its context window (1% by default, about 8,000 characters at 200k tokens; the suite's settings
+  // set 2%) and drops the least-used descriptions first; Codex keeps 2% of the window in tokens and
+  // falls back to 8,000 characters only when the window is unknown. 10,000 sits under both at 2%
+  // with margin. A library's SETS.yaml sets its own `budget`; this is the default for a bare folder.
   descriptionWarn: 300,
   descriptionFail: 400,
   descriptionBudget: 10000,
@@ -370,7 +371,7 @@ export function lintSkills(targets, opts = {}) {
   const library = targets.length > 0 && targets.every((x) => setsFileOf(path.resolve(x)));
   if (!library && total > limits.descriptionBudget) {
     const longest = [...skills].sort((a, b) => b.description.length - a.description.length).slice(0, 3).map((s) => `${s.name} ${s.description.length}`);
-    overlaps.push({ severity: 'warning', rule: 'description-budget', score: total, message: `the ${skills.length} descriptions total ${total} characters, over the ${limits.descriptionBudget} an engine may keep loaded (about 1% of a 200k window); longest: ${longest.join(', ')}` });
+    overlaps.push({ severity: 'warning', rule: 'description-budget', score: total, message: `the ${skills.length} descriptions total ${total} characters, over the ${limits.descriptionBudget} an engine may keep loaded (2% of a 200k window, with margin); longest: ${longest.join(', ')}` });
   }
 
   // 9. Install sets: the SETS.yaml of a linted library (in the folder, or at the root above its
@@ -637,7 +638,7 @@ export function budgetSet(file, { limit = LIMITS.descriptionBudget } = {}) {
   if (total > limit) {
     const longest = [...skills].sort((a, b) => b.chars - a.chars).slice(0, 3).map((s) => `${s.name} ${s.chars}`);
     const byFrom = Object.entries(skills.reduce((m, s) => ({ ...m, [s.from]: (m[s.from] ?? 0) + 1 }), {})).map(([k, n]) => `${n} from ${k}`).join(', ');
-    findings.push({ severity: 'warning', rule: 'description-budget', score: total, message: `the installed set's ${skills.length} descriptions total ${total} characters, over the ${limit} an engine may keep loaded (about 1% of a 200k window), so some may be cut before a router sees them (${byFrom}; longest: ${longest.join(', ')}); install a per-profile subset` });
+    findings.push({ severity: 'warning', rule: 'description-budget', score: total, message: `the installed set's ${skills.length} descriptions total ${total} characters, over the ${limit} an engine may keep loaded (2% of a 200k window, with margin), so some may be cut before a router sees them (${byFrom}; longest: ${longest.join(', ')}); install a per-profile subset` });
   }
   return { file: path.resolve(file), skills, total, limit, findings };
 }
