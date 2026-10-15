@@ -13,7 +13,7 @@ Contract versions are each schema's `x-version` and each state machine's `versio
 ### Final pass
 
 Trust profiles, a standards block that holds in every profile, and the contracts adapted to the
-tools other maintainers already run (stagehand's task records and delegation, Skilldex's skills).
+tools other maintainers already run (stagehand's task records, Skilldex's skills).
 
 #### Added
 
@@ -30,7 +30,7 @@ tools other maintainers already run (stagehand's task records and delegation, Sk
   authority `auto-land-is-the-platforms`. A project without `governance.yaml` behaves as before.
 - **additive** — `simulate`: a scenario's `governance` (validated), the platform's risk gate and
   visual check, the scenarios `trust-solo`, `trust-team` and `trust-regulated`, the mutation
-  `orchestrator-auto-lands` and six broken risk-gate bindings, each caught.
+  `orchestrator-auto-lands` and five broken risk-gate bindings (six cases), each caught.
 
 #### Changed
 
@@ -39,8 +39,7 @@ tools other maintainers already run (stagehand's task records and delegation, Sk
   which file to edit to change a skill, a stack convention, a preference, autonomy, a wall, the trust
   profile, a format, a check, the standards, a CI job, a deploy step, the coordinator or a practice,
   and how to read what happened (history, task files, pull requests, ADRs, run records and
-  `promptbook report`); gate 2 reads the trust profile. README and LAYERS say where the profile
-  lives.
+  `promptbook report`); gate 2 reads the trust profile.
 - **behavioral** — The standards block is `v3`: six stack-neutral principles, one sentence each,
   each with how it is enforced: ENG-9 design (deep modules, interfaces at boundaries, a pure core,
   composition, no speculative abstraction), ENG-10 one fact in one place, ENG-11 config (one
