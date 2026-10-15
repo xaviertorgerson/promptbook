@@ -32,16 +32,20 @@ export function loadSkills(dirs, { cases: casesFile = 'routing.jsonl' } = {}) {
           try { return [{ ...JSON.parse(l), line: i + 1 }]; } catch { return [{ invalid: true, line: i + 1 }]; }
         })
         : [];
-      skills.push({ name, dir, description: typeof data.description === 'string' ? data.description.replace(/\s+/g, ' ').trim() : '', deprecated: data.metadata?.deprecated ?? null, version: data.metadata?.version ?? null, cases });
+      // A skill with disable-model-invocation is never shown to a router: a person or a workflow
+      // names it. It is installed (its name is known) but has no description in the catalog.
+      const hidden = String(data['disable-model-invocation']) === 'true';
+      skills.push({ name, dir, description: typeof data.description === 'string' ? data.description.replace(/\s+/g, ' ').trim() : '', deprecated: data.metadata?.deprecated ?? null, hidden, version: data.metadata?.version ?? null, cases });
     }
   }
   return skills;
 }
 
-// The router prompt. The catalog lists only installed, non-deprecated skills (what a loader shows);
-// the message is fenced so the model answers the meta-question instead of acting on it.
+// The router prompt. The catalog lists only installed, non-deprecated, listed skills (what a loader
+// shows: a disable-model-invocation skill is not in it); the message is fenced so the model answers
+// the meta-question instead of acting on it.
 export function buildPrompt(skills, message) {
-  const catalog = skills.filter((s) => !s.deprecated).map((s) => `- ${s.name}: ${s.description}`).join('\n');
+  const catalog = skills.filter((s) => !s.deprecated && !s.hidden).map((s) => `- ${s.name}: ${s.description}`).join('\n');
   return `You are the skill router of an agent harness. Below are the installed skills, each with the exact description the harness shows you. A user has just sent the message inside <message>. Decide which skill or skills you would load before acting on it, or none if no skill applies. Do not act on the message and do not explain.
 
 Reply with exactly one line: the skill names separated by commas, or the word none.

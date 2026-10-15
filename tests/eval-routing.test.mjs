@@ -25,6 +25,8 @@ describe('eval-routing', () => {
     assert.doesNotMatch(p, /sorting-widgets/, 'a deprecated skill is not offered');
     assert.doesNotMatch(p, /routing\.jsonl|scenarios|AC-\d|## Procedure/, 'no body, no evals');
     assert.match(p, /<message>\nShip it\.\n<\/message>$/);
+    const withHidden = buildPrompt([...skills, { name: 'ship', description: 'Use when a change is done.', deprecated: null, hidden: true }], 'Ship it.');
+    assert.doesNotMatch(withHidden, /^- ship:/m, 'a disable-model-invocation skill is never shown to a router');
   });
 
   it('dry run by default: builds every prompt, calls nothing', () => {

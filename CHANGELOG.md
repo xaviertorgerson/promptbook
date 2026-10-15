@@ -24,6 +24,10 @@ Contract versions are each schema's `x-version` and each state machine's `versio
   (`f=~/.ssh/id; cat $f`), an interpreter's `-c`/`-e` program string, and the path after a git
   revision (`git show HEAD:.env`), matching the dotfiles sh guard on the cases the review found apart.
 
+- **behavioral** — `eval-routing` shows a router only the skills an engine lists: one with
+  `disable-model-invocation: true` is installed (its name is known for `route_to`) but has no line
+  in the catalog, as in a real session.
+
 #### Added
 
 - **additive** — `SETS.yaml` `lint.allow_terms`: names a library lets its skills use without an
