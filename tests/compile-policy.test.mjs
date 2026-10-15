@@ -6,8 +6,8 @@ import path from 'node:path';
 import { after, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
-import { forbidHit } from '../tools/guards/forbid-guard.mjs';
-import { codexReadKey, codexTakesAccess, commandMatches, compilePolicy, coversInterpreter, diffClaudeSettings, ENGINES, expandCommand, geminiDropsPattern, globArgsPattern, parseSettingsTemplate, renderDiff, renderReport, unsafeKeys } from '../tools/lib/compile-policy.mjs';
+import { forbidHit, readDenyHit } from '../tools/guards/forbid-guard.mjs';
+import { literalSandboxPaths, codexReadKey, codexTakesAccess, commandMatches, compilePolicy, coversInterpreter, diffClaudeSettings, ENGINES, expandCommand, geminiDropsPattern, globArgsPattern, parseSettingsTemplate, renderDiff, renderReport, unsafeKeys } from '../tools/lib/compile-policy.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FIX = path.join(ROOT, 'fixtures/compile-policy');
@@ -623,6 +623,57 @@ describe('review finding 14: a forbid that matches its flags anywhere in the com
     const r = compilePolicy(p, { profile: 'laptop', engine: 'claude' });
     assert.ok(r.errors.some((e) => e.rule === 'example-matches' && /"git push origin main"/.test(e.message)), JSON.stringify(r.errors));
     assert.ok(!r.errors.some((e) => e.rule === 'example-matches' && /-f"/.test(e.message)));
+  });
+});
+
+describe('Claude Code\'s sandbox on Linux ignores glob patterns in Read and Edit rules', () => {
+  // claude doctor (2.1.300): "Glob patterns in sandbox permission rules are not fully supported on
+  // Linux ... On Linux, glob patterns in Edit/Read rules will be ignored." The Read tool's deny holds.
+  const policy = { ...golden, deny_read: ['**/.env', '~/.ssh/*_ed25519', '~/.aws/**', '~/.netrc'] };
+
+  it('a dir/** is its directory, a key-name glob the known keys it matches, a literal itself', () => {
+    assert.deepEqual(literalSandboxPaths('~/.ssh/**'), { paths: ['~/.ssh'], complete: true });
+    assert.deepEqual(literalSandboxPaths('~/.aws/**'), { paths: ['~/.aws'], complete: true });
+    assert.deepEqual(literalSandboxPaths('~/.netrc'), { paths: ['~/.netrc'], complete: true });
+    assert.deepEqual(literalSandboxPaths('~/.ssh/*_ed25519'), { paths: ['~/.ssh/id_ed25519'], complete: false });
+    assert.deepEqual(literalSandboxPaths('~/.ssh/*_sk'), { paths: ['~/.ssh/id_ecdsa_sk', '~/.ssh/id_ed25519_sk'], complete: false });
+    assert.deepEqual(literalSandboxPaths('~/.ssh/*.pem'), { paths: [], complete: false });
+  });
+
+  it('the Read deny keeps the glob; the sandbox gets the glob and its literal paths; every pattern it cannot expand is named', () => {
+    const r = compilePolicy(policy, { profile: 'laptop', engine: 'claude' });
+    assert.equal(r.ok, true, JSON.stringify(r.errors));
+    const s = JSON.parse(r.files.find((f) => f.path === 'settings.json').content);
+    for (const g of policy.deny_read) assert.ok(s.permissions.deny.includes(`Read(${g})`), g);
+    assert.deepEqual(s.sandbox.filesystem.denyRead, ['~/.ssh/*_ed25519', '~/.ssh/id_ed25519', '~/.aws/**', '~/.aws', '~/.netrc']);
+    const w = r.warnings.filter((x) => x.rule === 'sandbox-glob-unexpanded' && /no literal path covers/.test(x.message));
+    assert.equal(w.length, 1, JSON.stringify(r.warnings));
+    assert.match(w[0].message, /\*\*\/\.env; ~\/\.ssh\/\*_ed25519 \(expanded to ~\/\.ssh\/id_ed25519 only\)/);
+    assert.doesNotMatch(w[0].message, /~\/\.aws|~\/\.netrc/, 'fully expanded: not flagged');
+    assert.match(w[0].message, /the forbid guard denies a shell command that names such a path/);
+    assert.deepEqual(JSON.parse(r.files.find((f) => f.path === 'hooks/forbid.json').content).read_deny, policy.deny_read);
+    const unguarded = compilePolicy({ ...policy, hooks: undefined }, { profile: 'laptop', engine: 'claude' });
+    assert.ok(unguarded.warnings.some((x) => x.rule === 'sandbox-glob-unexpanded' && /set hooks\.forbid_guard/.test(x.message)));
+  });
+
+  it('the guard denies a shell command that names a read-denied path: cat .env, cat ~/.ssh/id_ed25519; not a near miss', () => {
+    const r = compilePolicy(policy, { profile: 'laptop', engine: 'claude' });
+    const dir = path.join(TMP, 'guard-read-deny');
+    for (const f of r.files.filter((x) => x.path.startsWith('hooks/'))) {
+      fs.mkdirSync(path.dirname(path.join(dir, f.path)), { recursive: true });
+      fs.writeFileSync(path.join(dir, f.path), f.content);
+    }
+    const home = path.join(TMP, 'guard-home');
+    const cwd = path.join(home, 'src/app');
+    fs.mkdirSync(cwd, { recursive: true });
+    const hook = (command) => spawnSync(process.execPath, [path.join(dir, 'hooks/forbid-guard.mjs'), path.join(dir, 'hooks/forbid.json')], { input: JSON.stringify({ tool_name: 'Bash', tool_input: { command }, cwd }), encoding: 'utf8', env: { ...process.env, HOME: home } });
+    for (const c of ['cat .env', 'cat ~/.ssh/id_ed25519', 'cat $HOME/.ssh/id_ed25519', 'grep KEY < config/.env', 'bash -c "head -1 ~/.aws/credentials"', 'node --env-file=.env server.js', 'cat ~/.ssh/*']) {
+      const h = hook(c);
+      assert.equal(h.status, 2, c);
+      assert.match(h.stderr, /names a path the operator's policy denies reading \(deny_read /, c);
+    }
+    for (const c of ['cat .env.example', 'cat ~/.ssh/id_ed25519.pub', 'ls ~/.ssh', 'ls ~/.aws', 'cat *', 'cat README.md', 'git status']) assert.equal(hook(c).status, 0, c);
+    assert.deepEqual(readDenyHit(['**/.env'], 'cat .env', { home, cwd }), { word: '.env', glob: '**/.env' });
   });
 });
 

@@ -56,5 +56,11 @@
       ],
       "reason": "closing a workspace can end a worktree group"
     }
+  ],
+  "read_deny": [
+    "**/.env",
+    "**/secrets/**",
+    "~/.ssh/**",
+    "/etc/shadow"
   ]
 }

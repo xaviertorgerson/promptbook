@@ -6,6 +6,14 @@
       "message": "sandbox.fail_if_unavailable is not true: where the sandbox cannot start, commands run unsandboxed, and deny_read and forbid write reach Claude's file tools and the file commands it recognizes in Bash (cat, head, sed, tee, redirections), not a script that opens files itself (allowed here: [\"pnpm\"])"
     },
     {
+      "rule": "sandbox-glob-unexpanded",
+      "message": "Claude Code's sandbox on Linux ignores glob patterns in Edit rules too: forbid write **/.git/hooks/** binds the Edit and Write tools, not a sandboxed command there; list the paths it means to protect by name"
+    },
+    {
+      "rule": "sandbox-glob-unexpanded",
+      "message": "Claude Code's sandbox on Linux ignores glob patterns, and no literal path covers **/.env; **/secrets/**: sandboxed commands there can read a file these name. The Read tool's deny holds; the forbid guard denies a shell command that names such a path, and listing the files by path in deny_read makes the sandbox hold them"
+    },
+    {
       "rule": "mask-not-a-read-deny",
       "message": "Claude Code's file tools can read ~/.config/gh/hosts.yml: a mask covers sandboxed commands only (a deny_read entry would deny the sandbox too); on macOS a masked file is blocked instead of masked"
     }

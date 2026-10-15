@@ -10,6 +10,20 @@ Contract versions are each schema's `x-version` and each state machine's `versio
 
 ## [Unreleased]
 
+### Read denies where the sandbox ignores globs
+
+#### Changed
+
+- **behavioral** — `compile-policy` and the forbid guard hold read denies where Claude Code's
+  sandbox on Linux ignores glob patterns (`claude doctor` 2.1.300: "On Linux, glob patterns in
+  Edit/Read rules will be ignored"). The Read tool's deny keeps each glob; the sandbox's
+  `denyRead` also gets the literal paths a glob expands to (a `dir/**` its directory, a key-name
+  glob the usual key files it matches, `~/.ssh/*_ed25519` → `~/.ssh/id_ed25519`); a
+  `sandbox-glob-unexpanded` warning names every pattern no literal covers in full and every write
+  glob; and the guard (`hooks.forbid_guard`) denies a shell command that names a read-denied path
+  (`cat .env`, `cat ~/.ssh/id_ed25519`, `< config/.env`, `--env-file=.env`), never a near miss
+  (`cat .env.example`, `cat ~/.ssh/id_ed25519.pub`, `ls ~/.ssh`).
+
 ### Adopting an existing repository
 
 What running `trace` over an older project (heirloom) showed: a test named inside its describe, and a

@@ -359,7 +359,8 @@ A rule has exactly one matcher: `command` (argv prefix, with alternatives), `wri
 so `git push origin main --force`, `git -C . push -f` and `env git push -f` are denied
 (`flags-anywhere-forbids-only`: never in an ask or allow, where it would widen a pre-approval).
 `hooks.forbid_guard` (1.4.0) has the compile emit the engine-neutral guard
-(`tools/guards/forbid-guard.mjs`) as a user-scope PreToolUse hook. A forbid is defense in depth on
+(`tools/guards/forbid-guard.mjs`) as a user-scope PreToolUse hook; it also denies a shell command
+that names a path a `deny_read` glob matches, the backstop for a sandbox that ignores globs. A forbid is defense in depth on
 every engine (a command rule matches the text an agent writes, never every way to run a program);
 the project's hook deny and the sandbox are the wall. An `allow` or `ask` that a `forbid` covers is
 a warning (it never takes effect).

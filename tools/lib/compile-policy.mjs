@@ -43,6 +43,31 @@ const isHome = (g) => g === '~' || g.startsWith('~/');
 const isAbsolute = (g) => g.startsWith('/');
 const hasGlob = (g) => /[*?[\]{}]/.test(g);
 
+// The usual credential files under the home directory: what a read-deny glob is expanded to for a
+// sandbox that ignores glob patterns. Claude Code's sandbox on Linux does (claude doctor, 2.1.300:
+// "On Linux, glob patterns in Edit/Read rules will be ignored"), so a literal path is the only
+// sandbox deny that holds there for a file a glob names.
+export const KNOWN_CREDENTIAL_FILES = [
+  '~/.ssh/id_rsa', '~/.ssh/id_dsa', '~/.ssh/id_ecdsa', '~/.ssh/id_ed25519', '~/.ssh/id_ecdsa_sk', '~/.ssh/id_ed25519_sk', '~/.ssh/identity',
+  '~/.aws/credentials', '~/.aws/config', '~/.config/gcloud/credentials.db', '~/.config/gcloud/application_default_credentials.json',
+  '~/.azure/accessTokens.json', '~/.kube/config', '~/.docker/config.json', '~/.netrc', '~/.git-credentials', '~/.npmrc', '~/.pypirc',
+  '~/.config/gh/hosts.yml', '~/.terraform.d/credentials.tfrc.json', '~/.vault-token',
+];
+
+// A glob over paths as a regex: ** any depth, * and ? within a segment.
+const pathRe = (glob) => new RegExp(`^${glob.split(/(\*\*\/?|\*|\?)/).map((t) => (t === '**/' ? '(?:.*/)?' : t === '**' ? '.*' : t === '*' ? '[^/]*' : t === '?' ? '[^/]' : t.replace(/[.+^${}()|[\]\\]/g, '\\$&'))).join('')}$`);
+
+// The literal paths a sandbox can deny for a home or absolute read-deny glob: a dir/** is the
+// directory itself (all of it); otherwise the known credential files it matches, which cover it only
+// in part (a file of another name the glob names is not among them). { paths, complete }.
+export function literalSandboxPaths(glob) {
+  if (!hasGlob(glob)) return { paths: [glob], complete: true };
+  const dir = glob.match(/^(.*[^/*])\/\*\*$/)?.[1];
+  if (dir && !hasGlob(dir)) return { paths: [dir], complete: true };
+  const re = pathRe(glob);
+  return { paths: KNOWN_CREDENTIAL_FILES.filter((f) => re.test(f)), complete: false };
+}
+
 // Every argv the rule names: alternatives at a position expand to one prefix each.
 export function expandCommand(command) {
   return command.reduce((acc, tok) => acc.flatMap((pre) => [].concat(tok).map((t) => [...pre, t])), [[]]);
@@ -75,7 +100,10 @@ const GUARD_HOME = { claude: '$HOME/.claude/hooks/promptbook', codex: '$HOME/.co
 function guardFiles(ctx) {
   const lists = [...ctx.policy.forbid, ...(ctx.tier === 'unattended' ? ctx.policy.ask ?? [] : [])];
   const rules = lists.filter((r) => r.command).map(({ command, flags_anywhere: f, reason }) => ({ command, ...(f ? { flags_anywhere: f } : {}), ...(reason ? { reason } : {}) }));
-  const list = { generated_by: GENERATOR, source: ctx.source, profile: ctx.profileName, tier: ctx.tier, rules };
+  // The read denies: a shell command that names a path one matches is denied too (the backstop for a
+  // sandbox that ignores globs).
+  const readDeny = (ctx.policy.deny_read ?? []).filter((g) => !isWindowsPath(g));
+  const list = { generated_by: GENERATOR, source: ctx.source, profile: ctx.profileName, tier: ctx.tier, rules, ...(readDeny.length ? { read_deny: readDeny } : {}) };
   return [
     { path: 'hooks/forbid-guard.mjs', content: fs.readFileSync(GUARD_SOURCE, 'utf8'), kind: 'hook' },
     jsonFile('hooks/forbid.json', list, 'rules'),
@@ -293,13 +321,32 @@ function emitClaude(ctx) {
   const fsys = { denyRead: [], allowWrite: [] };
   const net = { allowedDomains: [], deniedDomains: [] };
 
+  const guarded = p.hooks?.forbid_guard === true;
+  const unexpanded = [];
   for (const g of p.deny_read) {
     const t = claudePath(ctx, g, 'deny_read');
     if (!t) continue;
+    // The Read tool's deny keeps the glob: the permission rule matches it on every platform.
     add('deny', [`Read(${t})`]);
     // Read() deny rules are merged into the sandbox (sandboxing: permission-rule paths join the
-    // sandbox configuration); home and absolute paths are also written in the sandbox's own form.
-    if (isHome(g) || isAbsolute(g)) fsys.denyRead.push(g);
+    // sandbox configuration); home and absolute paths are also written in the sandbox's own form,
+    // the glob for the platforms that read globs, and the literal paths it expands to for the
+    // sandbox that ignores them (Linux).
+    if (isHome(g) || isAbsolute(g)) {
+      fsys.denyRead.push(g);
+      if (hasGlob(g)) {
+        const { paths, complete } = literalSandboxPaths(g);
+        for (const x of paths) if (!fsys.denyRead.includes(x)) fsys.denyRead.push(x);
+        if (!complete) unexpanded.push(paths.length ? `${g} (expanded to ${paths.join(', ')} only)` : g);
+      }
+    } else if (hasGlob(g)) unexpanded.push(g);
+  }
+  const writeGlobs = p.forbid.filter((r) => r.write && hasGlob(r.write)).map((r) => r.write);
+  if (sandboxOn && writeGlobs.length) {
+    ctx.warn('sandbox-glob-unexpanded', `Claude Code's sandbox on Linux ignores glob patterns in Edit rules too: forbid write ${writeGlobs.join(', ')} binds the Edit and Write tools, not a sandboxed command there; list the paths it means to protect by name`);
+  }
+  if (sandboxOn && unexpanded.length) {
+    ctx.warn('sandbox-glob-unexpanded', `Claude Code's sandbox on Linux ignores glob patterns, and no literal path covers ${unexpanded.join('; ')}: sandboxed commands there can read a file these name. The Read tool's deny holds; ${guarded ? 'the forbid guard denies a shell command that names such a path' : 'set hooks.forbid_guard so a shell command that names such a path is denied'}, and listing the files by path in deny_read makes the sandbox hold them`);
   }
   for (const r of p.forbid) add('deny', claudeRules(ctx, r, 'forbid'));
   for (const r of p.ask ?? []) add('ask', claudeRules(ctx, r, 'ask'));

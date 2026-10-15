@@ -45,5 +45,12 @@
       ],
       "reason": "a database shell is a human checkpoint"
     }
+  ],
+  "read_deny": [
+    "**/.env",
+    "**/.env.*",
+    "**/secrets/**",
+    "~/.ssh/**",
+    "~/.config/shell/secrets.sh"
   ]
 }

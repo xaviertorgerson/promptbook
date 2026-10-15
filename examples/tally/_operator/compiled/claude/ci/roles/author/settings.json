@@ -33,6 +33,7 @@
     "filesystem": {
       "denyRead": [
         "~/.ssh/**",
+        "~/.ssh",
         "~/.config/shell/secrets.sh"
       ]
     },
