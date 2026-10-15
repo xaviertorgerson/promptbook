@@ -348,7 +348,10 @@ delegated job), as `task-record.task_id` and `return.task` already do.
 `usage.output` → `gen_ai.usage.output_tokens`; `started_at`/`ended_at` → the span's times; a failed
 or needs-human outcome → `error.type`. `task`, `outcome`, `status_after` and the cost have no GenAI
 attribute and travel as `promptbook.*` attributes. An exporter is built when a project runs a tracing
-backend or the conventions reach stable, whichever comes first.
+backend or the conventions reach stable, whichever comes first. Claude Code's own telemetry
+(`CLAUDE_CODE_ENABLE_TELEMETRY=1`) does not use these names: its metrics and events are `claude_code.*`,
+and only its beta trace spans carry a few `gen_ai.*` attributes. Join a run record to them on
+`session_id` = their `session.id`.
 
 ### grant
 

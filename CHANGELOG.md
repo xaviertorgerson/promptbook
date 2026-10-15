@@ -21,6 +21,9 @@ Contract versions are each schema's `x-version` and each state machine's `versio
   run record's mapping to OpenTelemetry GenAI attributes. SUITE.md's practice table names
   Anthropic's long-running harness, OpenAI's harness engineering, the spec-driven kits, Ralph loops
   and the engines' native orchestration, each with where the suite follows it.
+- **additive** — SUITE.md's practice table adds Anthropic's 2026 containment, evals and
+  source-control practices, and `/goal` beside the orchestration rungs; CONTRACTS.md says Claude
+  Code's own telemetry is `claude_code.*` and joins a run record on the session id.
 
 ### Review fixes: names, budgets, the guard
 
