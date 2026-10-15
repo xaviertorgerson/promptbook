@@ -73,7 +73,7 @@ describe('lint-skills', () => {
     assert.match(e.message, /quote values that contain ": "/);
   });
 
-  it('a description over 300 characters warns, over 400 fails; a set over the 8000-character budget warns', () => {
+  it('a description over 300 characters warns, over 400 fails; a folder over the 8000-character budget warns unless it is a library with install sets', () => {
     const dir = overlay('description-length');
     const skill = path.join(dir, 'drafting-widgets/SKILL.md');
     const text = fs.readFileSync(skill, 'utf8');
@@ -82,10 +82,14 @@ describe('lint-skills', () => {
     const r = lintSkills([dir]);
     assert.ok(!rules(r, 'error').has('description-length'));
     assert.ok(rules(r, 'warning').has('description-length'));
-    const budget = lintSkills([GOOD], { limits: { descriptionBudget: 500 } });
+    const loose = path.join(TMP, 'no-sets');
+    fs.cpSync(GOOD, loose, { recursive: true });
+    const budget = lintSkills([loose], { limits: { descriptionBudget: 500 }, known: NEIGHBOURS });
     const w = budget.overlaps.find((x) => x.rule === 'description-budget');
     assert.ok(w && /total \d+ characters, over the 500/.test(w.message), JSON.stringify(budget.overlaps));
     assert.equal(budget.counts.error, 0, 'the budget is a warning');
+    const library = lintSkills([GOOD], { limits: { descriptionBudget: 500 } });
+    assert.ok(!library.overlaps.some((x) => x.rule === 'description-budget'), 'a library is never installed whole; its SETS.yaml sets carry the budget');
   });
 
   it('lets engine names live in references/engine-notes.md only', () => {
@@ -256,6 +260,23 @@ describe('install sets (a library\'s SETS.yaml)', () => {
     fs.cpSync(GOOD, elsewhere, { recursive: true });
     assert.equal(lintSkills([elsewhere]).sets.length, 0, 'a folder not named skills does not look above itself');
     assert.equal(setsOf(elsewhere, { setsFile: SETS }).file, SETS, '--sets names it');
+  });
+
+  it('a library\'s marketplace keeps one plugin per installable set, with exactly its skills', () => {
+    const root = path.join(TMP, 'market');
+    fs.cpSync(path.join(FIX, 'good'), root, { recursive: true });
+    fs.mkdirSync(path.join(root, '.claude-plugin'));
+    const write = (plugins) => fs.writeFileSync(path.join(root, '.claude-plugin/marketplace.json'), JSON.stringify({ name: 'widgets', owner: { name: 'x' }, plugins }));
+    const skills = (...n) => n.map((x) => `./skills/${x}`);
+    write([{ name: 'everyday', source: './', skills: skills('drafting-widgets', 'checking-widgets') }, { name: 'shipping', source: './', skills: skills('shipping-widgets', 'sorting-widgets') }]);
+    assert.deepEqual(setsOf(path.join(root, 'skills')).findings, []);
+    write([{ name: 'everyday', source: './', skills: skills('drafting-widgets', 'shipping-widgets') }, { name: 'all', source: './', skills: skills('drafting-widgets') }]);
+    const msgs = setsOf(path.join(root, 'skills')).findings.filter((f) => f.rule === 'marketplace-sets').map((f) => f.message);
+    assert.deepEqual(msgs.sort(), [
+      'plugin all is no installable set of SETS.yaml',
+      'plugin everyday differs from set everyday; missing checking-widgets; extra shipping-widgets',
+      'set shipping has no plugin in .claude-plugin/marketplace.json',
+    ]);
   });
 
   it('names an unknown skill, a skill in two sets, an uninstalled skill and a set over budget', () => {

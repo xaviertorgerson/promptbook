@@ -51,6 +51,12 @@ interfaces between them are in [SUITE.md](SUITE.md).
   is no limit, so setting one narrows (it was reported as widening).
 - **behavioral** — authority 1.4.0: a grant needs an expiry unless a stop condition bounds it; a
   grant with neither is invalid.
+- **behavioral** — `lint` no longer warns `description-budget` on a library that has its own
+  `SETS.yaml`: nothing installs a library whole, and each of its sets is already checked against
+  the budget (`set-over-budget`). A folder without one (a project's installed skills) still warns.
+- **behavioral** — `lint` checks a library's `.claude-plugin/marketplace.json` against its
+  `SETS.yaml` when both exist (`marketplace-sets`): one plugin per installable set, each listing
+  exactly that set's skills, so the two cannot drift apart.
 
 #### Added
 
