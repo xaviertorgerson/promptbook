@@ -34,6 +34,13 @@ tools other maintainers already run (stagehand's task records and delegation, Sk
 
 #### Changed
 
+- **additive** — SUITE.md says where a thing goes (owner, scope of effect, copied or pinned, shared
+  by independent consumers, opinion gradient, change rate, and the five repositories against them),
+  which file to edit to change a skill, a stack convention, a preference, autonomy, a wall, the trust
+  profile, a format, a check, the standards, a CI job, a deploy step, the coordinator or a practice,
+  and how to read what happened (history, task files, pull requests, ADRs, run records and
+  `promptbook report`); gate 2 reads the trust profile. README and LAYERS say where the profile
+  lives.
 - **behavioral** — The standards block is `v3`: six stack-neutral principles, one sentence each,
   each with how it is enforced: ENG-9 design (deep modules, interfaces at boundaries, a pure core,
   composition, no speculative abstraction), ENG-10 one fact in one place, ENG-11 config (one
