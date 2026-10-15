@@ -16,7 +16,7 @@ const UPDATE = process.env.UPDATE_GOLDEN === '1';
 const DOTFILES = process.env.PROMPTBOOK_DOTFILES ?? '/home/claude/dotfiles';
 // The dotfiles' L1 branch, whose policy raises the workstation to Claude's auto mode with x-claude.
 const DOTFILES_L1_POLICY = process.env.PROMPTBOOK_DOTFILES_L1_POLICY ?? '/home/claude/wt-dotfiles-l1/home/.chezmoidata/agent-policy.yaml';
-const STAGEHAND = process.env.PROMPTBOOK_STAGEHAND ?? '/tmp/claude-0/-home-claude/4cb75181-a255-5446-ad02-7fa332a70b56/scratchpad/repos_sh/stagehand';
+const STAGEHAND = process.env.PROMPTBOOK_STAGEHAND ?? '/home/claude/stagehand';
 const TMP = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'promptbook-policy-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 

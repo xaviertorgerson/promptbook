@@ -19,6 +19,7 @@ const reg = registry();
 // The template's real work queue, when this checkout sits beside it. Optional: CI elsewhere skips.
 const STACK_DRIFT = process.env.PROMPTBOOK_SMOKE_PROJECT ?? '/home/claude/wt-stack-drift';
 const TEMPLATE = process.env.PROMPTBOOK_TEMPLATE ?? '/home/claude/agentic-template';
+const STAGEHAND = process.env.PROMPTBOOK_STAGEHAND ?? '/home/claude/stagehand';
 
 // A copy of a trace fixture project in a temp dir, with files replaced or edited: { 'rel/path': text | (old) => text }.
 const TMP = fs.mkdtempSync(path.join(fs.realpathSync(process.env.TMPDIR ?? '/tmp'), 'promptbook-validate-'));
@@ -359,6 +360,16 @@ describe('run-record: who ran it', () => {
     const r = validateFile(file);
     assert.equal(r.status, 'PASS');
     assert.deepEqual(r.results[0].findings.map((f) => [f.severity, f.rule]), [['warning', 'run-kept-status']]);
+  });
+});
+
+describe('stagehand writes the promptbook formats', () => {
+  const assets = path.join(STAGEHAND, 'skills/orchestrating-development/assets');
+  it('its task-record and grant templates validate as they are, placeholders and all', { skip: !fs.existsSync(assets) && `no stagehand checkout at ${STAGEHAND}` }, () => {
+    for (const [file, contract] of [['task-record.yaml', 'task-record'], ['project-grant.yaml', 'grant']]) {
+      const r = validateFile(path.join(assets, file), { contract });
+      assert.equal(r.status, 'PASS', `${file}: ${JSON.stringify(r.results.flatMap((x) => x.findings))}`);
+    }
   });
 });
 
