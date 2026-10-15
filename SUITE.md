@@ -138,6 +138,40 @@ Nothing is kept only in a session; each question has a durable answer.
 | why the system is the way it is | `DECISIONS.md` | each ADR's decision, why, the options rejected and what would reverse it; the trust profile's ADR among them |
 | what the agents ran and spent | run records (`.agent/loop-runs.jsonl`) and a coordinator's task records (`.orchestrator/tasks/`) | `promptbook report`: runs, outcomes, turns, cost, tokens, cache hit and denied calls per task and role, the costliest runs with their session ids |
 
+## Decided: what is combined, what is separate, and the shortest path
+
+Three tiers, by how much of each is ours:
+
+| Tier | What | Examples | Rule |
+|---|---|---|---|
+| **Standard, older than agents** | tools everyone already uses; we install and configure, never rebuild | git, GitHub rulesets and auto-merge, chezmoi, mise, lefthook, Biome, Playwright, Docker, cloud-init, Cloudflare, Hetzner, PostHog, Stripe, Resend | pinned in dotfiles or a set; opinions about them live in a set or the operator, never in promptbook |
+| **Exists for agents, we adopt** | the engines' own mechanisms and other people's libraries | Claude Code / Codex / Gemini skills, plugins and marketplaces, hooks and deny rules, MCP servers, Herdr and Heeler, third-party skill libraries | used as published; pinned by commit; a library is turned on only after the routing evals pass with it installed |
+| **Ours, because nothing else does it** | the thin layer that makes the first two compose | the file formats and checks (promptbook), the install sets and evals (Skilldex), the project starter with its walls, gates, trust profiles and sets (stagecraft), the coordinator on Herdr (stagehand), the machine policy compiled per engine (dotfiles) | kept as small as the evals and the model releases allow; each piece names the gap it fills, and is deleted when a tier above fills it |
+
+Combined, separate, and why, in one line each:
+
+- **dotfiles and Skilldex stay forks.** Content you own; the structure (policy file, install sets,
+  pins, evals) is what someone else copies. Their shared manager logic (resolve pins, pick sets, copy
+  into engine paths, run the routing evals and the budget check) is consolidated into one promptbook
+  command that both call, instead of a script in each. That is the only planned structural change.
+- **promptbook stays separate while two independent repositories speak it.** The day dotfiles and
+  Skilldex stop using its formats and checks, it folds into stagecraft's `toolkit/`.
+- **stagecraft and stagehand never merge.** One is copied into a project and then owned by it; the
+  other is installed beside projects and never into them. A skill ships with one of them only when
+  it is useless without that repository's scripts or runtime; every other skill is Skilldex's.
+- **The operator is outside the suite**, private, referenced by a breadcrumb, and holds choices only.
+- **Sets and packs are the expansion seam**: a set per kind of project (web app today; embedded,
+  CLI, library later), a pack per domain that cuts across kinds (advertising, marketing site,
+  business-in-a-box). Each is a manifest of the paths it owns plus a gate that keeps its terms out
+  of the core, so the core stays generic and the opinions come out of the box for those who want them.
+- **Quentin's and Xavier's concepts meet at two files**: the task-file format (stagehand reads a
+  project's `specs/`) and the install set (`SETS.yaml`). Nothing else crosses, so neither workflow
+  constrains the other.
+
+The 80/20: a solo developer uses dotfiles, a stagecraft project with the `solo` profile and the
+loop, and Skilldex's planning and delivery sets. stagehand, packs, Codex, Gemini and third-party
+libraries are additions that cost nothing when unused.
+
 ## 2026 practice each mandate follows
 
 | Practice | Where it binds | Sources |
