@@ -10,6 +10,13 @@ Contract versions are each schema's `x-version` and each state machine's `versio
 
 ## [Unreleased]
 
+### The operator layer
+
+#### Added
+
+- **additive** — SUITE.md names the operator: a product's holding entity, whose choices live in its
+  own private repository, referenced by a breadcrumb and never depended on.
+
 ### Read denies where the sandbox ignores globs
 
 #### Changed

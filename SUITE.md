@@ -70,6 +70,19 @@ style as advice to a library that has not asked for it.
 | the coordinator | orchestrating-development, its references, plugins and setup | stagehand, by a pull request in its maintainer's voice | dotfiles bump the stagehand pin |
 | a practice | its page and an Evidence line | promptbook `playbook/` | the playbook's "as of" date |
 
+## The operator: a sixth concern, outside the suite
+
+A product that takes money has an operator: the entity that holds it, banks for it, keeps its books
+and chooses its vendors. Those are one operator's answers, decided once for every product it holds,
+so they live in the operator's own private repository and never in the suite: stagecraft ships the
+mechanism (the vendor-table shape, `ENABLE_*` toggles, spend caps, the attribution contract, the gate
+that an entity and a business bank exist before money is taken) and a one-page `docs/holdco.md` each
+product fills with its operator's name and playbook. Dependencies flow specific → generic only: a
+product points up to its operator as a breadcrumb, nothing public depends on the private repository,
+and the operator holds no skills, agent definitions or per-product jobs, which stay in Skilldex,
+stagecraft and stagehand. A project that takes no money (an embedded controller, an in-house tool)
+has no operator and never sees the business layer.
+
 ## Interfaces: the only ways the repositories touch
 
 | # | Interface | What crosses it | Pinned by |
