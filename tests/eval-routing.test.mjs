@@ -13,7 +13,7 @@ const SKILLS = path.join(ROOT, 'fixtures/lint/good/skills');
 const FAKE = `"${process.execPath}" "${path.join(ROOT, 'fixtures/eval-routing/fake-router.mjs')}"`;
 const fake = (mode) => runner(mode ? `FAKE_ROUTER_MODE=${mode} ${FAKE}` : FAKE);
 const cli = (...a) => spawnSync(process.execPath, [path.join(ROOT, 'tools/eval-routing.mjs'), ...a], { encoding: 'utf8', cwd: ROOT });
-const TMP = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'harness-evals-'));
+const TMP = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'promptbook-evals-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 describe('eval-routing', () => {

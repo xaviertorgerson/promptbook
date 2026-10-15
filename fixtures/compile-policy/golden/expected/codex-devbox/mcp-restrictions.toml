@@ -1,4 +1,4 @@
-# Compiled from agent-policy.yaml (profile devbox, tier autonomous) by harness compile-policy.
+# Compiled from agent-policy.yaml (profile devbox, tier autonomous) by promptbook compile-policy.
 # Not a config.toml: Codex refuses an [mcp_servers.<id>] table without command or url. Merge each
 # disabled_tools list into the entry that defines that server; skip a server no entry defines.
 

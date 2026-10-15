@@ -1,4 +1,4 @@
-# Compiled from agent-policy.yaml (profile desk, tier auto) by harness compile-policy.
+# Compiled from agent-policy.yaml (profile ci, tier unattended) by promptbook compile-policy.
 # User-tier policy (~/.gemini/policies/); the workspace tier is disabled upstream. Tool names other than
 # read_file, glob, write_file, replace and run_shell_command are unverified (adapters/gemini).
 
@@ -8,6 +8,13 @@ argsPattern = "\"[A-Za-z_]*paths?\":[^\\x00]*\"(?:[^\"]*/|)\\.env\""
 decision = "deny"
 priority = 900
 denyMessage = "deny_read **/.env (agent-policy.yaml)"
+
+[[rule]]
+toolName = ["read_file", "read_many_files", "glob", "search_file_content"]
+argsPattern = "\"[A-Za-z_]*paths?\":[^\\x00]*\"(?:[^\"]*/|)\\.env\\.[^/\"]*\""
+decision = "deny"
+priority = 900
+denyMessage = "deny_read **/.env.* (agent-policy.yaml)"
 
 [[rule]]
 toolName = ["read_file", "read_many_files", "glob", "search_file_content"]
@@ -25,17 +32,10 @@ denyMessage = "deny_read ~/.ssh/** (agent-policy.yaml)"
 
 [[rule]]
 toolName = ["read_file", "read_many_files", "glob", "search_file_content"]
-argsPattern = "\"[A-Za-z_]*paths?\":[^\\x00]*\"/etc/shadow\""
+argsPattern = "\"[A-Za-z_]*paths?\":[^\\x00]*\"[^\"]*/\\.config/shell/secrets\\.sh\""
 decision = "deny"
 priority = 900
-denyMessage = "deny_read /etc/shadow (agent-policy.yaml)"
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "rm -rf /"
-decision = "deny"
-priority = 900
-denyMessage = "never wipe the root"
+denyMessage = "deny_read ~/.config/shell/secrets.sh (agent-policy.yaml)"
 
 [[rule]]
 toolName = "run_shell_command"
@@ -67,38 +67,24 @@ denyMessage = "no force-push of shared branches"
 
 [[rule]]
 toolName = "run_shell_command"
-commandPrefix = "docker compose down -v"
+commandPrefix = "rm -rf /"
 decision = "deny"
 priority = 900
-denyMessage = "the stack's volumes hold its only data"
+denyMessage = "never wipe the root"
 
 [[rule]]
 toolName = "run_shell_command"
-commandPrefix = "docker compose down --volumes"
+commandPrefix = "dropdb"
 decision = "deny"
 priority = 900
-denyMessage = "the stack's volumes hold its only data"
+denyMessage = "no destructive data actions"
 
 [[rule]]
 toolName = "run_shell_command"
-commandPrefix = "docker-compose down -v"
+commandPrefix = "docker volume rm"
 decision = "deny"
 priority = 900
-denyMessage = "the stack's volumes hold its only data"
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "docker-compose down --volumes"
-decision = "deny"
-priority = 900
-denyMessage = "the stack's volumes hold its only data"
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "herdr workspace close"
-decision = "deny"
-priority = 900
-denyMessage = "closing a workspace can end a worktree group"
+denyMessage = "volumes hold the only copy of local data"
 
 [[rule]]
 toolName = ["write_file", "replace"]
@@ -108,17 +94,10 @@ priority = 900
 denyMessage = "hooks run on every commit"
 
 [[rule]]
-toolName = "web_fetch"
-argsPattern = "https?://(?:[^/\"]*\\.|)internal\\.example\\.com(?:[:/\"]|$)"
+toolName = ["write_file", "replace"]
 decision = "deny"
 priority = 900
-denyMessage = "internal hosts are not for agents"
-
-[[rule]]
-toolName = "mcp_prod-db_execute"
-decision = "deny"
-priority = 900
-denyMessage = "no writes to the production database"
+denyMessage = "role evaluator is read-only"
 
 [[rule]]
 toolName = "run_shell_command"
@@ -128,20 +107,9 @@ priority = 500
 
 [[rule]]
 toolName = ["write_file", "replace"]
-argsPattern = "\"[A-Za-z_]*paths?\":[^\\x00]*\"(?:[^\"]*/|)infra/[^\"]*\""
+argsPattern = "\"[A-Za-z_]*paths?\":[^\\x00]*\"(?:[^\"]*/|)deploy/[^\"]*\""
 decision = "ask_user"
 priority = 500
-
-[[rule]]
-toolName = "google_web_search"
-decision = "ask_user"
-priority = 500
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = "pnpm"
-decision = "allow"
-priority = 100
 
 [[rule]]
 toolName = "run_shell_command"
@@ -162,12 +130,25 @@ decision = "allow"
 priority = 100
 
 [[rule]]
-toolName = ["write_file", "replace"]
+toolName = "run_shell_command"
+commandPrefix = "git show"
 decision = "allow"
 priority = 100
 
 [[rule]]
-toolName = "web_fetch"
-argsPattern = "https?://(?:[^/\"]*\\.|)github\\.com(?:[:/\"]|$)"
+toolName = "run_shell_command"
+commandPrefix = "pnpm test"
+decision = "allow"
+priority = 100
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "pnpm lint"
+decision = "allow"
+priority = 100
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "pnpm typecheck"
 decision = "allow"
 priority = 100

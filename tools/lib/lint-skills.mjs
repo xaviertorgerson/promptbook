@@ -13,7 +13,7 @@ import { validateAs } from './validate.mjs';
 // lint adds what JSON Schema cannot see: the description's shape, the body's size and neutrality,
 // links, and the evals folder.
 
-// Skilldex skills the harness pins rather than authors; a near-miss may route to them.
+// Skilldex skills promptbook pins rather than authors; a near-miss may route to them.
 export const PINNED_EXTERNAL = ['reviewing-code', 'preparing-pull-requests', 'resolving-findings', 'writing-specifications', 'building-skills'];
 
 // Engine, runtime, forge, host and stack names an L3 skill body or description must not carry.
@@ -378,7 +378,7 @@ export function loadSets(file) {
   return { data: errors.length ? null : data, errors };
 }
 
-// The harness skill names a set installs (its skills and those of the sets it includes).
+// Promptbook skill names a set installs (its skills and those of the sets it includes).
 export function setSkills(data, name, stack = []) {
   const s = data.sets[name];
   if (!s || stack.includes(name)) return new Set();
@@ -466,11 +466,11 @@ export function lintSets(file, skills, { externalDirs = {} } = {}) {
 // ------------------------------------------------------------------------------------- budget set
 
 // The always-loaded budget applies to what an engine actually loads: every skill a machine profile
-// installs (the harness's, a skill library's, a runtime's), not the folder being linted. A budget set
+// installs (promptbook's, a skill library's, a runtime's), not the folder being linted. A budget set
 // names that installed set, as either
 //   a list of skill folders or folders of skills (YAML list, or one path per line; # comments), or
 //   a toolkit.lock (or toolkit.yaml) in the toolkit-lock contract: each entry with a local source
-//   contributes the skills under source/path (the harness: source/skills), narrowed by an entry's
+//   contributes the skills under source/path (promptbook: source/skills), narrowed by an entry's
 //   x-skills list when it has one; a remote entry cannot be read and is reported, not guessed.
 // Paths are relative to the set's file; ~ is the home directory.
 const expandHome = (p) => (p === '~' || p.startsWith('~/') ? path.join(os.homedir(), p.slice(1)) : p);
@@ -497,7 +497,7 @@ export function budgetSet(file, { limit = LIMITS.descriptionBudget } = {}) {
         findings.push({ severity: 'warning', rule: 'budget-set-unread', message: `${e.name}: ${e.source} is remote; its skills are not counted (list the installed folders instead)` });
         continue;
       }
-      sources.push({ from: e.name, dir: resolve(path.join(e.source, e.path ?? (e.kind === 'harness' || (!e.kind && e.layer === 'L3') ? 'skills' : ''))), only: Array.isArray(e['x-skills']) ? e['x-skills'] : null });
+      sources.push({ from: e.name, dir: resolve(path.join(e.source, e.path ?? (e.kind === 'promptbook' || (!e.kind && e.layer === 'L3') ? 'skills' : ''))), only: Array.isArray(e['x-skills']) ? e['x-skills'] : null });
     }
   } else {
     const list = Array.isArray(data) ? data : text.split(/\r?\n/).map((l) => l.replace(/#.*$/, '').trim()).filter(Boolean);

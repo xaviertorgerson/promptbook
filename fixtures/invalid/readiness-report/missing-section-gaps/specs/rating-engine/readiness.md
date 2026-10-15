@@ -1,7 +1,7 @@
 ---
 epic: rating-engine
 generated_at: "2026-10-13T12:00:00Z"
-generator: harness/validate@1.0.0
+generator: promptbook/validate@1.0.0
 adoption: legacy
 epic_status: draft
 verdict: not-ready

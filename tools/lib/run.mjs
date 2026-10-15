@@ -3,9 +3,9 @@ import process from 'node:process';
 import { ENGINES, ENFORCES, GENERATOR } from './compile-policy.mjs';
 import { preconditionFailures } from './requires.mjs';
 
-// harness run: launch one engine command under a compiled runner.json. It appends the runner's args
+// promptbook run: launch one engine command under a compiled runner.json. It appends the runner's args
 // (the engine's own flags: mode, allowlist, the caps it enforces itself) and enforces the caps the
-// runner says are its own (`enforcement: harness-run`):
+// runner says are its own (`enforcement: promptbook-run`):
 //
 //   timeout_seconds  every engine: SIGTERM to the run's process group at the deadline, SIGKILL after
 //                    the grace period; exit 124
@@ -47,7 +47,7 @@ const killGroup = (child, signal) => {
   }
 };
 
-// The runner's named preconditions, probed on this host (harness check-requires): a bypass run, or
+// The runner's named preconditions, probed on this host (promptbook check-requires): a bypass run, or
 // any run whose profile names requires, starts only when every probe passes (HAR-4).
 export async function refusePreconditions(runner, env) {
   const failures = await preconditionFailures(runner, env);

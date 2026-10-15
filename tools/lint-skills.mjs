@@ -5,9 +5,9 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { budgetSet, budgetSetByName, DEFAULT_DENY_TERMS, LIMITS, lintSkills, SETS_FILE } from './lib/lint-skills.mjs';
 
-const HARNESS_SKILLS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../skills');
+const PROMPTBOOK_SKILLS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../skills');
 
-const USAGE = `Lint skills against the harness authoring rules.
+const USAGE = `Lint skills against the promptbook authoring rules.
 
   node tools/lint-skills.mjs [dir]...      skill folders, or folders of skills (default: skills)
       --known a,b                          more skill names a near-miss may route to
@@ -17,7 +17,7 @@ const USAGE = `Lint skills against the harness authoring rules.
       --budget-set <file|set>              sum the descriptions a machine profile installs (a list of
                                            skill folders, or a toolkit.lock) and warn over ${LIMITS.descriptionBudget}
                                            characters; or a set named in ${SETS_FILE} (the linted folder's,
-                                           else ./skills', else the harness's), with what it is loaded
+                                           else ./skills', else promptbook's), with what it is loaded
                                            with, an error over the budget less its headroom; with no
                                            folder given, only this check runs
       --external <name>=<dir>              read an external's skills (SETS.yaml external) from a checkout
@@ -39,9 +39,9 @@ export function main(argv = process.argv.slice(2)) {
   const setFile = value('--budget-set');
   const externalDirs = Object.fromEntries(argv.flatMap((a, i) => (argv[i - 1] === '--external' ? [a.split('=')] : [])).map(([k, ...v]) => [k, v.join('=')]));
   // A --budget-set that is no file is a set name: looked up in the linted folder's SETS.yaml, else
-  // ./skills/SETS.yaml, else the harness's own.
+  // ./skills/SETS.yaml, else promptbook's own.
   const setsFile = setFile !== undefined && !fs.existsSync(setFile)
-    ? [...targets.map((t) => path.join(t, SETS_FILE)), path.join('skills', SETS_FILE), path.join(HARNESS_SKILLS, SETS_FILE)].find((f) => fs.existsSync(f))
+    ? [...targets.map((t) => path.join(t, SETS_FILE)), path.join('skills', SETS_FILE), path.join(PROMPTBOOK_SKILLS, SETS_FILE)].find((f) => fs.existsSync(f))
     : null;
   if (setFile !== undefined && !fs.existsSync(setFile) && !setsFile) { console.error(`lint: --budget-set ${setFile}: no such file, and no ${SETS_FILE} to find a set in\n\n${USAGE}`); return 2; }
   let result;

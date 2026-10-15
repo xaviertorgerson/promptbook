@@ -1,7 +1,7 @@
 ---
 epic: "template-migration"
 generated_at: "2026-10-13T12:00:00Z"
-generator: "harness/validate@1.0.0"
+generator: "promptbook/validate@1.0.0"
 source_commit: "5651f88"
 adoption: "legacy"
 epic_status: "draft"

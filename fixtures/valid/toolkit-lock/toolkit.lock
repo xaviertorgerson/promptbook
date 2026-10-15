@@ -1,11 +1,11 @@
 lock_version: 1
 generated_at: "2026-10-13T12:00:00Z"
-generated_by: harness/lock@1.0.0
+generated_by: promptbook/lock@1.0.0
 entries:
-  - name: harness
+  - name: promptbook
     layer: L3
-    kind: harness
-    source: https://github.com/xaviertorgerson/harness
+    kind: promptbook
+    source: https://github.com/xaviertorgerson/promptbook
     ref: v1.0.0
     commit: 3c9d2f0a6b1e4d5c7f8a9b0c1d2e3f4a5b6c7d8e
     tree: 9f8e7d6c5b4a39281706f5e4d3c2b1a098765432

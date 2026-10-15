@@ -1,6 +1,6 @@
 # Contracts
 
-The harness defines the files every layer reads and writes, so that engines (Claude Code, Codex,
+Promptbook defines the files every layer reads and writes, so that engines (Claude Code, Codex,
 Gemini), runtimes (a CLI loop, CI agents, stagehand on Herdr) and methods can be swapped without
 touching the others. A contract is a JSON Schema 2020-12 file in `schemas/`, versioned with
 `x-version`; the state machines that govern the status fields are in `state-machines/`; the
@@ -26,7 +26,7 @@ node tools/validate.mjs --list                  # contracts, versions, artifact 
   `*.grant.yaml`, `*.return.json`, `*.task-record.yaml`, `*.run-record.jsonl`, `*.policy.yaml`,
   `*.toolkit.lock`, `*.task.md`, `*.brief.md`, `*.persona.md` (frontmatter or a list),
   `*.adr.md`, `*.ux.md`, `*.spec.md` (epic and requirements), `*.cuj.md`, `*.readiness.md`,
-  `*.harness-review.md`, `*.reflection.md`, `*.evidence.md`, `*.routing.jsonl`. A suffix applies only when no path does; it binds no
+  `*.setup-review.md`, `*.reflection.md`, `*.evidence.md`, `*.routing.jsonl`. A suffix applies only when no path does; it binds no
   frontmatter field, and an entry file (`<epic>.cuj.md`, `<epic>.ux.md`) takes its epic from the name
   before the suffix. A `*.template.*` file, or one whose name starts with `_` (agentic-template's
   `docs/ux/_UX-TEMPLATE.md`, `specs/<epic>/tasks/_TASK-TEMPLATE.md`), holds placeholders on purpose
@@ -44,7 +44,7 @@ node tools/validate.mjs --list                  # contracts, versions, artifact 
   `common.schema.json` and referenced with `$ref`.
 - **Versioning.** Each schema started at `1.0.0` and carries its own `x-version`
   (`validate.mjs --list` prints them). A change that makes a valid artifact invalid is a major
-  bump; a new optional field or enum value is minor. The harness is pre-1.0 as a whole (README).
+  bump; a new optional field or enum value is minor. Promptbook is pre-1.0 as a whole (README).
 
 ## Catalogue
 
@@ -67,7 +67,7 @@ node tools/validate.mjs --list                  # contracts, versions, artifact 
 | [toolkit-lock](#toolkit-lock) | `toolkit.lock` (L1 and L2) | YAML | lock tool | sync, CI |
 | [skill](#skill) | `skills/<name>/SKILL.md` (L3, L4) | frontmatter-md | skill author | every engine's skill loader |
 | [evidence](#evidence) | `**/skills/<name>/evals/{evidence.md,routing.jsonl}` (a project's `.agents/skills/` too), `routing-results*.jsonl` | entries / JSONL | skill author, eval runs | skill reviews, routing evals |
-| [harness-review](#harness-review) | `harness-reviews/<date>-<label>.md` | Markdown record | the reviewing-harness skill | humans, the next review |
+| [setup-review](#setup-review) | `setup-reviews/<date>-<label>.md` | Markdown record | the reviewing-agent-setup skill | humans, the next review |
 | [reflection-report](#reflection-report) | `reflections/*.md` | frontmatter-md | the reflecting-on-runs skill | a curator, humans |
 
 `common` holds the shared definitions and is not an artifact.
@@ -91,7 +91,7 @@ trace check to legacy adoption (below).
 `evidence[]`. **Location.** Either one `docs/product/personas.md` with `## PER-n · Name` entries and
 `- **Role:** …` / `- **Goals:**` bullets, or one frontmatter file per persona under `personas/`.
 **Swap story.** Personas from research tools, interviews or analytics land in the same shape.
-**Compat.** New in the harness.
+**Compat.** New in promptbook.
 
 ### journey
 
@@ -145,7 +145,7 @@ title`, `**Status:**`, `**Date:**`, `**Decision:**`, `**Why:**`, `**Consequences
 in-progress → done; blocked). Not in the brief's table; added so the epic status is checked the
 same way as the task status. **Schema** `epic.schema.json` 1.2.0: agentic-template's spec
 frontmatter exactly (`epic`, `status`, `priority`, `size`, `business_value`, `initiative`, `owner`),
-`owner` required from `approved` on, plus the optional harness field `mode`, the default methodology
+`owner` required from `approved` on, plus the optional promptbook field `mode`, the default methodology
 of the epic's tasks (a task's own `mode` overrides it; absent everywhere, `spec-driven`); sections
 Problem, Scope, Requirements, Tasks, Acceptance. The trace check reports each task's effective mode
 (`--json`: `epics[].task_modes`) and an override of the epic's mode as `info`. **Compat.** Both
@@ -159,7 +159,7 @@ status is on its head, and the default branch's copy says `ready` until the task
 `workflow.yaml` `status_authority`); the body is the contract the coder builds against. **Schema** `task.schema.json`
 1.3.0. Required (agentic-template's fields, same meaning): `id`, `epic`, `status`, `priority`, `cuj`,
 `guiding_docs`, `branch`, `depends_on`, `owner`. Optional template fields: `parent`, `size`,
-`kickback_reason`. **Optional harness fields:**
+`kickback_reason`. **Optional promptbook fields:**
 
 | Field | Meaning |
 |---|---|
@@ -204,7 +204,7 @@ plan (a hand edit, or a plan change not regenerated), is timestamped, or has no 
 (repository, worktree, agents, native session ids, PRs, attention, next action, human decisions).
 **Schema** `task-record.schema.json` 1.3.0; `state.name` is attention (working | needs-human |
 complete), never a workflow status; needs-human requires `next_action`; complete forbids it.
-Harness additions: `runtime`, `grant`, `signals{role: {source, value, observed_at}}` (source: an
+Promptbook additions: `runtime`, `grant`, `signals{role: {source, value, observed_at}}` (source: an
 `attention.yaml` vocabulary — herdr, a2a, mcp-tasks, claude-headless, loop-outcome, ci — or
 codex-exec, forgejo, gitlab, other), structured `reviews[]` (each bound to the head it judged:
 `outcome` pass | fail | changes-requested | comment, `role` reviewer for a code review or evaluator for
@@ -236,7 +236,7 @@ is optional there.
 with null where loop.mjs writes null. `outcome` is advanced | stalled | failed | needs-human (the
 loop's since it pins dontAsk: a denied call left the task where it was) for an author's run, and
 verdict (an evaluator judged the criteria) or read (a reader or helper answered a question) for a
-run that is not the author's. Harness optional fields: `engine`, `runtime`, `role` (author |
+run that is not the author's. Promptbook optional fields: `engine`, `runtime`, `role` (author |
 evaluator | reader | planner | orchestrator | merge | other; absent, the author), `model`,
 `status_before`, `permission_mode`, `permission_denials` (a count, or one line per denied call as
 the dontAsk loop writes them), `attention`, `budget`, `grant`, `usage` (`input`, `output`,
@@ -250,7 +250,7 @@ ready/in-progress; a verdict is an evaluator's (`verdict-by-evaluator`), a read 
 (`run-kept-status`); `usage` holds only those four counts (`usage-counts-tokens`); ended ≥ started.
 1.2.0 added `role`, the three outcomes and denial lines, so an evaluator's or reader's run is logged
 as what it was instead of an author's "advanced"; 1.3.0 added `usage`, so a run's cost has its
-tokens and cache hit rate beside it (`harness report`, TOOLS.md).
+tokens and cache hit rate beside it (`promptbook report`, TOOLS.md).
 **Compat.** Lines from loop.mjs's own test runs are the fixture
 `fixtures/valid/run-record/loop-mjs-outcomes.jsonl`; the dontAsk loop's lines (agentic-template
 `fix/agent-run-caps`: `needs-human`, `permission_denials` as lines), produced with a fake engine, are
@@ -284,7 +284,7 @@ only removes what the grant holds, only lowers limits and the expiry and never e
 `narrowing-only-narrows`; widening is a new grant), its *provenance* (a live grant is the file the
 granting human committed under `.orchestrator/grants/`, a CODEOWNERS-protected path, `granted_by`
 one of its owners; agents write only `.orchestrator/grants/drafts/`, which validate as grants but are
-never live; `harness grant verify <file> --git` checks the owners, the last commit's author, the
+never live; `promptbook grant verify <file> --git` checks the owners, the last commit's author, the
 issued fields against the issuing commit, append-only narrowing and a source commit), and its
 *recorded uses* (every task record, run record and orchestrator
 commit that names its id). A coordinator derives the state before each delegated action
@@ -296,7 +296,7 @@ workers (`authority.yaml` lifecycle.limits, since 1.2.0). **Swap story.** Lets a
 coordinator (stagehand, a CI orchestrator, a future agent) stand in for named human decisions with an
 auditable, expiring record instead of a remembered chat line. **Compat.** stagehand's
 project-delegation grants map field by field ([adapters/herdr](adapters/herdr/README.md)); the
-harness adds a mandatory expiry.
+promptbook adds a mandatory expiry.
 
 ### policy
 
@@ -331,10 +331,10 @@ a warning (it never takes effect).
 A profile may name `requires`: preconditions the operator keeps outside the policy, each a named
 probe of the host (`prod-unreachable-from-this-host` against `requires_config.prod_hosts` (1.4.0),
 `non-root`, `container`, `non-root-container`, `sandbox-available`; an unknown name fails closed).
-The bypass tier (autonomous) must name them (a validation warning, a compile error); `harness
+The bypass tier (autonomous) must name them (a validation warning, a compile error); `promptbook
 check-requires` probes them, and the compiler passes them with `requires_config` to the launcher in
-`runner.json`, with the run's `caps` and who enforces each (`engine`, `harness-run` or `none`).
-`harness run` is that launcher: it refuses to start a run until the probes pass. An unattended
+`runner.json`, with the run's `caps` and who enforces each (`engine`, `promptbook-run` or `none`).
+`promptbook run` is that launcher: it refuses to start a run until the probes pass. An unattended
 tier's caps are never waivable: on an engine that reports no cost the compile requires
 `budgets.unattended.max_minutes` for a hard kill.
 
@@ -367,12 +367,12 @@ profile's accepted gap.
 
 ### toolkit-lock
 
-**Purpose.** Pins the exact harness, the portable skill libraries and the L4 packs a project (or the
-dotfiles) runs. **Schema** `toolkit-lock.schema.json` 1.2.0: `lock_version`, `entries[]` of `{name,
+**Purpose.** Pins the exact promptbook, the portable skill libraries and the L4 packs a project (or the
+dotfiles) runs. **Schema** `toolkit-lock.schema.json` 2.0.0: `lock_version`, `entries[]` of `{name,
 layer (L3|L4), kind, source, path, ref, commit (full sha), tree (git tree id), version (semver,
 build metadata allowed: `0.0.0+fc572b6` for an untagged pin), autoUpdate (off | patch | minor |
-major), mirrored}`; names unique. `kind` at L3 is `harness` (exactly one; an L3 entry with no kind is
-the harness) or `skill-library` (any number, e.g. a Skilldex skill); at L4 `engine-binding`,
+major), mirrored}`; names unique. `kind` at L3 is `promptbook` (exactly one; an L3 entry with no kind is
+promptbook) or `skill-library` (any number, e.g. a Skilldex skill); at L4 `engine-binding`,
 `stack-pack`, `runtime` or `domain-pack` (a kind on the other layer is a warning). The tree id
 detects a rewritten tag or a force-pushed mirror. **Compat.** Replaces agentic-template's `.template-version` file and the
 plugin `version` pin as the single source.
@@ -381,7 +381,7 @@ plugin `version` pin as the single source.
 
 **Purpose.** A portable procedure. **Schema** `skill.schema.json` 1.0.0: the agentskills.io core
 fields only (read 2026-10-13): `name` (≤64, lowercase, single hyphens, equals its directory),
-`description` (≤1024), `license`, `compatibility` (≤500), `metadata` (string map; the harness reads
+`description` (≤1024), `license`, `compatibility` (≤500), `metadata` (string map; promptbook reads
 `metadata.version` (semver), `metadata.deprecated`, `metadata.layer`). `allowed-tools`, Claude
 Code's extensions (`disable-model-invocation`, `context`, `hooks`, `paths`, `model`, …) and anything
 else are rejected: engine extensions belong in adapters. Gerund names and "Use when … Do not use for
@@ -399,7 +399,7 @@ engine, model, skill_version, revisit; vendor-reported and literature must cite 
 cite a source); `#/$defs/routingCase` for `evals/routing.jsonl` lines (and `evals/heldout.routing.jsonl`, cases
 written after tuning and never used to change a description: `prompt`, `expect` trigger |
 no-trigger, `kind` positive | near-miss | negative, `route_to`); and `#/$defs/routingResult` for the
-lines `harness eval-routing --out` writes (`routing-results*.jsonl`: `skill`, `case` `<skill>:<line>` of the
+lines `promptbook eval-routing --out` writes (`routing-results*.jsonl`: `skill`, `case` `<skill>:<line>` of the
 cases file the run read, `prompt`, `expect`, `kind`, `route_to`, `model`, `runs`, `answers[]` per
 run, `passes`, `pass` — pass^k, every run — `errors`, `at`, `skill_version`; counts must agree), the measured source an
 evidence entry cites. The eval files validate wherever a skills folder is, dot-folder or not
@@ -407,14 +407,14 @@ evidence entry cites. The eval files validate wherever a skills folder is, dot-f
 unlike `SKILL.md`, whose L3 contract an engine's own skill folder may extend, the eval shapes are
 the same everywhere; `*.evidence.md` and `*.routing.jsonl` name the contract outside one (1.3.0).
 **Compat.** agentic-template keeps both in one `evals.md` (a routing table and an Evidence list);
-`harness import-evals` converts one, marking what a human must still decide (TOOLS.md).
+`promptbook import-evals` converts one, marking what a human must still decide (TOOLS.md).
 
-### harness-review
+### setup-review
 
-**Purpose.** The record a harness review leaves (after a model release, or quarterly): what was
+**Purpose.** The record a setup review leaves (after a model release, or quarterly): what was
 reviewed with which suite, the baseline, one ablation per component and the decision each supports.
-**Schema** `harness-review.schema.json` 1.0.0, read from the reviewing-harness skill's Markdown as
-written: the title `# Harness review — YYYY-MM-DD — <model or quarter>` gives `date` and `label`; the
+**Schema** `setup-review.schema.json` 2.0.0 (the record's new name: a breaking change), read from the reviewing-agent-setup skill's Markdown as
+written: the title `# Setup review — YYYY-MM-DD — <model or quarter>` gives `date` and `label`; the
 header bullets `**Trigger:**`, `**Reviewed:**`, `**Suite:**`, `**Trials:**` (required), `**Spend cap /
 spent:**` and `**Noise …:**` give `trigger`, `reviewed`, `suite`, `trials`, `spend`, `noise`; the
 level-2 sections must include Baseline, Ablations, Decisions and Playbook (`review-has-sections`);
@@ -507,9 +507,9 @@ is an error only when the artifact claims readiness — the epic is approved, in
 the task is ready or later — and a warning before that (the to-do list for the spec gate).
 **Adoption:** a project with `docs/product/brief.md` is in *full* adoption and every rule applies.
 Without it the project is in *legacy* adoption (an agentic-template project from before the product
-layer): the product-layer rules are skipped (reported once as `info`), and every link the harness
+layer): the product-layer rules are skipped (reported once as `info`), and every link promptbook
 introduced — persona links, task → requirement, requirement → journey, UX, ADR `satisfies` — is a
-warning even on an approved epic, so adopting the harness never turns a green build red. Gaps that
+warning even on an approved epic, so adopting promptbook never turns a green build red. Gaps that
 keep an epic from `ready` are marked `blocks_readiness` in either mode. With no test files at all,
 criterion coverage is a single `tests-exist` warning while no task claims to be tested; once a task is
 at review or later it is an error and each of that task's criteria is uncovered, so a merged task

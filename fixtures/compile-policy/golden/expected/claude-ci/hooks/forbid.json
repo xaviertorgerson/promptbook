@@ -1,5 +1,5 @@
 {
-  "generated_by": "harness compile-policy",
+  "generated_by": "promptbook compile-policy",
   "source": "agent-policy.yaml",
   "profile": "ci",
   "tier": "unattended",

@@ -22,10 +22,10 @@ import { simulate } from '../tools/lib/sim/simulate.mjs';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const EX = path.join(ROOT, 'examples/tally');
 const rel = (p) => path.relative(ROOT, p);
-const TMP = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'harness-example-'));
+const TMP = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'promptbook-example-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
-const harness = (...args) => spawnSync(process.execPath, [path.join(ROOT, 'tools/cli.mjs'), ...args], { encoding: 'utf8', cwd: ROOT });
+const promptbook = (...args) => spawnSync(process.execPath, [path.join(ROOT, 'tools/cli.mjs'), ...args], { encoding: 'utf8', cwd: ROOT });
 const json = (r) => JSON.parse(r.stdout);
 const yaml = (p) => parse(fs.readFileSync(path.join(EX, p), 'utf8'));
 const git = (...a) => spawnSync('git', ['-c', 'safe.directory=*', '-C', ROOT, ...a], { encoding: 'utf8' });
@@ -39,13 +39,13 @@ const taskFiles = Object.fromEntries(fs.readdirSync(TASK_DIR).map((f) => {
 // Contracts the example exercises. A new contract fails this test until the example uses it or it
 // is listed below with the reason it has no place in a product's files.
 const NOT_IN_A_PRODUCT = {
-  skill: 'Tally has no domain skill; its agents load the pinned harness and Skilldex',
-  evidence: 'skill evals live with the skills, in the harness and Skilldex',
+  skill: 'Tally has no domain skill; its agents load the pinned promptbook and Skilldex',
+  evidence: 'skill evals live with the skills, in promptbook and Skilldex',
 };
 
 describe('the worked example: Tally', () => {
   it('validates: every file the layout or a suffix names passes its contract, and every product contract is used', () => {
-    const r = harness('validate', rel(EX), '--json');
+    const r = promptbook('validate', rel(EX), '--json');
     assert.equal(r.status, 0, r.stdout);
     const results = json(r);
     assert.ok(results.every((x) => x.status === 'PASS'));
@@ -57,7 +57,7 @@ describe('the worked example: Tally', () => {
   });
 
   it('traces strict: ready, nothing uncovered, a test name for every criterion', () => {
-    const r = harness('trace', rel(EX), '--strict', '--json');
+    const r = promptbook('trace', rel(EX), '--strict', '--json');
     assert.equal(r.status, 0, r.stdout);
     const t = json(r);
     assert.equal(t.adoption, 'full');
@@ -73,13 +73,13 @@ describe('the worked example: Tally', () => {
   });
 
   it('its committed readiness report is the one the plan generates now (trace --readiness --check)', () => {
-    const r = harness('trace', rel(EX), '--readiness', rel(path.join(EX, 'specs')), '--check');
+    const r = promptbook('trace', rel(EX), '--readiness', rel(path.join(EX, 'specs')), '--check');
     assert.equal(r.status, 0, r.stdout);
     assert.match(r.stdout, /readiness 1\/1 report\(s\) current/);
   });
 
   it('simulates the queue as it stands, 50 seeds, with no invariant violated', () => {
-    const r = harness('simulate', '--project', rel(EX), '--seeds', '1..50', '--no-trace', '--json');
+    const r = promptbook('simulate', '--project', rel(EX), '--seeds', '1..50', '--no-trace', '--json');
     assert.equal(r.status, 0, r.stdout.slice(0, 2000));
     const s = json(r);
     assert.equal(s.seeds, 50);
@@ -88,7 +88,7 @@ describe('the worked example: Tally', () => {
   });
 
   it('simulates the walkthrough\'s faults, 50 seeds: each fires, none violates an invariant', () => {
-    const r = harness('simulate', rel(path.join(EX, 'simulate.yaml')), '--seeds', '1..50', '--no-trace', '--json');
+    const r = promptbook('simulate', rel(path.join(EX, 'simulate.yaml')), '--seeds', '1..50', '--no-trace', '--json');
     assert.equal(r.status, 0, r.stdout.slice(0, 2000));
     assert.equal(json(r).violations, 0);
     const sc = loadScenario(path.join(EX, 'simulate.yaml'));
@@ -147,7 +147,7 @@ describe('the worked example: Tally', () => {
       for (const engine of p.engines) {
         expected.push(`${engine}/${profile}`);
         const out = path.join(TMP, engine, profile);
-        const r = harness('compile-policy', rel(policyFile), '--profile', profile, '--engine', engine, '--out', out);
+        const r = promptbook('compile-policy', rel(policyFile), '--profile', profile, '--engine', engine, '--out', out);
         assert.equal(r.status, 0, `${engine}/${profile}: ${r.stderr}`);
         const files = (dir) => walk(dir).map((f) => path.relative(dir, f)).sort();
         const golden = path.join(compiled, engine, profile);
@@ -159,25 +159,25 @@ describe('the worked example: Tally', () => {
     assert.deepEqual(committed.sort(), expected.sort(), 'no compiled output for a profile or engine the policy does not name');
   });
 
-  it('the lock check passes: the harness pin (and Skilldex, when the network reaches it)', (t) => {
+  it('the lock check passes: the promptbook pin (and Skilldex, when the network reaches it)', (t) => {
     const lockFile = path.join(EX, 'toolkit.lock');
-    const pin = readLock(lockFile).data.entries.find((e) => e.kind === 'harness');
+    const pin = readLock(lockFile).data.entries.find((e) => e.kind === 'promptbook');
     // A detached CI checkout resolves the ref through origin, or verifies the pin by its commit; a
     // shallow one may not hold the pinned commit at all.
     if (git('cat-file', '-e', `${pin.commit}^{commit}`).status !== 0) {
       t.skip(`needs the pinned commit ${pin.commit.slice(0, 12)} (a shallow clone lacks it)`);
       return;
     }
-    let r = harness('lock', '--lock', rel(lockFile), '--check', '--json');
+    let r = promptbook('lock', '--lock', rel(lockFile), '--check', '--json');
     let res = json(r);
     const unreachable = (x) => x.findings.some((f) => f.rule === 'source-unreachable');
     if (r.status !== 0 && res.entries.every((x) => unreachable(x) || !x.findings.some((f) => f.severity === 'error'))) {
       t.diagnostic('a remote source is unreachable; checked the local pins with --offline');
-      r = harness('lock', '--lock', rel(lockFile), '--check', '--offline', '--json');
+      r = promptbook('lock', '--lock', rel(lockFile), '--check', '--offline', '--json');
       res = json(r);
     }
     assert.equal(r.status, 0, JSON.stringify(res.entries.map((x) => [x.name, x.findings]), null, 2));
-    assert.ok(!res.entries.find((x) => x.name === 'harness').findings.some((f) => f.severity === 'error'));
+    assert.ok(!res.entries.find((x) => x.name === 'promptbook').findings.some((f) => f.severity === 'error'));
   });
 
   it('the records tell the walkthrough\'s story: every id resolves, and attention never stood in for status', () => {

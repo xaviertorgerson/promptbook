@@ -1,7 +1,7 @@
 # Adapter: Herdr (runtime)
 
 Herdr is a terminal runtime, not an engine: it owns the panes agents run in, classifies each agent's
-state, and publishes events. It reads no harness contract. This adapter says which contracts a
+state, and publishes events. It reads no promptbook contract. This adapter says which contracts a
 Herdr-based runtime (stagehand, Heeler) produces and consumes, and how Herdr's vocabulary maps onto
 them. Facts are from the Herdr source and docs at commit `241b99c` (2026-10-13) and stagehand at
 `48aff9a` (2026-09-30).
@@ -30,9 +30,9 @@ and the task records.
 | `run-record` | optional; stagehand records none | A runtime that wants spend history appends one line per agent turn it can measure. |
 | `return` | not used by stagehand | stagehand reads the worker's latest answer in its pane; "no worker JSON or callbacks are required". A runtime may still ask a worker for a `return` object. |
 
-## stagehand ↔ harness field map
+## stagehand ↔ promptbook field map
 
-| stagehand | harness | Difference |
+| stagehand | promptbook | Difference |
 |---|---|---|
 | `task_id` | `task-record.task_id` | Same. When the work is a workflow task, use its id (BILL-3). |
 | `mode` (`development`, `reviewer-only`, `delegated-work`, `workspace-only`) | `task-record.mode` | Same values. Not `task.mode` (methodology). |
@@ -43,17 +43,17 @@ and the task records.
 | per-PR reviewed head and outcome (free-form) | `reviews[] {pr, head, outcome}` | Structured. |
 | human decisions "with their source and scope" | `decisions[] {decision, source, scope, at}` | Structured. |
 | project note: grant/source, requirements, non-goals, limits, integration targets | `grant`: `source`, `scope.objective/requirements/non_goals/repositories`, `limits`, `actions[merge].repo/target/strategy` | stagehand: "Merge authority must identify repositories, target branches, strategy, and required evidence" — the schema requires all four and fixes the evidence floor at independent review + required checks. |
-| "Grants … may be narrowed or revoked" | `narrowed[]`, `revoked_at/by`, `revocable: true`, `expires_at` | The harness adds a mandatory expiry; stagehand has none. |
+| "Grants … may be narrowed or revoked" | `narrowed[]`, `revoked_at/by`, `revocable: true`, `expires_at` | Promptbook adds a mandatory expiry; stagehand has none. |
 
 ## Plugin and rules
 
 A Herdr plugin is a directory with `herdr-plugin.toml` (`id`, `name`, `version`, `min_herdr_version`
 required; `[[startup]]`, `[[events]]`, `[[actions]]`, `[[panes]]` arrays; commands are argv arrays,
-not shell). A harness-aware wake relay would declare:
+not shell). A promptbook-aware wake relay would declare:
 
 ```toml
-id = "harness.attention"
-name = "Harness attention"
+id = "promptbook.attention"
+name = "Promptbook attention"
 version = "0.1.0"
 min_herdr_version = "0.8.2"
 platforms = ["linux", "macos"]

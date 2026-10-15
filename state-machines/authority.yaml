@@ -109,7 +109,7 @@ lifecycle:
       project's CODEOWNERS gives to its human owners (or a forge-side record); granted_by is one of
       them. Agents write only .orchestrator/grants/drafts/. Before acting, a coordinator verifies
       the file's last commit is by granted_by, the issued fields are as first committed, and
-      narrowed[] was only appended to (harness grant verify --git).
+      narrowed[] was only appended to (promptbook grant verify --git).
   validity: >-
     A grant is live when granted_at <= now < expires_at and revoked_at is absent. A coordinator
     checks liveness before every delegated action, not once at start.

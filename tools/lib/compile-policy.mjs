@@ -23,12 +23,12 @@ import { toToml } from './toml.mjs';
 //                 (profile `requires`, never waivable) and is isolated by the policy's own sandbox
 //                 and egress deny, or by an accept_gaps entry for that field with a reason (HAR-4);
 //                 the unattended tier has the caps HAR-3 states, which accept_gaps cannot waive:
-//                 runner.json carries them for `harness run`, which enforces what the engine does
+//                 runner.json carries them for `promptbook run`, which enforces what the engine does
 //                 not, and an engine with no spend flag needs max_minutes for a hard kill.
 
 export const ENGINES = ['claude', 'codex', 'gemini'];
 export const BYPASS_TIER = 'autonomous';
-export const GENERATOR = 'harness compile-policy';
+export const GENERATOR = 'promptbook compile-policy';
 
 // Gemini tool names. The policy-engine page names read_file, glob, write_file, replace and
 // run_shell_command; the others are the installed CLI's names and unverified (adapters/gemini).
@@ -68,7 +68,7 @@ const prefixForm = (r) => {
 // The guard hook (hooks.forbid_guard): tools/guards/forbid-guard.mjs, copied beside the settings
 // with the compiled rule list and registered for the shell tool from the engine's home.
 const GUARD_SOURCE = new URL('../guards/forbid-guard.mjs', import.meta.url);
-const GUARD_HOME = { claude: '$HOME/.claude/hooks/harness', codex: '$HOME/.codex/hooks/harness' };
+const GUARD_HOME = { claude: '$HOME/.claude/hooks/promptbook', codex: '$HOME/.codex/hooks/promptbook' };
 
 // The command rules the guard denies: every command forbid, and unattended every command ask (a
 // denial there).
@@ -84,7 +84,7 @@ function guardFiles(ctx) {
 
 const guardRegistration = (engine) => {
   const home = GUARD_HOME[engine];
-  return { PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: `node "${home}/forbid-guard.mjs" "${home}/forbid.json"`, ...(engine === 'codex' ? { statusMessage: 'harness forbid guard' } : {}) }] }] };
+  return { PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: `node "${home}/forbid-guard.mjs" "${home}/forbid.json"`, ...(engine === 'codex' ? { statusMessage: 'promptbook forbid guard' } : {}) }] }] };
 };
 
 class Context {
@@ -201,20 +201,20 @@ function preflight(ctx) {
     }
     const req = ctx.profile.requires ?? [];
     if (!req.length) ctx.error('bypass-requires', `profile "${ctx.profileName}" is the bypass tier (${BYPASS_TIER}) and names no preconditions; set requires: [prod-unreachable-from-this-host, ...] (HAR-4). The compiler cannot see a network ACL or a container, so it will not assume one`);
-    else ctx.notes.push(`bypass tier ${ctx.profileName} requires: ${req.join(', ')} (harness check-requires probes each on the host; harness run refuses the profile's runs until they pass)`);
+    else ctx.notes.push(`bypass tier ${ctx.profileName} requires: ${req.join(', ')} (promptbook check-requires probes each on the host; promptbook run refuses the profile's runs until they pass)`);
   }
   for (const name of ctx.profile.requires ?? []) {
-    if (!PROBES[name]) ctx.warn('requires-unknown', `requires ${name} has no probe (${Object.keys(PROBES).join(', ')}): harness check-requires and harness run fail closed on it`);
+    if (!PROBES[name]) ctx.warn('requires-unknown', `requires ${name} has no probe (${Object.keys(PROBES).join(', ')}): promptbook check-requires and promptbook run fail closed on it`);
   }
   if ((ctx.profile.requires ?? []).includes('prod-unreachable-from-this-host') && !p.requires_config?.prod_hosts?.length) {
-    ctx.warn('requires-unprobed', 'requires prod-unreachable-from-this-host and requires_config.prod_hosts lists no production host: harness check-requires and harness run fail closed until it does');
+    ctx.warn('requires-unprobed', 'requires prod-unreachable-from-this-host and requires_config.prod_hosts lists no production host: promptbook check-requires and promptbook run fail closed until it does');
   }
   if (ctx.tier === 'unattended') {
     const b = p.budgets?.unattended ?? {};
     const missing = ['max_turns', 'max_usd'].filter((k) => b[k] === undefined);
     if (missing.length) ctx.error('unattended-caps', `the unattended tier runs with turn and spend caps (HAR-3): budgets.unattended lacks ${missing.join(', ')}`);
     else if (ENFORCES[ctx.engine].max_budget_usd === 'none' && b.max_minutes === undefined) {
-      ctx.error('unattended-caps', `${ctx.engine} has no spend flag, so harness run bounds an unattended run's spend by a hard kill at budgets.unattended.max_minutes, which is not set (HAR-3; accept_gaps cannot waive it)`);
+      ctx.error('unattended-caps', `${ctx.engine} has no spend flag, so promptbook run bounds an unattended run's spend by a hard kill at budgets.unattended.max_minutes, which is not set (HAR-3; accept_gaps cannot waive it)`);
     }
   }
 }
@@ -400,17 +400,17 @@ function emitClaude(ctx) {
 // reads.
 const jsonFile = (path, data, kind) => ({ path, content: `${JSON.stringify(data, null, 2)}\n`, kind, data });
 
-// Who enforces each cap of a run `harness run` launches: the engine (a flag or setting the compile
-// emits), harness run itself, or nobody (said so in a spend-unmetered warning). adapters/*/README.md.
+// Who enforces each cap of a run `promptbook run` launches: the engine (a flag or setting the compile
+// emits), promptbook run itself, or nobody (said so in a spend-unmetered warning). adapters/*/README.md.
 export const ENFORCES = {
-  claude: { max_turns: 'engine', max_budget_usd: 'engine', timeout_seconds: 'harness-run' },
-  codex: { max_turns: 'harness-run', max_budget_usd: 'none', timeout_seconds: 'harness-run' },
-  gemini: { max_turns: 'engine', max_budget_usd: 'none', timeout_seconds: 'harness-run' },
+  claude: { max_turns: 'engine', max_budget_usd: 'engine', timeout_seconds: 'promptbook-run' },
+  codex: { max_turns: 'promptbook-run', max_budget_usd: 'none', timeout_seconds: 'promptbook-run' },
+  gemini: { max_turns: 'engine', max_budget_usd: 'none', timeout_seconds: 'promptbook-run' },
 };
 
 // The run's caps from the tier's budget. max_tokens has no enforcer on any engine (a gap).
 function capsOf(ctx, budget) {
-  if (budget.max_tokens) ctx.gap('budgets', 'max_tokens has no flag or setting, and harness run cannot meter tokens before a run ends');
+  if (budget.max_tokens) ctx.gap('budgets', 'max_tokens has no flag or setting, and promptbook run cannot meter tokens before a run ends');
   if (budget.max_usd && ENFORCES[ctx.engine].max_budget_usd === 'none') {
     const bounds = [budget.max_turns && `max_turns ${budget.max_turns}`, budget.max_minutes && `a hard kill at max_minutes ${budget.max_minutes}`].filter(Boolean);
     const msg = `${ctx.engine} reports no cost: max_usd ${budget.max_usd} is not metered; the run is bounded by ${bounds.length ? bounds.join(' and ') : 'no other cap'}`;
@@ -487,7 +487,7 @@ export function renderPrefixRule(r) {
 function emitCodex(ctx) {
   const { policy: p, tier } = ctx;
   const guard = p.hooks?.forbid_guard === true;
-  if (guard) ctx.warn('hook-trust', 'Codex skips a new or changed user hook until it is reviewed and trusted (/hooks; trust is recorded against the hook\'s hash): trust the harness forbid guard once on this machine, or flags-anywhere forbids hold only in their prefix form until then');
+  if (guard) ctx.warn('hook-trust', 'Codex skips a new or changed user hook until it is reviewed and trusted (/hooks; trust is recorded against the hook\'s hash): trust the promptbook forbid guard once on this machine, or flags-anywhere forbids hold only in their prefix form until then');
   if (tier === 'auto-edit') ctx.warn('degraded', 'Codex has no "edits free, commands ask" mode: auto-edit compiles like ask (approval_policy on-request)');
   if (tier === 'auto') ctx.warn('degraded', 'Codex has no classifier-reviewed mode: auto compiles to approval_policy on-request on the workspace sandbox (sandboxed work runs without asking; anything outside it prompts)');
   const filesystem = {};
@@ -588,7 +588,7 @@ function emitCodex(ctx) {
     else ctx.drop('sandbox.writable_roots', { write: w }, 'Codex takes a glob only for deny: a write entry needs an exact path or a trailing /**');
   }
 
-  // No documented turn, spend or token flag for codex exec: harness run counts tool actions in the
+  // No documented turn, spend or token flag for codex exec: promptbook run counts tool actions in the
   // --json event stream against max_turns, and kills the run at max_minutes.
   const budget = p.budgets?.[tier] ?? {};
   const runnerArgs = budget.max_turns ? ['--json'] : [];
@@ -601,9 +601,9 @@ function emitCodex(ctx) {
   if (Object.keys(roots).length) fsTable[':workspace_roots'] = roots;
   if (Object.keys(fsTable).length) profileTable.filesystem = fsTable;
   if (network) profileTable.network = { enabled: true, ...(Object.keys(domains).length ? { domains } : {}) };
-  const config = { default_permissions: 'harness' };
+  const config = { default_permissions: 'promptbook' };
   if (CODEX_APPROVAL[tier]) config.approval_policy = CODEX_APPROVAL[tier];
-  config.permissions = { harness: profileTable };
+  config.permissions = { promptbook: profileTable };
   if (network) config.features = { network_proxy: true };
   const header = `# Compiled from ${ctx.source} (profile ${ctx.profileName}, tier ${tier}) by ${GENERATOR}.\n# A fragment: merge into ~/.codex/config.toml; recompile rather than edit.\n`;
   const configName = tier === 'unattended' ? `${ctx.profileName}.config.toml` : 'config.toml';
@@ -617,9 +617,9 @@ function emitCodex(ctx) {
   return [
     { path: configName, content: `${header}\n${toToml(config)}`, kind: 'settings-fragment', data: config },
     ...(servers.length ? [{ path: 'mcp-restrictions.toml', content: `${mcpHeader}\n${toToml(mcpData)}`, kind: 'mcp-fragment', data: mcpData }] : []),
-    { path: 'rules/harness.rules', content: rulesText, kind: 'rules', data: rules },
+    { path: 'rules/promptbook.rules', content: rulesText, kind: 'rules', data: rules },
     jsonFile('runner.json', runnerFile(ctx, runnerArgs, budget), 'runner'),
-    ...(guard ? [jsonFile('hooks.json', { description: `harness forbid guard, compiled from ${ctx.source} (profile ${ctx.profileName})`, hooks: guardRegistration('codex') }, 'settings-fragment'), ...guardFiles(ctx)] : []),
+    ...(guard ? [jsonFile('hooks.json', { description: `promptbook forbid guard, compiled from ${ctx.source} (profile ${ctx.profileName})`, hooks: guardRegistration('codex') }, 'settings-fragment'), ...guardFiles(ctx)] : []),
   ];
 }
 
@@ -722,7 +722,7 @@ function emitGemini(ctx) {
   for (const w of p.sandbox?.writable_roots ?? []) ctx.drop('sandbox.writable_roots', { write: w }, 'container mounts are the launcher\'s job');
 
   // model.maxSessionTurns ends a session past its turns (headless exit 53, "turn limit exceeded");
-  // there is no spend key, and harness run kills the run at max_minutes.
+  // there is no spend key, and promptbook run kills the run at max_minutes.
   const budget = p.budgets?.[tier] ?? {};
   if (budget.max_turns) settings.model = { maxSessionTurns: budget.max_turns };
 
@@ -730,7 +730,7 @@ function emitGemini(ctx) {
   const header = `# Compiled from ${ctx.source} (profile ${ctx.profileName}, tier ${tier}) by ${GENERATOR}.\n# User-tier policy (~/.gemini/policies/); the workspace tier is disabled upstream. Tool names other than\n# read_file, glob, write_file, replace and run_shell_command are unverified (adapters/gemini).\n`;
   return [
     jsonFile('settings.json', settings, 'settings-fragment'),
-    { path: 'policies/harness.toml', content: `${header}\n${rules.length ? toToml({ rule: rules }) : ''}`, kind: 'rules', data: rules },
+    { path: 'policies/promptbook.toml', content: `${header}\n${rules.length ? toToml({ rule: rules }) : ''}`, kind: 'rules', data: rules },
     jsonFile('runner.json', runnerFile(ctx, args, budget), 'runner'),
   ];
 }

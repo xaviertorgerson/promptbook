@@ -1,4 +1,4 @@
-# stagehand's assets/task-record.yaml with every field filled; the harness reads it unchanged.
+# stagehand's assets/task-record.yaml with every field filled; promptbook reads it unchanged.
 task_id: "billing-rerate"
 mode: "development"
 objective: "Re-rating a period never double-bills"

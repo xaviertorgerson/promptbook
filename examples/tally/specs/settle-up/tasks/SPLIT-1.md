@@ -28,7 +28,7 @@ inputs:
 risk: { level: high, irreversible: false, reasons: [first pass through the real pipeline, proves the one-way ADR-0001] }
 evaluator:
   - { kind: tests, ref: the project's test command }
-  - { kind: script, ref: harness trace . --strict }
+  - { kind: script, ref: promptbook trace . --strict }
   - { kind: agent-review, ref: evaluator }
   - { kind: human, ref: code-owner }
 budget: { max_turns: 200, max_usd: 6, max_minutes: 150 }

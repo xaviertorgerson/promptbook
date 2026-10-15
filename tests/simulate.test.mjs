@@ -18,7 +18,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SCEN = path.join(ROOT, 'fixtures/scenarios');
 const SEEDS = Number(process.env.SIM_SEEDS ?? 50);
 const MUTANT_SEEDS = 12;
-const TMP = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'harness-sim-'));
+const TMP = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'promptbook-sim-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 const raw = (name) => parse(fs.readFileSync(path.join(SCEN, `${name}.yaml`), 'utf8'));

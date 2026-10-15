@@ -9,7 +9,7 @@ import { parse, stringify } from 'yaml';
 import { processLock, versionFromRef, withinAutoUpdate } from '../tools/lib/lock.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const TMP = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'harness-lock-'));
+const TMP = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'promptbook-lock-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 const ENV = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@example.com', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@example.com', GIT_CONFIG_NOSYSTEM: '1', HOME: TMP };
@@ -45,21 +45,21 @@ before(() => {
   commits.v2 = git(pack, 'rev-parse', 'HEAD');
 });
 
-// A project that pins the pack as a local path, the harness entry being the pack's root.
+// A project that pins the pack as a local path, the promptbook entry being the pack's root.
 function project(name, entries) {
   const dir = path.join(TMP, name);
   fs.mkdirSync(dir, { recursive: true });
   write(path.join(dir, 'toolkit.lock'), `# pinned toolkit\n${stringify({ lock_version: 1, entries })}`);
   return dir;
 }
-const harnessEntry = (over = {}) => ({ name: 'harness', layer: 'L3', kind: 'harness', source: '../pack', ref: 'v1.0.0', autoUpdate: 'minor', ...over });
+const promptbookEntry = (over = {}) => ({ name: 'promptbook', layer: 'L3', kind: 'promptbook', source: '../pack', ref: 'v1.0.0', autoUpdate: 'minor', ...over });
 const webEntry = (over = {}) => ({ name: 'web-pack', layer: 'L4', kind: 'stack-pack', source: '../pack', path: 'packs/web', ref: 'main', autoUpdate: 'off', ...over });
 const lockOf = (dir) => parse(fs.readFileSync(path.join(dir, 'toolkit.lock'), 'utf8'));
 const rules = (r) => r.entries.flatMap((e) => e.findings.map((f) => `${f.severity}:${f.rule}`));
 
 describe('lock', () => {
   it('pins commit, subdirectory tree and version from local git, with no network, and keeps comments', () => {
-    const dir = project('pin', [harnessEntry(), webEntry()]);
+    const dir = project('pin', [promptbookEntry(), webEntry()]);
     const r = cli(dir);
     assert.equal(r.status, 0, r.stdout + r.stderr);
     const text = fs.readFileSync(path.join(dir, 'toolkit.lock'), 'utf8');
@@ -71,7 +71,7 @@ describe('lock', () => {
     assert.equal(l.entries[1].commit, commits.v2);
     assert.equal(l.entries[1].tree, git(pack, 'rev-parse', `${commits.v2}:packs/web`), 'the pinned subdirectory, not the root');
     assert.equal(l.entries[1].version, '0.3.0', 'from the pack manifest');
-    assert.equal(l.generated_by, 'harness/lock@1.0.0');
+    assert.equal(l.generated_by, 'promptbook/lock@1.0.0');
     assert.deepEqual(Object.keys(l.entries[1]), ['name', 'layer', 'kind', 'source', 'path', 'ref', 'commit', 'tree', 'version', 'autoUpdate']);
     const v = spawnSync(process.execPath, [path.join(ROOT, 'tools/validate.mjs'), path.join(dir, 'toolkit.lock')], { encoding: 'utf8' });
     assert.equal(v.status, 0, v.stdout);
@@ -79,7 +79,7 @@ describe('lock', () => {
   });
 
   it('--check exits 1 on a tree that changed (a rewritten mirror), naming the entry', () => {
-    const dir = project('tree', [harnessEntry(), webEntry()]);
+    const dir = project('tree', [promptbookEntry(), webEntry()]);
     cli(dir);
     const l = lockOf(dir);
     l.entries[1].tree = git(pack, 'rev-parse', `${commits.v1}:packs/web`);
@@ -91,7 +91,7 @@ describe('lock', () => {
   });
 
   it('--check exits 1 on a moved tag and on a pinned commit that no longer exists', () => {
-    const dir = project('tag', [harnessEntry({ ref: 'v1.1.0' }), webEntry({ commit: 'f'.repeat(40), tree: 'e'.repeat(40), version: '0.3.0' })]);
+    const dir = project('tag', [promptbookEntry({ ref: 'v1.1.0' }), webEntry({ commit: 'f'.repeat(40), tree: 'e'.repeat(40), version: '0.3.0' })]);
     cli(dir);
     const l = lockOf(dir);
     l.entries[0].commit = commits.v1;
@@ -109,7 +109,7 @@ describe('lock', () => {
     fs.cpSync(pack, branch, { recursive: true });
     git(branch, 'checkout', '-q', '-b', 'release', 'v1.0.0');
     git(branch, 'commit', '-q', '--allow-empty', '-m', 'pinned');
-    const dir = project('branch', [harnessEntry({ source: '../branchy', ref: 'release', version: '1.0.0' })]);
+    const dir = project('branch', [promptbookEntry({ source: '../branchy', ref: 'release', version: '1.0.0' })]);
     assert.equal(cli(dir).status, 0);
     write(path.join(branch, 'NEW.md'), 'x\n');
     git(branch, 'add', '.');
@@ -128,7 +128,7 @@ describe('lock', () => {
     spawnSync('git', ['clone', '-q', pack, ci], { env: ENV });
     git(ci, 'checkout', '-q', '--detach');
     git(ci, 'branch', '-D', 'main');
-    const full = project('ci-full-project', [harnessEntry({ source: '../ci-full' }), webEntry({ source: '../ci-full' })]);
+    const full = project('ci-full-project', [promptbookEntry({ source: '../ci-full' }), webEntry({ source: '../ci-full' })]);
     const r = cli(full);
     assert.equal(r.status, 0, r.stdout + r.stderr);
     assert.equal(lockOf(full).entries[1].commit, commits.v2, 'main resolved through origin/main');
@@ -139,7 +139,7 @@ describe('lock', () => {
     spawnSync('git', ['clone', '-q', '--depth', '1', '--branch', 'v2.0.0', `file://${pack}`, shallow], { env: ENV });
     assert.equal(git(shallow, 'rev-parse', '--is-shallow-repository'), 'true');
     const pinned = { commit: commits.v2, tree: git(pack, 'rev-parse', `${commits.v2}:packs/web`), version: '0.3.0' };
-    const dir = project('ci-shallow-project', [harnessEntry({ source: '../ci-shallow', ref: 'v2.0.0', commit: commits.v2, tree: git(pack, 'rev-parse', 'v2.0.0^{tree}'), version: '2.0.0' }), webEntry({ source: '../ci-shallow', ...pinned })]);
+    const dir = project('ci-shallow-project', [promptbookEntry({ source: '../ci-shallow', ref: 'v2.0.0', commit: commits.v2, tree: git(pack, 'rev-parse', 'v2.0.0^{tree}'), version: '2.0.0' }), webEntry({ source: '../ci-shallow', ...pinned })]);
     let res = processLock(lockOf(dir), { mode: 'check', lockDir: dir });
     assert.deepEqual(rules(res), ['warning:ref-absent']);
     assert.match(res.entries[1].findings[0].message, /not present .*; verified by commit/);
@@ -170,22 +170,22 @@ describe('lock', () => {
   });
 
   it('--update moves within autoUpdate (minor stays below 2.0.0); a named entry moves to the newest tag', () => {
-    const dir = project('update', [harnessEntry(), webEntry()]);
+    const dir = project('update', [promptbookEntry(), webEntry()]);
     cli(dir);
     let r = cli(dir, '--update');
     assert.equal(r.status, 0, r.stdout);
     assert.equal(lockOf(dir).entries[0].ref, 'v1.1.0');
     assert.equal(lockOf(dir).entries[0].commit, commits.v11);
     assert.equal(lockOf(dir).entries[0].version, '1.1.0');
-    r = cli(dir, '--update', 'harness');
+    r = cli(dir, '--update', 'promptbook');
     assert.equal(r.status, 0, r.stdout);
-    assert.match(r.stdout, /^MOVED harness v2\.0\.0 /m);
+    assert.match(r.stdout, /^MOVED promptbook v2\.0\.0 /m);
     assert.equal(lockOf(dir).entries[0].version, '2.0.0');
     assert.equal(cli(dir, '--check').status, 0);
   });
 
   it('a version that disagrees with the tag is drift', () => {
-    const dir = project('version', [harnessEntry({ version: '9.9.9' })]);
+    const dir = project('version', [promptbookEntry({ version: '9.9.9' })]);
     const r = processLock(lockOf(dir), { mode: 'lock', lockDir: dir });
     assert.ok(rules(r).includes('error:version-matches'), rules(r).join());
   });
@@ -195,7 +195,7 @@ describe('lock', () => {
     spawnSync('git', ['clone', '-q', '--bare', pack, bare], { env: ENV });
     git(bare, 'config', 'uploadpack.allowFilter', 'true');
     git(bare, 'config', 'uploadpack.allowAnySHA1InWant', 'true');
-    const dir = project('remote', [harnessEntry({ source: `file://${bare}`, ref: 'v1.1.0' }), webEntry({ source: `file://${bare}` })]);
+    const dir = project('remote', [promptbookEntry({ source: `file://${bare}`, ref: 'v1.1.0' }), webEntry({ source: `file://${bare}` })]);
     const r = cli(dir);
     assert.equal(r.status, 0, r.stdout + r.stderr);
     const l = lockOf(dir);
@@ -205,7 +205,7 @@ describe('lock', () => {
     assert.equal(l.entries[1].version, '0.3.0', 'manifest read through the partial clone');
     assert.equal(cli(dir, '--check').status, 0);
 
-    const gone = project('gone', [harnessEntry({ source: `file://${path.join(TMP, 'nope.git')}` })]);
+    const gone = project('gone', [promptbookEntry({ source: `file://${path.join(TMP, 'nope.git')}` })]);
     const g = cli(gone);
     assert.equal(g.status, 1);
     assert.match(g.stdout, /error {3}source-unreachable: cannot reach file:\/\/.*nope\.git/);

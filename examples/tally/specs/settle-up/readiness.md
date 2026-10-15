@@ -1,6 +1,6 @@
 ---
 epic: "settle-up"
-generator: "harness/validate@1.0.0"
+generator: "promptbook/validate@1.0.0"
 adoption: "full"
 epic_status: "in-progress"
 verdict: "ready"

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://harness.dev/schemas/task-record.schema.json",
+  "$id": "https://promptbook.dev/schemas/task-record.schema.json",
   "title": "Task record",
   "description": "A runtime's recovery note for one task: what a replacement coordinator needs to resume. One per task per runtime, kept outside the task file (e.g. .orchestrator/tasks/<id>.yaml). A superset of stagehand's task-record.yaml; attention is runtime state and never advances the task's workflow status.",
   "x-version": "1.3.0",
@@ -15,7 +15,7 @@
       "$ref": "common.schema.json#/$defs/nonEmptyString"
     },
     "runtime": {
-      "description": "Harness: which runtime keeps this record (stagehand, claude-loop, ci).",
+      "description": "Promptbook: which runtime keeps this record (stagehand, claude-loop, ci).",
       "$ref": "common.schema.json#/$defs/slug"
     },
     "mode": {
@@ -28,7 +28,7 @@
       "$ref": "common.schema.json#/$defs/nonEmptyString"
     },
     "grant": {
-      "description": "Harness: the authority grant this record acts under, if any (grant.schema.json).",
+      "description": "Promptbook: the authority grant this record acts under, if any (grant.schema.json).",
       "$ref": "common.schema.json#/$defs/grantId"
     },
     "repository": {
@@ -137,7 +137,7 @@
       ]
     },
     "signals": {
-      "description": "Harness: the last runtime signal per role, as observed (attention.yaml). Evidence for reconciliation, never a transition.",
+      "description": "Promptbook: the last runtime signal per role, as observed (attention.yaml). Evidence for reconciliation, never a transition.",
       "type": "object",
       "additionalProperties": {
         "type": "object",
@@ -154,7 +154,7 @@
       }
     },
     "resources": {
-      "description": "Harness: what the task's worktree derived from its branch (the managing-worktrees naming rule) and how it was cleaned up, so a replacement coordinator can audit and free them. Recomputable from the branch; recorded so nothing is guessed at cleanup.",
+      "description": "Promptbook: what the task's worktree derived from its branch (the managing-worktrees naming rule) and how it was cleaned up, so a replacement coordinator can audit and free them. Recomputable from the branch; recorded so nothing is guessed at cleanup.",
       "type": "object",
       "properties": {
         "slug": { "description": "The branch slug every derived name uses.", "type": "string", "pattern": "^[a-z0-9_]+$" },

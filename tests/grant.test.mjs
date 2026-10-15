@@ -14,7 +14,7 @@ import { grantHas } from '../tools/lib/sim/authority.mjs';
 // and how it changed are checked, not trusted): owners, the committing human, append-only narrowing.
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const TMP = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'harness-grant-'));
+const TMP = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'promptbook-grant-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 const base = () => ({
@@ -120,7 +120,7 @@ describe('grant verify', () => {
     assert.ok(rules(verifyGrant(file, { git: true })).includes('source-resolves'));
   });
 
-  it('the CLI: harness grant verify exits 0, 1 and 2; the Tally grants verify against its CODEOWNERS', () => {
+  it('the CLI: promptbook grant verify exits 0, 1 and 2; the Tally grants verify against its CODEOWNERS', () => {
     const cli = (...a) => spawnSync(process.execPath, [path.join(ROOT, 'tools/cli.mjs'), 'grant', ...a], { encoding: 'utf8', cwd: ROOT });
     const ok = cli('verify', 'examples/tally/.orchestrator/grants/GRANT-1.yaml', 'examples/tally/.orchestrator/grants/GRANT-2.yaml');
     assert.equal(ok.status, 0, ok.stdout);

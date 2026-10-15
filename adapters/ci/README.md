@@ -46,9 +46,9 @@ pass.
 ## Validation in CI
 
 ```yaml
-- run: pnpm --dir harness install --frozen-lockfile
-- run: node harness/tools/validate.mjs specs DECISIONS.md          # every artifact against its contract
-- run: node harness/tools/validate.mjs --trace . --tests "apps/**/*.spec.ts"   # the trace graph
+- run: pnpm --dir promptbook install --frozen-lockfile
+- run: node promptbook/tools/validate.mjs specs DECISIONS.md          # every artifact against its contract
+- run: node promptbook/tools/validate.mjs --trace . --tests "apps/**/*.spec.ts"   # the trace graph
 ```
 
 `--trace` exits 1 on any error; `--strict` makes warnings fail too, which is the switch a project

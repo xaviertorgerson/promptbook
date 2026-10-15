@@ -1,12 +1,12 @@
 # Engineering standards
 
 The single source for the process and safety invariants that both the personal layer (L1) and every
-project (L2) hold. It is versioned with the harness and rendered, never hand-copied:
+project (L2) hold. It is versioned with promptbook and rendered, never hand-copied:
 
-- **L1** vendors the block below at a pinned harness tag into the dotfiles' shared instruction
+- **L1** vendors the block below at a pinned promptbook tag into the dotfiles' shared instruction
   template, which renders it into every engine's personal instruction file.
 - **L2** receives the same block through the template sync as a managed block of `AGENTS.md`; the
-  template check fails a project whose copy differs from the pinned harness version.
+  template check fails a project whose copy differs from the pinned promptbook version.
 
 Both scopes therefore carry the same short text. That is intended: the hazard is two hand-edited
 copies drifting apart, not a few repeated lines. Taste and autonomy are not here (see the end).
@@ -49,7 +49,7 @@ Names in backticks are today's implementations in the agentic-core pack; any pac
 | ENG-7 | the pack's linter rule for empty blocks where one exists; review | — | advisory where no lint rule exists |
 | ENG-8 | config schema refuses to boot on a bad key; contract types at the API; security review | — | advisory beyond typed boundaries |
 
-## Harness invariants
+## Agent-setup invariants
 
 Rules about the agent setup itself, held by whoever configures L1, L2 and L4. Measured basis:
 [permissions-and-autonomy](../playbook/runtime/permissions-and-autonomy.md).
@@ -59,7 +59,7 @@ Rules about the agent setup itself, held by whoever configures L1, L2 and L4. Me
 | HAR-1 | Anything an agent must never do is a deny (hook or permission rule), not an ask | review of every guardrail change: "is this a deny?" |
 | HAR-2 | The personal layer never disables hooks and never removes the project's deny rules | deny rules merge across scopes and win in every mode, so L1 cannot remove an L2 deny; the policy compiler refuses a policy that disables hooks and checks every compiled output for a hooks-off key |
 | HAR-3 | Unattended runs pin the engine's no-prompt mode plus an explicit tool allowlist, and turn and spend caps | runtime launch flags; the run record shows mode and caps |
-| HAR-4 | Bypass defaults only where production is unreachable at the network level and the agent is non-root in a sandbox | the profile's `requires`, probed by `harness check-requires` and by `harness run` before each run; network ACLs |
+| HAR-4 | Bypass defaults only where production is unreachable at the network level and the agent is non-root in a sandbox | the profile's `requires`, probed by `promptbook check-requires` and by `promptbook run` before each run; network ACLs |
 | HAR-5 | No agent holds a long-lived credential or deploys to production | per-role scoped tokens; the forge's protected production environment |
 | HAR-6 | Third-party skills, plugins and MCP servers are pinned by commit or hash, with auto-update off | `toolkit.lock` drift check in CI |
 
@@ -87,6 +87,6 @@ The rules found at both scopes (dotfiles `home/.chezmoitemplates/AGENTS.md`; age
 
 ## Changing this file
 
-A change is a pull request to the harness with the reason and, for a new invariant, its
+A change is a pull request to promptbook with the reason and, for a new invariant, its
 enforcement. Adding an invariant is a **behavioral** change in `CHANGELOG.md`; removing or loosening
 one is **breaking**. The `v1` in the markers is the block version that the L1 and L2 checks compare.

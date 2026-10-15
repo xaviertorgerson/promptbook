@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://harness.dev/schemas/policy.schema.json",
+  "$id": "https://promptbook.dev/schemas/policy.schema.json",
   "title": "Agent policy",
   "description": "The L1 operator policy (agent-policy.yaml): autonomy tier per machine profile, what is never read, never done, asked about, or pre-approved, network egress, and run ceilings. Engine-neutral; compiled per engine by the adapters (adapters/*/README.md). Walls are denies (forbid, deny_read); ask is a human checkpoint and protects nothing unattended (ADR-0021).",
   "x-version": "1.4.0",
@@ -58,7 +58,7 @@
     "egress": { "$ref": "#/$defs/egress" },
     "sandbox": { "$ref": "#/$defs/sandbox" },
     "requires_config": {
-      "description": "What the requires probes check (1.4.0; harness check-requires, harness run). prod_hosts: production endpoints (host or host:port, 443 by default) that a TCP connect from this host must fail to reach for prod-unreachable-from-this-host to pass; list addresses to probe the route rather than the resolver.",
+      "description": "What the requires probes check (1.4.0; promptbook check-requires, promptbook run). prod_hosts: production endpoints (host or host:port, 443 by default) that a TCP connect from this host must fail to reach for prod-unreachable-from-this-host to pass; list addresses to probe the route rather than the resolver.",
       "type": "object",
       "properties": {
         "prod_hosts": {
@@ -141,7 +141,7 @@
         },
         "requires": {
           "x-rule": "requires-are-named-preconditions",
-          "description": "Named preconditions the operator keeps outside the policy for this profile to be safe, each a probe harness check-requires runs on the host: prod-unreachable-from-this-host (requires_config.prod_hosts), non-root, container, non-root-container, sandbox-available; an unknown name fails closed. Mandatory for the bypass tier (autonomous): the compiler refuses that tier without it, and harness run refuses to start the profile's runs until every probe passes (HAR-4).",
+          "description": "Named preconditions the operator keeps outside the policy for this profile to be safe, each a probe promptbook check-requires runs on the host: prod-unreachable-from-this-host (requires_config.prod_hosts), non-root, container, non-root-container, sandbox-available; an unknown name fails closed. Mandatory for the bypass tier (autonomous): the compiler refuses that tier without it, and promptbook run refuses to start the profile's runs until every probe passes (HAR-4).",
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,

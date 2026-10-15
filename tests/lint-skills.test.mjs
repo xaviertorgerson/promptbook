@@ -10,7 +10,7 @@ import { budgetSet, isGerundName, jaccard, lintSkills, markdownLinks, parseScena
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FIX = path.join(ROOT, 'fixtures/lint');
 const GOOD = path.join(FIX, 'good/skills');
-const TMP = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'harness-lint-'));
+const TMP = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'promptbook-lint-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]));
@@ -159,12 +159,12 @@ describe('lint-skills CLI', () => {
 describe('lint --budget-set: the installed set\'s description budget', () => {
   const cli = (...a) => spawnSync(process.execPath, [path.join(ROOT, 'tools/lint-skills.mjs'), ...a], { encoding: 'utf8', cwd: ROOT });
   const SKILLS = path.join(ROOT, 'skills');
-  const harnessChars = fs.readdirSync(SKILLS).filter((d) => fs.existsSync(path.join(SKILLS, d, 'SKILL.md'))).reduce((a, d) => a + fs.readFileSync(path.join(SKILLS, d, 'SKILL.md'), 'utf8').match(/^description: (.*)$/m)[1].length, 0);
+  const promptbookChars = fs.readdirSync(SKILLS).filter((d) => fs.existsSync(path.join(SKILLS, d, 'SKILL.md'))).reduce((a, d) => a + fs.readFileSync(path.join(SKILLS, d, 'SKILL.md'), 'utf8').match(/^description: (.*)$/m)[1].length, 0);
   const write = (name, text) => { const f = path.join(TMP, 'sets', name); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, text); return f; };
 
-  it('the harness alone fits; the harness plus a library a profile also installs is over, and says so', () => {
+  it('promptbook alone fits; promptbook plus a library a profile also installs is over, and says so', () => {
     const alone = budgetSet(write('alone.txt', `${SKILLS}\n`));
-    assert.equal(alone.total, harnessChars);
+    assert.equal(alone.total, promptbookChars);
     assert.ok(alone.total <= 8000);
     assert.deepEqual(alone.findings, []);
     const devbox = budgetSet(write('devbox.yaml', `# what the devbox installs\n- ${SKILLS}\n- ${GOOD}\n- ${path.join(GOOD, 'drafting-widgets')}\n`));
@@ -175,11 +175,11 @@ describe('lint --budget-set: the installed set\'s description budget', () => {
     assert.match(w.message, /28 from .*skills, 4 from /);
   });
 
-  it('reads a toolkit.lock: local entries by their path (the harness by skills/), narrowed by x-skills; a remote one is reported, not guessed', () => {
+  it('reads a toolkit.lock: local entries by their path (promptbook by skills/), narrowed by x-skills; a remote one is reported, not guessed', () => {
     const lock = write('profile/toolkit.lock', [
       'lock_version: 1',
       'entries:',
-      `  - { name: harness, layer: L3, kind: harness, source: ${ROOT}, ref: main, commit: ${'a'.repeat(40)}, tree: ${'b'.repeat(40)}, version: 0.1.0, autoUpdate: "off" }`,
+      `  - { name: promptbook, layer: L3, kind: promptbook, source: ${ROOT}, ref: main, commit: ${'a'.repeat(40)}, tree: ${'b'.repeat(40)}, version: 0.1.0, autoUpdate: "off" }`,
       `  - { name: widgets, layer: L3, kind: skill-library, source: ${path.join(ROOT, 'fixtures/lint/good')}, path: skills, ref: main, commit: ${'c'.repeat(40)}, tree: ${'d'.repeat(40)}, version: 0.0.0+ccccccc, autoUpdate: "off", x-skills: [drafting-widgets] }`,
       `  - { name: skilldex, layer: L3, kind: skill-library, source: "https://github.com/QuentinTorg/skilldex", path: skills, ref: main, commit: ${'e'.repeat(40)}, tree: ${'f'.repeat(40)}, version: 0.0.0+eeeeeee, autoUpdate: "off" }`,
       '',
@@ -229,7 +229,7 @@ describe('install sets (skills/SETS.yaml)', () => {
     const yaml = fs.readFileSync(path.join(SKILLS, 'SETS.yaml'), 'utf8');
     const personal = yaml.match(/personal:[\s\S]*?skills: \[([^\]]+)\]/)[1].split(',').map((s) => s.trim());
     assert.deepEqual(personal.sort(), ['debugging-failures', 'evaluating-skills', 'reviewing-security', 'writing-commit-history', 'writing-tests']);
-    for (const s of ['implementing-task', 'orchestrating-work', 'planning-work', 'landing-changes', 'adopting-harness']) assert.ok(!personal.includes(s), s);
+    for (const s of ['implementing-task', 'orchestrating-work', 'planning-work', 'landing-changes', 'setting-up-the-suite']) assert.ok(!personal.includes(s), s);
   });
 
   it('names an unknown skill, a skill in two sets, an uninstalled skill and a set over budget', () => {

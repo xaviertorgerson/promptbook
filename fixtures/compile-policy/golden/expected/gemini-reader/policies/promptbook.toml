@@ -1,4 +1,4 @@
-# Compiled from agent-policy.yaml (profile devbox, tier autonomous) by harness compile-policy.
+# Compiled from agent-policy.yaml (profile reader, tier read-only) by promptbook compile-policy.
 # User-tier policy (~/.gemini/policies/); the workspace tier is disabled upstream. Tool names other than
 # read_file, glob, write_file, replace and run_shell_command are unverified (adapters/gemini).
 
@@ -158,11 +158,6 @@ priority = 100
 [[rule]]
 toolName = "run_shell_command"
 commandPrefix = "git diff"
-decision = "allow"
-priority = 100
-
-[[rule]]
-toolName = ["write_file", "replace"]
 decision = "allow"
 priority = 100
 

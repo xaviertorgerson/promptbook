@@ -1,4 +1,4 @@
-# harness
+# promptbook
 
 The engine-neutral layer of a four-layer toolkit for agent-driven software work: a dated,
 evidence-cited **playbook**, the **standards** every project and every personal setup share, the
@@ -8,7 +8,7 @@ the skills' instructions name no engine, runtime, forge or stack (the skill lint
 skills). Names appear only where a binding or a fact needs them: `adapters/`, each skill's
 `references/engine-notes.md`, evidence lines that cite a vendor, the signal vocabularies
 `state-machines/attention.yaml` maps, optional contract fields that record which engine or runtime
-ran, and the policy compiler's per-engine emitters. The harness depends on nothing.
+ran, and the policy compiler's per-engine emitters. Promptbook depends on nothing.
 
 The thesis, from the research behind it: make the harness, not the swarm, do the work. Keep one writer
 per change, parallel readers, and a separate judge. Keep state in files and git, load context only
@@ -20,7 +20,7 @@ when needed, enforce rules with walls instead of prose, and shrink the harness a
 |---|---|---|
 | L1 personal | your dotfiles (private) | how often an agent asks: autonomy tier per machine, taste, installed agents, user-scope skills, secrets wiring |
 | L2 project | each product repo | what is never allowed: walls, the task queue, product docs, ADRs, `toolkit.lock` |
-| **L3 harness** | **this repo** | the contracts every layer speaks |
+| **L3 promptbook** | **this repo** | the contracts every layer speaks |
 | L4 implementations | stack packs, runtimes, vendor packs | how much a run may spend, and every binding to a specific engine, stack or vendor |
 
 L1, L2 and L4 depend on a pinned L3; L2 selects L4 packs through `toolkit.lock`. The full guide,
@@ -45,7 +45,7 @@ including where every artifact goes and how existing repos move, is [LAYERS.md](
 
 **L2, a project.** From the template, or by adoption into an existing repo:
 
-1. Add `toolkit.lock` pinning this harness and the L4 packs the project uses
+1. Add `toolkit.lock` pinning this promptbook and the L4 packs the project uses
    (`schemas/toolkit-lock.schema.json`); `tools/lock.mjs` checks it in CI and fails on drift.
 2. The template sync renders the standards block into `AGENTS.md` and keeps the walls (hooks and deny
    rules) current; the template check fails a project whose managed copies drift.
@@ -53,9 +53,9 @@ including where every artifact goes and how existing repos move, is [LAYERS.md](
    schemas, the trace graph from brief to test names, and the readiness report.
 
 **Runtimes.** A runtime (a CLI loop, forge-event CI agents, a terminal multiplexer with a coordinator,
-a hosted agent service) binds to the harness through `adapters/<name>/`. It reads `task` files, writes
+a hosted agent service) binds to promptbook through `adapters/<name>/`. It reads `task` files, writes
 `task-record` and `run-record`, maps its own signals to the `attention` machine, honors `grant`s, and
-never advances workflow status on a runtime signal. `harness simulate --supervisor <module>` runs a
+never advances workflow status on a runtime signal. `promptbook simulate --supervisor <module>` runs a
 runtime's own supervisor (its dispatch and authority decisions, written against the simulator's api)
 in the runtime-neutral simulation and checks it against every invariant; without the flag the
 simulation runs the `orchestrating-work` protocol as code.
@@ -68,27 +68,27 @@ reaches, and stays out until its trigger holds.
 | | Core | Optional, and when |
 |---|---|---|
 | Practice | `standards/engineering.md`; the playbook pages you cite | — |
-| Contracts | task, epic, decision, readiness-report; brief, persona, journey, requirement and ux-flow when a product is planned (without a brief the trace check runs as legacy adoption); policy and toolkit-lock; return and run-record; skill and evidence | grant and task-record: a coordinator runs several agents under delegated authority. harness-review and reflection-report: there are runs to review |
+| Contracts | task, epic, decision, readiness-report; brief, persona, journey, requirement and ux-flow when a product is planned (without a brief the trace check runs as legacy adoption); policy and toolkit-lock; return and run-record; skill and evidence | grant and task-record: a coordinator runs several agents under delegated authority. setup-review and reflection-report: there are runs to review |
 | Tools | `validate` (with `trace` and `--readiness --check`), `lint`, `compile-policy`, `lock` | `simulate`: changing the state machines, or checking a runtime's supervisor. `grant`: grants are in use. `eval-routing`: a description changes. `import-evals`: once, migrating an agentic-template project. `report`: there are run records to read |
-| Skills | the `solo` set of [`skills/SETS.yaml`](skills/SETS.yaml) | the `coordinator` set (several agents at once) and the `maintainer` set (changing the harness itself) |
+| Skills | the `solo` set of [`skills/SETS.yaml`](skills/SETS.yaml) | the `coordinator` set (several agents at once) and the `maintainer` set (changing promptbook itself) |
 | Engines | the adapter of the engine you run | every other adapter; only one engine's permissions are measured (Status) |
 
 [`skills/SETS.yaml`](skills/SETS.yaml) names the install sets: `personal` (user scope, any
 repository), `planning`, `delivery`, `coordinator` and `maintainer` (project scope), `solo`
 (personal, planning and delivery at user scope) and `full` (the library, never installed whole). Each
 installable set fits the 8,000-character always-loaded description budget with 10% headroom beside
-the five pinned Skilldex skills; `harness lint skills` checks every set and `harness lint
+the five pinned Skilldex skills; `promptbook lint skills` checks every set and `promptbook lint
 --budget-set <set>` prints one. The totals are in [skills/ROUTING-RESULTS.md](skills/ROUTING-RESULTS.md).
 
 ### Minimum adoption for one developer
 
 1. **Machine.** Pin this repo, render the standards block into your personal instructions, write
-   `agent-policy.yaml` with one profile per machine and compile it (`harness compile-policy`), and
-   install the `solo` set into `~/.agents/skills/` (`harness lint --budget-set solo` checks it with
+   `agent-policy.yaml` with one profile per machine and compile it (`promptbook compile-policy`), and
+   install the `solo` set into `~/.agents/skills/` (`promptbook lint --budget-set solo` checks it with
    what else you install).
-2. **Each repository.** A `toolkit.lock` pinning the harness, checked by `harness lock` in CI; tasks
-   as `specs/<epic>/tasks/<ID>.md` with acceptance criteria, and `harness validate` plus
-   `harness trace . --readiness specs --check` in CI.
+2. **Each repository.** A `toolkit.lock` pinning promptbook, checked by `promptbook lock` in CI; tasks
+   as `specs/<epic>/tasks/<ID>.md` with acceptance criteria, and `promptbook validate` plus
+   `promptbook trace . --readiness specs --check` in CI.
 3. **Each task.** One writer at a time: implementing-task claims and builds it, verifying-work gets
    the separate verdict, landing-changes lands it after your approval. No coordinator, grants,
    task-records or simulator.
@@ -101,7 +101,7 @@ to run without you; the reflection and review contracts once there are runs to l
 | Path | What |
 |---|---|
 | [`playbook/`](playbook/00-index.md) | the latest practices, one page each, dated and cited; planning, execution, runtime, learning, methodology |
-| [`standards/engineering.md`](standards/engineering.md) | the shared engineering and harness invariants, each with how it is enforced |
+| [`standards/engineering.md`](standards/engineering.md) | the shared engineering and agent-setup invariants, each with how it is enforced |
 | [`LAYERS.md`](LAYERS.md) | where every artifact lives, the precedence rule, and the move from today's repos |
 | [`CONTRACTS.md`](CONTRACTS.md) | the contract catalogue, ids and the trace graph |
 | `schemas/` | JSON Schema 2020-12, one per contract |
@@ -130,7 +130,7 @@ on master); the other adapters are written from documentation and marked unverif
    engine or vendor; bindings go in `adapters/`.
 3. If the practice changes a contract, change the schema, fixtures and tests in the same pull request.
 4. Add a `CHANGELOG.md` line and bump the playbook's "as of" date. Deleting a practice that no longer
-   pays its way is a welcome change; [harness-review](playbook/learning/harness-review.md) is how
+   pays its way is a welcome change; [setup-review](playbook/learning/setup-review.md) is how
    those deletions are found.
 
 The research this repo was built from is "Agentic orchestration patterns 2026" (2026-10-12) and its

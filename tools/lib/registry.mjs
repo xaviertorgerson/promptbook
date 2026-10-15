@@ -5,7 +5,7 @@ import Ajv2020 from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
 
 // The schema registry: every schemas/*.schema.json compiled once into one Ajv instance, so a $ref to
-// common.schema.json resolves the same way for every contract. Harness keywords (x-*) are declared
+// common.schema.json resolves the same way for every contract. Promptbook keywords (x-*) are declared
 // as annotations; x-unique-by is the one that validates.
 //
 //   x-version    the contract's version (semver)
@@ -16,7 +16,7 @@ import addFormats from 'ajv-formats';
 //   x-rules      { <keyword>: <rule name> } for errors of that keyword at this node
 
 export const SCHEMA_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../schemas');
-export const SCHEMA_BASE = 'https://harness.dev/schemas/';
+export const SCHEMA_BASE = 'https://promptbook.dev/schemas/';
 
 const ANNOTATIONS = ['x-version', 'x-sections', 'x-artifacts', 'x-checks', 'x-rule', 'x-rules'];
 

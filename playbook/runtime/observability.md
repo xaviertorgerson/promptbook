@@ -3,7 +3,7 @@
 ## Problem
 
 Agent runs are expensive, non-deterministic and mostly unattended. Without per-run records you
-cannot tell whether a harness change helped, which task burned the budget, or why the cache stopped
+cannot tell whether a change to the agent setup helped, which task burned the budget, or why the cache stopped
 hitting. Dashboards of "activity" mislead: parallel motion is not progress.
 
 ## Practice
@@ -18,13 +18,13 @@ hitting. Dashboards of "activity" mislead: parallel motion is not progress.
 
 | Number | Computed from | Tells you |
 |---|---|---|
-| cost per task | run records grouped by task id, to `merged` | whether the harness is getting cheaper |
+| cost per task | run records grouped by task id, to `merged` | whether the agent setup is getting cheaper |
 | cache hit rate | cache-read tokens ÷ all input tokens (uncached, cache read, cache write) | whether the prefix is stable; a drop names a cause |
 | evaluator pass rate | first-pass verdicts ÷ evaluations | whether writers are improving or evaluators are lax |
 
-- **What to look at weekly**, from `harness report --since <a week ago>` over the run records: the
+- **What to look at weekly**, from `promptbook report --since <a week ago>` over the run records: the
   cost per merged task (the per-task cost of the tasks the board shows merged that week; the number
-  the harness exists to lower); the cache hit rate, overall and for the costliest tasks (a drop means
+  the agent setup exists to lower); the cache hit rate, overall and for the costliest tasks (a drop means
   the prefix changed: instructions, tool list, or a model or effort switch mid-session); the denial
   count (each denial is a question for a human: grant the tool or change the instruction); and the
   stalled and needs-human runs (the loop stops at the first, so each is a task to re-scope or a
@@ -73,4 +73,4 @@ supervision view), `task` (id joins runs to work).
 ## Revisit when
 
 The OTel GenAI conventions reach stable status (then drop version pinning), or a fourth number proves
-more predictive of harness quality in the project's own data.
+more predictive of the agent setup's quality in the project's own data.

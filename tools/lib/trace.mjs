@@ -17,7 +17,7 @@ import { inferContracts, validateAs } from './validate.mjs';
 //            contract, a dependency cycle; or a missing link on an artifact that claims readiness
 //            (epic approved/in-progress/done, task ready or later).
 //   warning  a missing link on an artifact that does not claim readiness yet (the to-do list for
-//            approval); every link the harness introduces (personas, task->REQ, REQ->CUJ, UX, ADR
+//            approval); every link promptbook introduces (personas, task->REQ, REQ->CUJ, UX, ADR
 //            satisfies) while the project is in legacy adoption; advisory consistency findings.
 //   info     rules skipped because their layer does not exist yet.
 // Adoption is "full" when docs/product/brief.md exists, otherwise "legacy" (an agentic-template
@@ -163,8 +163,8 @@ export function trace(root, opts = {}) {
   const gap = (g) => gaps.push(g);
 
   // Severity for a missing link. scope: the epic or task whose readiness the link is part of.
-  const missing = ({ harness, claims }) => {
-    if (harness && adoption === 'legacy') return 'warning';
+  const missing = ({ introduced, claims }) => {
+    if (introduced && adoption === 'legacy') return 'warning';
     return claims ? 'error' : 'warning';
   };
 
@@ -181,7 +181,7 @@ export function trace(root, opts = {}) {
   for (const e of p.epics.values()) for (const t of e.tasks.values()) allTasks.set(t.id, { ...t, epicSlug: e.slug });
 
   if (adoption === 'legacy') {
-    gap({ rule: 'brief-exists', severity: 'warning', subject: 'docs/product/brief.md', message: 'no product brief: legacy adoption. The trace starts at journeys; persona links are not checked and harness-introduced links (task->REQ, REQ->CUJ, UX, ADR satisfies) are warnings, not errors.', file: 'docs/product/brief.md', line: null });
+    gap({ rule: 'brief-exists', severity: 'warning', subject: 'docs/product/brief.md', message: 'no product brief: legacy adoption. The trace starts at journeys; persona links are not checked and promptbook-introduced links (task->REQ, REQ->CUJ, UX, ADR satisfies) are warnings, not errors.', file: 'docs/product/brief.md', line: null });
     gap({ rule: 'rules-skipped', severity: 'info', subject: 'product layer', message: 'skipped until docs/product exists: persona-exists, persona-has-journey, persona-in-brief, journey-cites-persona, user-facing-journey-has-ux', file: null, line: null });
   } else {
     for (const id of p.brief.data.personas ?? []) {
@@ -276,7 +276,7 @@ export function trace(root, opts = {}) {
         cov.tasks.covered += 1;
         egap({ rule: 'task-cites-requirement', severity: 'warning', subject: t.id, message: `${t.id} names ${weak.join(', ')} only in prose; add requirements: [${weak.join(', ')}] to its frontmatter`, file: t.file, line: null });
       } else {
-        egap({ rule: 'task-cites-requirement', severity: missing({ harness: true, claims: tClaims }), subject: t.id, message: `${t.id} cites no requirement of ${e.slug}/spec.md (requirements: [REQ-n])`, file: t.file, line: null, blocks_readiness: true });
+        egap({ rule: 'task-cites-requirement', severity: missing({ introduced: true, claims: tClaims }), subject: t.id, message: `${t.id} cites no requirement of ${e.slug}/spec.md (requirements: [REQ-n])`, file: t.file, line: null, blocks_readiness: true });
       }
       for (const d of [...(t.depends_on ?? []), ...(t.parent ? [t.parent] : [])]) {
         if (!allTasks.has(d)) egap({ rule: 'task-exists', severity: 'error', subject: t.id, message: `${t.id} depends on ${d}, which no task file defines`, file: t.file, line: null });
@@ -327,7 +327,7 @@ export function trace(root, opts = {}) {
     for (const id of e.tasks.keys()) visit(id);
 
     // The plan's shape (playbook: walking-skeleton, single-writer, plan-readiness). Missing order is
-    // a warning until the epic claims readiness; harness-introduced, so a warning in legacy adoption.
+    // a warning until the epic claims readiness; promptbook-introduced, so a warning in legacy adoption.
     const ancestors = new Map();
     const ancestorsOf = (id, stack = new Set()) => {
       if (ancestors.has(id)) return ancestors.get(id);
@@ -346,16 +346,16 @@ export function trace(root, opts = {}) {
         const [a, b] = [open[i], open[j]];
         if (!a.touches?.length || !b.touches?.length || ordered(a.id, b.id)) continue;
         const shared = a.touches.flatMap((x) => b.touches.filter((y) => globsOverlap(x, y)).map((y) => (x === y ? x : `${x} ~ ${y}`)));
-        if (shared.length) egap({ rule: 'overlapping-tasks-ordered', severity: missing({ harness: true, claims: epicClaims }), subject: `${a.id} ${b.id}`, message: `${a.id} and ${b.id} can run in parallel but both touch ${shared.join(', ')}; one must depend on the other (one lane, one writer)`, file: b.file, line: null, blocks_readiness: true });
+        if (shared.length) egap({ rule: 'overlapping-tasks-ordered', severity: missing({ introduced: true, claims: epicClaims }), subject: `${a.id} ${b.id}`, message: `${a.id} and ${b.id} can run in parallel but both touch ${shared.join(', ')}; one must depend on the other (one lane, one writer)`, file: b.file, line: null, blocks_readiness: true });
       }
     }
     const skeletons = [...e.tasks.values()].filter(isSkeleton);
-    if (skeletons.length > 1) egap({ rule: 'skeleton-is-root', severity: missing({ harness: true, claims: epicClaims }), subject: skeletons.map((t) => t.id).join(' '), message: `${skeletons.length} tasks are marked as the walking skeleton; an epic has one`, file: skeletons[1].file, line: null, blocks_readiness: true });
+    if (skeletons.length > 1) egap({ rule: 'skeleton-is-root', severity: missing({ introduced: true, claims: epicClaims }), subject: skeletons.map((t) => t.id).join(' '), message: `${skeletons.length} tasks are marked as the walking skeleton; an epic has one`, file: skeletons[1].file, line: null, blocks_readiness: true });
     for (const sk of skeletons.slice(0, 1)) {
       const upstream = [...ancestorsOf(sk.id)].filter((d) => e.tasks.has(d));
-      if (upstream.length) egap({ rule: 'skeleton-is-root', severity: missing({ harness: true, claims: epicClaims }), subject: sk.id, message: `the walking skeleton ${sk.id} depends on ${upstream.join(', ')}; it is the root of the epic's graph`, file: sk.file, line: null, blocks_readiness: true });
+      if (upstream.length) egap({ rule: 'skeleton-is-root', severity: missing({ introduced: true, claims: epicClaims }), subject: sk.id, message: `the walking skeleton ${sk.id} depends on ${upstream.join(', ')}; it is the root of the epic's graph`, file: sk.file, line: null, blocks_readiness: true });
       const loose = [...e.tasks.values()].filter((t) => t.id !== sk.id && !ancestorsOf(t.id).has(sk.id)).map((t) => t.id);
-      if (loose.length) egap({ rule: 'skeleton-is-root', severity: missing({ harness: true, claims: epicClaims }), subject: sk.id, message: `${loose.join(', ')} ${loose.length > 1 ? 'do' : 'does'} not depend on the walking skeleton ${sk.id}; nothing else runs before the skeleton lands`, file: sk.file, line: null, blocks_readiness: true });
+      if (loose.length) egap({ rule: 'skeleton-is-root', severity: missing({ introduced: true, claims: epicClaims }), subject: sk.id, message: `${loose.join(', ')} ${loose.length > 1 ? 'do' : 'does'} not depend on the walking skeleton ${sk.id}; nothing else runs before the skeleton lands`, file: sk.file, line: null, blocks_readiness: true });
     }
     // One-way doors the epic relies on are decided before it is ready.
     const cited = new Set([...e.adrs.ids, ...[...e.requirements.values()].flatMap((r) => r.adrs ?? [])]);
@@ -363,13 +363,13 @@ export function trace(root, opts = {}) {
     for (const t of e.tasks.values()) for (const doc of t.guiding_docs ?? []) { const a = doc.split('#')[1]; if (a && /^ADR-[0-9]{4}$/.test(a)) cited.add(a); }
     for (const id of [...cited].sort()) {
       const d = p.decisions.get(id);
-      if (d?.door === 'one-way' && d.status === 'proposed') egap({ rule: 'one-way-door-decided', severity: missing({ harness: true, claims: epicClaims }), subject: id, message: `${id} (${d.title}) is a one-way door still proposed; decide it before the epic is ready`, file: d.file, line: d.line, blocks_readiness: true });
+      if (d?.door === 'one-way' && d.status === 'proposed') egap({ rule: 'one-way-door-decided', severity: missing({ introduced: true, claims: epicClaims }), subject: id, message: `${id} (${d.title}) is a one-way door still proposed; decide it before the epic is ready`, file: d.file, line: d.line, blocks_readiness: true });
     }
     // A ready task has no open blocking question and fits in one pass (not XL).
     for (const t of e.tasks.values()) {
       const tClaims = CLAIMED_TASK.has(t.status);
-      if (t.status === 'ready') for (const q of t.blocking) egap({ rule: 'ready-task-unblocked', severity: missing({ harness: true, claims: true }), subject: t.id, message: `${t.id} is ready with an open blocking question: "${q.text.slice(0, 100)}"; answer it or move the task to needs-input`, file: t.file, line: q.line, blocks_readiness: true });
-      if (t.size === 'XL') egap({ rule: 'task-size-fits', severity: missing({ harness: true, claims: tClaims }), subject: t.id, message: `${t.id} is XL; split it before it is ready (an XL task does not fit one reviewed pass)`, file: t.file, line: null, blocks_readiness: tClaims });
+      if (t.status === 'ready') for (const q of t.blocking) egap({ rule: 'ready-task-unblocked', severity: missing({ introduced: true, claims: true }), subject: t.id, message: `${t.id} is ready with an open blocking question: "${q.text.slice(0, 100)}"; answer it or move the task to needs-input`, file: t.file, line: q.line, blocks_readiness: true });
+      if (t.size === 'XL') egap({ rule: 'task-size-fits', severity: missing({ introduced: true, claims: tClaims }), subject: t.id, message: `${t.id} is XL; split it before it is ready (an XL task does not fit one reviewed pass)`, file: t.file, line: null, blocks_readiness: tClaims });
     }
 
     // The spec's Tasks index against the task files.
@@ -419,7 +419,7 @@ export function trace(root, opts = {}) {
         const viaIndex = e.index.filter((r) => (r.cujs ?? []).includes(j.id)).map((r) => r.id);
         egap({ rule: 'journey-has-task', severity: missing({ claims: epicClaims }), subject: j.id, message: viaIndex.length ? `no task's cuj: names ${j.id}; spec.md Tasks attributes it to ${viaIndex.join(', ')} (fix the frontmatter)` : `${j.id} (${j.title}) is served by no task`, file: e.files.cuj, line: j.line, blocks_readiness: true });
       }
-      if (!(reqJourneys.get(q)?.size)) egap({ rule: 'journey-has-requirement', severity: missing({ harness: true, claims: epicClaims }), subject: j.id, message: `no requirement of ${e.slug} serves ${j.id} (add a CUJ column to the Requirements table, or cite requirements from its tasks)`, file: e.files.cuj, line: j.line, blocks_readiness: true });
+      if (!(reqJourneys.get(q)?.size)) egap({ rule: 'journey-has-requirement', severity: missing({ introduced: true, claims: epicClaims }), subject: j.id, message: `no requirement of ${e.slug} serves ${j.id} (add a CUJ column to the Requirements table, or cite requirements from its tasks)`, file: e.files.cuj, line: j.line, blocks_readiness: true });
       if (adoption === 'full') {
         if (!(j.personas ?? []).length) egap({ rule: 'journey-cites-persona', severity: missing({ claims: epicClaims }), subject: j.id, message: `${j.id} names no persona (- **Personas:** PER-n)`, file: e.files.cuj, line: j.line, blocks_readiness: true });
         for (const per of j.personas ?? []) if (!p.personas.has(per)) egap({ rule: 'persona-exists', severity: 'error', subject: j.id, message: `${j.id} cites ${per}, which no persona file defines`, file: e.files.cuj, line: j.line });
@@ -432,7 +432,7 @@ export function trace(root, opts = {}) {
     for (const r of e.requirements.values()) {
       const impl = requirementTasks.get(r.id);
       if (impl.strong.length || impl.weak.length) cov.requirements.covered += 1;
-      else egap({ rule: 'requirement-has-task', severity: missing({ harness: true, claims: epicClaims }), subject: r.id, message: `${r.id}${r.source_id && r.source_id !== r.id ? ` (${r.source_id})` : ''} is implemented by no task`, file: e.files.spec, line: r.line, blocks_readiness: true });
+      else egap({ rule: 'requirement-has-task', severity: missing({ introduced: true, claims: epicClaims }), subject: r.id, message: `${r.id}${r.source_id && r.source_id !== r.id ? ` (${r.source_id})` : ''} is implemented by no task`, file: e.files.spec, line: r.line, blocks_readiness: true });
       for (const a of r.adrs ?? []) if (!p.decisions.has(a)) egap({ rule: 'decision-exists', severity: 'error', subject: r.id, message: `${r.id} cites ${a}, which DECISIONS.md does not define`, file: e.files.spec, line: r.line });
       if (r.kind === 'non-functional') {
         const satisfiedBy = [...p.decisions.values()].filter((d) => (d.satisfies ?? []).includes(`${e.slug}/${r.id}`)).map((d) => d.id);
@@ -458,7 +458,7 @@ export function trace(root, opts = {}) {
 
   const counts = { error: 0, warning: 0, info: 0 };
   for (const g of gaps) counts[g.severity] += 1;
-  return { root, adoption, generator: `harness/validate@${TRACE_VERSION}`, counts, epics, gaps, tests: { files: p.testFiles.length, names: p.names.length, globs: p.testGlobs } };
+  return { root, adoption, generator: `promptbook/validate@${TRACE_VERSION}`, counts, epics, gaps, tests: { files: p.testFiles.length, names: p.names.length, globs: p.testGlobs } };
 }
 
 // The readiness report for one epic (schemas/readiness-report.schema.json), as Markdown text. now:

@@ -92,7 +92,7 @@ export function evaluate(skills, { ask, dryRun = true, only = null, limit = Infi
     if (only && s.name !== only) continue;
     for (const c of s.cases) {
       if (cases.length >= limit) break;
-      if (c.invalid) { cases.push({ skill: s.name, line: c.line, error: 'not valid JSON (harness validate reports it)', pass: false, answers: [], passes: 0, runs: 0 }); continue; }
+      if (c.invalid) { cases.push({ skill: s.name, line: c.line, error: 'not valid JSON (promptbook validate reports it)', pass: false, answers: [], passes: 0, runs: 0 }); continue; }
       const k = { ...c, route_to_installed: installed.has(c.route_to) };
       const prompt = buildPrompt(skills, c.prompt);
       if (dryRun) { cases.push({ skill: s.name, line: c.line, prompt: c.prompt, expect: c.expect, kind: c.kind ?? null, route_to: c.route_to ?? null, routerPrompt: prompt, picked: null, pass: null }); continue; }

@@ -2,7 +2,7 @@
 # copied here so the worked example shows every layer; nothing in the product repository reads it.
 # It decides how often an agent asks on each of her machines. The product's walls (L2) and the
 # runtime's caps (L4) sit on top of it and it cannot loosen either.
-# compiled/<engine>/<profile>/ holds `harness compile-policy` output for every engine a profile
+# compiled/<engine>/<profile>/ holds `promptbook compile-policy` output for every engine a profile
 # installs; tests/example.test.mjs recompiles it and fails on any difference.
 policy_version: 1
 owner: dana
@@ -70,7 +70,7 @@ egress:
 sandbox:
   enabled: true
   fail_if_unavailable: true
-# What the devbox's requires are probed against (harness check-requires; harness run refuses the
+# What the devbox's requires are probed against (promptbook check-requires; promptbook run refuses the
 # devbox's runs until they pass): production's database and API, which the tailnet ACL drops.
 requires_config:
   prod_hosts: ["10.40.0.12:5432", "api.tally.example.com:443"]

@@ -1,13 +1,13 @@
-# One harness and two portable skill libraries at L3, beside an L4 runtime. An untagged library is
+# One promptbook and two portable skill libraries at L3, beside an L4 runtime. An untagged library is
 # pinned at a commit and versioned 0.0.0+<sha> (semver build metadata).
 lock_version: 1
 generated_at: "2026-10-13T14:00:00Z"
-generated_by: harness/lock@1.0.0
+generated_by: promptbook/lock@1.0.0
 entries:
-  - name: harness
+  - name: promptbook
     layer: L3
-    kind: harness
-    source: https://forge.example.com/you/harness
+    kind: promptbook
+    source: https://forge.example.com/you/promptbook
     ref: v0.2.0
     commit: 9dfd497277bed7cc359f0f7b0d29e69fd9b3e80d
     tree: dd1c9874e70a6b5daa2cd2fc614cc4833ccfaa14

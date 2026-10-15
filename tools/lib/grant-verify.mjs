@@ -6,7 +6,7 @@ import { globToRegExp, toPosix } from './glob.mjs';
 import { MUTABLE_GRANT_FIELDS, narrowingFindings } from './grant.mjs';
 import { validateData } from './validate.mjs';
 
-// harness grant verify: what a coordinator checks about a grant file before acting under it
+// promptbook grant verify: what a coordinator checks about a grant file before acting under it
 // (state-machines/authority.yaml lifecycle.issue; CONTRACTS.md, grant provenance).
 
 // CODEOWNERS: the first of CODEOWNERS, .github/, docs/, .gitlab/ under root. Rules in file order;

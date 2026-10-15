@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://harness.dev/schemas/journey.schema.json",
+  "$id": "https://promptbook.dev/schemas/journey.schema.json",
   "title": "Critical user journey",
   "description": "One CUJ entry of specs/<epic>/cuj.md, normalized from its '## CUJ-n · title' heading and '- **Field:** value' bullets (CONTRACTS.md, Normalization).",
   "x-version": "1.1.0",

@@ -1,4 +1,4 @@
-# Compiled from agent-policy.yaml (profile desk, tier auto) by harness compile-policy.
+# Compiled from agent-policy.yaml (profile ci, tier unattended) by promptbook compile-policy.
 # Most restrictive decision wins: forbidden > prompt > allow. Check: codex execpolicy check --rules <this file> -- <cmd>
 
 prefix_rule(
@@ -38,8 +38,8 @@ prefix_rule(
 
 prefix_rule(
     pattern = ["psql"],
-    decision = "prompt",
-    justification = "a database shell is a human checkpoint",
+    decision = "forbidden",
+    justification = "ask in an unattended tier is a denial: a database shell is a human checkpoint",
     match = ["psql"],
 )
 

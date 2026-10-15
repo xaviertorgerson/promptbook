@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://harness.dev/schemas/reflection-report.schema.json",
+  "$id": "https://promptbook.dev/schemas/reflection-report.schema.json",
   "title": "Reflection report",
   "description": "What the reflecting-on-runs skill proposes from one window of run records, verdicts and review threads: a list of deltas, each one operation on one item in one file, with the evidence behind it and its status. A curator applies accepted deltas; the reflector never edits a file wholesale.",
   "x-version": "1.0.0",

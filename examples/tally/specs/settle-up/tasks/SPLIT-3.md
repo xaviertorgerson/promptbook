@@ -30,7 +30,7 @@ inputs:
 risk: { level: medium, reasons: [the link is the only credential for housemates] }
 evaluator:
   - { kind: tests, ref: the project's test command for src/household and src/ledger }
-  - { kind: script, ref: harness trace . --strict }
+  - { kind: script, ref: promptbook trace . --strict }
   - { kind: agent-review, ref: evaluator }
 budget: { max_turns: 150, max_usd: 5, max_minutes: 120 }
 ---

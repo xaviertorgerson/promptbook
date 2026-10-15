@@ -11,7 +11,7 @@ Where each piece of an agent setup lives, why, and how the user's repos move the
 |---|---|---|---|
 | **L1 personal** | the user's chezmoi dotfiles (private) | taste, the autonomy tier per machine profile, installed agents and runtimes, user-scope skill fan-out, secrets wiring, personal MCP | the user's own sessions on the user's machines, every repo |
 | **L2 project** | each product repo, generated and synced from the template | a thin `AGENTS.md` map, walls (hook denies, permission deny rules), `specs/` queue, product docs, `DECISIONS.md`, `knowledge/`, `toolkit.lock`, read-only MCP config | every agent, collaborator, cloud session and CI job on that repo |
-| **L3 harness** | this repo, tagged releases | playbook, standards, contracts (schemas, state machines), portable skills, evals, validator, simulator, policy compiler, adapters | whoever pins it |
+| **L3 promptbook** | this repo, tagged releases | playbook, standards, contracts (schemas, state machines), portable skills, evals, validator, simulator, policy compiler, adapters | whoever pins it |
 | **L4 implementations** | agentic-template's core and stack packs; runtimes (the CLI loop and forge-event CI agents; stagehand on Herdr with Heeler); vendor packs mirrored at a pin | bindings of L3 to an engine, stack, runtime or vendor | whoever selects it in `toolkit.lock` |
 
 **Precedence, in one line: L1 decides how often an agent asks, L2 decides what is never allowed, L4
@@ -81,7 +81,7 @@ are relative to the repo root. "Unverified" marks a path documented inconsistent
 | Task queue | L2 | `specs/<epic>/tasks/*.md`, validated against L3 `task` |
 | Runtime task records | L4, untracked in L2 checkout or control workspace | `.orchestrator/tasks/<id>.yaml` (`task-record`) |
 | Run records | L4 writes; L3 schema | `.agent/loop-runs.jsonl` (gitignored), one `run-record` per run |
-| Authority grants | L2 file, issued by a human; L4 runtimes read them | `.orchestrator/grants/GRANT-n.yaml`, committed by the granting human on a CODEOWNERS-protected path (or a forge-side record); agents write only `.orchestrator/grants/drafts/`; `harness grant verify --git` before acting |
+| Authority grants | L2 file, issued by a human; L4 runtimes read them | `.orchestrator/grants/GRANT-n.yaml`, committed by the granting human on a CODEOWNERS-protected path (or a forge-side record); agents write only `.orchestrator/grants/drafts/`; `promptbook grant verify --git` before acting |
 | CI agents (planner, coder, reviewer, merge) | L4 runtime, installed into L2 | `.github/workflows/agent-*.yml`; engine binding in `adapters/ci` |
 | Secrets, personal | L1 | Bitwarden note rendered to `~/.config/shell/secrets.sh` (mode 600) at apply time |
 | Secrets, CI and stages | L2 names them, the forge holds them | forge environments and secrets; never a file |
@@ -138,12 +138,12 @@ So:
 
 | Today | Move | Target |
 |---|---|---|
-| `home/.chezmoitemplates/AGENTS.md`: How I work, Platforms, Code, Git, Safety | split | keep taste (match surrounding code, no comments, least abstraction, dead code, line-level notes, platforms, pnpm/uv/mise); **delete** Git and Safety and the duplicated Code rules; render the standards block from the pinned harness in their place; "Act; don't pause for approval" becomes the policy tier |
+| `home/.chezmoitemplates/AGENTS.md`: How I work, Platforms, Code, Git, Safety | split | keep taste (match surrounding code, no comments, least abstraction, dead code, line-level notes, platforms, pnpm/uv/mise); **delete** Git and Safety and the duplicated Code rules; render the standards block from the pinned promptbook in their place; "Act; don't pause for approval" becomes the policy tier |
 | `home/dot_claude/CLAUDE.md.tmpl`, `home/dot_codex/AGENTS.md.tmpl` | stay | renderers of the shared template; **add** `home/dot_gemini/GEMINI.md.tmpl` |
 | `home/dot_claude/settings.json.tmpl`: bypass default, allow and deny lists, `autoMode`, herdr hook, `attribution`, `extraKnownMarketplaces.agentic` | generate | permissions, mode and `autoMode` compiled from `agent-policy.yaml`; never `disableAllHooks`; herdr hook and `attribution` stay; the marketplace entry pinned by `sha`; drop `advisorModel: opus` over an Opus main model unless an eval shows a gain |
 | no Codex `config.toml` or rules | add | `home/dot_codex/config.toml.tmpl` and `home/dot_codex/rules/*.rules`, compiled from the same policy |
 | no Gemini/Antigravity config | add | `home/dot_gemini/settings.json.tmpl`; verify the Antigravity path on install |
-| no user-scope skills | add | `home/.chezmoiexternal.toml.tmpl` cloning the pinned harness, Skilldex and the herdr skill into `~/.agents/sources/`; `run_onchange_after_27-agent-skills.sh.tmpl` linking the harness's `personal` set (or `solo` on a machine where one developer plans and builds; `skills/SETS.yaml`), Skilldex and the herdr skill into `~/.agents/skills/` and copying into `~/.claude/skills/`; never the whole library, which with Skilldex exceeds the 8,000-character description budget (`harness lint --budget-set <set>`) |
+| no user-scope skills | add | `home/.chezmoiexternal.toml.tmpl` cloning the pinned promptbook, Skilldex and the herdr skill into `~/.agents/sources/`; `run_onchange_after_27-agent-skills.sh.tmpl` linking promptbook's `personal` set (or `solo` on a machine where one developer plans and builds; `skills/SETS.yaml`), Skilldex and the herdr skill into `~/.agents/skills/` and copying into `~/.claude/skills/`; never the whole library, which with Skilldex exceeds the 8,000-character description budget (`promptbook lint --budget-set <set>`) |
 | no policy or lock | add | `home/.chezmoidata/agent-policy.yaml`, `agents.yaml`, `toolkit.yaml` |
 | `home/dot_config/mise/config.toml.tmpl` (`herdr = "0.9.3"`) | stay | already pinned; mirrored as a lock entry so bumps are reviewed with the stagehand and Heeler floors |
 | `run_once_after_25-claude-code`, `run_once_after_26-herdr-integrations` | stay | L1 installs agents and Herdr integrations |
@@ -177,7 +177,7 @@ machinery) and **agentic-saas** (the mandate's stack). Its CLI loop and forge-ev
 | `scripts/board.mjs`, `next.mjs`, `check.mjs`, `protected-paths.mjs`, `secret-scan.mjs`, `conflict-classify.mjs`, `runlog.mjs`, `release.mjs`, `sync-template.mjs`, `decision-drift.mjs` (on `fix/stack-drift`) | move to core | stack-neutral gates |
 | `scripts/ears-lint.mjs`, `ears-coverage.mjs` | to core now | superseded by `tools/validate.mjs` once it runs the same checks; delete then |
 | `scripts/deploy-check.mjs`, `ci-config.mjs`, `launch-check.mjs`, `dev-server.mjs`, `drift-check.mjs` | move | agentic-saas |
-| `scripts/skill-evals.mjs` | move | claude-cli runtime (it shells the CLI); the eval file format is L3 `evidence`; each skill's `evals.md` converts with `harness import-evals` |
+| `scripts/skill-evals.mjs` | move | claude-cli runtime (it shells the CLI); the eval file format is L3 `evidence`; each skill's `evals.md` converts with `promptbook import-evals` |
 | `.github/workflows/agent-coder.yml`, `agent-merge.yml`, `agent-planner.yml`, `agent-reviewer.yml`, `nightly.yml` | move | claude-cli runtime; pin `--permission-mode dontAsk`, allowlist and caps |
 | `app-ci.yml`, `train.yml`, `preview.yml`, `probe.yml`, `canary-watch.yml`, `backup-check.yml`, `restore-drill.yml`, `scrub.yml` | move | agentic-saas |
 | `template-check.yml`, `template-sync.yml`, `skill-evals.yml` | move | core (turn skill evals on) |
@@ -242,7 +242,7 @@ explicit models (no `inherit` for cost-sensitive roles):
 
 | Today | Move | Target |
 |---|---|---|
-| `preparing-pull-requests`, `reviewing-code`, `resolving-findings`, `writing-specifications`, `building-skills` | pin | `toolkit.lock` entries `layer: L3, kind: skill-library` by commit and tree hash, versioned `0.0.0+<sha>` while untagged; fanned out by L1; the harness does not vendor them |
+| `preparing-pull-requests`, `reviewing-code`, `resolving-findings`, `writing-specifications`, `building-skills` | pin | `toolkit.lock` entries `layer: L3, kind: skill-library` by commit and tree hash, versioned `0.0.0+<sha>` while untagged; fanned out by L1; promptbook does not vendor them |
 | no versions, manifest or lock | none needed | the lock entry is the version; deprecations follow Skilldex's own retire-outright practice |
 | `.gemini/skills/*`, `epiphany_knowledge/` | not consumed | Skilldex's own authoring workspace |
 | `skills/.specs/` | stay upstream | design specs, not packaged |
@@ -261,5 +261,5 @@ How the layers change over time. Each step has its own page.
 - **Evals** decide every promotion and every bump. → [evals-and-evidence](playbook/learning/evals-and-evidence.md)
 - **The reflector** reads evidence logs and run records on a schedule and opens small delta pull
   requests against L2 knowledge, L3 skills or L4 packs, never auto-merged. → [reflection-loop](playbook/learning/reflection-loop.md)
-- **Harness review** on each model release runs an effort sweep and deletes components that are no
-  longer load-bearing, in whichever layer they live. → [harness-review](playbook/learning/harness-review.md)
+- **Setup review** on each model release runs an effort sweep and deletes components that are no
+  longer load-bearing, in whichever layer they live. → [setup-review](playbook/learning/setup-review.md)

@@ -9,7 +9,7 @@ evidence, nobody remembers why a rule exists.
 
 ## Practice
 
-Every skill ships an `evals/` folder with three files; the harness itself has a suite built the same
+Every skill ships an `evals/` folder with three files; the agent setup as a whole has a suite built the same
 way.
 
 | File | Holds | Runs |
@@ -52,10 +52,10 @@ way.
 ## Contracts used
 
 `evidence` (`evals/evidence.md` entries dated to the day or the month, `routing.jsonl` lines, and
-the routing results `harness eval-routing --runs k --out` writes, pass^k per case, which a measured
+the routing results `promptbook eval-routing --runs k --out` writes, pass^k per case, which a measured
 entry cites), `skill` (`metadata.version`), `run-record` (trial outcomes); `tools/lint-skills.mjs`
 checks the folder exists and parses, and keeps each description under 400 characters and the set
-under 8000; `harness import-evals` converts an agentic-template `evals.md`.
+under 8000; `promptbook import-evals` converts an agentic-template `evals.md`.
 
 ## Anti-patterns
 

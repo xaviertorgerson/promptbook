@@ -1,7 +1,7 @@
 # Walkthrough — Tally, from brief to integration merge
 
 One fictional product, **Tally** (households settle shared bills from a link), taken through every
-contract the harness defines: planning, execution and runtime, then learning. Every file here
+contract promptbook defines: planning, execution and runtime, then learning. Every file here
 validates against its contract; the timeline below says which skill wrote it, which gate it passed
 and who passed it. All people, numbers, commits and links are fictional sample data.
 
@@ -38,8 +38,8 @@ node tools/cli.mjs compile-policy examples/tally/_operator/agent-policy.yaml --p
 | Layer | In this example | Decides |
 |---|---|---|
 | L1 personal | [`_operator/agent-policy.yaml`](_operator/agent-policy.yaml) and its compiled settings, copied from dana's dotfiles | how often an agent asks: `workstation` auto-edit, `devbox` bypass (only with `requires` and the accepted egress gap), `ci` unattended (an ask is a denial) |
-| L2 project | `docs/`, `specs/`, `DECISIONS.md`, `ARCHITECTURE.md`, `tests/`, [`toolkit.lock`](toolkit.lock) | what is built, which harness it speaks, and what is never allowed (its walls, the hook and deny rules a template pack installs, are not reproduced here) |
-| L3 harness | this repository, pinned by `toolkit.lock`: the schemas every file validates against, the skills named below, the tools in the commands above | the contracts |
+| L2 project | `docs/`, `specs/`, `DECISIONS.md`, `ARCHITECTURE.md`, `tests/`, [`toolkit.lock`](toolkit.lock) | what is built, which promptbook it speaks, and what is never allowed (its walls, the hook and deny rules a template pack installs, are not reproduced here) |
+| L3 promptbook | this repository, pinned by `toolkit.lock`: the schemas every file validates against, the skills named below, the tools in the commands above | the contracts |
 | L4 runtime | `.orchestrator/` (grants, task records), `.agent/` (run records, returns, verdicts) — runtime state a product keeps untracked, committed here so the example is whole | how much a run may spend, and every binding to an engine |
 
 ## Timeline
@@ -61,10 +61,10 @@ for the human. They move separately: no row below moves a status on a signal.
 | 8 | Four tasks: SPLIT-1 the skeleton and root; SPLIT-2 and SPLIT-3 share `migrations/**`, so ordered; SPLIT-4 its own lane; `lands_to`, `risk`, `evaluator`, `budget` on each | planning-work | `specs/settle-up/tasks/SPLIT-{1..4}.md` | — | L2 |
 | 9 | Trace check at the gate: ready, 0 gaps, 17/17 criteria named in tests; the report is committed `--no-timestamp` and regenerated with the plan | checking-plan-readiness | `specs/settle-up/readiness.md` (generated) | `trace --readiness specs --check` in CI | L3 tool |
 | 10 | **Gate 1, spec-approval**: epic draft → approved → in-progress; tasks spec-draft → ready | — | `spec.md`, task files | spec-approval · dana | L2 |
-| 11 | Pin the harness (local, `main`@74b79f3) and Skilldex (`fc572b6`) | adopting-harness | `toolkit.lock` | `lock --check` in CI | L2 → L3 |
+| 11 | Pin promptbook (local, `main`@74b79f3) and Skilldex (`fc572b6`) | setting-up-the-suite | `toolkit.lock` | `lock --check` in CI | L2 → L3 |
 | 12 | Delegate: GRANT-1 (select-tasks, approve-plan, dispose-findings; 3 workers; SPLIT-1 excluded) and GRANT-2 (merge into `integration/settle-up` only); both expire 2026-10-27 | delegating-authority | `.orchestrator/grants/GRANT-{1,2}.yaml` | issued · dana | L4 |
 
-The L1 policy predates the epic: dana wrote it once for her machines (adopting-harness,
+The L1 policy predates the epic: dana wrote it once for her machines (setting-up-the-suite,
 handling-credentials) and compiles it per engine; nothing in the product reads it.
 
 ### Build the skeleton, supervised — 2026-10-14
@@ -115,8 +115,8 @@ dana's merge of the integration branch carries them there and she records `promo
 
 | # | Step | Skill | Artifact | Decided by |
 |---|---|---|---|---|
-| 30 | A model release: replay four of this epic's failures, ablate the reader and the evaluator's second trial; too few tasks to remove anything; walls not ablated | reviewing-harness | `harness-reviews/2026-10-15-model-5.6.md` | dana |
-| 31 | Two deltas from the window: idempotency asserted on stored state under a race (accepted, a pull request on the harness, L3); an allow for `psql` (rejected: it widens an unattended agent's reach and would lose to the ask anyway) | reflecting-on-runs | `reflections/2026-10-15-settle-up.md` | dana |
+| 30 | A model release: replay four of this epic's failures, ablate the reader and the evaluator's second trial; too few tasks to remove anything; walls not ablated | reviewing-agent-setup | `setup-reviews/2026-10-15-model-5.6.md` | dana |
+| 31 | Two deltas from the window: idempotency asserted on stored state under a race (accepted, a pull request on promptbook, L3); an allow for `psql` (rejected: it widens an unattended agent's reach and would lose to the ask anyway) | reflecting-on-runs | `reflections/2026-10-15-settle-up.md` | dana |
 
 ### After the snapshot — replayed by `simulate.yaml`
 

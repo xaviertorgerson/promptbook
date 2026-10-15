@@ -7,7 +7,7 @@ import { registry } from './lib/registry.mjs';
 import { checkReadiness, renderReadiness, trace } from './lib/trace.mjs';
 import { validateFile, validatePath } from './lib/validate.mjs';
 
-const USAGE = `Validate harness artifacts against their contracts.
+const USAGE = `Validate promptbook artifacts against their contracts.
 
   node tools/validate.mjs <file|dir>...              infer each file's contract from its path
   node tools/validate.mjs --contract task <file>...  validate as one contract

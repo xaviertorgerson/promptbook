@@ -13,7 +13,7 @@
   "criteria": { "met": ["AC-1", "AC-2", "AC-3", "AC-4"], "unmet": [] },
   "verification": [
     { "command": "pnpm test -- tests/bills", "result": "pass", "note": "4 tests" },
-    { "command": "harness trace . --strict", "result": "pass" },
+    { "command": "promptbook trace . --strict", "result": "pass" },
     { "command": "pnpm run load -- --path /bills --rps 20", "result": "pass", "note": "p95 212 ms" }
   ],
   "session": { "engine": "claude", "session_id": "2b8e47d1-90c3-4a5f-b6e2-71d4c0a9f358", "actor": "tally-coder", "role": "coder", "started_at": "2026-10-15T08:01:00Z", "ended_at": "2026-10-15T08:31:00Z", "outcome": "advanced", "run": ".agent/loop-runs.jsonl" }

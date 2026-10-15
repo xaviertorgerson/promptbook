@@ -34,7 +34,7 @@ measurement under Evidence, or in a pointer to `adapters/`, where each binding l
 
 ## Review cadence
 
-- **On every major model release** from a lab the toolkit routes to, run [harness review](learning/harness-review.md).
+- **On every major model release** from a lab the toolkit routes to, run [setup review](learning/setup-review.md).
 - **Quarterly** otherwise. Next review: 2027-01-13.
 - **When a page's "Revisit when" trigger fires**, whatever the calendar says.
 
@@ -84,7 +84,7 @@ measurement under Evidence, or in a pointer to `adapters/`, where each binding l
 | Learning | [evals-and-evidence](learning/evals-and-evidence.md) | Routing and scenario evals, pass^k, evidence from real failures |
 | | [promotion-and-deprecation](learning/promotion-and-deprecation.md) | trial → project → pack → user, with gates, renames and pins |
 | | [reflection-loop](learning/reflection-loop.md) | Generator, reflector, curator; deltas as reviewed pull requests |
-| | [harness-review](learning/harness-review.md) | Effort sweep and ablation on each model release; delete what isn't load-bearing |
+| | [setup-review](learning/setup-review.md) | Effort sweep and ablation on each model release; delete what isn't load-bearing |
 | Methodology | [modes](methodology/modes.md) | Spec-driven, research-plan-implement, Ralph loop, ICM pipeline as swappable modes |
 
 Related: [LAYERS.md](../LAYERS.md) says where each artifact lives;

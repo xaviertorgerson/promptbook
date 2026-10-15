@@ -1,4 +1,4 @@
-# Compiled from agent-policy.yaml (profile laptop, tier auto-edit) by harness compile-policy.
+# Compiled from agent-policy.yaml (profile laptop, tier auto-edit) by promptbook compile-policy.
 # Most restrictive decision wins: forbidden > prompt > allow. Check: codex execpolicy check --rules <this file> -- <cmd>
 
 prefix_rule(

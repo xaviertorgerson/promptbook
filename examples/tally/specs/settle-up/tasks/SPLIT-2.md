@@ -27,7 +27,7 @@ inputs:
 risk: medium
 evaluator:
   - { kind: tests, ref: the project's test command for src/bills }
-  - { kind: script, ref: harness trace . --strict }
+  - { kind: script, ref: promptbook trace . --strict }
   - { kind: agent-review, ref: evaluator }
 budget: { max_turns: 100, max_usd: 3, max_minutes: 90 }
 sessions:

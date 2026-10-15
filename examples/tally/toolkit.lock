@@ -1,15 +1,15 @@
-# Tally's lock (L2): the harness every artifact here is validated against, and the portable skill
-# library its agents load beside the harness's own skills. `harness lock --check` verifies both pins.
-# The harness is this repository itself (a local source, relative to this file) at the main commit
+# Tally's lock (L2): promptbook every artifact here is validated against, and the portable skill
+# library its agents load beside promptbook's own skills. `promptbook lock --check` verifies both pins.
+# Promptbook is this repository itself (a local source, relative to this file) at the main commit
 # the example was written against. A real product also pins its stack pack (L4, ADR-0002); the
 # example leaves it out so the check needs nothing beyond this repository and one public source.
 lock_version: 1
 generated_at: 2026-10-13T21:07:41Z
-generated_by: harness/lock@1.0.0
+generated_by: promptbook/lock@1.0.0
 entries:
-  - name: harness
+  - name: promptbook
     layer: L3
-    kind: harness
+    kind: promptbook
     source: ../..
     ref: main
     commit: 74b79f32f53ece49e4ff603319257a9331977f0a

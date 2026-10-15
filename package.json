@@ -1,5 +1,5 @@
 {
-  "name": "harness",
+  "name": "promptbook",
   "version": "0.1.0",
   "private": true,
   "description": "Engine-neutral contracts, state machines and validator for agent-driven software work (Layer 3).",
@@ -8,7 +8,7 @@
     "node": ">=22"
   },
   "bin": {
-    "harness": "tools/cli.mjs"
+    "promptbook": "tools/cli.mjs"
   },
   "packageManager": "pnpm@10.28.0",
   "scripts": {

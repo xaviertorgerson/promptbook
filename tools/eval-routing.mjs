@@ -21,7 +21,7 @@ const USAGE = `Routing evals: does each skill's description route its routing.js
       --runs <k>           ask k times per case; a case passes only when all k pass (pass^k; default 1)
       --model <label>      the model the runner calls, recorded in --out (default: the runner command)
       --out <file.jsonl>   write one routing result per case (evidence contract, routingResult);
-                           name it routing-results*.jsonl so harness validate knows it
+                           name it routing-results*.jsonl so promptbook validate knows it
       --print-prompts      print every router prompt (dry run)
       --timeout <s>        per call (default 120)
       --json               machine-readable

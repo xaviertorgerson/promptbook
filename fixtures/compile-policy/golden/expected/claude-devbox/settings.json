@@ -86,7 +86,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$HOME/.claude/hooks/harness/forbid-guard.mjs\" \"$HOME/.claude/hooks/harness/forbid.json\""
+            "command": "node \"$HOME/.claude/hooks/promptbook/forbid-guard.mjs\" \"$HOME/.claude/hooks/promptbook/forbid.json\""
           }
         ]
       }

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://harness.dev/schemas/grant.schema.json",
+  "$id": "https://promptbook.dev/schemas/grant.schema.json",
   "title": "Authority grant",
   "description": "A human delegating named decisions to a coordinator for a named scope, within limits, until an expiry. Everything not granted stays human-owned (state-machines/authority.yaml). A grant never waives repository policy, protected branches, independent review or required checks.",
   "x-version": "2.0.0",
@@ -12,7 +12,7 @@
   "properties": {
     "id": { "$ref": "common.schema.json#/$defs/grantId" },
     "granted_by": {
-      "description": "The human who holds the authority being delegated: an owner of the grants path (CODEOWNERS), who commits the live grant file (harness grant verify --git).",
+      "description": "The human who holds the authority being delegated: an owner of the grants path (CODEOWNERS), who commits the live grant file (promptbook grant verify --git).",
       "$ref": "common.schema.json#/$defs/handle"
     },
     "granted_to": {

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// The harness forbid guard: a PreToolUse hook that denies a shell command a policy forbid rule
+// The promptbook forbid guard: a PreToolUse hook that denies a shell command a policy forbid rule
 // matches, however the command is spelled. compile-policy copies this file and the compiled rule
 // list (forbid.json) next to an engine's settings when the policy sets hooks.forbid_guard, and
 // registers it for the shell tool; Claude Code and Codex send the same hook input
@@ -183,7 +183,7 @@ const describe = (r) => `${JSON.stringify(r.command)}${r.flags_anywhere ? ` with
 
 function main() {
   const deny = (why) => {
-    process.stderr.write(`harness forbid guard: ${why}\n`);
+    process.stderr.write(`promptbook forbid guard: ${why}\n`);
     process.exitCode = 2;
   };
   try {

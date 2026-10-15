@@ -9,7 +9,7 @@ import { readRuns, render, runFiles, summarize } from '../tools/lib/report.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FIX = path.join(ROOT, 'fixtures');
-const TMP = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'harness-report-'));
+const TMP = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'promptbook-report-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 const report = (...a) => spawnSync(process.execPath, [path.join(ROOT, 'tools/report.mjs'), ...a], { encoding: 'utf8', cwd: ROOT });
 const near = (a, b) => assert.ok(Math.abs(a - b) < 1e-9, `${a} is not ${b}`);

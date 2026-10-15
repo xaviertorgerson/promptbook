@@ -7,7 +7,7 @@ import { verifyGrant } from './lib/grant-verify.mjs';
 
 const USAGE = `Check a grant before acting under it.
 
-  harness grant verify <grant.yaml>... [--git] [--owners a,b] [--identities <file.yaml>] [--root <dir>]
+  promptbook grant verify <grant.yaml>... [--git] [--owners a,b] [--identities <file.yaml>] [--root <dir>]
 
   The grant contract (schema and named checks); the file is a live grant under .orchestrator/grants/
   (a draft under drafts/ is reported, not live); granted_by, every narrowed[].by and revoked_by are

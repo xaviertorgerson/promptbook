@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://harness.dev/schemas/brief.schema.json",
+  "$id": "https://promptbook.dev/schemas/brief.schema.json",
   "title": "Product brief",
   "description": "The root of the trace graph: what the product is for, who it serves, and what it will not do. One per product.",
   "x-version": "1.1.0",

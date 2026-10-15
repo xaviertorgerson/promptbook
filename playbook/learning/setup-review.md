@@ -1,8 +1,8 @@
-# Harness review
+# Setup review
 
 ## Problem
 
-Every harness component encodes an assumption about what the model cannot do alone. Models improve
+Every component of an agent setup encodes an assumption about what the model cannot do alone. Models improve
 every few weeks, so yesterday's scaffolding (context resets, sprint splits, extra reviewers, long
 instruction files) becomes cost without benefit. Nobody deletes a component that still "works".
 
@@ -43,7 +43,7 @@ On each major model release from a lab the toolkit routes to, and quarterly othe
 
 ## Contracts used
 
-`harness-review` (the record: `harness-reviews/<date>-<label>.md`, its header, baseline, ablations
+`setup-review` (the record: `setup-reviews/<date>-<label>.md`, its header, baseline, ablations
 with a decision per row, decisions, playbook dates), `run-record` (baseline and sweep costs),
 `evidence` (routing results with pass^k), `toolkit-lock` (the model and pack versions reviewed),
 `skill` (`metadata.deprecated` for removals).

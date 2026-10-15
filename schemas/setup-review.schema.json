@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://harness.dev/schemas/harness-review.schema.json",
-  "title": "Harness review",
-  "description": "The record the reviewing-harness skill writes after a model release or a quarter: what was reviewed with which suite, the baseline, the ablations (one component removed per row) and the decisions they support. Markdown: a '# Harness review — YYYY-MM-DD — <model or quarter>' title, '- **Field:** value' header bullets, and level-2 sections.",
-  "x-version": "1.0.0",
+  "$id": "https://promptbook.dev/schemas/setup-review.schema.json",
+  "title": "Setup review",
+  "description": "The record the reviewing-agent-setup skill writes after a model release or a quarter: what was reviewed with which suite, the baseline, the ablations (one component removed per row) and the decisions they support. Markdown: a '# Setup review — YYYY-MM-DD — <model or quarter>' title, '- **Field:** value' header bullets, and level-2 sections.",
+  "x-version": "2.0.0",
   "x-artifacts": [
-    { "format": "markdown-entries", "parser": "harness-review", "paths": ["harness-reviews/*.md"], "suffixes": [".harness-review.md"] }
+    { "format": "markdown-entries", "parser": "setup-review", "paths": ["setup-reviews/*.md"], "suffixes": [".setup-review.md"] }
   ],
   "type": "object",
   "required": ["date", "label", "trigger", "reviewed", "suite", "trials", "sections"],
@@ -13,7 +13,7 @@
     "date": { "$ref": "common.schema.json#/$defs/date" },
     "label": { "description": "The model release or the quarter reviewed.", "$ref": "common.schema.json#/$defs/nonEmptyString" },
     "trigger": { "description": "A model release (with its date) or quarterly.", "$ref": "common.schema.json#/$defs/nonEmptyString" },
-    "reviewed": { "description": "The harness and pack versions under review, from toolkit.lock.", "$ref": "common.schema.json#/$defs/nonEmptyString" },
+    "reviewed": { "description": "Promptbook and pack versions under review, from toolkit.lock.", "$ref": "common.schema.json#/$defs/nonEmptyString" },
     "suite": { "description": "The eval suite's commit and its counts (routing cases, scenarios, real-failure tasks).", "$ref": "common.schema.json#/$defs/nonEmptyString" },
     "trials": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
     "spend": { "description": "Spend cap / spent.", "$ref": "common.schema.json#/$defs/nonEmptyString" },
@@ -22,7 +22,7 @@
       "x-rule": "review-has-sections",
       "description": "The level-2 sections present. A review measures a baseline, ablates, decides and dates the playbook.",
       "type": "array",
-      "items": { "enum": ["baseline", "effort-sweep", "full-harness", "ablations", "decisions", "playbook", "questions"] },
+      "items": { "enum": ["baseline", "effort-sweep", "full-setup", "ablations", "decisions", "playbook", "questions"] },
       "allOf": [
         { "contains": { "const": "baseline" } },
         { "contains": { "const": "ablations" } },

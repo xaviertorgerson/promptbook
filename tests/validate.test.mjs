@@ -17,11 +17,11 @@ const FIX = path.join(ROOT, 'fixtures');
 const reg = registry();
 
 // The template's real work queue, when this checkout sits beside it. Optional: CI elsewhere skips.
-const STACK_DRIFT = process.env.HARNESS_SMOKE_PROJECT ?? '/home/claude/wt-stack-drift';
-const TEMPLATE = process.env.HARNESS_TEMPLATE ?? '/home/claude/agentic-template';
+const STACK_DRIFT = process.env.PROMPTBOOK_SMOKE_PROJECT ?? '/home/claude/wt-stack-drift';
+const TEMPLATE = process.env.PROMPTBOOK_TEMPLATE ?? '/home/claude/agentic-template';
 
 // A copy of a trace fixture project in a temp dir, with files replaced or edited: { 'rel/path': text | (old) => text }.
-const TMP = fs.mkdtempSync(path.join(fs.realpathSync(process.env.TMPDIR ?? '/tmp'), 'harness-validate-'));
+const TMP = fs.mkdtempSync(path.join(fs.realpathSync(process.env.TMPDIR ?? '/tmp'), 'promptbook-validate-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 let copies = 0;
 function project(base, edits = {}) {
@@ -49,7 +49,7 @@ const cases = (kind, contract) => {
 describe('schemas', () => {
   it('every schema compiles in strict mode and carries $id and x-version', () => {
     for (const [name, schema] of reg.schemas) {
-      assert.equal(schema.$id, `https://harness.dev/schemas/${name}.schema.json`);
+      assert.equal(schema.$id, `https://promptbook.dev/schemas/${name}.schema.json`);
       assert.match(schema['x-version'], /^\d+\.\d+\.\d+$/, name);
       if (name !== 'common') assert.doesNotThrow(() => reg.validator(name), name);
     }
@@ -198,11 +198,11 @@ describe('requirement categories', () => {
 describe('toolkit-lock', () => {
   const lock = parse(fs.readFileSync(path.join(FIX, 'valid/toolkit-lock/skill-libraries/toolkit.lock'), 'utf8'));
   const v = (data) => { const fn = reg.validator('toolkit-lock'); return fn(data) ? [] : fn.errors; };
-  it('exactly one harness: skill libraries are L3 too, but never the harness', () => {
+  it('exactly one promptbook: skill libraries are L3 too, but never promptbook', () => {
     assert.deepEqual(v(lock), []);
-    assert.ok(v({ ...lock, entries: lock.entries.filter((e) => e.kind !== 'harness') }).length, 'skill libraries alone are no harness');
-    const noKind = { ...lock, entries: lock.entries.map((e) => (e.kind === 'harness' ? { ...e, kind: undefined } : e)).map((e) => JSON.parse(JSON.stringify(e))) };
-    assert.deepEqual(v(noKind), [], 'an L3 entry with no kind is the harness');
+    assert.ok(v({ ...lock, entries: lock.entries.filter((e) => e.kind !== 'promptbook') }).length, 'skill libraries alone are no promptbook');
+    const noKind = { ...lock, entries: lock.entries.map((e) => (e.kind === 'promptbook' ? { ...e, kind: undefined } : e)).map((e) => JSON.parse(JSON.stringify(e))) };
+    assert.deepEqual(v(noKind), [], 'an L3 entry with no kind is promptbook');
   });
   it('a kind on the wrong layer is a warning, not an error', () => {
     const file = path.join(TMP, 'kinds', 'toolkit.lock');
@@ -224,7 +224,7 @@ describe('contract by filename suffix (examples outside the project layout)', ()
     'loop.run-record.jsonl': ['run-record', V('run-record/loop-mjs-outcomes.jsonl')],
     'devbox.policy.yaml': ['policy', V('policy/bypass-container.yaml')],
     'project.toolkit.lock': ['toolkit-lock', V('toolkit-lock/skill-libraries/toolkit.lock')],
-    'at-review.task.md': ['task', V('task/harness-fields.md')],
+    'at-review.task.md': ['task', V('task/promptbook-fields.md')],
     'acme.brief.md': ['brief', V('brief/full/docs/product/brief.md')],
     'owen.persona.md': ['persona', V('persona/file/docs/product/personas/per-3.md')],
     'team.persona.md': ['persona', V('persona/list/docs/product/personas.md')],
@@ -233,7 +233,7 @@ describe('contract by filename suffix (examples outside the project layout)', ()
     'rating-engine.spec.md': ['epic,requirement', V('epic/real-template-migration.md')],
     'rating-engine.cuj.md': ['journey', V('journey/real-rating-engine/specs/rating-engine/cuj.md')],
     'template-migration.readiness.md': ['readiness-report', V('readiness-report/generated-legacy/specs/template-migration/readiness.md')],
-    '2026-10-13-model-5-5.harness-review.md': ['harness-review', V('harness-review/model-release.md')],
+    '2026-10-13-model-5-5.setup-review.md': ['setup-review', V('setup-review/model-release.md')],
     'one-window.reflection.md': ['reflection-report', V('reflection-report/one-window.md')],
   };
   const dir = path.join(TMP, 'skill-examples/references/examples');
@@ -738,7 +738,7 @@ describe('CLI', () => {
   });
 
   it('--contract validates a file whose path implies no contract', () => {
-    const tmp = fs.mkdtempSync(path.join(fs.realpathSync(process.env.TMPDIR ?? '/tmp'), 'harness-'));
+    const tmp = fs.mkdtempSync(path.join(fs.realpathSync(process.env.TMPDIR ?? '/tmp'), 'promptbook-'));
     const f = path.join(tmp, 'anything.yaml');
     fs.copyFileSync(path.join(FIX, 'valid/grant/project-delegation.yaml'), f);
     try {
