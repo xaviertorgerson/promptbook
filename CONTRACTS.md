@@ -637,7 +637,8 @@ pass on the current head, required where a merge grant approves; the two are sep
 | both epics' `spec.md` and `cuj.md` | epic, requirement, journey | validate unchanged (12 `R<n>` rows normalized) |
 | `DECISIONS.md` (18 ADRs) | decision | validates; ADR-0001's `TODO(domain)` date is a warning |
 | `scripts/loop.mjs` run lines (the dontAsk loop's on `fix/agent-run-caps`, and with `usage` on `integration/agent-hardening`) | run-record | validate unchanged |
-| stagehand `assets/task-record.yaml` (filled) | task-record | validates unchanged |
-| stagehand project delegation | grant | expressible; the grant adds an expiry |
+| stagehand `assets/task-record.yaml` (the template, and a filled record) | task-record | validate as they are |
+| stagehand `assets/project-grant.yaml` (feat/promptbook-contracts) | grant | validates as it is; a grant with stop conditions and no stated expiry or budget is valid |
+| Skilldex skills (feat/suite-skill-library) | skill, evidence | `promptbook lint <skilldex>/skills` checks each skill, its evals and each install set |
 | Herdr `AgentStatus`, A2A 1.0 `TaskState`, MCP Tasks `TaskStatus`, Claude result subtypes, GitHub check runs | attention.yaml | every value mapped; none to a workflow status |
 | agentskills.io frontmatter | skill | core fields only; engine extensions rejected |
