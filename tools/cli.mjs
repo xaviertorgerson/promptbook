@@ -22,6 +22,7 @@ export const COMMANDS = {
   grant: { script: 'grant.mjs', about: 'verify a grant: provenance, owners, narrowing (grant verify)' },
   'eval-routing': { script: 'eval-routing.mjs', about: 'run routing evals through a model command' },
   'import-evals': { script: 'import-evals.mjs', about: 'convert an agentic-template evals.md into the eval files' },
+  report: { script: 'report.mjs', about: 'total run records: cost, tokens and cache hit rate per task' },
 };
 
 const USAGE = `harness — the contracts' tools (Layer 3).

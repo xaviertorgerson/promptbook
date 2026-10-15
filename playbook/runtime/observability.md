@@ -19,9 +19,16 @@ hitting. Dashboards of "activity" mislead: parallel motion is not progress.
 | Number | Computed from | Tells you |
 |---|---|---|
 | cost per task | run records grouped by task id, to `merged` | whether the harness is getting cheaper |
-| cache hit rate | cache-read tokens ÷ input tokens | whether the prefix is stable; a drop names a cause |
+| cache hit rate | cache-read tokens ÷ all input tokens (uncached, cache read, cache write) | whether the prefix is stable; a drop names a cause |
 | evaluator pass rate | first-pass verdicts ÷ evaluations | whether writers are improving or evaluators are lax |
 
+- **What to look at weekly**, from `harness report --since <a week ago>` over the run records: the
+  cost per merged task (the per-task cost of the tasks the board shows merged that week; the number
+  the harness exists to lower); the cache hit rate, overall and for the costliest tasks (a drop means
+  the prefix changed: instructions, tool list, or a model or effort switch mid-session); the denial
+  count (each denial is a question for a human: grant the tool or change the instruction); and the
+  stalled and needs-human runs (the loop stops at the first, so each is a task to re-scope or a
+  question to answer, not a run to repeat).
 - **Supervision surface is the task graph.** The board (generated from task files) and the runtime's
   attention view (red needs a human, yellow working, green complete) are the views a human watches.
   Notifications fire only on exceptions: `needs-human`, a red gate, a rollback.
@@ -42,6 +49,11 @@ hitting. Dashboards of "activity" mislead: parallel motion is not progress.
   ([Microsoft](https://devblogs.microsoft.com/all-things-azure/agentic-devops-practices-principles-strategic-direction/)).
 - undated · practitioner · Osmani warns parallel activity metrics can mislead
   ([Addy Osmani](https://addyosmani.com/blog/claude-code-agent-teams/)).
+- 2026-10-14 · measured · Claude Code 2.1.300, two `claude -p --model haiku --output-format json`
+  calls (one and two turns, empty directory, clean environment): the result has `usage`
+  (`input_tokens`, `output_tokens`, `cache_read_input_tokens`, `cache_creation_input_tokens`) and
+  `modelUsage` per model, whose `costUSD` equalled `total_cost_usd`; the loop records the per-model
+  sum ([loop.mjs](https://github.com/xaviertorgerson/agentic-template/blob/8188f6d/scripts/loop.mjs)).
 - 2026-10-13 · practice · branch `fix/agent-run-caps` appends task, session id, turns, cost, exit and
   outcome per run to `.agent/loop-runs.jsonl`; stagehand reports elapsed time "without inventing token
   measurements" ([safety-and-escalation.md](https://github.com/QuentinTorg/stagehand/blob/main/skills/orchestrating-development/references/safety-and-escalation.md)).

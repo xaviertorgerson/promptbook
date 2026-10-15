@@ -18,6 +18,7 @@ harness <command> [args]          # package.json bin: tools/cli.mjs; or pnpm <co
   grant           verify a grant before acting under it             tools/grant.mjs
   eval-routing    routing evals through a model command             tools/eval-routing.mjs
   import-evals    an agentic-template evals.md into the eval files  tools/import-evals.mjs
+  report          run records: cost, tokens, cache hit per task     tools/report.mjs
 ```
 
 ## validate, trace
@@ -326,3 +327,23 @@ and get a `TODO(import)` prompt (the source has none); evidence keeps its date (
 text, kind audit or observed, citing the source file. Lint fails both markers
 (`imported-needs-review`) until a human resolves them. It refuses to overwrite without `--force`.
 Fixtures: two real evals.md files under `fixtures/import-evals/`.
+
+## report
+
+`harness report [file|dir]... [--since <date>] [--json]` totals run records: what the runs cost
+and why. A file is read as run-record JSONL; a directory is searched for the contract's paths
+(`.agent/loop-runs.jsonl`, `.agent/runs/*.jsonl`, `*.run-record.jsonl`); no path means the current
+directory, and a file reached twice is read once. Every line is validated against the run-record
+contract first: an invalid line (bad JSON, a broken rule, a truncated last line) is skipped and
+listed with its file, line and rule, never counted, and never stops the report. Per task (costliest
+first, with the status its latest run left), per role (once any run names one; no role is the
+author) and in total it prints runs, the outcomes that occur (advanced, stalled, needs-human,
+failed, verdict, read), turns, cost, input and output tokens, the cache hit rate and denied calls,
+then the three most expensive runs with their session ids and lines. Input is all input: uncached,
+cache read and cache write; the hit rate is cache read ÷ input, over the runs that report `usage`
+(the table says how many when not all do), and "—" when none do. A run with a null cost is marked
+`*`: the total is a floor. `--since` keeps runs started at or after a date or ISO time; `--json`
+prints the same summary as JSON. Exit 0 when every line was a valid run record, 1 when one was
+skipped, 2 on a usage error. Fixtures under `fixtures/report/`: a loop's `.agent/loop-runs.jsonl`
+with usage, a log from before usage with an evaluator's and a reader's runs, and a file with one
+invalid line (a needs-human run with no reason, as the loop wrote one before it was fixed).

@@ -231,7 +231,7 @@ is optional there.
 ### run-record
 
 **Purpose.** One JSON line per agent run, appended by the runner. **Schema** `run-record.schema.json`
-1.2.0: exactly `scripts/loop.mjs`'s line — `task`, `session_id`, `started_at`, `ended_at`, `exit`
+1.3.0: exactly `scripts/loop.mjs`'s line — `task`, `session_id`, `started_at`, `ended_at`, `exit`
 (code or signal), `outcome`, `reason`, `subtype`, `num_turns`, `total_cost_usd`, `status_after` —
 with null where loop.mjs writes null. `outcome` is advanced | stalled | failed | needs-human (the
 loop's since it pins dontAsk: a denied call left the task where it was) for an author's run, and
@@ -239,16 +239,24 @@ verdict (an evaluator judged the criteria) or read (a reader or helper answered 
 run that is not the author's. Harness optional fields: `engine`, `runtime`, `role` (author |
 evaluator | reader | planner | orchestrator | merge | other; absent, the author), `model`,
 `status_before`, `permission_mode`, `permission_denials` (a count, or one line per denied call as
-the dontAsk loop writes them), `attention`, `budget`, `grant`. Rules: failed, stalled and
+the dontAsk loop writes them), `attention`, `budget`, `grant`, `usage` (`input`, `output`,
+`cache_read`, `cache_write`: whole tokens over every model the run called, `input` being the part
+neither read from nor written to the prompt cache; the cache pair is absent when the engine reports
+none; null when the result reported no usage; Claude Code's are the result's `modelUsage` entries
+summed, whose `costUSD` add up to `total_cost_usd`). Rules: failed, stalled and
 needs-human carry a reason, advanced, verdict and read do not; advanced means the task left
 ready/in-progress; a verdict is an evaluator's (`verdict-by-evaluator`), a read a reader's
 (`read-by-reader`); a verdict or read that left the status other than it found it is a warning
-(`run-kept-status`); ended ≥ started. 1.2.0 added `role`, the three outcomes and denial lines, so an
-evaluator's or reader's run is logged as what it was instead of an author's "advanced".
+(`run-kept-status`); `usage` holds only those four counts (`usage-counts-tokens`); ended ≥ started.
+1.2.0 added `role`, the three outcomes and denial lines, so an evaluator's or reader's run is logged
+as what it was instead of an author's "advanced"; 1.3.0 added `usage`, so a run's cost has its
+tokens and cache hit rate beside it (`harness report`, TOOLS.md).
 **Compat.** Lines from loop.mjs's own test runs are the fixture
 `fixtures/valid/run-record/loop-mjs-outcomes.jsonl`; the dontAsk loop's lines (agentic-template
 `fix/agent-run-caps`: `needs-human`, `permission_denials` as lines), produced with a fake engine, are
-`loop-mjs-dontask.jsonl`, and a test holds the loop's outcome literals to the enum. A task's
+`loop-mjs-dontask.jsonl`, and a test holds the loop's outcome literals to the enum. The lines with
+`usage` (agentic-template `integration/agent-hardening`), from the same fake engine, are
+`loop-mjs-usage.jsonl`. A task's
 `sessions[]` entry (`common` `sessionRef`, 1.4.0) takes the same outcomes.
 
 ### grant
@@ -604,7 +612,7 @@ pass on the current head, required where a merge grant approves; the two are sep
 | agentic-template `specs/rating-engine/tasks/*.md` (4) and wt-stack-drift `specs/template-migration/tasks/*.md` (6) | task | all 10 validate unchanged |
 | both epics' `spec.md` and `cuj.md` | epic, requirement, journey | validate unchanged (12 `R<n>` rows normalized) |
 | `DECISIONS.md` (18 ADRs) | decision | validates; ADR-0001's `TODO(domain)` date is a warning |
-| `scripts/loop.mjs` run lines (and the dontAsk loop's on `fix/agent-run-caps`) | run-record | validate unchanged |
+| `scripts/loop.mjs` run lines (the dontAsk loop's on `fix/agent-run-caps`, and with `usage` on `integration/agent-hardening`) | run-record | validate unchanged |
 | stagehand `assets/task-record.yaml` (filled) | task-record | validates unchanged |
 | stagehand project delegation | grant | expressible; the grant adds an expiry |
 | Herdr `AgentStatus`, A2A 1.0 `TaskState`, MCP Tasks `TaskStatus`, Claude result subtypes, GitHub check runs | attention.yaml | every value mapped; none to a workflow status |
