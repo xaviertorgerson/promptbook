@@ -14,7 +14,7 @@ that make the suite; each has one job and touches the others only through the in
 | **Must not contain** | Skills (all live in Skilldex), runtime coordination (stagehand), any stack (stagecraft's sets). |
 | **Interface** | JSON Schemas and the `promptbook` CLI (`package.json` `bin`: `tools/cli.mjs`); SUITE.md. |
 | **Versioning** | Semver tags, pre-1.0: pin a commit and tree in `toolkit.lock` (kind `promptbook`). Each schema carries its own `x-version` and each state machine its `version`; every change is classed additive, behavioral or breaking in [CHANGELOG.md](CHANGELOG.md). |
-| **Consumers** | stagecraft (the gates in CI, `lock`), dotfiles (`compile-policy`, the standards block), stagehand (the `task-record` and `grant` formats, `grant verify`), Skilldex (`lint` and `eval-routing` run against it). |
+| **Consumers** | stagecraft (the gates in CI, `lock`), dotfiles (`compile-policy`, the standards block), Skilldex (`lint` and `eval-routing` run against it). promptbook reads stagehand's task records; stagehand depends on none of it. |
 
 The thesis, from the research behind it: engineer the setup around the model, not the swarm. Keep
 one writer per change, parallel readers, and a separate judge; keep state in files and git; load
@@ -54,10 +54,12 @@ template sync renders the standards block into `AGENTS.md` and keeps the walls c
 `promptbook trace . --readiness specs --check` the trace graph from brief to test names and the
 committed readiness reports.
 
-**A runtime (stagehand, the loop, CI agents).** It binds through `adapters/<name>/`: it reads `task`
-files, writes `task-record` and `run-record`, maps its own signals to the `attention` machine,
-honors `grant`s (checked with `promptbook grant verify`), and never advances workflow status on a
-runtime signal. `promptbook simulate --supervisor <module>` runs a runtime's own supervisor against
+**A runtime (stagehand, the loop, CI agents).** It binds through `adapters/<name>/`. One that adopts
+promptbook's formats reads `task` files, writes `task-record` and `run-record`, maps its own signals
+to the `attention` machine, honors `grant`s (checked with `promptbook grant verify`), and never
+advances workflow status on a runtime signal. stagehand keeps its own task records, which the
+`task-record` contract reads as they are, records a delegation as a project note, and follows a
+project's own instructions for its queue ([adapters/herdr](adapters/herdr/README.md)). `promptbook simulate --supervisor <module>` runs a runtime's own supervisor against
 every invariant; without the flag the simulation runs promptbook's reference coordinator, the
 protocol the state machines describe, as code.
 

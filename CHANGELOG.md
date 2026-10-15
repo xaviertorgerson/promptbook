@@ -23,6 +23,11 @@ tools other maintainers already run (stagehand's task records and delegation, Sk
 
 #### Fixed
 
+- **additive** — The docs say what stagehand does, not what promptbook once asked of it: it keeps
+  its own task records (the `task-record` contract reads them), records a delegation as a project
+  note, follows a project's own instructions for its task queue, and writes none of promptbook's
+  optional `reviews`, `decisions`, `grant` or `signals` (adapters/herdr, CONTRACTS.md, SUITE.md,
+  README.md, LAYERS.md).
 - **behavioral** — The stagehand compatibility test checks a record filled from his
   `assets/task-record.yaml` (`fixtures/valid/task-record/stagehand-development.yaml`, now with
   `development_target` and `state.next_role`) and that it fills every key the template names; it no

@@ -48,7 +48,7 @@ Treat merge authority as tiers, each granted explicitly and revocably:
 - 2026-02-11 · vendor · OpenAI auto-merged small refactor PRs with minimal gates and called that
   irresponsible in a low-throughput environment ([OpenAI](https://openai.com/index/harness-engineering/)).
 - recommendation · the per-epic integration branch (tier 2) is this playbook's extension of
-  stagehand's grant; no source measures it.
+  stagehand's merge delegation; no source measures it.
 
 ## Contracts used
 

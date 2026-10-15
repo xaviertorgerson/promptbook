@@ -82,9 +82,9 @@ are relative to the repo root. "Unverified" marks a path documented inconsistent
 | Per-role model and effort for personal sessions | L1 | `home/.chezmoidata/agents.yaml` (new), compiled into each engine's settings |
 | Runtime config for unattended runs (mode, allowlist, caps, model per role) | L4 | stagecraft's loop flags and `AGENT_MAX_*` env, its CI workflow env; stagehand's `.local/AGENTS.md`, rendered by the dotfiles; caps from a role's `runner.json` (`promptbook run`) |
 | Task queue | L2 | `specs/<epic>/tasks/*.md`, validated against promptbook's `task` |
-| Runtime task records | L4, untracked in L2 checkout or control workspace | `.orchestrator/tasks/<id>.yaml` (`task-record`), written by stagehand |
+| Runtime task records | L4, untracked in L2 checkout or control workspace | `.orchestrator/tasks/<id>.yaml`: stagehand's own records, which promptbook's `task-record` reads as they are |
 | Run records | L4 writes; promptbook schema | `.agent/loop-runs.jsonl` (gitignored), one `run-record` per run, written by stagecraft's loop and CI agents; `promptbook report` totals them |
-| Authority grants | issued by a human; L4 runtimes read them | `.orchestrator/grants/GRANT-n.yaml`: in a project, committed by the granting human on a CODEOWNERS-protected path, agents writing only `.orchestrator/grants/drafts/`, `promptbook grant verify --git` before acting; in stagehand's untracked control root, recorded from the human's words, `promptbook grant verify --owners` before acting |
+| Authority grants | issued by a human; L4 runtimes read them | `.orchestrator/grants/GRANT-n.yaml`: in a project, committed by the granting human on a CODEOWNERS-protected path, agents writing only `.orchestrator/grants/drafts/`, `promptbook grant verify --git` before acting; a runtime with an untracked control root drafts one from the human's words and checks it with `promptbook grant verify --owners`; stagehand records a delegation as a project note there instead |
 | CI agents (planner, coder, reviewer, merge) | L4 runtime, installed into L2 by stagecraft | `.github/workflows/agent-*.yml`; engine binding in promptbook `adapters/ci` |
 | Secrets, personal | L1 | Bitwarden note rendered to `~/.config/shell/secrets.sh` (mode 600) at apply time |
 | Secrets, CI and stages | L2 names them, the forge holds them | forge environments and secrets; never a file |
@@ -145,7 +145,7 @@ row that moves names its one target.
 | Today | Move | Target |
 |---|---|---|
 | `skills/`: 28 portable skills with their evals, `SETS.yaml`, the routing results | move | Skilldex `skills/` (adopting the suite and reviewing it under new names: setting-up-the-suite, reviewing-agent-setup) |
-| the coordination skills orchestrating-work, delegating-authority, reporting-state | fold | stagehand's orchestrating-development and its references; the simulator keeps the protocol as its reference coordinator |
+| the coordination skills orchestrating-work, delegating-authority, reporting-state | retire | the simulator keeps their protocol as its reference coordinator; stagehand's orchestrating-development stays its maintainer's own and takes none of it |
 | `adapters/claude/plugin.json`, `adapters/codex/plugin.json` (packaged those skills) | move | Skilldex's marketplace, one plugin per install set; the adapters keep the field notes |
 | `schemas/`, `state-machines/`, `standards/`, `playbook/`, `adapters/`, `tools/`, `examples/` | stay | promptbook; `lint`, `eval-routing` and `import-evals` run against a Skilldex checkout |
 | the review record | rename | the `agent-setup-review` contract, which Skilldex's reviewing-agent-setup writes |
@@ -227,9 +227,9 @@ explicit models (no `inherit` for cost-sensitive roles):
 
 | Today | Move | Target |
 |---|---|---|
-| `skills/orchestrating-development/` and references | stay, extended | the suite's one coordinator skill; it absorbs promptbook's orchestrating-work, delegating-authority and reporting-state (claim = creating the task branch, status on the task branch, approvals bound to a head, the attention mapping, grant narrowing and owner checks, caps, the run report) |
+| `skills/orchestrating-development/` and references | stay | the suite's one coordinator skill, as its maintainer keeps it; promptbook's former orchestrating-work, delegating-authority and reporting-state survive as the simulator's reference coordinator, the protocol the state machines describe, which stagehand need not follow |
 | `templates/AGENTS.local.md` → `.local/AGENTS.md` | L1 | done: the dotfiles seed it from the template at the pin when absent, on the devbox; the user fills it in (stagehand allows a symlink to a private config repo) |
-| `.orchestrator/` (task records, grants, wake state) | stay | L4 runtime state, untracked; task records and grant files in promptbook's `task-record` and `grant` formats |
+| `.orchestrator/` (task records, the project note, wake state) | stay | L4 runtime state, untracked, in stagehand's own formats; promptbook's `task-record` reads the records as they are |
 | `plugins/agent-wake`, `plugins/status-board` | stay | Herdr plugins; the dotfiles link agent-wake from the pinned checkout on the devbox; the status board is optional and installed by hand |
 | `.codex/rules/herdr.rules` | stay | the reference for how `promptbook compile-policy` emits Codex `prefix_rule` tiers |
 | no Claude Code setup | done | `CLAUDE.md` imports `AGENTS.md`; `.claude/skills/orchestrating-development` links the skill; `.claude/settings.json` mirrors `herdr.rules` (its allow entries apply once the workspace is trusted) |

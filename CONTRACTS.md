@@ -9,9 +9,10 @@ repositories of the suite in [SUITE.md](SUITE.md).
 
 Who writes what across the suite: a **stagecraft** project holds the plan and the queue (brief,
 journeys, requirements, ADRs, tasks, readiness reports) and its `toolkit.lock`; **stagehand** is the
-coordinator that reads a project's tasks and writes the runtime's records, task records in the
-`task-record` format and each delegation as a file in the `grant` format, recorded from the human's
-words; the sequential loop and the CI agents (stagecraft) write run records; **Skilldex** holds the
+coordinator: it follows the project's own instructions for its task queue, keeps its own task
+records (which the `task-record` contract reads unchanged) and records each delegation as a project
+note in its private control state; the sequential loop and the CI agents (stagecraft) write run
+records, and a runtime that wants a checkable delegation writes it in the `grant` format; **Skilldex** holds the
 skills and their evals, in the `skill` and `evidence` formats, and the skills that write the
 learning records; **dotfiles** hold the operator's `policy`. Promptbook holds the formats and the
 checks, and writes none of these artifacts itself.
@@ -69,10 +70,10 @@ node tools/validate.mjs --list                  # contracts, versions, artifact 
 | [epic](#epic) | `specs/<epic>/spec.md` frontmatter | frontmatter-md | product owner | board, planner, trace check |
 | [task](#task) | `specs/<epic>/tasks/<ID>.md` | frontmatter-md | planner | board, loop, coder, reviewer, merge, stagehand |
 | [readiness-report](#readiness-report) | `specs/<epic>/readiness.md` | frontmatter-md | trace check (generated) | product owner at the spec gate |
-| [task-record](#task-record) | `.orchestrator/tasks/<id>.yaml` (runtime) | YAML | the coordinator (stagehand) | a replacement coordinator, the status board |
+| [task-record](#task-record) | `.orchestrator/tasks/<id>.yaml` (runtime) | YAML | the coordinator (stagehand's own records read as they are) | a replacement coordinator, the status board |
 | [return](#return) | a subagent's hand-back | JSON | subagent | dispatcher |
 | [run-record](#run-record) | `.agent/loop-runs.jsonl` (runtime, gitignored) | JSONL | runner (stagecraft's loop and CI agents) | humans, `promptbook report` |
-| [grant](#grant) | `.orchestrator/grants/GRANT-n.yaml` | YAML | a human (stagehand records it from the human's words) | the coordinator, `promptbook grant verify` |
+| [grant](#grant) | `.orchestrator/grants/GRANT-n.yaml` | YAML | a human (a runtime may draft it from the human's words) | the coordinator, `promptbook grant verify` |
 | [policy](#policy) | `agent-policy.yaml` (L1 dotfiles) | YAML | operator | `promptbook compile-policy` → engine settings |
 | [toolkit-lock](#toolkit-lock) | `toolkit.lock` (L1 and L2) | YAML | `promptbook lock` | stagecraft's sync and CI, dotfiles |
 | [skill](#skill) | `skills/<name>/SKILL.md` (Skilldex; a set's or a project's own) | frontmatter-md | skill author | every engine's skill loader, `promptbook lint` |
@@ -226,8 +227,11 @@ worktree's derived `slug`, `worktree_path`, `database`, `ports{slot,first,last}`
 `services`, the last cleanup `audit{at, result: passed|blocked, blocked_by}` and
 `worktree_removed_at`, which requires an audit that passed), `updated_at`. **Swap story.** A different runtime (a CLI loop, a CI
 orchestrator, stagehand) keeps the same note; a coordinator can be replaced mid-task. **Compat.**
-stagehand, the suite's coordinator, writes its records in this format: its template
-`assets/task-record.yaml` validates as it is, and the field map is in
+stagehand, the suite's coordinator, keeps its own records from its `assets/task-record.yaml`, and
+this contract reads them as they are: a record filled from the template validates
+(`fixtures/valid/task-record/stagehand-development.yaml`), its unnamed evidence included. The
+promptbook additions above (`runtime`, `grant`, `signals`, `reviews`, `decisions`, `resources`) are
+promptbook-optional; stagehand writes none of them. The field map is in
 [adapters/herdr](adapters/herdr/README.md).
 
 ### return
@@ -316,10 +320,11 @@ under the grant that delegates it, and the workers cap is the smallest `max_work
 grants that dispatch work, so a merge-only grant's `max_workers` bounds its merges, not the epic's
 workers (`authority.yaml` lifecycle.limits, since 1.2.0). **Swap story.** Lets a
 coordinator (stagehand, a CI orchestrator, a future agent) stand in for named human decisions with an
-auditable, expiring record instead of a remembered chat line. **Compat.** stagehand's
-project-delegation grants map field by field ([adapters/herdr](adapters/herdr/README.md)); a
-grant bounded only by its stop conditions validates, so stagehand records an expiry or a budget
-only when the human states one.
+auditable, expiring record instead of a remembered chat line. **Compat.** stagehand records a
+delegation as a project note, not a grant file; the parts of its note map onto a grant's fields
+([adapters/herdr](adapters/herdr/README.md)), and a grant bounded only by its stop conditions
+validates, so a runtime drafting one from the human's words records an expiry or a budget only
+when the human states one.
 
 ### policy
 
@@ -640,8 +645,8 @@ pass on the current head, required where a merge grant approves; the two are sep
 | both epics' `spec.md` and `cuj.md` | epic, requirement, journey | validate unchanged (12 `R<n>` rows normalized) |
 | `DECISIONS.md` (18 ADRs) | decision | validates; ADR-0001's `TODO(domain)` date is a warning |
 | `scripts/loop.mjs` run lines (the dontAsk loop's on `fix/agent-run-caps`, and with `usage` on `integration/agent-hardening`) | run-record | validate unchanged |
-| stagehand `assets/task-record.yaml` (the template, and a filled record) | task-record | validate as they are |
-| stagehand `assets/project-grant.yaml` (feat/promptbook-contracts) | grant | validates as it is; a grant with stop conditions and no stated expiry or budget is valid |
+| stagehand `assets/task-record.yaml` (`main` 48aff9a; `feat/promptbook-contracts` 5e5336f), filled as the coordinator fills it | task-record | validates as it is, its unnamed evidence included; a test checks the fill covers every key of the template |
+| stagehand's project note (a delegation) | grant | not a grant file; its parts map onto a grant's fields ([adapters/herdr](adapters/herdr/README.md)) |
 | Skilldex skills (feat/suite-skill-library) | skill, evidence | `promptbook lint <skilldex>/skills` checks each skill, its evals and each install set |
 | Herdr `AgentStatus`, A2A 1.0 `TaskState`, MCP Tasks `TaskStatus`, Claude result subtypes, GitHub check runs | attention.yaml | every value mapped; none to a workflow status |
 | agentskills.io frontmatter | skill | core fields only; engine extensions rejected |

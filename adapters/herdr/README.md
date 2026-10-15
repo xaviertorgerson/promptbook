@@ -1,11 +1,14 @@
 # Adapter: Herdr (runtime)
 
 Herdr is a terminal runtime, not an engine: it owns the panes agents run in, classifies each agent's
-state, and publishes events. It reads no promptbook contract. This adapter says which contracts a
-Herdr-based runtime (stagehand, Heeler) produces and consumes, and how Herdr's vocabulary maps onto
-them. Facts are from the Herdr source and docs at commit `241b99c` (2026-10-13) and stagehand at
-`48aff9a` (2026-09-30), with its promptbook-format records from its `feat/promptbook-contracts`
-branch at `c6974d0` (2026-10-14).
+state, and publishes events. It reads no promptbook contract. This adapter says how promptbook reads
+what a Herdr-based runtime (stagehand, Heeler) keeps, and how Herdr's vocabulary maps onto the
+attention machine. Facts are from the Herdr source and docs at commit `241b99c` (2026-10-13) and
+stagehand at `48aff9a` on `main` (2026-09-30), with the Claude Code setup its
+`feat/promptbook-contracts` branch adds at `5e5336f` (2026-10-14). stagehand writes no promptbook
+format: it keeps its own task records, which the `task-record` contract reads unchanged, records a
+delegation as a project note, and follows a project's own instructions for its task queue.
+promptbook's formats adapt to it, not the reverse.
 
 ## Signals → attention
 
@@ -22,14 +25,18 @@ attention until the coordinator reads the agent's answer. **None of them changes
 status.** Herdr's event history "is not durable": on `events_lost`, rebuild from `session.snapshot`
 and the task records.
 
-## Contracts a Herdr runtime keeps
+## What a Herdr runtime keeps, read through promptbook
 
 | Contract | Where | Notes |
 |---|---|---|
-| `task-record` | `.orchestrator/tasks/<id>.yaml` in the coordinator's untracked control root; archived to `.orchestrator/archive/` after cleanup | stagehand writes the `task-record` format. Its template `assets/task-record.yaml` validates as it is, placeholders and all, and so does a filled record (fixture `fixtures/valid/task-record/stagehand-development.yaml`); `promptbook validate --contract task-record <record>` checks a saved one, and a test checks the template when a stagehand checkout is present. `workspace.id` is the Herdr workspace, `role_sessions.<role>.pane_id` the pane, `wake.watches.<role>` the agent-wake watch id. |
-| `grant` | `.orchestrator/grants/GRANT-n.yaml` in the same untracked control root, named by each task record's `grant` and by the project note | stagehand writes one grant per delegation in the `grant` format from the human's words alone, starting from `assets/project-grant.yaml` (which validates as it is), and records only a stated expiry or budget: a grant bounded by its stop conditions is valid (`grant-is-bounded`). Being untracked, it has no CODEOWNERS or history, so stagehand checks it with `promptbook grant verify <file> --owners <handle>`, which also fails one that is expired or revoked; a grant a target repository keeps in its own tracked `.orchestrator/grants/` counts only when `grant verify --git` passes there. |
+| `task-record` | `.orchestrator/tasks/<id>.yaml` in the coordinator's untracked control root; archived to `.orchestrator/archive/` after cleanup | stagehand's own recovery note, from its `assets/task-record.yaml`; `promptbook validate --contract task-record <record>` reads a saved one. A record filled from the template is the fixture `fixtures/valid/task-record/stagehand-development.yaml`, and a test checks that it still fills every key the template names when a stagehand checkout is present. The evidence the template leaves unnamed (latest result, reviewed heads, feedback, human decisions) is accepted under whatever names stagehand uses (task-record 1.4.0). `workspace.id` is the Herdr workspace, `role_sessions.<role>.pane_id` the pane, `wake.watches.<role>` the agent-wake watch id. |
+| `grant` | not written by stagehand | stagehand records a delegation as one project note in its private control state, linked from its task records ("no new schema or event ledger is required"). A runtime that wants a checkable delegation record writes the `grant` format and checks it with `promptbook grant verify`; the field map below says where a project note's parts would go. |
 | `run-record` | optional; stagehand records none | A runtime that wants spend history appends one line per agent turn it can measure. |
 | `return` | not used by stagehand | stagehand reads the worker's latest answer in its pane; "no worker JSON or callbacks are required". A runtime may still ask a worker for a `return` object. |
+
+The task queue is the project's: stagehand follows the instructions of the project it works in
+(its `AGENTS.md` and the files it names). A stagecraft project's `specs/` tasks are such
+instructions; stagehand has no promptbook-specific dispatch rule.
 
 ## stagehand ↔ promptbook field map
 
@@ -40,11 +47,9 @@ and the task records.
 | `objective`, `intent_ref`, `repository.*`, `development_target.*`, `workspace.*`, `agents`, `role_sessions`, `wake.watches`, `pull_requests` | same names | Same shape. |
 | `state.name` (`working`, `needs-human`, `complete`) | `task-record.state.name` (attention) | Same values; the schema enforces `next_action` for needs-human and its absence for complete. |
 | `state.summary`, `state.next_role`, `state.next_action` | same | `summary` capped at 120 characters. |
-| legacy `attention_required`, `attention_reason`, `waiting_on`, stage names | — | Not accepted; stagehand itself converts them at its display boundary. |
-| per-PR reviewed head and outcome (free-form) | `reviews[] {pr, head, outcome}` | Structured. |
-| human decisions "with their source and scope" | `decisions[] {decision, source, scope, at}` | Structured. |
-| a delegation: source, requirements, non-goals, limits, integration targets (one grant file; the project note names its grants) | `grant`: `source`, `scope.objective/requirements/non_goals/repositories`, `limits`, `actions[merge].repo/target/strategy` | stagehand: "Merge authority must identify repositories, target branches, strategy, and required evidence" — the schema requires all four and fixes the evidence floor at independent review + required checks. |
-| "Grants … may be narrowed or revoked" | `narrowed[]`, `revoked_at/by`, `revocable: true`, `expires_at` | Same; `expires_at` and `limits.budget` are optional when `limits.stop_when` bounds the grant. |
+| the template's optional evidence (latest result, per-PR reviewed head and outcome, selected feedback, human decisions with source and scope), named as stagehand chooses | accepted at the top level as the runtime's own evidence | promptbook's structured `result`, `reviews[]`, `decisions[]`, `grant` and `signals` are promptbook-optional; stagehand does not write them, and a record without them is complete. |
+| a project note: the human grant and its source, requirements and non-goals, limits, integration targets, significant decisions | the parts a `grant` would hold: `source`, `scope.objective/requirements/non_goals/repositories`, `limits`, `actions[merge].repo/target/strategy` | stagehand: "Merge authority must identify repositories, target branches, strategy, and required evidence." The evidence floor is independent review and the required checks. |
+| "Grants … may be narrowed or revoked" | `narrowed[]`, `revoked_at/by`, `revocable: true`, `expires_at` | Same idea; a grant needs `expires_at` and `limits.budget` only when no `limits.stop_when` bounds it. |
 
 ## Plugin and rules
 
