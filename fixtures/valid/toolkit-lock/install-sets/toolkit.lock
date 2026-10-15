@@ -1,0 +1,26 @@
+# A stagecraft project's lock: promptbook for the formats and checks, and the whole Skilldex library
+# pinned once, with the install sets this project copies into .agents/skills/ and .claude/skills/.
+lock_version: 1
+generated_at: "2026-10-14T09:00:00Z"
+generated_by: promptbook/lock@1.0.0
+entries:
+  - name: promptbook
+    layer: L3
+    kind: promptbook
+    source: https://github.com/xaviertorgerson/promptbook
+    ref: main
+    commit: 9dfd497277bed7cc359f0f7b0d29e69fd9b3e80d
+    tree: dd1c9874e70a6b5daa2cd2fc614cc4833ccfaa14
+    version: 0.2.0
+    autoUpdate: patch
+  - name: skilldex
+    layer: L3
+    kind: skill-library
+    source: https://github.com/QuentinTorg/skilldex
+    path: skills
+    sets: [planning, delivery]
+    ref: main
+    commit: fc572b66df2f565da2bd728e9fca7f88be475e31
+    tree: 19aae71ad3c64e08bb4a89900e4114c7ee6a47c0
+    version: 0.0.0+fc572b6
+    autoUpdate: "off"

@@ -490,8 +490,9 @@ export function lintSets(file, skills, { externalDirs = {} } = {}) {
 // names that installed set, as either
 //   a list of skill folders or folders of skills (YAML list, or one path per line; # comments), or
 //   a toolkit.lock (or toolkit.yaml) in the toolkit-lock contract: each entry with a local source
-//   contributes the skills under source/path (or source/skills), narrowed by an entry's x-skills
-//   list when it has one; a remote entry cannot be read and is reported, not guessed.
+//   contributes the skills under source/path (or source/skills), narrowed to the install sets its
+//   `sets` names (read from the library's SETS.yaml) and to its x-skills list, when it has them; a
+//   remote entry cannot be read and is reported, not guessed.
 // Paths are relative to the set's file; ~ is the home directory.
 const expandHome = (p) => (p === '~' || p.startsWith('~/') ? path.join(os.homedir(), p.slice(1)) : p);
 const isRemoteSource = (s) => /^(?:https:\/\/|ssh:\/\/|git@|file:)/.test(s);
@@ -517,7 +518,19 @@ export function budgetSet(file, { limit = LIMITS.descriptionBudget } = {}) {
         findings.push({ severity: 'warning', rule: 'budget-set-unread', message: `${e.name}: ${e.source} is remote; its skills are not counted (list the installed folders instead)` });
         continue;
       }
-      sources.push({ from: e.name, dir: resolve(path.join(e.source, e.path ?? '')), only: Array.isArray(e['x-skills']) ? e['x-skills'] : null });
+      const dir = resolve(path.join(e.source, e.path ?? ''));
+      let only = Array.isArray(e['x-skills']) ? new Set(e['x-skills']) : null;
+      if (Array.isArray(e.sets) && fs.existsSync(dir)) {
+        const lib = skillDirs(dir).length || !fs.existsSync(path.join(dir, 'skills')) ? dir : path.join(dir, 'skills');
+        const file = setsFileOf(lib);
+        const data = file ? loadSets(file).data : null;
+        if (!data) { findings.push({ severity: 'error', rule: 'budget-set-sets', message: `${e.name}: names sets ${e.sets.join(', ')}, but ${lib} has no valid ${SETS_FILE}` }); continue; }
+        const unknown = e.sets.filter((n) => !data.sets[n]);
+        if (unknown.length) { findings.push({ severity: 'error', rule: 'budget-set-sets', message: `${e.name}: ${file} has no set ${unknown.join(', ')} (sets: ${Object.keys(data.sets).join(', ')})` }); continue; }
+        const inSets = new Set(e.sets.flatMap((n) => [...setSkills(data, n)]));
+        only = only ? new Set([...only].filter((x) => inSets.has(x))) : inSets;
+      }
+      sources.push({ from: e.name, dir, only: only ? [...only] : null });
     }
   } else {
     const list = Array.isArray(data) ? data : text.split(/\r?\n/).map((l) => l.replace(/#.*$/, '').trim()).filter(Boolean);

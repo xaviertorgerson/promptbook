@@ -1,0 +1,4 @@
+# Install sets on the promptbook entry: promptbook holds no skills, so it has no sets to install.
+lock_version: 1
+entries:
+  - { name: promptbook, layer: L3, kind: promptbook, source: "https://github.com/x/promptbook", sets: [planning], ref: v1.0.0, commit: 3c9d2f0a6b1e4d5c7f8a9b0c1d2e3f4a5b6c7d8e, tree: 9f8e7d6c5b4a39281706f5e4d3c2b1a098765432, version: 1.0.0, autoUpdate: minor }

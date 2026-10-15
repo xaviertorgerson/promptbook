@@ -382,7 +382,10 @@ layer (L3|L4), kind, source, path, ref, commit (full sha), tree (git tree id), v
 build metadata allowed: `0.0.0+fc572b6` for an untagged pin), autoUpdate (off | patch | minor |
 major), mirrored}`; names unique. `kind` at L3 is `promptbook` (exactly one; an L3 entry with no kind is
 promptbook) or `skill-library` (any number, e.g. a Skilldex skill); at L4 `engine-binding`,
-`stack-pack`, `runtime` or `domain-pack` (a kind on the other layer is a warning). The tree id
+`stack-pack`, `runtime` or `domain-pack` (a kind on the other layer is a warning). A
+`skill-library` entry may name the install `sets` the consumer copies (Skilldex's `planning`,
+`delivery`, `personal`, …; `sets-on-skill-library`), so one pin of the whole library says what is
+installed, and `promptbook lint --budget-set toolkit.lock` measures exactly those sets. The tree id
 detects a rewritten tag or a force-pushed mirror. **Compat.** Replaces agentic-template's `.template-version` file and the
 plugin `version` pin as the single source.
 

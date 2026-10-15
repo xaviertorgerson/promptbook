@@ -206,6 +206,16 @@ describe('lint --budget-set: the installed set\'s description budget', () => {
     assert.ok(r.findings.some((f) => f.rule === 'budget-set-unread' && /skilldex/.test(f.message)));
   });
 
+  it('a lock entry\'s sets narrow the library to what the consumer installs, read from the library\'s SETS.yaml', () => {
+    const entry = (sets) => `  - { name: widgets, layer: L3, kind: skill-library, source: ${path.join(ROOT, 'fixtures/lint/good')}, sets: [${sets}], ref: main, commit: ${'c'.repeat(40)}, tree: ${'d'.repeat(40)}, version: 0.0.0+ccccccc, autoUpdate: "off" }`;
+    const lock = (name, sets) => write(`${name}/toolkit.lock`, ['lock_version: 1', 'entries:', `  - { name: promptbook, layer: L3, kind: promptbook, source: ${ROOT}, ref: main, commit: ${'a'.repeat(40)}, tree: ${'b'.repeat(40)}, version: 0.1.0, autoUpdate: "off" }`, entry(sets), ''].join('\n'));
+    const r = budgetSet(lock('everyday', 'everyday'));
+    assert.deepEqual(r.skills.map((x) => x.name).sort(), ['checking-widgets', 'drafting-widgets']);
+    assert.deepEqual(budgetSet(lock('both', 'everyday, shipping')).skills.length, 4);
+    const bad = budgetSet(lock('unknown', 'everyday, nightly'));
+    assert.ok(bad.findings.some((f) => f.rule === 'budget-set-sets' && /no set nightly/.test(f.message)), JSON.stringify(bad.findings));
+  });
+
   it('the CLI runs only the budget check when no folder is given; a missing folder fails; a missing file is a usage error', () => {
     const over = write('over.txt', `${HEAVY}\n${GOOD}\n`);
     const r = cli('--budget-set', over);

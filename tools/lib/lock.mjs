@@ -24,7 +24,7 @@ import { registry as sharedRegistry } from './registry.mjs';
 //           verified by its commit and tree alone (a warning, ref-absent).
 
 export const GENERATOR = 'promptbook/lock@1.0.0';
-const KEY_ORDER = ['name', 'layer', 'kind', 'source', 'path', 'ref', 'commit', 'tree', 'version', 'autoUpdate', 'mirrored'];
+const KEY_ORDER = ['name', 'layer', 'kind', 'source', 'path', 'sets', 'ref', 'commit', 'tree', 'version', 'autoUpdate', 'mirrored'];
 const SHA = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const TAG_VERSION = /(?:^|[/-])v?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)$/;
 

@@ -84,10 +84,25 @@
           "description": "The source is a mirror of an upstream; the upstream it tracks.",
           "type": "string",
           "pattern": "^https://[^\\s]+$"
+        },
+        "sets": {
+          "description": "A skill library's install sets this consumer copies into its skills folders, by the names in the library's SETS.yaml (Skilldex's: planning, delivery, personal, ...).",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/slug" }
         }
       },
       "patternProperties": { "^x-": {} },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "x-rule": "sets-on-skill-library",
+          "description": "Only a skill library has install sets.",
+          "if": { "required": ["sets"] },
+          "then": { "required": ["kind"], "properties": { "kind": { "const": "skill-library" } } }
+        }
+      ]
     }
   }
 }
