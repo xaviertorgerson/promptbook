@@ -3,7 +3,7 @@
   "$id": "https://promptbook.dev/schemas/governance.schema.json",
   "title": "Governance",
   "description": "A project's recorded trust profile: which changes may land on green required checks and an independent verdict without a human's approval of the pull request (workflow.yaml auto-land), and which always wait for one. A human chooses it, records why in an ADR with its reversal trigger, and changes it only by a commit to a protected path (authority.yaml never_grantable: change-policy). A project without one lands nothing without a human's approval. In every profile the spec is a human's to approve, an agent never approves its own work or bypasses a required check, and production is a human's release.",
-  "x-version": "1.0.0",
+  "x-version": "1.1.0",
   "x-artifacts": [
     { "format": "yaml", "paths": ["governance.yaml"], "suffixes": [".governance.yaml", ".governance.yml"] }
   ],

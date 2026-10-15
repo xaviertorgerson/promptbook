@@ -132,12 +132,15 @@ export function fieldBullets(lines, mask = fenceMask(lines)) {
 
 // "**Label:** value" paragraphs (DECISIONS.md style): a field runs until the next known label line.
 // Unknown bold labels without a colon inside the bold (**Measured** (…)) are part of the value.
-export function boldFields(lines, mask = fenceMask(lines)) {
+// "**Label:** value" lines; "**Label.** value" too when the label is one of periodLabels (normalized),
+// so a bold sentence opening a paragraph is not read as a field.
+export function boldFields(lines, mask = fenceMask(lines), { periodLabels = new Set() } = {}) {
   const out = [];
   let cur = null;
   lines.forEach((line, i) => {
     if (mask[i]) { if (cur) cur.raw.push(line); return; }
-    const m = line.match(/^\*\*([A-Z][A-Za-z ()/-]*?):\*\*\s*(.*)$/);
+    const period = line.match(/^\*\*([A-Z][A-Za-z ()/-]*?)\.\*\*\s*(.*)$/);
+    const m = line.match(/^\*\*([A-Z][A-Za-z ()/-]*?):\*\*\s*(.*)$/) ?? (period && periodLabels.has(normLabel(period[1])) ? period : null);
     if (m) {
       cur = { label: m[1].trim(), raw: [m[2]], index: i };
       out.push(cur);

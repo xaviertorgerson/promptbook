@@ -3,7 +3,7 @@
   "$id": "https://promptbook.dev/schemas/common.schema.json",
   "title": "Shared definitions",
   "description": "Ids, dates, references and status vocabularies every contract shares. Not an artifact itself.",
-  "x-version": "1.4.0",
+  "x-version": "1.5.0",
   "$defs": {
     "nonEmptyString": { "type": "string", "minLength": 1 },
     "slug": {
@@ -66,7 +66,7 @@
     },
     "personaId": { "type": "string", "pattern": "^PER-[1-9][0-9]*$" },
     "uxId": { "type": "string", "pattern": "^UX-[1-9][0-9]*$" },
-    "adrId": { "type": "string", "pattern": "^ADR-[0-9]{4}$" },
+    "adrId": { "description": "A decision id: ADR-NNNN, or D-NNN as a decision log numbers its entries (1.5.0).", "type": "string", "pattern": "^(?:ADR-[0-9]{4}|D-[0-9]{3,4})$" },
     "grantId": { "type": "string", "pattern": "^GRANT-[1-9][0-9]*$" },
     "taskStatus": {
       "description": "Workflow status of a task; the kanban column. Mirrors state-machines/workflow.yaml (task machine).",

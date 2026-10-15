@@ -219,8 +219,11 @@ With `hooks.forbid_guard`, the Claude and Codex outputs also carry `hooks/forbid
 of `tools/guards/forbid-guard.mjs`, Node builtins only) and `hooks/forbid.json` (the command forbids,
 and unattended the command asks), registered as a `PreToolUse` hook for the shell tool (Claude in
 `settings.json`, Codex in `hooks.json`). The guard splits the command as a shell would (compound
-commands, substitutions, `sh -c`, wrappers, a program by path) and exits 2 on a match; it fails
-closed on input it cannot read. A `flags_anywhere` forbid compiles to prefix and anywhere rules on
+commands, substitutions, `sh -c`, wrappers, a program by path) and exits 2 on a match, and on a
+command that names a path one of the policy's `deny_read` globs matches (`forbid.json` `read_deny`):
+the backstop for Claude Code's sandbox on Linux, which ignores glob patterns, where the compile also
+writes each expandable glob's literal paths into `sandbox.filesystem.denyRead` and warns
+`sandbox-glob-unexpanded` for the rest. It fails closed on input it cannot read. A `flags_anywhere` forbid compiles to prefix and anywhere rules on
 Claude and to its prefix form on Codex and Gemini, where the rest is the guard's (Codex) or a
 `forbid` gap.
 

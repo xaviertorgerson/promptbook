@@ -61,6 +61,7 @@
     "filesystem": {
       "denyRead": [
         "~/.ssh/**",
+        "~/.ssh",
         "/etc/shadow"
       ],
       "allowWrite": [

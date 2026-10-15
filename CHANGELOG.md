@@ -10,6 +10,43 @@ Contract versions are each schema's `x-version` and each state machine's `versio
 
 ## [Unreleased]
 
+### Read denies where the sandbox ignores globs
+
+#### Changed
+
+- **behavioral** — `compile-policy` and the forbid guard hold read denies where Claude Code's
+  sandbox on Linux ignores glob patterns (`claude doctor` 2.1.300: "On Linux, glob patterns in
+  Edit/Read rules will be ignored"). The Read tool's deny keeps each glob; the sandbox's
+  `denyRead` also gets the literal paths a glob expands to (a `dir/**` its directory, a key-name
+  glob the usual key files it matches, `~/.ssh/*_ed25519` → `~/.ssh/id_ed25519`); a
+  `sandbox-glob-unexpanded` warning names every pattern no literal covers in full and every write
+  glob; and the guard (`hooks.forbid_guard`) denies a shell command that names a read-denied path
+  (`cat .env`, `cat ~/.ssh/id_ed25519`, `< config/.env`, `--env-file=.env`), never a near miss
+  (`cat .env.example`, `cat ~/.ssh/id_ed25519.pub`, `ls ~/.ssh`).
+
+### Adopting an existing repository
+
+What running `trace` over an older project (heirloom) showed: a test named inside its describe, and a
+decision log that is not in the ADR form, were invisible.
+
+#### Fixed
+
+- **behavioral** — `trace` reads a test's full name as the runner reports it: JS/TS `it`/`test`
+  titles joined with every enclosing `describe` (Playwright's `test.describe` too), and pytest's
+  functions under their classes with their parametrize ids, so `it('AC-3 …')` inside
+  `describe('BOOK-12 …')` counts for BOOK-12 AC-3; a flat name reads as before. A member call such
+  as `regex.test("…")` is no longer a test name. On heirloom, `criterion-named-in-test` falls from
+  401 to 291 and `ambiguous-criterion-id` from 144 to 125.
+- **additive** — decision 1.3.0 (with common 1.5.0, requirement 1.3.0 and governance 1.1.0): a
+  decision id is `ADR-NNNN` or a decision log's `D-NNN`, and an entry with no `**Status:**` line is
+  `form: prose`, needing only its id, title, status and decision: in force unless its heading or a
+  line says "superseded by <id>". heirloom's 156 `### D-NNN` decisions validate as written.
+- **behavioral** — The decision parser reads entries at any heading level, labels written
+  `**Context.**` as well as `**Context:**` (for the labels it maps), `**Trigger that reverses it:**`
+  as the reversal trigger, and the date a Status line states when there is no Date line; a Status
+  line's "supersedes ADR-0007" fills `supersedes_ids` instead of being read as superseded by it.
+  `trace` checks `DECISIONS.md#D-NNN` anchors like `#ADR-NNNN` ones.
+
 ### Final pass
 
 Trust profiles, a standards block that holds in every profile, and the contracts adapted to the

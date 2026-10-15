@@ -574,12 +574,56 @@ describe('trace graph', () => {
       assert.deepEqual(by(r, 'ambiguous-criterion-id'), [], 'a qualified name is never ambiguous');
     });
 
+    it('a name is the runner\'s full name: a bare AC-n inside a describe that names the task counts for that task', () => {
+      const r = run("describe('INV-2 listing', () => {\n  it('AC-1 lists newest first', () => {});\n});\ndescribe('download (INV-1)', () => {\n  describe('tenancy', () => {\n    it('AC-2 returns 404 for another tenant', () => {});\n  });\n  it('AC-1 returns the PDF', () => {});\n});\n");
+      assert.deepEqual(ev(r), { 'INV-1 AC-1': 'qualified', 'INV-1 AC-2': 'qualified', 'INV-2 AC-1': 'qualified' });
+      assert.deepEqual(by(r, 'criterion-named-in-test'), []);
+      assert.deepEqual(by(r, 'ambiguous-criterion-id'), [], 'each AC-1 is qualified by its describe');
+      const flat = run("describe('listing', () => {\n  it('AC-1 lists newest first', () => {});\n});\nit('INV-1 AC-2 returns 404', () => {});\n");
+      assert.deepEqual(ev(flat), { 'INV-1 AC-1': 'ambiguous', 'INV-1 AC-2': 'qualified', 'INV-2 AC-1': 'ambiguous' }, 'a describe that names no task qualifies nothing');
+    });
+
+    it('a member call such as regex.test("…") is no test name', () => {
+      const r = run("it('INV-1 AC-1 returns the PDF', () => {\n  expect(/AC-2/.test('AC-2 404')).toBe(true);\n});\nit('INV-2 AC-1 lists newest first', () => {});\n");
+      assert.equal(ev(r)['INV-1 AC-2'], 'none');
+    });
+
     it('a bare id counts when exactly one task of the epic has it', () => {
       const r = run("it('INV-1 AC-1 returns the PDF', () => {});\nit('INV-2 AC-1 lists newest first', () => {});\nit('AC-2 returns 404', () => {});\n");
       assert.deepEqual(ev(r), { 'INV-1 AC-1': 'qualified', 'INV-1 AC-2': 'bare', 'INV-2 AC-1': 'qualified' });
       assert.deepEqual(r.epics[0].coverage.criteria, { covered: 3, total: 3 });
       assert.deepEqual(by(r, 'criterion-named-in-test'), []);
       assert.deepEqual(by(r, 'ambiguous-criterion-id'), []);
+    });
+  });
+
+  describe('a decision log: D-NNN entries at any heading level, prose or labelled', () => {
+    const log = '\n## Decision log\n\n### D-001 — Invoices are rendered PDFs\nThe rendered PDF is the legal artifact.\n\n### D-002 — A4 paper everywhere (superseded by D-003)\nOne page size.\n\n### D-003 — Letter for US households\n**Status:** accepted · 2026-10-12 · supersedes D-002\n\n**Context.** US households print on Letter.\n\n**Decision.** Letter in the US, A4 elsewhere.\n\n**Consequences.** Two page sizes.\n';
+    const withLog = (docs) => project('complete', {
+      'DECISIONS.md': (t) => `${t}${log}`,
+      'specs/invoicing/tasks/INV-1.md': (t) => t.replace('  - DECISIONS.md#ADR-0001\n', `  - DECISIONS.md#ADR-0001\n${docs.map((d) => `  - DECISIONS.md#${d}\n`).join('')}`),
+    });
+
+    it('parses each entry: prose is in force unless its words say superseded; a Status line dates a labelled one', () => {
+      const r = validateFile(path.join(withLog([]), 'DECISIONS.md'));
+      assert.equal(r.status, 'PASS', JSON.stringify(errorsOf(r)));
+      const { records } = PARSERS.decisions(fs.readFileSync(path.join(withLog([]), 'DECISIONS.md'), 'utf8'));
+      const d = Object.fromEntries(records.map((x) => [x.data.id, x.data]));
+      assert.deepEqual(Object.keys(d), ['ADR-0001', 'D-001', 'D-002', 'D-003']);
+      assert.deepEqual([d['D-001'].form, d['D-001'].status, d['D-001'].decision], ['prose', 'accepted', 'The rendered PDF is the legal artifact.']);
+      assert.deepEqual([d['D-002'].status, d['D-002'].superseded_by], ['superseded', ['D-003']]);
+      assert.equal(d['D-003'].form, undefined, 'a Status line makes it the ADR form');
+      assert.deepEqual([d['D-003'].status, d['D-003'].date, d['D-003'].decision, d['D-003'].supersedes_ids], ['accepted', '2026-10-12', 'Letter in the US, A4 elsewhere.', ['D-002']]);
+      assert.equal(d['D-003'].context, 'US households print on Letter.');
+    });
+
+    it('trace sees them: a task citing a superseded one is warned, one citing a missing one is an error', () => {
+      const r = trace(withLog(['D-001', 'D-002', 'D-009']));
+      const by = (rule) => r.gaps.filter((g) => g.rule === rule).map((g) => g.message);
+      assert.deepEqual(by('artifact-valid'), []);
+      assert.ok(by('cites-current-decision').some((m) => /INV-1 reads D-002, which is superseded by D-003/.test(m)), JSON.stringify(by('cites-current-decision')));
+      assert.ok(by('decision-exists').some((m) => /D-009 is not in DECISIONS\.md/.test(m)), JSON.stringify(by('decision-exists')));
+      assert.ok(!by('decision-exists').some((m) => /D-001|D-002/.test(m)));
     });
   });
 

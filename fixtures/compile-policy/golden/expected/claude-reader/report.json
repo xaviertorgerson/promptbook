@@ -6,6 +6,14 @@
       "message": "allow write ** dropped on claude: the read-only tier never writes"
     },
     {
+      "rule": "sandbox-glob-unexpanded",
+      "message": "Claude Code's sandbox on Linux ignores glob patterns in Edit rules too: forbid write **/.git/hooks/** binds the Edit and Write tools, not a sandboxed command there; list the paths it means to protect by name"
+    },
+    {
+      "rule": "sandbox-glob-unexpanded",
+      "message": "Claude Code's sandbox on Linux ignores glob patterns, and no literal path covers **/.env; **/secrets/**: sandboxed commands there can read a file these name. The Read tool's deny holds; the forbid guard denies a shell command that names such a path, and listing the files by path in deny_read makes the sandbox hold them"
+    },
+    {
       "rule": "egress-prompts",
       "message": "WebFetch outside allow_domains prompts a human instead of being denied; the sandbox allowlist binds shell commands only"
     }

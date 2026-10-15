@@ -2,15 +2,19 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://promptbook.dev/schemas/decision.schema.json",
   "title": "Decision (ADR)",
-  "description": "One '## ADR-NNNN: title' entry of DECISIONS.md, normalized from its '**Field:** value' lines (CONTRACTS.md, Normalization). Immutable once accepted; corrected by a superseding ADR.",
-  "x-version": "1.2.0",
+  "description": "One entry of DECISIONS.md: a heading 'ADR-NNNN: title' or 'D-NNN — title' at any level, normalized from its '**Field:** value' lines (CONTRACTS.md, Normalization), or, for a decision log written in prose, from its heading and paragraphs (form: prose). Immutable once accepted; corrected by a superseding decision.",
+  "x-version": "1.3.0",
   "x-artifacts": [
     { "format": "markdown-entries", "parser": "decisions", "paths": ["DECISIONS.md", "docs/adr/*.md"], "suffixes": [".adr.md"] }
   ],
   "type": "object",
-  "required": ["id", "title", "status", "status_text", "decision", "consequences"],
+  "required": ["id", "title", "status", "decision"],
   "properties": {
     "id": { "$ref": "common.schema.json#/$defs/adrId" },
+    "form": {
+      "description": "prose: a decision-log entry with no Status line (1.3.0). Its decision is its Decision paragraph or else its text, and its status is what its own words say: superseded when its heading or a line says 'superseded by <id>', else accepted. Absent: the ADR form, whose fields are required.",
+      "const": "prose"
+    },
     "title": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
     "status": {
       "description": "The first word of the Status line, lowercased.",
@@ -76,17 +80,26 @@
   "additionalProperties": false,
   "allOf": [
     {
+      "description": "The ADR form names its status line and consequences; a prose entry has neither.",
+      "if": { "not": { "required": ["form"] } },
+      "then": { "required": ["status_text", "consequences"] }
+    },
+    {
       "x-rule": "missing-why",
-      "description": "An ADR says why: a Why line, or a Context line (the Nygard form).",
-      "anyOf": [{ "required": ["why"] }, { "required": ["context"] }]
+      "description": "An ADR says why: a Why line, or a Context line (the Nygard form). A prose entry says it in its text.",
+      "if": { "not": { "required": ["form"] } },
+      "then": { "anyOf": [{ "required": ["why"] }, { "required": ["context"] }] }
     },
     {
       "x-rule": "decision-is-dated",
-      "description": "A date is required unless the template still holds its placeholder (TODO(domain)), which bootstrap fills.",
-      "anyOf": [
-        { "required": ["date"] },
-        { "required": ["placeholders"], "properties": { "placeholders": { "contains": { "const": "date" } } } }
-      ]
+      "description": "A date is required unless the template still holds its placeholder (TODO(domain)), which bootstrap fills. A prose entry is dated by its commit.",
+      "if": { "not": { "required": ["form"] } },
+      "then": {
+        "anyOf": [
+          { "required": ["date"] },
+          { "required": ["placeholders"], "properties": { "placeholders": { "contains": { "const": "date" } } } }
+        ]
+      }
     },
     {
       "x-rule": "superseded-names-successor",

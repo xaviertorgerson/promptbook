@@ -39,5 +39,12 @@
       ],
       "reason": "volumes hold the only copy of local data"
     }
+  ],
+  "read_deny": [
+    "**/.env",
+    "**/.env.*",
+    "**/secrets/**",
+    "~/.ssh/**",
+    "~/.config/shell/secrets.sh"
   ]
 }
