@@ -44,6 +44,8 @@ describe('harness CLI', () => {
     assert.equal(harness('compile-policy', 'fixtures/compile-policy/golden/agent-policy.yaml', '--profile', 'ci', '--engine', 'claude').status, 0);
     assert.equal(harness('eval-routing', 'fixtures/lint/good/skills').status, 0);
     assert.equal(harness('lock', '--lock', path.join(TMP, 'none.lock')).status, 2);
+    assert.equal(harness('report', 'fixtures/report/project').status, 0);
+    assert.equal(harness('report', 'fixtures/report').status, 1);
     for (const cmd of Object.keys(COMMANDS)) assert.equal(harness(cmd, '--help').status, 0, `${cmd} --help`);
   });
 });

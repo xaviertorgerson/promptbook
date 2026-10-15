@@ -89,6 +89,10 @@ Fixes from an independent review of 0.1.0 (workflow, authority, trace, simulator
 
 ### Added
 
+- **additive** — `harness report [file|dir]... [--since <date>] [--json]`: totals run records per
+  task, per role and overall (runs, outcomes, turns, cost, input and output tokens, cache hit rate,
+  denied calls) and lists the three most expensive runs; each line is validated first, and an
+  invalid one is skipped and listed, never counted.
 - **additive** — run-record 1.3.0: optional `usage` (`input`, `output`, `cache_read`,
   `cache_write`; null when the result reported none), whole tokens over every model the run called,
   as agentic-template's loop now records them from the result's `modelUsage`; rule

@@ -69,7 +69,7 @@ reaches, and stays out until its trigger holds.
 |---|---|---|
 | Practice | `standards/engineering.md`; the playbook pages you cite | — |
 | Contracts | task, epic, decision, readiness-report; brief, persona, journey, requirement and ux-flow when a product is planned (without a brief the trace check runs as legacy adoption); policy and toolkit-lock; return and run-record; skill and evidence | grant and task-record: a coordinator runs several agents under delegated authority. harness-review and reflection-report: there are runs to review |
-| Tools | `validate` (with `trace` and `--readiness --check`), `lint`, `compile-policy`, `lock` | `simulate`: changing the state machines, or checking a runtime's supervisor. `grant`: grants are in use. `eval-routing`: a description changes. `import-evals`: once, migrating an agentic-template project |
+| Tools | `validate` (with `trace` and `--readiness --check`), `lint`, `compile-policy`, `lock` | `simulate`: changing the state machines, or checking a runtime's supervisor. `grant`: grants are in use. `eval-routing`: a description changes. `import-evals`: once, migrating an agentic-template project. `report`: there are run records to read |
 | Skills | the `solo` set of [`skills/SETS.yaml`](skills/SETS.yaml) | the `coordinator` set (several agents at once) and the `maintainer` set (changing the harness itself) |
 | Engines | the adapter of the engine you run | every other adapter; only one engine's permissions are measured (Status) |
 
@@ -108,7 +108,7 @@ to run without you; the reflection and review contracts once there are runs to l
 | `state-machines/` | `workflow`, `attention` and `authority` |
 | `adapters/` | thin, documented mappings to engines, runtimes and CI |
 | `skills/` | portable skills (gerund names, core frontmatter only) with `evals/` |
-| `tools/` | `validate` (and `trace`), `simulate`, `compile-policy`, `run`, `check-requires`, `lock`, `grant`, `lint-skills`, `eval-routing`, `import-evals` (Node 22; [TOOLS.md](TOOLS.md)) |
+| `tools/` | `validate` (and `trace`), `simulate`, `compile-policy`, `run`, `check-requires`, `lock`, `grant`, `lint-skills`, `eval-routing`, `import-evals`, `report` (Node 22; [TOOLS.md](TOOLS.md)) |
 | `tests/`, `fixtures/` | `node --test` suites and valid/invalid examples per contract |
 | [`examples/`](examples/tally/WALKTHROUGH.md) | a worked product run through every contract: Tally, from brief to the human merging its integration branch |
 | `CHANGELOG.md` | every change, marked additive, behavioral or breaking |

@@ -23,6 +23,7 @@
     "grant": "node tools/grant.mjs",
     "eval-routing": "node tools/eval-routing.mjs",
     "import-evals": "node tools/import-evals.mjs",
+    "report": "node tools/report.mjs",
     "test": "node --test \"tests/**/*.test.mjs\""
   },
   "dependencies": {
