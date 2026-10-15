@@ -1,0 +1,20 @@
+# A grant recorded from the human's words alone, as a coordinator in an interactive runtime writes
+# it: the human named an outcome and when to stop, but no end date and no spend limit (the panes
+# report no spend). The stop conditions and revocation bound it; nothing was invented to fill the
+# other limits.
+id: GRANT-4
+granted_by: maria
+granted_to: { role: orchestrator, runtime: stagehand }
+granted_at: "2026-10-14T09:00:00Z"
+source: chat transcript 2026-10-14 09:00
+scope:
+  objective: Review and land the open pull requests of the rating-engine epic
+  repositories: [acme/billing]
+  epics: [rating-engine]
+actions:
+  - select-tasks
+  - { action: dispose-findings, policy: "Fix material in-scope findings; file the rest as follow-ups" }
+limits:
+  max_workers: 2
+  stop_when: [every open pull request of the epic is ready for human review, a finding needs a product decision]
+revocable: true

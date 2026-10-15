@@ -262,7 +262,7 @@ tokens and cache hit rate beside it (`promptbook report`, TOOLS.md).
 ### grant
 
 **Purpose.** A human delegating named decisions to a coordinator for a named scope, within limits,
-until an expiry (`state-machines/authority.yaml`). **Schema** `grant.schema.json` 2.0.0: `id`,
+until an expiry or a stop condition (`state-machines/authority.yaml`). **Schema** `grant.schema.json` 2.1.0: `id`,
 `granted_by`, `granted_to{role, agent, runtime}`, `granted_at`, `source`, `scope{objective,
 repositories, epics, tasks, requirements, non_goals}`, `actions[]`, `limits{max_workers, budget,
 stop_when}`, `expires_at`, `revocable: true`, `revoked_at/by/reason`, `narrowed[]` (structured:
@@ -270,6 +270,10 @@ stop_when}`, `expires_at`, `revocable: true`, `revoked_at/by/reason`, `narrowed[
 `select-tasks`, `approve-plan`, `dispose-findings` (with a `policy`), `finalize`, `publish-review`,
 and `merge{repo, target, protected_branch, strategy, requires}` where `requires` must include
 `independent-review` and `required-checks`; only an orchestrator or the merge role may hold merge.
+No grant is open-ended (`grant-is-bounded`): it names `expires_at` and `limits.budget`, or a
+non-empty `limits.stop_when`, and then may omit both (2.1.0): a coordinator records only what the
+human said, and an interactive runtime reports no spend, so such a grant is bounded by its stop
+conditions and by revocation. A grant with neither an expiry nor a stop condition is invalid.
 2.0.0 (breaking): `protected_branch` is required and `target` may not equal it
 (`merge-target-not-protected`): a merge grant lands on an epic's integration branch at most, and
 the protected branch is reached only by the merge role after a human's approval or by a human's
@@ -277,7 +281,8 @@ merge of the integration branch (workflow `land` is never grantable; `promote` i
 status field).** A grant's state is read from the record, never stored in it: *where* it is (the
 project's `.orchestrator/grants/GRANT-n.yaml`; it applies to that project only and is never moved or
 deleted, so the audit trail stays), its *dates* (`pending` before `granted_at`, `live` until
-`expires_at`, exclusive, then `expired`), its *revocation* (`revoked` from `revoked_at`, with
+`expires_at`, exclusive, then `expired`; a grant with no expiry stays live until a stop condition
+holds, which only its coordinator can tell, or it is revoked), its *revocation* (`revoked` from `revoked_at`, with
 `revoked_by` and `revocation_reason`; it wins over expiry), its *narrowing* (`narrowed[]`, append-only;
 the issued fields never change, and the grant in force is the issue minus every entry; an entry
 only removes what the grant holds, only lowers limits and the expiry and never empties a scope list,
@@ -288,15 +293,16 @@ never live; `promptbook grant verify <file> --git` checks the owners, the last c
 issued fields against the issuing commit, append-only narrowing and a source commit), and its
 *recorded uses* (every task record, run record and orchestrator
 commit that names its id). A coordinator derives the state before each delegated action
-(`authority.yaml` lifecycle.validity); the simulator's `grantState()` and `tools/lib/grant.mjs` `effectiveGrant()` are the reference. A coordinator
+(`authority.yaml` lifecycle.validity); `grantState()` and `effectiveGrant()` in `tools/lib/grant.mjs` are the reference. A coordinator
 may hold several grants (a work grant and a merge grant, revocable alone): each action is exercised
 under the grant that delegates it, and the workers cap is the smallest `max_workers` among the live
 grants that dispatch work, so a merge-only grant's `max_workers` bounds its merges, not the epic's
 workers (`authority.yaml` lifecycle.limits, since 1.2.0). **Swap story.** Lets a
 coordinator (stagehand, a CI orchestrator, a future agent) stand in for named human decisions with an
 auditable, expiring record instead of a remembered chat line. **Compat.** stagehand's
-project-delegation grants map field by field ([adapters/herdr](adapters/herdr/README.md)); the
-promptbook adds a mandatory expiry.
+project-delegation grants map field by field ([adapters/herdr](adapters/herdr/README.md)); a
+grant bounded only by its stop conditions validates, so stagehand records an expiry or a budget
+only when the human states one.
 
 ### policy
 

@@ -6,7 +6,7 @@ import path from 'node:path';
 import { after, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { stringify } from 'yaml';
-import { effectiveGrant, narrowingFindings } from '../tools/lib/grant.mjs';
+import { effectiveGrant, grantState, narrowingFindings } from '../tools/lib/grant.mjs';
 import { verifyGrant } from '../tools/lib/grant-verify.mjs';
 import { grantHas } from '../tools/lib/sim/authority.mjs';
 
@@ -128,5 +128,20 @@ describe('grant verify', () => {
     assert.equal(cli('verify', 'fixtures/invalid/grant/narrowing-only-narrows.yaml', '--owners', 'maria').status, 1);
     assert.equal(cli('verify').status, 2);
     assert.equal(cli('frobnicate', 'x.yaml').status, 2);
+  });
+
+  it('a grant bounded by stop conditions alone has no expiry and stays live until revoked', () => {
+    const r = repo();
+    const { expires_at: _, ...open } = base();
+    const bounded = { ...open, limits: { max_workers: 2, stop_when: ['every open pull request is ready for human review'] } };
+    const file = r.write(bounded);
+    r.commit('maria', 'grant GRANT-1');
+    assert.deepEqual(rules(verifyGrant(file, { git: true })), []);
+    assert.equal(grantState(bounded, Date.parse('2027-06-01T00:00:00Z')), 'live', 'no expiry: live until revoked or a stop condition holds');
+    assert.equal(grantState({ ...bounded, revoked_at: '2026-10-04T09:00:00Z', revoked_by: 'maria' }, Date.parse('2026-10-05T00:00:00Z')), 'revoked');
+    const narrowing = { ...bounded, narrowed: [{ at: '2026-10-03T10:00:00Z', by: 'maria', reduce_limits: { budget: { max_usd: 5 }, expires_at: '2026-10-10T00:00:00Z' } }] };
+    assert.deepEqual(narrowingFindings(narrowing), [], 'setting a limit the grant did not have narrows it');
+    const g = effectiveGrant(narrowing);
+    assert.deepEqual([g.limits.budget, g.expires_at], [{ max_usd: 5 }, '2026-10-10T00:00:00Z'], 'a narrowing can add the expiry and budget an open grant lacked');
   });
 });
