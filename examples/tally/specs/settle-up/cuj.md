@@ -4,7 +4,7 @@ epic: settle-up
 
 # Critical user journeys — Settle up
 
-<!-- From skills/mapping-journeys/references/cuj-template.md. Fictional sample data. -->
+<!-- From Skilldex skills/mapping-journeys/assets/cuj-template.cuj.md. Fictional sample data. -->
 
 ## CUJ-1 · An organiser logs a shared bill
 - **Actor:** the organiser (PER-1)

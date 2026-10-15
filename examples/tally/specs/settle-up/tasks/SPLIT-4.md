@@ -35,7 +35,7 @@ sessions:
 
 # SPLIT-4 · Revoke a household link
 
-<!-- From skills/planning-work/references/task-template.md. Fictional sample data. -->
+<!-- From Skilldex skills/planning-work/assets/task-template.task.md. Fictional sample data. -->
 
 ## Context
 The organiser revokes a link (`DELETE /links/{id}`) and anyone holding it sees UX-2's Link revoked

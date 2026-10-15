@@ -1,8 +1,12 @@
-# Tally's lock (L2): promptbook every artifact here is validated against, and the portable skill
-# library its agents load beside promptbook's own skills. `promptbook lock --check` verifies both pins.
-# Promptbook is this repository itself (a local source, relative to this file) at the main commit
-# the example was written against. A real product also pins its stack pack (L4, ADR-0002); the
-# example leaves it out so the check needs nothing beyond this repository and one public source.
+# Tally's lock (L2), as a stagecraft project keeps one: promptbook, the formats every artifact here
+# is validated against and the tools that check them, and Skilldex, the skill library its agents
+# load, with the install sets the project copies into .agents/skills/ and .claude/skills/.
+# `promptbook lock --check` verifies both pins. promptbook is this repository itself (a local
+# source, relative to this file) at the main commit the example was written against. Skilldex is
+# pinned at its main commit; the skills the walkthrough names arrive there with the suite library
+# (Skilldex feat/suite-skill-library), and the pin moves to that merge in a reviewed bump. A real
+# product also pins its stagecraft set (L4, ADR-0002); the example leaves it out so the check needs
+# nothing beyond this repository and one public source.
 lock_version: 1
 generated_at: 2026-10-13T21:07:41Z
 generated_by: promptbook/lock@1.0.0
@@ -21,6 +25,7 @@ entries:
     kind: skill-library
     source: https://github.com/QuentinTorg/skilldex
     path: skills
+    sets: [planning, delivery]
     ref: main
     commit: fc572b66df2f565da2bd728e9fca7f88be475e31
     tree: 19aae71ad3c64e08bb4a89900e4114c7ee6a47c0

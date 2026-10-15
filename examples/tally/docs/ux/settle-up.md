@@ -5,7 +5,7 @@ prototype: docs/ux/prototypes/settle-up/index.html
 
 # UX — Settle up
 
-<!-- From skills/designing-flows/references/ux-template.md. Fictional sample data. -->
+<!-- From Skilldex skills/designing-flows/assets/ux-template.ux.md. Fictional sample data. -->
 
 ## Screens
 - **Bills** — reached from the household home; the month's bills and balances

@@ -39,7 +39,7 @@ sessions:
 
 # SPLIT-1 · Walking skeleton: one household's bill, read only through its link
 
-<!-- From skills/planning-work/references/skeleton-task-template.md. Fictional sample data. -->
+<!-- From Skilldex skills/planning-work/assets/skeleton-task-template.task.md. Fictional sample data. -->
 
 ## Context
 Tests the riskiest assumption (A3: link access can keep households apart) and the one-way ADR-0001

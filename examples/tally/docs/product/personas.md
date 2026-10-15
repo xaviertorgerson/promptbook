@@ -1,6 +1,6 @@
 # Personas
 
-<!-- From skills/defining-personas/references/personas-template.md. Fictional sample data. -->
+<!-- From Skilldex skills/defining-personas/assets/personas-template.persona.md. Fictional sample data. -->
 
 ## PER-1 · Organiser
 - **Role:** logs the household's shared bills and closes each month

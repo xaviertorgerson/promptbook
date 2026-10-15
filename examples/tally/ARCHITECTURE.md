@@ -1,6 +1,6 @@
 # Architecture — Tally
 
-<!-- From skills/choosing-architecture/references/architecture-template.md. Fictional sample data. -->
+<!-- From Skilldex skills/choosing-architecture/assets/architecture-template.md. Fictional sample data. -->
 
 ## Quality attributes (ranked)
 

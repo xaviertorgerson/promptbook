@@ -8,7 +8,7 @@ each step, and the commands that validate, trace and simulate it.
 | Path | Contract or role |
 |---|---|
 | `docs/product/`, `specs/settle-up/`, `docs/ux/`, `DECISIONS.md`, `ARCHITECTURE.md`, `tests/` | the plan: brief, personas, journeys, requirements, UX flows, ADRs, tasks, readiness, test names |
-| `toolkit.lock` | the pinned promptbook and skill library |
+| `toolkit.lock` | the pinned promptbook and Skilldex, with the install sets the project copies |
 | `_operator/` | the operator's L1 policy and its compiled settings (copied from dotfiles) |
 | `.orchestrator/` | grants and task records (runtime state, committed for the example) |
 | `.agent/` | run records, returns, verdicts and reads |

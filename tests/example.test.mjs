@@ -39,8 +39,8 @@ const taskFiles = Object.fromEntries(fs.readdirSync(TASK_DIR).map((f) => {
 // Contracts the example exercises. A new contract fails this test until the example uses it or it
 // is listed below with the reason it has no place in a product's files.
 const NOT_IN_A_PRODUCT = {
-  skill: 'Tally has no domain skill; its agents load the pinned promptbook and Skilldex',
-  evidence: 'skill evals live with the skills, in promptbook and Skilldex',
+  skill: 'Tally has no domain skill; its agents load the skills of the Skilldex sets it pins',
+  evidence: 'skill evals live with the skills, in Skilldex',
 };
 
 describe('the worked example: Tally', () => {
@@ -178,6 +178,7 @@ describe('the worked example: Tally', () => {
     }
     assert.equal(r.status, 0, JSON.stringify(res.entries.map((x) => [x.name, x.findings]), null, 2));
     assert.ok(!res.entries.find((x) => x.name === 'promptbook').findings.some((f) => f.severity === 'error'));
+    assert.deepEqual(readLock(lockFile).data.entries.find((e) => e.kind === 'skill-library').sets, ['planning', 'delivery'], 'Skilldex is pinned once, with the sets the project installs');
   });
 
   it('the records tell the walkthrough\'s story: every id resolves, and attention never stood in for status', () => {

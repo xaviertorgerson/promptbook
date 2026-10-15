@@ -11,7 +11,7 @@ links:
 
 # Tally
 
-<!-- From skills/framing-products/references/brief-template.md. Fictional sample data. -->
+<!-- From Skilldex skills/framing-products/assets/brief-template.brief.md. Fictional sample data. -->
 
 ## Problem
 People who share a household cannot see who owes whom without rebuilding a spreadsheet each month.

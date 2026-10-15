@@ -38,7 +38,7 @@ sessions:
 
 # SPLIT-2 · Save a bill exactly once
 
-<!-- From skills/planning-work/references/task-template.md. Fictional sample data. -->
+<!-- From Skilldex skills/planning-work/assets/task-template.task.md. Fictional sample data. -->
 
 ## Context
 The save path of CUJ-1 (UX-1): a double tap or a retry on a slow network must not store a bill
