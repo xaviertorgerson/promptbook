@@ -10,6 +10,9 @@ import { budgetSet, isGerundName, jaccard, lintSkills, markdownLinks, parseScena
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FIX = path.join(ROOT, 'fixtures/lint');
 const GOOD = path.join(FIX, 'good/skills');
+// What loads beside the good library (its SETS.yaml external): a copy outside the library's layout
+// names them with --known.
+const NEIGHBOURS = ['reviewing-code', 'preparing-pull-requests'];
 const TMP = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'promptbook-lint-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
@@ -52,7 +55,7 @@ describe('lint-skills', () => {
 
   for (const rule of cases) {
     it(`broken: ${rule}`, () => {
-      const r = lintSkills([overlay(rule)]);
+      const r = lintSkills([overlay(rule)], { known: NEIGHBOURS });
       if (rule === 'description-overlap') {
         const o = r.overlaps.find((x) => [x.a, x.b].sort().join() === 'drafting-widgets,sketching-widgets');
         assert.ok(o, `no overlap named; got ${JSON.stringify(r.overlaps)}`);
@@ -108,10 +111,15 @@ describe('lint-skills', () => {
     assert.ok(rules(r, 'warning').has('body-length'));
   });
 
-  it('accepts a near-miss routed to a pinned external skill or to --known', () => {
+  it('accepts a near-miss routed to what loads beside: a SETS.yaml external, the --sets library, or --known', () => {
     assert.ok(fs.readFileSync(path.join(GOOD, 'drafting-widgets/evals/routing.jsonl'), 'utf8').includes('"route_to":"reviewing-code"'));
-    const r = lintSkills([overlay('route-to-known')], { known: ['releasing-gizmos'] });
-    assert.ok(!rules(r, 'error').has('route-to-known'));
+    assert.deepEqual(lintSkills([GOOD]).counts.error, 0, 'the library\'s own SETS.yaml names reviewing-code as an external');
+    assert.deepEqual(lintSkills([path.join(GOOD, 'drafting-widgets')]).counts.error, 0, 'one skill of the library knows its library\'s externals');
+    const copy = overlay('route-to-known');
+    assert.ok(rules(lintSkills([copy]), 'error').has('route-to-known'), 'a copy outside the library knows neither');
+    assert.ok(!rules(lintSkills([copy], { known: [...NEIGHBOURS, 'releasing-gizmos'] }), 'error').has('route-to-known'));
+    const beside = lintSkills([copy], { setsFile: path.join(FIX, 'good/SETS.yaml'), known: ['releasing-gizmos'] });
+    assert.ok(!rules(beside, 'error').has('route-to-known'), 'installed beside the library (--sets): its skills and externals are known');
   });
 
   it('helpers: gerund names, trigger tokens, Jaccard, links, scenarios', () => {
@@ -148,88 +156,92 @@ describe('lint-skills CLI', () => {
 
   it('--strict fails on a warning; --json is machine-readable; a bad flag is a usage error', () => {
     const dir = overlay('description-overlap');
-    assert.equal(cli(dir).status, 0);
-    assert.equal(cli(dir, '--strict').status, 1);
-    const j = JSON.parse(cli(dir, '--json').stdout);
+    const known = ['--known', NEIGHBOURS.join(',')];
+    assert.equal(cli(dir, ...known).status, 0);
+    assert.equal(cli(dir, ...known, '--strict').status, 1);
+    const j = JSON.parse(cli(dir, ...known, '--json').stdout);
     assert.equal(j.overlaps[0].rule, 'description-overlap');
     assert.equal(cli(dir, '--overlap', 'lots').status, 2);
+    assert.equal(cli(dir, '--sets', path.join(TMP, 'no-such-SETS.yaml')).status, 2);
   });
 });
 
 describe('lint --budget-set: the installed set\'s description budget', () => {
   const cli = (...a) => spawnSync(process.execPath, [path.join(ROOT, 'tools/lint-skills.mjs'), ...a], { encoding: 'utf8', cwd: ROOT });
-  const SKILLS = path.join(ROOT, 'skills');
-  const promptbookChars = fs.readdirSync(SKILLS).filter((d) => fs.existsSync(path.join(SKILLS, d, 'SKILL.md'))).reduce((a, d) => a + fs.readFileSync(path.join(SKILLS, d, 'SKILL.md'), 'utf8').match(/^description: (.*)$/m)[1].length, 0);
+  const goodChars = fs.readdirSync(GOOD).reduce((a, d) => a + fs.readFileSync(path.join(GOOD, d, 'SKILL.md'), 'utf8').match(/^description: "?(.*?)"?$/m)[1].length, 0);
   const write = (name, text) => { const f = path.join(TMP, 'sets', name); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, text); return f; };
+  // A library big enough to pass the 8,000-character budget: 24 skills with 350-character descriptions.
+  const HEAVY = path.join(TMP, 'heavy/skills');
+  for (let i = 0; i < 24; i += 1) {
+    const n = `weighing-thing-${String.fromCharCode(97 + i)}`;
+    fs.mkdirSync(path.join(HEAVY, n), { recursive: true });
+    fs.writeFileSync(path.join(HEAVY, n, 'SKILL.md'), `---\nname: ${n}\ndescription: ${'x'.repeat(350)}\n---\n`);
+  }
 
-  it('promptbook alone fits; promptbook plus a library a profile also installs is over, and says so', () => {
-    const alone = budgetSet(write('alone.txt', `${SKILLS}\n`));
-    assert.equal(alone.total, promptbookChars);
-    assert.ok(alone.total <= 8000);
+  it('one library alone fits; that library plus another a profile also installs is over, and says so', () => {
+    const alone = budgetSet(write('alone.txt', `${GOOD}\n`));
+    assert.equal(alone.total, goodChars);
     assert.deepEqual(alone.findings, []);
-    const devbox = budgetSet(write('devbox.yaml', `# what the devbox installs\n- ${SKILLS}\n- ${GOOD}\n- ${path.join(GOOD, 'drafting-widgets')}\n`));
-    assert.equal(devbox.skills.length, 32, 'a skill listed twice counts once');
+    const devbox = budgetSet(write('devbox.yaml', `# what the devbox installs\n- ${HEAVY}\n- ${GOOD}\n- ${path.join(GOOD, 'drafting-widgets')}\n`));
+    assert.equal(devbox.skills.length, 28, 'a skill listed twice counts once');
     assert.ok(devbox.total > 8000, `${devbox.total}`);
     const w = devbox.findings.find((f) => f.rule === 'description-budget');
-    assert.ok(w && w.severity === 'warning' && /32 descriptions total \d+ characters, over the 8000/.test(w.message), JSON.stringify(devbox.findings));
-    assert.match(w.message, /28 from .*skills, 4 from /);
+    assert.ok(w && w.severity === 'warning' && /28 descriptions total \d+ characters, over the 8000/.test(w.message), JSON.stringify(devbox.findings));
+    assert.match(w.message, /24 from .*heavy\/skills, 4 from /);
   });
 
-  it('reads a toolkit.lock: local entries by their path (promptbook by skills/), narrowed by x-skills; a remote one is reported, not guessed', () => {
+  it('reads a toolkit.lock: local entries by their path (or their skills/), narrowed by x-skills; a remote one is reported, not guessed', () => {
     const lock = write('profile/toolkit.lock', [
       'lock_version: 1',
       'entries:',
       `  - { name: promptbook, layer: L3, kind: promptbook, source: ${ROOT}, ref: main, commit: ${'a'.repeat(40)}, tree: ${'b'.repeat(40)}, version: 0.1.0, autoUpdate: "off" }`,
-      `  - { name: widgets, layer: L3, kind: skill-library, source: ${path.join(ROOT, 'fixtures/lint/good')}, path: skills, ref: main, commit: ${'c'.repeat(40)}, tree: ${'d'.repeat(40)}, version: 0.0.0+ccccccc, autoUpdate: "off", x-skills: [drafting-widgets] }`,
+      `  - { name: widgets, layer: L3, kind: skill-library, source: ${path.join(ROOT, 'fixtures/lint/good')}, ref: main, commit: ${'c'.repeat(40)}, tree: ${'d'.repeat(40)}, version: 0.0.0+ccccccc, autoUpdate: "off", x-skills: [drafting-widgets] }`,
+      `  - { name: heavy, layer: L3, kind: skill-library, source: ${path.dirname(HEAVY)}, path: skills, ref: main, commit: ${'c'.repeat(40)}, tree: ${'d'.repeat(40)}, version: 0.0.0+ccccccc, autoUpdate: "off" }`,
       `  - { name: skilldex, layer: L3, kind: skill-library, source: "https://github.com/QuentinTorg/skilldex", path: skills, ref: main, commit: ${'e'.repeat(40)}, tree: ${'f'.repeat(40)}, version: 0.0.0+eeeeeee, autoUpdate: "off" }`,
       '',
     ].join('\n'));
     const r = budgetSet(lock);
-    assert.equal(r.skills.length, 29);
+    assert.equal(r.skills.length, 25, 'promptbook holds no skills; the widgets library is read from its skills/ and narrowed');
     assert.deepEqual(r.skills.filter((s) => s.from === 'widgets').map((s) => s.name), ['drafting-widgets']);
     assert.ok(r.findings.some((f) => f.rule === 'budget-set-unread' && /skilldex/.test(f.message)));
   });
 
   it('the CLI runs only the budget check when no folder is given; a missing folder fails; a missing file is a usage error', () => {
-    const over = write('over.txt', `${SKILLS}\n${GOOD}\n`);
+    const over = write('over.txt', `${HEAVY}\n${GOOD}\n`);
     const r = cli('--budget-set', over);
     assert.equal(r.status, 0, r.stdout + r.stderr);
-    assert.match(r.stdout, /^budget set .*: 32 skill\(s\), \d+ of 8000 characters$/m);
-    assert.match(r.stdout, /warning description-budget — the installed set's 32 descriptions/);
+    assert.match(r.stdout, /^budget set .*: 28 skill\(s\), \d+ of 8000 characters$/m);
+    assert.match(r.stdout, /warning description-budget — the installed set's 28 descriptions/);
     assert.equal(cli('--budget-set', over, '--strict').status, 1);
     const j = JSON.parse(cli('--budget-set', over, '--json').stdout);
     assert.equal(j.skills.length, 0, 'nothing else was linted');
-    assert.equal(j.budgetSet.skills.length, 32);
+    assert.equal(j.budgetSet.skills.length, 28);
     assert.equal(cli('--budget-set', write('missing.txt', `${path.join(TMP, 'nope')}\n`)).status, 1);
     assert.equal(cli('--budget-set', path.join(TMP, 'no-such-file.txt')).status, 2);
   });
 });
 
-describe('install sets (skills/SETS.yaml)', () => {
-  const cli = (...a) => spawnSync(process.execPath, [path.join(ROOT, 'tools/lint-skills.mjs'), ...a], { encoding: 'utf8', cwd: ROOT });
-  const SKILLS = path.join(ROOT, 'skills');
-  const SKILLDEX = ['building-skills', 'preparing-pull-requests', 'resolving-findings', 'reviewing-code', 'writing-specifications'];
-  const setsOf = (dir) => lintSkills([dir]).sets[0];
+describe('install sets (a library\'s SETS.yaml)', () => {
+  const cli = (cwd, ...a) => spawnSync(process.execPath, [path.join(ROOT, 'tools/lint-skills.mjs'), ...a], { encoding: 'utf8', cwd });
+  const SETS = path.join(FIX, 'good/SETS.yaml');
+  const setsOf = (dir, opts) => lintSkills([dir], opts).sets[0];
 
-  it('every installed set fits the budget less 10% with what loads beside it, Skilldex included; the library is never installed whole', () => {
-    const st = setsOf(SKILLS);
+  it('a library\'s SETS.yaml, in its skills folder or at the root above it, is checked with what loads beside each set', () => {
+    const st = setsOf(GOOD);
+    assert.equal(st.file, SETS, 'found at the root above skills/');
     assert.deepEqual(st.findings, []);
     const by = Object.fromEntries(st.sets.map((x) => [x.name, x]));
-    assert.deepEqual(Object.keys(by).sort(), ['coordinator', 'delivery', 'full', 'maintainer', 'personal', 'planning', 'solo']);
-    for (const x of st.sets.filter((y) => y.scope !== 'library')) {
-      assert.ok(x.total <= 7200, `${x.name}: ${x.total}`);
-      assert.ok(x.parts.some((p) => p.from === 'skilldex'), `${x.name} is counted with Skilldex`);
-    }
-    assert.equal(by.full.skills, fs.readdirSync(SKILLS).filter((d) => fs.existsSync(path.join(SKILLS, d, 'SKILL.md'))).length, 'full is the whole library');
-    assert.ok(by.full.total + by.personal.parts.find((p) => p.from === 'skilldex').chars > 8000, 'the whole library beside Skilldex would not fit');
-    assert.deepEqual([by.personal.scope, by.solo.scope], ['user', 'user']);
-  });
-
-  it('personal holds only skills useful in any repository: none of the project-workflow sets\' skills', () => {
-    const yaml = fs.readFileSync(path.join(SKILLS, 'SETS.yaml'), 'utf8');
-    const personal = yaml.match(/personal:[\s\S]*?skills: \[([^\]]+)\]/)[1].split(',').map((s) => s.trim());
-    assert.deepEqual(personal.sort(), ['debugging-failures', 'evaluating-skills', 'reviewing-security', 'writing-commit-history', 'writing-tests']);
-    for (const s of ['implementing-task', 'orchestrating-work', 'planning-work', 'landing-changes', 'setting-up-the-suite']) assert.ok(!personal.includes(s), s);
+    assert.deepEqual(Object.keys(by).sort(), ['all', 'everyday', 'shipping']);
+    for (const x of st.sets.filter((y) => y.scope !== 'library')) assert.ok(x.parts.some((p) => p.from === 'reviewers'), `${x.name} is counted with the external it loads beside`);
+    assert.equal(by.all.skills, 4, 'the library scope holds every skill');
+    const inside = path.join(TMP, 'inside/skills');
+    fs.cpSync(GOOD, inside, { recursive: true });
+    fs.copyFileSync(SETS, path.join(inside, 'SETS.yaml'));
+    assert.deepEqual(setsOf(inside).findings, [], 'beside the skills it names, as a library may also keep it');
+    const elsewhere = path.join(TMP, 'elsewhere');
+    fs.cpSync(GOOD, elsewhere, { recursive: true });
+    assert.equal(lintSkills([elsewhere]).sets.length, 0, 'a folder not named skills does not look above itself');
+    assert.equal(setsOf(elsewhere, { setsFile: SETS }).file, SETS, '--sets names it');
   });
 
   it('names an unknown skill, a skill in two sets, an uninstalled skill and a set over budget', () => {
@@ -238,7 +250,7 @@ describe('install sets (skills/SETS.yaml)', () => {
     fs.writeFileSync(path.join(dir, 'SETS.yaml'), [
       'budget: { limit: 1000, headroom: 0.10 }',
       'external:',
-      `  dex: { source: x, commit: abc1234, skills: [${SKILLDEX.join(', ')}], chars: 600 }`,
+      `  dex: { source: x, commit: abc1234, skills: [${NEIGHBOURS.join(', ')}], chars: 600 }`,
       'sets:',
       '  mine: { scope: user, skills: [drafting-widgets, checking-widgets, no-such-skill], loaded_with: [dex] }',
       '  team: { scope: project, skills: [checking-widgets, shipping-widgets], loaded_with: [mine, nobody] }',
@@ -254,20 +266,24 @@ describe('install sets (skills/SETS.yaml)', () => {
     assert.deepEqual([...new Set(setsOf(dir).findings.map((f) => f.rule))], ['sets-shape']);
   });
 
-  it('--budget-set takes a set name: what a session holding it loads, against the budget less its headroom', () => {
-    const r = cli('--budget-set', 'solo');
+  it('--budget-set takes a set name from --sets, the linted library, or the working directory\'s, against the budget less its headroom', () => {
+    const r = cli(ROOT, '--budget-set', 'everyday', '--sets', SETS);
     assert.equal(r.status, 0, r.stdout + r.stderr);
-    assert.match(r.stdout, /^budget set .*SETS\.yaml#solo: 24 skill\(s\), \d+ of 7200 characters$/m);
-    const j = JSON.parse(cli('--budget-set', 'personal', '--json').stdout).budgetSet;
-    assert.deepEqual([...new Set(j.skills.map((s) => s.from))], ['personal', 'skilldex']);
+    assert.match(r.stdout, /^budget set .*SETS\.yaml#everyday: 4 skill\(s\), \d+ of 7200 characters$/m);
+    assert.match(cli(ROOT, 'fixtures/lint/good/skills', '--budget-set', 'shipping').stdout, /^budget set .*SETS\.yaml#shipping: 6 skill\(s\)/m, 'the linted library\'s');
+    assert.equal(cli(path.join(FIX, 'good'), '--budget-set', 'shipping').status, 0, 'run from the library\'s root');
+    const j = JSON.parse(cli(ROOT, '--budget-set', 'shipping', '--sets', SETS, '--json').stdout).budgetSet;
+    assert.deepEqual([...new Set(j.skills.map((s) => s.from))], ['shipping', 'everyday', 'reviewers']);
     const dex = path.join(TMP, 'dex');
-    for (const n of SKILLDEX) {
+    for (const n of NEIGHBOURS) {
       fs.mkdirSync(path.join(dex, n), { recursive: true });
-      fs.writeFileSync(path.join(dex, n, 'SKILL.md'), `---\nname: ${n}\ndescription: ${'x'.repeat(1000)}\n---\n`);
+      fs.writeFileSync(path.join(dex, n, 'SKILL.md'), `---\nname: ${n}\ndescription: ${'x'.repeat(4000)}\n---\n`);
     }
-    const heavy = cli('--budget-set', 'solo', '--external', `skilldex=${dex}`);
-    assert.equal(heavy.status, 1, 'with the real (here: long) externals read from a checkout, solo is over');
-    assert.match(heavy.stdout, /error {3}set-over-budget — solo loads \d+ characters, over 7200/);
-    assert.equal(cli('--budget-set', 'nope').status, 2);
+    const heavy = cli(ROOT, '--budget-set', 'everyday', '--sets', SETS, '--external', `reviewers=${dex}`);
+    assert.equal(heavy.status, 1, 'with the real (here: long) externals read from a checkout, everyday is over');
+    assert.match(heavy.stdout, /error {3}set-over-budget — everyday loads \d+ characters, over 7200/);
+    assert.equal(cli(ROOT, '--budget-set', 'nope', '--sets', SETS).status, 2);
+    assert.equal(cli(ROOT, '--budget-set', 'everyday').status, 2, 'no SETS.yaml here: the error says to pass --sets');
+    assert.match(cli(ROOT, '--budget-set', 'everyday').stderr, /pass --sets <skilldex>\/SETS\.yaml/);
   });
 });

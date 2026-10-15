@@ -1,0 +1,2 @@
+{"prompt":"Ship the reporting widget to production.","expect":"trigger","kind":"positive"}
+{"prompt":"Draft the next release's widget.","expect":"no-trigger","kind":"near-miss","route_to":"drafting-widgets"}

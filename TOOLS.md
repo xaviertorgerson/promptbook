@@ -9,7 +9,7 @@ runs them all; Node 22 does not accept a bare directory there.
 promptbook <command> [args]          # package.json bin: tools/cli.mjs; or pnpm <command> / node tools/<tool>.mjs
   validate        artifacts against their contracts                 tools/validate.mjs
   trace           the trace graph of a project (validate --trace)   tools/validate.mjs --trace
-  lint            skills against the authoring rules                tools/lint-skills.mjs
+  lint            skills (a Skilldex checkout) against the rules    tools/lint-skills.mjs
   simulate        the runtime contracts under faults                tools/simulate.mjs
   compile-policy  agent-policy.yaml into one engine's settings      tools/compile-policy.mjs
   run             an engine under its runner.json and its caps      tools/run.mjs
@@ -26,7 +26,7 @@ promptbook <command> [args]          # package.json bin: tools/cli.mjs; or pnpm 
 The contract validator and the trace graph; see [CONTRACTS.md](CONTRACTS.md). A file's contract comes
 from its path in the project layout, else from its name's suffix (`*.grant.yaml`, `*.task.md`, …;
 `*.template.*` and `_`-prefixed templates such as `docs/ux/_UX-TEMPLATE.md` are skipped unless
-`--contract` names one), so `promptbook validate skills` checks every renamed example too.
+`--contract` names one), so `promptbook validate <skilldex>/skills` checks every renamed example too.
 `promptbook trace <root>`
 is `validate --trace <root>`; `--readiness <dir>` writes each epic's report with the root's `HEAD` as
 `source_commit`, and `--no-timestamp` leaves it and `generated_at` out for a report committed with
@@ -40,8 +40,12 @@ test attribute, name nothing (CONTRACTS.md, Test names).
 
 ## lint
 
-`promptbook lint [dir]...` (default `skills`) checks a folder of skills, or one skill, against the
-authoring rules. Errors name a stable rule; `--strict` fails on warnings too.
+`promptbook lint [dir]...` checks a folder of skills, or one skill, against the authoring rules. The
+skills live in Skilldex: `promptbook lint <skilldex>/skills`, or `promptbook lint` from a Skilldex
+checkout (the default folder is `./skills`). Errors name a stable rule; `--strict` fails on warnings
+too. `--sets <file>` names the `SETS.yaml` of the library the linted skills install beside (a
+project's own skills beside Skilldex's): its sets are checked, a `--budget-set` name is read from it,
+and its skills are names a near-miss may route to.
 
 | Rule | Checks |
 |---|---|
@@ -49,23 +53,24 @@ authoring rules. Errors name a stable rule; `--strict` fails on warnings too.
 | `name-is-gerund` | the first word ends in -ing: `writing-requirements` |
 | `description-use-when`, `description-do-not-use-for` | a "Use when …" trigger and a "Do not use for … (neighbour)" clause; warnings if out of order or naming no neighbour |
 | `description-length` | a description over 400 characters fails, over 300 warns: every description stays loaded in every session |
-| `description-budget` (warning) | the scanned set's descriptions together exceed 8000 characters (one engine keeps skill metadata within 2% of context or 8000 characters); the longest are named. The budget binds what a machine installs, not one library: `--budget-set <file>` sums the descriptions of an installed set (a list of skill folders or folders of skills, one per line or a YAML list; or a `toolkit.lock`, whose local entries contribute the skills under `source/path`, promptbook's under `skills/`, narrowed by an `x-skills` list; a remote entry is reported as `budget-set-unread`, a listed folder that is missing fails `budget-set-missing`) and warns over 8000 with the count from each source; `--budget-set <set>` names a set of a `SETS.yaml` instead (the linted folder's, else `./skills/`, else promptbook's own) and checks what a session holding it loads; with no folder given only this check runs |
-| `sets-shape`, `sets-known`, `sets-disjoint`, `sets-cover`, `set-over-budget`, `set-not-installed` (warning) | a folder's `SETS.yaml` (promptbook's: `skills/SETS.yaml`) names install sets: each a scope (`user`, `project`, or `library`, never installed), its own `skills` and/or the sets it `includes`, and what a session `loaded_with` it (another set, or an `external` pack measured at a pinned commit; `--external name=<dir>` reads the real descriptions). Every named skill and set exists; every skill is in exactly one set's own list and some installable set; a user or project set, with what loads beside it, stays within `budget.limit` less `budget.headroom` (8,000 less 10%); `--budget-set` on a library set warns. The sets line prints each total |
+| `description-budget` (warning) | the scanned set's descriptions together exceed 8000 characters (one engine keeps skill metadata within 2% of context or 8000 characters); the longest are named. The budget binds what a machine installs, not one library: `--budget-set <file>` sums the descriptions of an installed set (a list of skill folders or folders of skills, one per line or a YAML list; or a `toolkit.lock`, whose local entries contribute the skills under `source/path` (or `source/skills/`), narrowed by an `x-skills` list; a remote entry is reported as `budget-set-unread`, a listed folder that is missing fails `budget-set-missing`) and warns over 8000 with the count from each source; `--budget-set <set>` names a set of a `SETS.yaml` instead (`--sets`, else the linted library's, else `./SETS.yaml` or `./skills/SETS.yaml`, as in a Skilldex checkout) and checks what a session holding it loads; with no folder given only this check runs |
+| `sets-shape`, `sets-known`, `sets-disjoint`, `sets-cover`, `set-over-budget`, `set-not-installed` (warning) | a skill library's `SETS.yaml` (Skilldex's), in its skills folder or at the root above it, or the one `--sets` names, names install sets: each a scope (`user`, `project`, or `library`, never installed), its own `skills` and/or the sets it `includes`, and what a session `loaded_with` it (another set, or an `external` pack measured at a pinned commit; `--external name=<dir>` reads the real descriptions). Every named skill and set exists; every skill is in exactly one set's own list and some installable set; a user or project set, with what loads beside it, stays within `budget.limit` less `budget.headroom` (8,000 less 10%); `--budget-set` on a library set warns. The sets line prints each total |
 | `deprecated-description` | a skill with `metadata.deprecated` is exempt from "Use when": its description starts with "Deprecated:" and names the replacement skill |
 | `parse-error` | the frontmatter is YAML; when a plain value holds ": " (the usual cause), the error says to quote it |
 | `body-length` | warn over 200 body lines, fail over 300 |
 | `engine-neutral` | no engine, runtime, forge or stack name in the description or body; `references/engine-notes.md` is exempt. The deny-list (Claude Code, Claude, Codex, Gemini, Antigravity, Herdr, Heeler, stagehand, OpenAI, Anthropic, Copilot, GitHub, GitLab, Forgejo, Cloudflare, Coolify, Hetzner, Angular, NestJS, Drizzle, pnpm) is replaced with `--deny-terms`, narrowed with `--allow-terms`; URLs are ignored |
 | `links-stay-in-skill` | no relative link leaves the skill folder (a skill installs alone) |
 | `evals-present`, `routing-counts`, `routing-kind-declared` | `routing.jsonl` with ≥ 4 positive, ≥ 3 near-miss with `route_to`, ≥ 2 negative, each case in the evidence contract's format |
-| `route-to-known`, `route-to-self` | a `route_to` names a scanned skill, a sibling of a linted skill, a pinned Skilldex skill (`reviewing-code`, `preparing-pull-requests`, `resolving-findings`, `writing-specifications`, `building-skills`), `--known`, or `none` |
+| `route-to-known`, `route-to-self` | a `route_to` names a scanned skill, a sibling of a linted skill, a skill that loads beside it (one of the `--sets` library, an `external` of the library's or the `--sets` `SETS.yaml`), `--known`, or `none` |
 | `scenarios-count`, `scenario-format`, `scenario-stop-condition` | ≥ 3 scenarios in `scenarios.md`, each with setup, prompt, pass criteria and k; one should hand to a human |
 | `evidence-count` and the evidence contract's rules | ≥ 1 dated entry; literature and vendor-reported cite a URL |
 | `imported-needs-review` | nothing `import-evals` could not fill is left: a routing case noted `needs route_to`, a scenario line marked `TODO(import)` |
 | `deprecated-never-triggers` | a skill with `metadata.deprecated` keeps only no-trigger cases |
 | `description-overlap` (warning) | two descriptions' trigger phrases (the "Use when" clause, stop words removed) share more than 0.3 Jaccard; the pair and the shared words are named. agentic-template's 19 skills peak at 0.17 |
 
-Fixtures: `fixtures/lint/good/skills` (four skills, one deprecated) and one overlay per broken rule
-in `fixtures/lint/broken/<rule>/`.
+Fixtures: `fixtures/lint/good/` (a library in Skilldex's layout: four skills under `skills/`, one
+deprecated, and a `SETS.yaml` at the root) and one overlay per broken rule in
+`fixtures/lint/broken/<rule>/`.
 
 ## simulate
 
@@ -311,8 +316,9 @@ case and passes a case only when all k pass (pass^k); `--model <label>` names th
 <routing-results….jsonl>` writes one result per case in the evidence contract's `routingResult`
 shape, which `promptbook validate` checks and an evidence entry cites as its measured source. `--cases <file>` reads
 each skill's cases from `evals/<file>` instead of `routing.jsonl` (the held-out cases are `heldout.routing.jsonl`);
-`--set <name>` installs only that set of the folder holding a `SETS.yaml` (other folders, a pinned pack, stay
-whole), so a set's routing is measured with what it actually loads. Ported from agentic-template's
+`--set <name>` installs only that set of the library a `SETS.yaml` names (`--sets <file>`, else the one in or above a
+given folder; other folders, a pinned pack, stay whole), so a set's routing is measured with what it actually loads.
+Run it from a Skilldex checkout (the default folder is `./skills`) or name `<skilldex>/skills`. Ported from agentic-template's
 `scripts/skill-evals.mjs`. Tests use `fixtures/eval-routing/fake-router.mjs`; no test calls a model.
 
 ## import-evals
@@ -326,6 +332,7 @@ with `note: "needs route_to: <what the source said>"`. Scenarios keep their fixt
 and get a `TODO(import)` prompt (the source has none); evidence keeps its date (day or month) and
 text, kind audit or observed, citing the source file. Lint fails both markers
 (`imported-needs-review`) until a human resolves them. It refuses to overwrite without `--force`.
+A skill a project ports into Skilldex is imported there: `--out <skilldex>/skills/<name>/evals`.
 Fixtures: two real evals.md files under `fixtures/import-evals/`.
 
 ## report

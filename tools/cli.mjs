@@ -13,7 +13,7 @@ const DIR = path.dirname(fileURLToPath(import.meta.url));
 export const COMMANDS = {
   validate: { script: 'validate.mjs', about: 'validate artifacts against their contracts' },
   trace: { script: 'validate.mjs', prefix: ['--trace'], about: 'check the trace graph of a project (validate --trace)' },
-  lint: { script: 'lint-skills.mjs', about: 'lint skills against the authoring rules' },
+  lint: { script: 'lint-skills.mjs', about: 'lint skills (a Skilldex checkout) against the authoring rules' },
   simulate: { script: 'simulate.mjs', about: 'simulate the runtime contracts under faults' },
   'compile-policy': { script: 'compile-policy.mjs', about: 'compile agent-policy.yaml into an engine\'s settings' },
   run: { script: 'run.mjs', about: 'launch an engine under its compiled runner.json and its caps' },

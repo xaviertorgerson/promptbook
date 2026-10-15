@@ -4,17 +4,19 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { buildPrompt, evaluate, loadSkills, routingResults, runner } from './lib/eval-routing.mjs';
-import { loadSets, SETS_FILE, setSkills } from './lib/lint-skills.mjs';
+import { loadSets, SETS_FILE, setSkills, setsFileOf, setsLibrary } from './lib/lint-skills.mjs';
 
 const USAGE = `Routing evals: does each skill's description route its routing.jsonl prompts?
 
-  node tools/eval-routing.mjs [dir]...                  dry run (default): print the case count and
-                                                        one router prompt; nothing is sent
-  node tools/eval-routing.mjs --runner "<cmd>" [dir]... run every case through <cmd>, which reads the
-                                                        prompt on stdin and prints the skill name(s)
+  promptbook eval-routing [dir]...                  dry run (default): print the case count and
+                                                    one router prompt; nothing is sent
+  promptbook eval-routing --runner "<cmd>" [dir]... run every case through <cmd>, which reads the
+                                                    prompt on stdin and prints the skill name(s)
+  dir: skill folders, or folders of skills (default ./skills, as in a Skilldex checkout)
       --skill <name>       only that skill's cases
-      --set <name>         install only that set (skills/SETS.yaml) of a folder that has a SETS.yaml;
-                           other folders (a pinned library) stay installed whole
+      --set <name>         install only that set of the library a SETS.yaml names (--sets, else the
+                           one in or above a linted folder); other folders stay installed whole
+      --sets <file>        the SETS.yaml --set reads (Skilldex's)
       --cases <file>       read each skill's cases from evals/<file> (default routing.jsonl; the
                            held-out cases are heldout.routing.jsonl)
       --limit <n>          at most n cases
@@ -28,13 +30,13 @@ const USAGE = `Routing evals: does each skill's description route its routing.js
 
 The router sees only the installed skills' names and descriptions and the message, as an engine's
 skill loader would. A trigger case passes when its skill is named; a no-trigger case when it is not,
-and a near-miss also needs its route_to named when that skill is installed. Default dir: skills.
+and a near-miss also needs its route_to named when that skill is installed.
 Exit 0 all pass (or dry run), 1 a case failed, 2 usage error.`;
 
 const pct = (x) => (x === null ? '  —  ' : `${(x * 100).toFixed(0).padStart(3)}%`);
 
 export function main(argv = process.argv.slice(2)) {
-  const VALUED = new Set(['--runner', '--skill', '--limit', '--timeout', '--runs', '--model', '--out', '--set', '--cases']);
+  const VALUED = new Set(['--runner', '--skill', '--limit', '--timeout', '--runs', '--model', '--out', '--set', '--sets', '--cases']);
   const value = (n) => { const i = argv.indexOf(n); return i === -1 ? undefined : argv[i + 1]; };
   if (argv.includes('--help') || argv.includes('-h')) { console.log(USAGE); return 0; }
   const usage = (m) => { console.error(`eval-routing: ${m}\n\n${USAGE}`); return 2; };
@@ -55,14 +57,15 @@ export function main(argv = process.argv.slice(2)) {
 
   let skills = loadSkills(targets, { cases: value('--cases') ?? 'routing.jsonl' });
   const setName = value('--set');
+  if (argv.includes('--sets') && !(value('--sets') && fs.existsSync(value('--sets')))) return usage(`--sets ${value('--sets') ?? ''}: no such file`);
   if (setName) {
-    const setsDir = targets.find((d) => fs.existsSync(path.join(d, SETS_FILE)));
-    if (!setsDir) return usage(`--set ${setName}: no ${SETS_FILE} in ${targets.join(', ')}`);
-    const { data, errors } = loadSets(path.join(setsDir, SETS_FILE));
+    const setsFile = value('--sets') ?? targets.map((d) => setsFileOf(path.resolve(d))).find(Boolean);
+    if (!setsFile) return usage(`--set ${setName}: no ${SETS_FILE} in or above ${targets.join(', ')} (pass --sets <skilldex>/${SETS_FILE})`);
+    const { data, errors } = loadSets(setsFile);
     if (!data) return usage(`${SETS_FILE}: ${errors.join('; ')}`);
     if (!data.sets[setName]) return usage(`no set ${setName} (sets: ${Object.keys(data.sets).join(', ')})`);
     const keep = setSkills(data, setName);
-    const root = path.resolve(setsDir);
+    const root = setsLibrary(setsFile);
     skills = skills.filter((s) => path.dirname(path.resolve(s.dir)) !== root || keep.has(s.name));
   }
   const only = value('--skill');

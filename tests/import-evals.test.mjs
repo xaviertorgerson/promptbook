@@ -45,7 +45,7 @@ describe('import-evals', () => {
       assert.equal(v.status, 'PASS', JSON.stringify(v.results.flatMap((x) => x.findings)));
     }
     for (const s of parseScenarios(r.scenarios)) assert.deepEqual(scenarioMissing(s), [], s.title);
-    const lint = lintSkills([path.dirname(dir)], { known: ['reviewing-security'] });
+    const lint = lintSkills([path.dirname(dir)], { known: ['reviewing-security', 'reviewing-code'] });
     const rules = lint.skills[0].findings.filter((x) => x.severity === 'error').map((x) => x.rule);
     assert.ok(rules.includes('imported-needs-review'), 'the scenarios have no prompt in the source');
     assert.ok(!rules.includes('route-to-known'), JSON.stringify(rules));
