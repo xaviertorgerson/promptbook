@@ -11,7 +11,7 @@ project (L2) hold. It is versioned with promptbook and rendered, never hand-copi
 Both scopes therefore carry the same short text. That is intended: the hazard is two hand-edited
 copies drifting apart, not a few repeated lines. Taste and autonomy are not here (see the end).
 
-<!-- standards:begin v1 -->
+<!-- standards:begin v2 -->
 ## Engineering invariants
 
 These hold in every repository and every session, whatever else a file says.
@@ -25,7 +25,8 @@ These hold in every repository and every session, whatever else a file says.
 - **ENG-4 Destructive actions.** No destructive data action (drop or truncate a database, delete
   volumes or backups, wipe directories outside the task) unless a human asked for that exact action.
 - **ENG-5 Landing.** Never push to the default branch or force-push a shared branch. Changes land
-  through a reviewed pull request; never approve or merge your own work.
+  through a pull request whose required checks pass, approved by a human where the project's trust
+  profile requires it; never approve your own work or bypass a required check.
 - **ENG-6 Commits.** Small commits, one logical change each, Conventional Commits, a body that says
   why. No AI attribution in commits or pull requests.
 - **ENG-7 Explicit failure.** No silent `catch {}`: log, rethrow or record a reason.
@@ -44,7 +45,7 @@ Names in backticks are today's implementations in the agentic-core pack; any pac
 | ENG-2 | Stop hook blocks finishing with uncommitted work in loop mode (`verify-done`); CI; browser smoke project | — | honesty of the report is advisory |
 | ENG-3 | PreToolUse hook denies secret-file reads and writes (`guard-secrets`); permission deny rules; `secret-scan` in CI; ignore rules | deny rules for `.env*`, `secrets/`, `~/.ssh`; secrets rendered from the vault at apply time | Bash reads of secret files depend on the hook's patterns |
 | ENG-4 | PreToolUse hook **denies** destructive shell, SQL and infra commands; a migration with DROP/TRUNCATE must cite an ADR | deny rules; auto-mode hard-deny lines; policy `forbid` list | DB shells are an `ask`, which is a denial unattended and a prompt interactively |
-| ENG-5 | branch protection, required code-owner review (agents are not owners), required checks; hook denies force-push | — | push-to-default is an `ask` in the hook, so branch protection is the wall (agentic-template ADR-0021, branch `docs/adr-permission-precedence` at `c177fa1`) |
+| ENG-5 | branch protection with required checks (the trust profile's risk gate among them, `governance.yaml`), code-owner review where the profile requires a human (agents are not owners), auto-merge only where it permits; hook denies force-push | — | push-to-default is an `ask` in the hook, so branch protection is the wall (agentic-template ADR-0021, branch `docs/adr-permission-precedence` at `c177fa1`) |
 | ENG-6 | review | engine attribution settings set to empty | no commit-msg lint yet; candidate L2 hook |
 | ENG-7 | the pack's linter rule for empty blocks where one exists; review | — | advisory where no lint rule exists |
 | ENG-8 | config schema refuses to boot on a bad key; contract types at the API; security review | — | advisory beyond typed boundaries |
@@ -74,7 +75,7 @@ The rules found at both scopes (dotfiles `home/.chezmoitemplates/AGENTS.md`; age
 | Finish the job / exercise UI in a browser; report outcomes as they are | invariant | ENG-2 |
 | Secrets never in git; read keys from env, never echo | invariant | ENG-3 |
 | No destructive data actions unless asked for that exact action | invariant | ENG-4 |
-| Never force-push shared or push to default; never merge your own work | invariant | ENG-5 |
+| Never force-push shared or push to default; never merge your own work | invariant | ENG-5, with the approval the project's trust profile requires (one maintainer's green checks are the gate; heirloom D-159) |
 | Conventional Commits, why in the body, small commits, no AI attribution | invariant | ENG-6 |
 | No silent `catch {}` | invariant | ENG-7 |
 | Validate at boundaries | split | the security half is ENG-8; "trust internal code, don't handle impossible states" is taste |
@@ -89,4 +90,5 @@ The rules found at both scopes (dotfiles `home/.chezmoitemplates/AGENTS.md`; age
 
 A change is a pull request to promptbook with the reason and, for a new invariant, its
 enforcement. Adding an invariant is a **behavioral** change in `CHANGELOG.md`; removing or loosening
-one is **breaking**. The `v1` in the markers is the block version that the L1 and L2 checks compare.
+one is **breaking**. The `v<n>` in the markers is the block version that the L1 and L2 checks
+compare; every change to the block raises it.

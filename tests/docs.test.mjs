@@ -53,6 +53,23 @@ describe('the README\'s claims', () => {
   });
 });
 
+describe('the standards block', () => {
+  const text = fs.readFileSync(path.join(ROOT, 'standards/engineering.md'), 'utf8');
+  const block = text.slice(text.indexOf('<!-- standards:begin '), text.indexOf('<!-- standards:end -->'));
+
+  it('sits between versioned markers, and the file names how the version moves', () => {
+    assert.match(block, /^<!-- standards:begin v2 -->\n/);
+    assert.match(text, /^<!-- standards:end -->$/m);
+    assert.match(text, /The `v<n>` in the markers is the block version/);
+  });
+
+  it('ENG-5 holds in every trust profile: required checks always, a human approval only where the profile requires one', () => {
+    const eng5 = block.split(/\n- /).find((l) => l.startsWith('**ENG-5')).replace(/\s+/g, ' ');
+    for (const phrase of ['Never push to the default branch', 'force-push a shared branch', 'required checks pass', 'approved by a human where the project\'s trust profile requires it', 'never approve your own work', 'bypass a required check']) assert.ok(eng5.includes(phrase), phrase);
+    assert.doesNotMatch(eng5, /reviewed pull request|merge your own work/);
+  });
+});
+
 describe('version labels', () => {
   it('every "<contract> contract X.Y.Z", "<machine> machine X.Y.Z" and "(workflow X.Y.Z)" label states the current version', async () => {
     const { registry } = await import('../tools/lib/registry.mjs');

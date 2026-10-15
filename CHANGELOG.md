@@ -34,6 +34,11 @@ tools other maintainers already run (stagehand's task records and delegation, Sk
 
 #### Changed
 
+- **breaking** — The standards block is `v2`: ENG-5 lands a change through a pull request whose
+  required checks pass, approved by a human where the project's trust profile requires it, and
+  adds "never bypass a required check"; it no longer requires a reviewed pull request in every
+  project. Loosening an invariant is breaking (standards/engineering.md): every consumer that
+  vendors the block re-renders it at the new pin.
 - **behavioral** — `simulate`: `merge-requires-authority` refuses any land without green checks and
   the evaluator's pass on the landed head, on every path (approval, grant or auto-land), and judges
   an auto-land against the recorded profile, never the platform's gate.
