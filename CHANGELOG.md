@@ -1,18 +1,119 @@
 # Changelog
 
-Every change to the harness, newest first, in the shape of
+Every change to promptbook (formerly harness), newest first, in the shape of
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Each entry is marked with its class:
 **additive** (a new optional field, contract, tool or page; nothing that was valid becomes invalid),
 **behavioral** (the same artifacts, judged or run differently: a stricter check, a new invariant, a
 changed default) or **breaking** (a valid artifact becomes invalid, or a field or rule is removed).
 Contract versions are each schema's `x-version` and each state machine's `version`
-(CONTRACTS.md, Versioning). The harness is pre-1.0: pin a commit.
+(CONTRACTS.md, Versioning). promptbook is pre-1.0: pin a commit.
 
 ## [Unreleased]
 
+### promptbook: one job in a suite of five repositories
+
+The harness is renamed **promptbook** and becomes the suite's master copy of formats, standards,
+playbook and checks; it holds no skills. The suite's five repositories, their mandates and the four
+interfaces between them are in [SUITE.md](SUITE.md).
+
+#### Changed
+
+- **breaking** — The product, the package and its bin are `promptbook` (still `tools/cli.mjs`):
+  every usage text, error message and test, the schema ids (`https://promptbook.dev/schemas/…`),
+  the generators (`promptbook/lock@1.0.0`, `promptbook/validate@…`), the lock cache
+  (`~/.cache/promptbook/lock`) and the test variables (`PROMPTBOOK_DOTFILES`,
+  `PROMPTBOOK_DOTFILES_L1_POLICY`, `PROMPTBOOK_STAGEHAND`, `PROMPTBOOK_TEMPLATE`,
+  `PROMPTBOOK_SMOKE_PROJECT`).
+- **breaking** — `compile-policy` outputs carry the new name: Codex's permission profile
+  (`default_permissions = "promptbook"`, `[permissions.promptbook…]`) and rules file
+  (`rules/promptbook.rules`), Gemini's policy file (`policies/promptbook.toml`), the forbid guard's
+  home (`$HOME/.claude/hooks/promptbook/`, `$HOME/.codex/hooks/promptbook/`, status message
+  "promptbook forbid guard"), `generated_by: promptbook compile-policy`, and the runner's
+  `enforcement` value `promptbook-run`.
+- **breaking** — toolkit-lock 2.0.0: the one L3 entry that is not a skill library is
+  `kind: promptbook` (rule `exactly-one-promptbook`).
+- **breaking** — the review record is `agent-setup-review` 2.0.0, named for the skill that writes
+  it (Skilldex's reviewing-agent-setup): `agent-setup-reviews/<date>-<label>.md`, titled
+  `# Agent-setup review — <date> — <label>`, with the section "Full setup on the new model"
+  (`full-setup`); `*.agent-setup-review.md` outside that folder. The playbook page is
+  `learning/agent-setup-review.md`.
+- **breaking** — `lint` no longer knows five Skilldex skills by name: a near-miss may route to a
+  scanned skill, a sibling, a skill of the `--sets` library, an `external` of the library's or the
+  `--sets` `SETS.yaml`, or `--known`. A set name in `--budget-set` is read from `--sets`, the linted
+  library's `SETS.yaml` (in its skills folder or at the root above it), or `./SETS.yaml` or
+  `./skills/SETS.yaml`; this repository has none to fall back on.
+- **behavioral** — `grant verify` reports each grant's lifecycle state (`(live)`, `(pending)`,
+  `(expired)`, `(revoked)`) and fails one that is not live (`grant-is-live`); `--at <time>` checks
+  another moment. It printed "(live)" for any grant whose path and owners checked out.
+- **behavioral** — `simulate`: the built-in supervisor is the reference coordinator
+  (`reference-coordinator` in summaries), the protocol the state machines describe.
+- **behavioral** — a narrowing may set a limit or an expiry the grant did not have; an unset limit
+  is no limit, so setting one narrows (it was reported as widening).
+- **behavioral** — authority 1.4.0: a grant needs an expiry unless a stop condition bounds it; a
+  grant with neither is invalid.
+
+#### Added
+
+- **additive** — `SUITE.md`: the five repositories' mandates (one job, owns, must not contain,
+  interface, versioning, consumers), the four interfaces, the path from a new machine to a first
+  feature, and the 2026 practice each mandate follows. The README opens with promptbook's mandate;
+  LAYERS.md maps the layers onto the five repositories and gives every piece one home.
+- **additive** — `lint --sets <file>` and `eval-routing --sets <file>`: the `SETS.yaml` of the
+  library the linted skills install beside (Skilldex's).
+- **additive** — toolkit-lock: a `skill-library` entry may name the install `sets` it copies
+  (`sets-on-skill-library`); `lint --budget-set toolkit.lock` measures exactly those sets
+  (`budget-set-sets`).
+- **additive** — grant 2.1.0: a grant whose `limits.stop_when` is non-empty may omit `expires_at`
+  and `limits.budget` (`grant-is-bounded`, which replaces `missing-expires-at` for a grant with
+  neither), so a coordinator records only what the human said.
+- **additive** — run-record 1.4.0: `task` may be the runtime's stable id when the work has no
+  workflow task, as `task-record.task_id` and `return.task` already accept.
+- **additive** — a test validates stagehand's task-record and grant templates as they are, when a
+  stagehand checkout is present; CONTRACTS.md names who writes each artifact across the suite.
+
+#### Removed
+
+- **breaking** — `skills/`: the 28 skills, their evals, `SETS.yaml`, `ROUTING-RESULTS.md` and the
+  routing results moved to Skilldex; the coordination skills were folded into stagehand. The
+  adapters' `plugin.json` manifests, which packaged those skills, are gone with them.
+
+#### Migration
+
+1. **Where each skill went.** To Skilldex `skills/`: framing-products, defining-personas,
+   mapping-journeys, writing-requirements, designing-flows, choosing-architecture, planning-work,
+   checking-plan-readiness, implementing-task, managing-worktrees, verifying-work, landing-changes,
+   handling-credentials, releasing-changes, writing-tests, debugging-failures,
+   writing-commit-history, reviewing-security, evaluating-skills, promoting-learnings,
+   reflecting-on-runs, choosing-methodology, routing-models; adopting-harness as
+   setting-up-the-suite and reviewing-harness as reviewing-agent-setup. To stagehand's
+   orchestrating-development and its references: orchestrating-work, delegating-authority,
+   reporting-state. Install by Skilldex's sets (`skills/SETS.yaml`): `personal` on a machine,
+   `planning` and `delivery` in a project, `maintainer` where the suite is maintained; the old
+   `solo` is `personal` with `planning` and `delivery`, and the old `coordinator` set is stagehand's
+   control workspace (orchestrating-development beside `personal`).
+2. **The CLI.** Call `promptbook <command>`; a script that runs the pinned CLI finds it by the lock's
+   `kind: promptbook` entry and a checkout named for it (`PROMPTBOOK_HOME`, `../promptbook`). Lint
+   skills with `promptbook lint <skilldex>/skills` and a set with
+   `promptbook lint --budget-set <set> --sets <skilldex>/skills/SETS.yaml`; a project's own skills
+   beside Skilldex lint with `--sets` so their near-misses may name Skilldex's.
+3. **`toolkit.lock`.** Rename the entry `name: harness, kind: harness` to `name: promptbook,
+   kind: promptbook` with the promptbook checkout or URL as `source`, and re-pin it
+   (`promptbook lock --update promptbook`). Pin Skilldex once, at the commit that holds the suite
+   library, with `path: skills` and the `sets` the project installs, in place of any per-skill
+   entries; drop entries that pinned this repository's skills.
+4. **Compiled policy.** Recompile every profile, then delete the old files a consumer installed:
+   `rules/harness.rules` and `policies/harness.toml` keep loading beside the new
+   `rules/promptbook.rules` and `policies/promptbook.toml` until removed, and the guard moves from
+   `hooks/harness/` to `hooks/promptbook/`. A launcher that reads `runner.json` reads
+   `enforcement: promptbook-run`.
+5. **Review records.** Move `harness-reviews/` to `agent-setup-reviews/` and retitle each record
+   `# Agent-setup review — <date> — <label>`, its full-run section "Full setup on the new model".
+
+### Review fixes
+
 Fixes from an independent review of 0.1.0 (workflow, authority, trace, simulator, skills, docs).
 
-### Changed
+#### Changed
 
 - **behavioral** — `compile-policy` (Gemini): `argsPattern` (read denies, write denies, fetch
   domains) no longer quantifies a group. Gemini CLI 0.64.0 drops a rule whose pattern fails its
@@ -87,7 +188,7 @@ Fixes from an independent review of 0.1.0 (workflow, authority, trace, simulator
 - **behavioral** — workflow 1.2.1: `released` is not a terminal state (roll-back leaves it); a test
   holds every terminal state to having no transition out.
 
-### Added
+#### Added
 
 - **additive** — playbook `runtime/observability.md`: what to look at weekly (cost per merged task,
   cache hit rate, denial count, stalled and needs-human runs) from `harness report`; the hit rate's
@@ -132,7 +233,7 @@ Fixes from an independent review of 0.1.0 (workflow, authority, trace, simulator
   skill, written after tuning); the per-case results of the tuned run and both held-out runs
   (`skills/routing-results*.jsonl`).
 
-### Fixed
+#### Fixed
 
 - Citations of agentic-template ADR-0021 and `scripts/permission-probe.mjs` name the branch and
   commit that hold them (`docs/adr-permission-precedence`, `c177fa1`), not master.
