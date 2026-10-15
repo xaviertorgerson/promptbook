@@ -14,6 +14,10 @@ Contract versions are each schema's `x-version` and each state machine's `versio
 
 #### Changed
 
+- **behavioral** — the forbid guard no longer reads a command word that starts with a wildcard
+  (`cat *`) as naming a dotfile, even against a wildcard deny such as `**/.env.*.local`: the shell
+  never expands a leading `*` to a name that starts with `.`. A word that spells the dot
+  (`cat .env.*`) still matches. Found by the dotfiles guard, which already behaved this way.
 - **behavioral** — `compile-policy` and the forbid guard hold read denies where Claude Code's
   sandbox on Linux ignores glob patterns (`claude doctor` 2.1.300: "On Linux, glob patterns in
   Edit/Read rules will be ignored"). The Read tool's deny keeps each glob; the sandbox's
