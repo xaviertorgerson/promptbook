@@ -702,6 +702,8 @@ describe('trace graph', () => {
     assert.equal(edited.status, 1);
     assert.match(edited.stdout, /readiness .*invoicing\/readiness\.md: stale — differs from the plan at line \d+/);
     assert.match(edited.stdout, /regenerate: node tools\/validate\.mjs --trace .* --readiness .* --no-timestamp/);
+    const withTests = cli('--readiness', specs, '--check', '--tests', 'tests/**/*.spec.ts', '--test-pattern', "it\\('(.*)'");
+    assert.match(withTests.stdout, /regenerate: .* --tests 'tests\/\*\*\/\*\.spec\.ts' --test-pattern 'it\\\('\\''\(\.\*\)'\\''' --no-timestamp/, 'the hint keeps the test options it was given');
 
     fs.writeFileSync(file, committed);
     fs.writeFileSync(path.join(specs, 'invoicing/tasks/INV-2.md'), taskText('INV-2'));

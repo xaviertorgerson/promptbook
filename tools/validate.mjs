@@ -105,7 +105,10 @@ if (flag('--trace')) {
   for (const c of result.readiness_check ?? []) {
     console.log(`readiness ${c.file}: ${c.status}${c.status === 'ok' ? '' : ` — ${why[c.status]}${c.line ? ` at line ${c.line}\n          expected: ${c.expected}\n          found:    ${c.found}` : ''}`}`);
   }
-  if (stale.length) console.log(`regenerate: node tools/validate.mjs --trace ${root} --readiness ${out} --no-timestamp`);
+  // The hint repeats the test options, or the regenerated report would count other tests.
+  const sh = (v) => (/^[\w@%+=:,./-]+$/.test(v) ? v : `'${v.replace(/'/g, `'\\''`)}'`);
+  const testArgs = [...tests.flatMap((t) => ['--tests', t]), ...patterns.flatMap((p) => ['--test-pattern', p])].map(sh).join(' ');
+  if (stale.length) console.log(`regenerate: node tools/validate.mjs --trace ${sh(root)} --readiness ${sh(out)}${testArgs ? ` ${testArgs}` : ''} --no-timestamp`);
   console.log(`${failed ? 'FAIL' : 'PASS'} trace: ${result.counts.error} error(s), ${result.counts.warning} warning(s), ${result.counts.info} info${strict ? ' (strict)' : ''}${checked ? `; readiness ${checked.length - stale.length}/${checked.length} report(s) current` : ''}`);
   process.exit(failed ? 1 : 0);
 }
