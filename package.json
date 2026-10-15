@@ -20,6 +20,7 @@
     "run": "node tools/run.mjs",
     "check-requires": "node tools/check-requires.mjs",
     "lock": "node tools/lock.mjs",
+    "install-sets": "node tools/install-sets.mjs",
     "grant": "node tools/grant.mjs",
     "eval-routing": "node tools/eval-routing.mjs",
     "import-evals": "node tools/import-evals.mjs",
