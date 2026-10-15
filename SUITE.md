@@ -93,6 +93,36 @@ and the operator holds no skills, agent definitions or per-product jobs, which s
 stagecraft and stagehand. A project that takes no money (an embedded controller, an in-house tool)
 has no operator and never sees the business layer.
 
+## What depends on what
+
+Two kinds of edge. A **pin** is a commit and tree id in a lockfile, verified by `promptbook lock
+--check`, moved only by a pull request: nothing changes under a consumer by accident. A **mention** is
+text: a skill that says "run `promptbook lint` if present", an adapter that knows another tool's
+record shape. Nothing fetches on a mention, and nothing fails when the mentioned repository is absent.
+
+```
+promptbook ── pins nothing          Skilldex ── pins nothing          stagehand ── pins nothing
+     ▲     ▲                           ▲    ▲
+     │     │                           │    │
+     │     └──── stagecraft ───────────┘    │        stagecraft: toolkit.lock (project scope)
+     │                │ copied into         │
+     │                ▼                     │
+     │            a product ── its own toolkit.lock ── pins promptbook + Skilldex
+     │                │ breadcrumb (text)
+     │                ▼
+     │          the operator's private repo ── pins nothing; nothing depends on it
+     │                                              │
+dotfiles ───────────────────────────────────────────┘  dotfiles: toolkit.yaml (machine scope): promptbook, Skilldex, stagehand
+```
+
+No pin cycle exists: the three leaves pin nothing, and everything below them pins upward only. The one
+two-way *mention* is promptbook ↔ Skilldex (promptbook defines and lints the `SETS.yaml` format;
+22 Skilldex skills name promptbook's CLI as an optional tool); Skilldex installs and runs with
+promptbook absent, and promptbook's tests need no Skilldex. Two lockfiles because a machine and a
+project are upgraded by different people at different times: a laptop moving to a new Skilldex must
+not change what a project's CI runs. A bump is `promptbook lock --update <name>` (project) or an
+edit to `toolkit.yaml` plus `scripts/compile-agent-policy.sh` (machine), then a pull request.
+
 ## Interfaces: the only ways the repositories touch
 
 | # | Interface | What crosses it | Pinned by |
@@ -172,6 +202,15 @@ Combined, separate, and why, in one line each:
 - **Quentin's and Xavier's concepts meet at two files**: the task-file format (stagehand reads a
   project's `specs/`) and the install set (`SETS.yaml`). Nothing else crosses, so neither workflow
   constrains the other.
+
+What was cut, and what would be cut next (each with the trigger that brings it back or takes it):
+
+- **Done:** one set installer (`install-sets`) instead of a copy in stagecraft and one in dotfiles; a
+  sixth "suite" repository, not made; the stagecraft plugin path, demoted until headless runs load it.
+- **Next, when `compile-policy` is next touched:** the Gemini emitter goes unless a machine in
+  `toolkit.yaml` runs Gemini CLI; the `simulate` command folds into the state-machine tests; the
+  `autoUpdate` tiers in `toolkit.lock` go (bump by hand) once promptbook is tagged 1.0 and semver
+  ranges carry the same meaning. None of these changes the five-repository shape.
 
 The 80/20: a solo developer uses dotfiles, a stagecraft project with the `solo` profile and the
 loop, and Skilldex's planning and delivery sets. stagehand, packs, Codex, Gemini and third-party
