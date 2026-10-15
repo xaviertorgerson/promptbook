@@ -321,9 +321,11 @@ export function lintSkills(targets, opts = {}) {
     }
   }
 
-  // 8. The set's always-loaded budget.
+  // 8. The set's always-loaded budget. A library with its own SETS.yaml is never installed whole:
+  // each of its sets is checked against the budget instead (9), so the folder's total is not one.
   const total = skills.reduce((a, s) => a + s.description.length, 0);
-  if (total > limits.descriptionBudget) {
+  const library = targets.length > 0 && targets.every((x) => setsFileOf(path.resolve(x)));
+  if (!library && total > limits.descriptionBudget) {
     const longest = [...skills].sort((a, b) => b.description.length - a.description.length).slice(0, 3).map((s) => `${s.name} ${s.description.length}`);
     overlaps.push({ severity: 'warning', rule: 'description-budget', score: total, message: `the ${skills.length} descriptions total ${total} characters, over the ${limits.descriptionBudget} an engine may keep loaded (2% of context or 8000 characters); longest: ${longest.join(', ')}` });
   }
@@ -480,7 +482,36 @@ export function lintSets(file, skills, { externalDirs = {} } = {}) {
       f('error', 'set-over-budget', `${n} (${s.scope}) loads ${load.total} characters with what it is loaded with (${by}), over ${limit}: the ${data.budget.limit}-character budget less ${Math.round(data.budget.headroom * 100)}% headroom; split the set or shorten its descriptions`);
     }
   }
+  marketplaceFindings(file, data).forEach((m) => f('error', 'marketplace-sets', m));
   return { file, findings, sets: out };
+}
+
+// A library that packages its sets as plugins (.claude-plugin/marketplace.json at its root) keeps
+// one plugin per installable set, each with exactly that set's skills.
+function marketplaceFindings(file, data) {
+  const lib = setsLibrary(file);
+  const market = path.join(path.dirname(lib), '.claude-plugin', 'marketplace.json');
+  if (!fs.existsSync(market)) return [];
+  let plugins;
+  try { plugins = JSON.parse(readText(market)).plugins; } catch (e) { return [`.claude-plugin/marketplace.json: not JSON: ${e.message}`]; }
+  if (!Array.isArray(plugins)) return ['.claude-plugin/marketplace.json: no plugins list'];
+  const out = [];
+  const installable = Object.entries(data.sets).filter(([, s]) => s.scope !== 'library').map(([n]) => n);
+  for (const n of installable) if (!plugins.some((pl) => pl?.name === n)) out.push(`set ${n} has no plugin in .claude-plugin/marketplace.json`);
+  for (const pl of plugins) {
+    const name = pl?.name;
+    if (!installable.includes(name)) { out.push(`plugin ${name} is no installable set of ${SETS_FILE}`); continue; }
+    const base = path.resolve(path.dirname(lib), typeof pl.source === 'string' ? pl.source : '.');
+    const listed = Array.isArray(pl.skills) ? pl.skills.map((x) => path.resolve(base, x)) : skillDirs(path.join(base, 'skills'));
+    const outside = listed.filter((d) => path.dirname(d) !== lib);
+    for (const d of outside) out.push(`plugin ${name} lists ${path.relative(path.dirname(lib), d)}, outside ${path.relative(path.dirname(lib), lib) || '.'}`);
+    const got = new Set(listed.map((d) => path.basename(d)));
+    const want = setSkills(data, name);
+    const missing = [...want].filter((x) => !got.has(x));
+    const extra = [...got].filter((x) => !want.has(x));
+    if (missing.length || extra.length) out.push(`plugin ${name} differs from set ${name}${missing.length ? `; missing ${missing.join(', ')}` : ''}${extra.length ? `; extra ${extra.join(', ')}` : ''}`);
+  }
+  return out;
 }
 
 // ------------------------------------------------------------------------------------- budget set
