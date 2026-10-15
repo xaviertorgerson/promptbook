@@ -22,7 +22,7 @@ export const COMMANDS = {
   'install-sets': { script: 'install-sets.mjs', about: 'copy the skill sets toolkit.lock pins into the engines\' skill folders' },
   grant: { script: 'grant.mjs', about: 'verify a grant: provenance, owners, narrowing (grant verify)' },
   'eval-routing': { script: 'eval-routing.mjs', about: 'run routing evals through a model command' },
-  'import-evals': { script: 'import-evals.mjs', about: 'convert an agentic-template evals.md into the eval files' },
+  'import-evals': { script: 'import-evals.mjs', about: 'convert a stagecraft (formerly agentic-template) evals.md into the eval files' },
   report: { script: 'report.mjs', about: 'total run records: cost, tokens and cache hit rate per task' },
 };
 
