@@ -153,7 +153,106 @@ function blankSkippedJs(text) {
   return out;
 }
 
-const NAME_CALL = /\b(?:it|test|describe)(?:\.(?:each|only|concurrent))?\s*\(\s*(['"`])((?:\\.|(?!\1)[^\\])*)\1/g;
+// it/test/describe calls (Playwright's test.describe too); a member call such as regex.test("…") is no test.
+const NAME_CALL = /(?:(?<![.\w$])(it|test)|(?<![\w$])(?:test\.)?(describe))(?:\.(?:each|only|concurrent|serial|parallel))?\s*\(\s*(['"`])((?:\\.|(?!\3)[^\\])*)\3/g;
+
+// JS: the offset just past the parenthesis that closes the call opened at `open`, skipping strings,
+// template literals (with their ${…}) and regex literals, so a describe's extent is its whole body.
+// Comments are already blanked. -1 if the call never closes.
+const REGEX_AFTER_WORD = new Set(['return', 'typeof', 'instanceof', 'in', 'of', 'new', 'delete', 'void', 'throw', 'case', 'do', 'else', 'yield', 'await']);
+function skipQuoted(text, i, q) {
+  let j = i + 1;
+  while (j < text.length && text[j] !== q && text[j] !== '\n') j += text[j] === '\\' ? 2 : 1;
+  return j;
+}
+function skipTemplate(text, i) {
+  let j = i + 1;
+  while (j < text.length && text[j] !== '`') {
+    if (text[j] === '\\') { j += 2; continue; }
+    if (text[j] === '$' && text[j + 1] === '{') {
+      j = jsSkip(text, j + 1, '{', '}') - 1;
+    }
+    j += 1;
+  }
+  return j;
+}
+function skipRegex(text, i) {
+  let j = i + 1;
+  let cls = false;
+  while (j < text.length && text[j] !== '\n') {
+    const c = text[j];
+    if (c === '\\') { j += 2; continue; }
+    if (c === '[') cls = true;
+    else if (c === ']') cls = false;
+    else if (c === '/' && !cls) return j;
+    j += 1;
+  }
+  return i; // not a regex after all: read the slash as division
+}
+// From the opener at `open`, the offset just past its matching closer.
+function jsSkip(text, open, opener, closer) {
+  let depth = 0;
+  let prev = '';
+  let word = '';
+  for (let i = open; i < text.length; i += 1) {
+    const c = text[i];
+    if (c === '"' || c === "'") { i = skipQuoted(text, i, c); prev = c; word = ''; continue; }
+    if (c === '`') { i = skipTemplate(text, i); prev = '`'; word = ''; continue; }
+    if (c === '/' && (prev === '' || /[(,=:[!&|?{};+\-*%<>~^]/.test(prev) || REGEX_AFTER_WORD.has(word))) { i = skipRegex(text, i); prev = '/'; word = ''; continue; }
+    if (c === opener) depth += 1;
+    else if (c === closer && (depth -= 1) === 0) return i + 1;
+    if (/[A-Za-z0-9_$]/.test(c)) word = /[A-Za-z0-9_$]/.test(prev) ? word + c : c;
+    else if (!/\s/.test(c)) word = '';
+    if (!/\s/.test(c)) prev = c;
+  }
+  return -1;
+}
+
+// JS test names as Jest, Vitest, Playwright and node:test report them: each describe's title, outer
+// first, joined with the test's own (' > '), so it('AC-3 …') inside describe('BOOK-12 …') is
+// "BOOK-12 … > AC-3 …". A call outside any describe keeps its own title.
+function jsFullNames(t) {
+  const calls = [...t.matchAll(NAME_CALL)].map((m) => {
+    const open = m.index + m[0].search(/\(/);
+    const kind = m[1] ?? m[2];
+    return { kind, title: m[4], start: m.index, end: kind === 'describe' ? jsSkip(t, open, '(', ')') : -1 };
+  });
+  const suites = calls.filter((c) => c.kind === 'describe');
+  return calls.map((c) => {
+    const outer = suites.filter((d) => d !== c && d.start < c.start && (d.end === -1 || c.start < d.end));
+    return [...outer.map((d) => d.title), c.title].join(' > ');
+  });
+}
+
+// Python: pytest's node ids, without the file: each test function under its enclosing classes
+// (TestBook12::test_ac_3), and a parametrize id under the test it decorates (test_x[id]).
+function pythonTestNames(t) {
+  const lines = t.split('\n');
+  const indent = (l) => l.match(/^\s*/)[0].length;
+  const classesAbove = (row, col) => {
+    const out = [];
+    let limit = col;
+    for (let r = row - 1; r >= 0 && limit > 0; r -= 1) {
+      const m = lines[r].match(/^(\s*)class\s+([A-Za-z_]\w*)/);
+      if (m && m[1].length < limit) { out.unshift(m[2]); limit = m[1].length; }
+      else if (lines[r].trim() && indent(lines[r]) < limit && !/^\s*(?:@|#|class\b)/.test(lines[r])) limit = indent(lines[r]);
+    }
+    return out;
+  };
+  const defs = [];
+  lines.forEach((l, row) => {
+    const m = l.match(/^(\s*)(?:async\s+)?def\s+(\w+)\s*\(/);
+    if (m) defs.push({ row, offset: lines.slice(0, row).join('\n').length + (row ? 1 : 0), name: m[2], full: [...classesAbove(row, m[1].length), m[2]].join('::') });
+  });
+  const tests = defs.filter((d) => d.name.startsWith('test'));
+  // A parametrize id belongs to the next def after it, when that def is a test; else it stands alone.
+  const owner = (offset) => { const d = defs.find((x) => x.offset > offset); return d?.name.startsWith('test') ? d : null; };
+  const ids = [
+    ...[...t.matchAll(/\bids\s*=\s*[[(]([^\])]*)[\])]/g)].flatMap((m) => [...m[1].matchAll(/(['"])((?:\\.|(?!\1)[^\\])*)\1/g)].map((x) => ({ id: x[2], at: m.index }))),
+    ...pytestParamIds(t),
+  ];
+  return [...tests.map((d) => d.full), ...ids.map(({ id, at }) => { const d = owner(at); return d ? `${d.full}[${id}]` : id; })];
+}
 // A Rust test: a fn under a test attribute (#[test], #[tokio::test], #[rstest], #[test_case(…)]), not #[ignore].
 const RUST_FN = /((?:#\[[^\]]*\]\s*)+)(?:pub(?:\([^)]*\))?\s+)?(?:async\s+)?(?:unsafe\s+)?fn\s+([A-Za-z_][A-Za-z0-9_]*)\s*[<(]/g;
 const RUST_TEST_ATTR = /#\[\s*(?:[\w]+::)*(?:test|rstest|test_case)\b/;
@@ -163,21 +262,18 @@ const pytestParamIds = (t) => [...t.matchAll(/\bpytest\.param\s*\(/g)].flatMap((
   const open = m.index + m[0].length - 1;
   const end = closeParen(t, open, SYNTAX.python.quotes);
   const args = t.slice(open, end === -1 ? t.length : end);
-  return [...args.matchAll(/\bid\s*=\s*(['"])((?:\\.|(?!\1)[^\\])*)\1/g)].map((x) => x[2]);
+  return [...args.matchAll(/\bid\s*=\s*(['"])((?:\\.|(?!\1)[^\\])*)\1/g)].map((x) => ({ id: x[2], at: m.index }));
 });
 const EXTRACTORS = {
-  js: [(t) => [...blankSkippedJs(t).matchAll(NAME_CALL)].map((m) => m[2])],
+  js: [(t) => jsFullNames(blankSkippedJs(t))],
   // Go: t.Run("…") subtests (b.Run for benchmarks), and the TestXxx function names.
   go: [
     (t) => [...t.matchAll(/\b[tb]\.Run\(\s*"((?:\\.|[^"\\])*)"/g)].map((m) => m[1]),
     (t) => [...t.matchAll(/\bfunc\s+(Test\w+)\s*\(/g)].map((m) => m[1]),
   ],
-  // Python: def test_… (ac_2 matches AC-2); pytest parametrize ids=[…] and pytest.param(…, id="…").
-  python: [
-    (t) => [...t.matchAll(/^\s*(?:async\s+)?def\s+(test\w*)\s*\(/gm)].map((m) => m[1]),
-    (t) => [...t.matchAll(/\bids\s*=\s*[[(]([^\])]*)[\])]/g)].flatMap((m) => [...m[1].matchAll(/(['"])((?:\\.|(?!\1)[^\\])*)\1/g)].map((x) => x[2])),
-    pytestParamIds,
-  ],
+  // Python: def test_… (ac_2 matches AC-2) under its classes; pytest parametrize ids=[…] and
+  // pytest.param(…, id="…") under the test they decorate.
+  python: [pythonTestNames],
   // JUnit 5 (Java and Kotlin): @DisplayName("…").
   junit: [(t) => [...t.matchAll(/@(?:[A-Za-z_][\w.]*\.)?DisplayName\(\s*"((?:\\.|[^"\\])*)"\s*\)/g)].map((m) => m[1])],
   // Kotlin: backticked function names, fun `AC-2 rounds half to even`().

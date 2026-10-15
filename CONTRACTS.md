@@ -575,9 +575,13 @@ with no test never reads ready.
 `--strict` makes warnings fail; `--readiness <dir>` writes each epic's `readiness.md`
 (`--no-timestamp`: without `generated_at` and `source_commit`).
 
-**Test names.** A file's extension picks how its test names are read: JS/TS the first string of
-`it`/`test`/`describe` (ears-coverage's extractor); Go `t.Run("…")` and `func TestXxx`; Python
-`def test_…`, pytest `ids=[…]` and the `id="…"` of a `pytest.param(…)`; JUnit 5 `@DisplayName("…")`;
+**Test names.** A file's extension picks how its test names are read, as the runner reports them:
+JS/TS the first string of `it`/`test`/`describe` (Playwright's `test.describe` too, never a member
+call such as `regex.test("…")`), joined with the titles of every enclosing `describe`, outer first
+(`BOOK-12 the shelf > AC-3 shows covers`), as Jest, Vitest, Playwright and `node:test` print a full
+name; Go `t.Run("…")` and `func TestXxx`; Python `def test_…` under its enclosing classes
+(`TestBook12::test_ac_3`), pytest `ids=[…]` and the `id="…"` of a `pytest.param(…)` under the test they
+decorate (`test_rounding[BILL-6 AC-3 …]`); JUnit 5 `@DisplayName("…")`;
 Kotlin backticked function names; Rust the names of `fn`s under a test attribute (`#[test]`,
 `#[tokio::test]`, `#[rstest]`, `#[test_case(…)]`), never a helper `fn` or an `#[ignore]`d one; Ruby
 `it`/`describe`/`context`/`specify`/`test "…"`. A test that never runs evidences nothing: comments are
@@ -592,8 +596,9 @@ else (group 1, or the match, is a name), read from the same comment-blanked text
 `test_inv_1_ac_2`) is qualified and counts for the tasks it names, never another. A name with a bare
 `AC-n` counts for the one task of its epic that has an `AC-n`; when several do, it is ambiguous and
 counts for none of them (`ambiguous-criterion-id`), so coverage can no longer read complete while a
-task's own criterion is untested. Ids are matched per name, not per enclosing `describe`: a bare
-`it('AC-2 …')` inside `describe('INV-1 …')` is bare. The epic's coverage ratio counts covered
+task's own criterion is untested. A name is the full name: `it('AC-2 …')` inside
+`describe('INV-1 …')` is `INV-1 … > AC-2 …`, qualified for INV-1; a name that carries two task ids (a
+describe naming one, its test another) counts for both. The epic's coverage ratio counts covered
 criteria, and `--json` lists each criterion's evidence (`epics[].criteria_evidence`: qualified,
 bare, ambiguous or none). A bare id unique in its epic still counts when another epic has the same
 id, so a project with several epics should qualify every name.

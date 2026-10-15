@@ -574,6 +574,20 @@ describe('trace graph', () => {
       assert.deepEqual(by(r, 'ambiguous-criterion-id'), [], 'a qualified name is never ambiguous');
     });
 
+    it('a name is the runner\'s full name: a bare AC-n inside a describe that names the task counts for that task', () => {
+      const r = run("describe('INV-2 listing', () => {\n  it('AC-1 lists newest first', () => {});\n});\ndescribe('download (INV-1)', () => {\n  describe('tenancy', () => {\n    it('AC-2 returns 404 for another tenant', () => {});\n  });\n  it('AC-1 returns the PDF', () => {});\n});\n");
+      assert.deepEqual(ev(r), { 'INV-1 AC-1': 'qualified', 'INV-1 AC-2': 'qualified', 'INV-2 AC-1': 'qualified' });
+      assert.deepEqual(by(r, 'criterion-named-in-test'), []);
+      assert.deepEqual(by(r, 'ambiguous-criterion-id'), [], 'each AC-1 is qualified by its describe');
+      const flat = run("describe('listing', () => {\n  it('AC-1 lists newest first', () => {});\n});\nit('INV-1 AC-2 returns 404', () => {});\n");
+      assert.deepEqual(ev(flat), { 'INV-1 AC-1': 'ambiguous', 'INV-1 AC-2': 'qualified', 'INV-2 AC-1': 'ambiguous' }, 'a describe that names no task qualifies nothing');
+    });
+
+    it('a member call such as regex.test("…") is no test name', () => {
+      const r = run("it('INV-1 AC-1 returns the PDF', () => {\n  expect(/AC-2/.test('AC-2 404')).toBe(true);\n});\nit('INV-2 AC-1 lists newest first', () => {});\n");
+      assert.equal(ev(r)['INV-1 AC-2'], 'none');
+    });
+
     it('a bare id counts when exactly one task of the epic has it', () => {
       const r = run("it('INV-1 AC-1 returns the PDF', () => {});\nit('INV-2 AC-1 lists newest first', () => {});\nit('AC-2 returns 404', () => {});\n");
       assert.deepEqual(ev(r), { 'INV-1 AC-1': 'qualified', 'INV-1 AC-2': 'bare', 'INV-2 AC-1': 'qualified' });

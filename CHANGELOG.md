@@ -10,6 +10,20 @@ Contract versions are each schema's `x-version` and each state machine's `versio
 
 ## [Unreleased]
 
+### Adopting an existing repository
+
+What running `trace` over an older project (heirloom) showed: a test named inside its describe, and a
+decision log that is not in the ADR form, were invisible.
+
+#### Fixed
+
+- **behavioral** — `trace` reads a test's full name as the runner reports it: JS/TS `it`/`test`
+  titles joined with every enclosing `describe` (Playwright's `test.describe` too), and pytest's
+  functions under their classes with their parametrize ids, so `it('AC-3 …')` inside
+  `describe('BOOK-12 …')` counts for BOOK-12 AC-3; a flat name reads as before. A member call such
+  as `regex.test("…")` is no longer a test name. On heirloom, `criterion-named-in-test` falls from
+  401 to 291 and `ambiguous-criterion-id` from 144 to 125.
+
 ### Final pass
 
 Trust profiles, a standards block that holds in every profile, and the contracts adapted to the
