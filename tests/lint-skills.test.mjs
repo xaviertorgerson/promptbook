@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { after, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { budgetSet, isGerundName, jaccard, lintSkills, markdownLinks, parseScenarios, scenarioMissing, triggerTokens } from '../tools/lib/lint-skills.mjs';
+import { STRICTABLE, STYLE, budgetSet, isGerundName, jaccard, lintSkills, markdownLinks, parseScenarios, scenarioMissing, triggerTokens } from '../tools/lib/lint-skills.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FIX = path.join(ROOT, 'fixtures/lint');
@@ -63,9 +63,49 @@ describe('lint-skills', () => {
         assert.equal(r.counts.error, 0, 'overlap is a warning, not an error');
         return;
       }
+      if (STYLE.has(rule)) {
+        // Style is advice unless the library asks for it: a warning by default, an error when strict.
+        assert.ok(rules(r, 'warning').has(rule) && !rules(r, 'error').has(rule), `expected warning ${rule}, got errors ${[...rules(r, 'error')]} warnings ${[...rules(r, 'warning')]}`);
+        const strict = lintSkills([overlay(rule)], { known: NEIGHBOURS, strictRules: [rule] });
+        assert.ok(rules(strict, 'error').has(rule), `strict: expected error ${rule}, got ${[...rules(strict, 'error')]}`);
+        return;
+      }
       assert.ok(rules(r, 'error').has(rule), `expected error ${rule}, got errors ${[...rules(r, 'error')]} warnings ${[...rules(r, 'warning')]}`);
     });
   }
+
+  it('another maintainer\'s style passes with warnings: "Do not use merely to …", no "Use when", one evals/evals.md, a term of art', () => {
+    const lib = path.join(TMP, 'theirs');
+    fs.mkdirSync(path.join(lib, 'skills'), { recursive: true });
+    fs.cpSync(path.join(GOOD, 'drafting-widgets'), path.join(lib, 'skills/drafting-widgets'), { recursive: true });
+    const theirs = path.join(lib, 'skills/resolving-widgets');
+    fs.mkdirSync(path.join(theirs, 'evals'), { recursive: true });
+    const description = 'Guides the original author through resolving selected review findings on a widget, applying Claude Search Optimization (CSO) to its notes. Do not use merely to view, summarize or triage feedback.';
+    fs.writeFileSync(path.join(theirs, 'SKILL.md'), `---\nname: resolving-widgets\ndescription: ${description}\n---\n\n# Resolving widgets\n\nApply the Claude Search Optimization (CSO) principles to each note.\n`);
+    fs.writeFileSync(path.join(theirs, 'evals/evals.md'), '# Evaluations\n\n## Trigger routing\n\n| Prompt | Expected |\n| --- | --- |\n| Fix the review comments. | Trigger. |\n');
+    fs.writeFileSync(path.join(lib, 'SETS.yaml'), 'budget: { limit: 8000, headroom: 0.10 }\nsets:\n  everyday:\n    scope: user\n    skills: [drafting-widgets, resolving-widgets]\n');
+    const r = lintSkills([path.join(lib, 'skills')]);
+    const mine = r.skills.find((s) => s.name === 'resolving-widgets');
+    assert.equal(mine.status, 'PASS', JSON.stringify(mine.findings));
+    assert.deepEqual(mine.findings.map((x) => `${x.severity}:${x.rule}`), ['warning:description-use-when', 'warning:do-not-use-names-neighbour'], 'advice only: "Do not use merely to" is an exclusion clause, and CSO is not an engine');
+    assert.ok(!triggerTokens(description).has('summarize'), 'the exclusion clause is not a trigger');
+
+    // The library asks for its own skills to be strict, and only those.
+    fs.writeFileSync(path.join(lib, 'SETS.yaml'), `${fs.readFileSync(path.join(lib, 'SETS.yaml'), 'utf8')}lint:\n  strict: [description-use-when, evals-present]\n  skills: [drafting-widgets]\n`);
+    const strict = lintSkills([path.join(lib, 'skills')]);
+    assert.equal(strict.skills.find((s) => s.name === 'resolving-widgets').status, 'PASS', 'not listed: still held to the defaults');
+    assert.deepEqual(strict.skills.find((s) => s.name === 'drafting-widgets').strict.sort(), ['description-use-when', 'evals-present']);
+    fs.rmSync(path.join(lib, 'skills/drafting-widgets/evals/scenarios.md'));
+    fs.writeFileSync(path.join(lib, 'skills/drafting-widgets/evals/evals.md'), '# Evaluations\n');
+    const held = lintSkills([path.join(lib, 'skills')]);
+    assert.ok(held.skills.find((s) => s.name === 'drafting-widgets').findings.some((x) => x.severity === 'error' && x.rule === 'evals-present'), 'strict evals-present wants the three files, an evals.md notwithstanding');
+
+    // A strict rule lint does not know, or a skill the library does not hold, is a SETS.yaml error.
+    fs.writeFileSync(path.join(lib, 'SETS.yaml'), 'budget: { limit: 8000, headroom: 0.10 }\nsets:\n  everyday:\n    scope: user\n    skills: [drafting-widgets, resolving-widgets]\nlint:\n  strict: [engine-neutral]\n  skills: [nobody]\n');
+    const bad = lintSkills([path.join(lib, 'skills')]).sets.flatMap((x) => x.findings).map((x) => x.rule);
+    assert.ok(bad.includes('sets-shape'), bad.join());
+    assert.ok([...STRICTABLE].every((x) => x === 'evals-present' || STYLE.has(x)));
+  });
 
   it('a frontmatter that does not parse because a value holds ": " gets the quoting hint', () => {
     const r = lintSkills([overlay('parse-error')]);
@@ -79,7 +119,7 @@ describe('lint-skills', () => {
     const text = fs.readFileSync(skill, 'utf8');
     const d = text.match(/^description: (.*)$/m)[1];
     fs.writeFileSync(skill, text.replace(d, d.slice(0, 340).replace(/ [^ ]*$/, '') + '. Do not use for checking (checking-widgets).'));
-    const r = lintSkills([dir]);
+    const r = lintSkills([dir], { strictRules: ['description-length'] });
     assert.ok(!rules(r, 'error').has('description-length'));
     assert.ok(rules(r, 'warning').has('description-length'));
     const loose = path.join(TMP, 'no-sets');
@@ -110,7 +150,7 @@ describe('lint-skills', () => {
     const skill = path.join(dir, 'drafting-widgets/SKILL.md');
     const text = fs.readFileSync(skill, 'utf8').split('\n');
     fs.writeFileSync(skill, text.slice(0, text.length - 120).join('\n'));
-    const r = lintSkills([dir]);
+    const r = lintSkills([dir], { strictRules: ['body-length'] });
     assert.ok(!rules(r, 'error').has('body-length'));
     assert.ok(rules(r, 'warning').has('body-length'));
   });

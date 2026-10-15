@@ -66,9 +66,10 @@ project's own instructions for its queue ([adapters/herdr](adapters/herdr/README
 every invariant; without the flag the simulation runs promptbook's reference coordinator, the
 protocol the state machines describe, as code.
 
-**The skills (Skilldex).** `promptbook lint <skilldex>/skills` checks every skill against the
-authoring rules and every install set against the 8,000-character always-loaded description budget
-with 10% headroom; `promptbook eval-routing` measures routing, `--set <name>` with only that set
+**The skills (Skilldex).** `promptbook lint <skilldex>/skills` checks every skill against the Agent
+Skills spec's limits and engine neutrality, gives promptbook's authoring style as advice unless the
+library's `SETS.yaml` holds a skill to it (`lint: { strict: [...] }`), and checks every install set
+against the 8,000-character always-loaded description budget with 10% headroom; `promptbook eval-routing` measures routing, `--set <name>` with only that set
 installed.
 
 ## Core vs optional

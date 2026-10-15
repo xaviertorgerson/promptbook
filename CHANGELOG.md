@@ -55,6 +55,14 @@ tools other maintainers already run (stagehand's task records and delegation, Sk
 
 #### Fixed
 
+- **behavioral** — `lint` no longer forces promptbook's description style on another maintainer's
+  skills. Errors are the Agent Skills spec's limits (frontmatter, name, a description of at most
+  1,024 characters), what breaks an installed skill and engine neutrality; the style rules
+  (`name-is-gerund`, `description-use-when`, `description-do-not-use-for`, the 300/400 length
+  advice, `deprecated-description`, `body-length` and the eval counts and formats) are warnings
+  unless the skill's library asks for them in its `SETS.yaml` (`lint: { strict: [...], skills:
+  [...] }`). "Do not use merely to …" is an exclusion clause; `evals-present` accepts one
+  `evals/evals.md` unless strict; "Claude Search Optimization" is a term of art, not an engine.
 - **behavioral** — `lock`: an untagged source with no manifest is versioned by its commit
   (`0.0.0+<sha>`, the abbreviation's length kept), so `--update` no longer leaves a moved pin
   with the old commit's version (`0.0.0+cd7bf12` after a move to `ca37b1f`); a first pin of such a

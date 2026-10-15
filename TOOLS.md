@@ -43,34 +43,42 @@ test attribute, name nothing (CONTRACTS.md, Test names).
 `promptbook lint [dir]...` checks a folder of skills, or one skill, against the authoring rules. The
 skills live in Skilldex: `promptbook lint <skilldex>/skills`, or `promptbook lint` from a Skilldex
 checkout (the default folder is `./skills`). Errors name a stable rule; `--strict` fails on warnings
-too. `--sets <file>` names the `SETS.yaml` of the library the linted skills install beside (a
+too. Errors are the Agent Skills spec's hard limits (the frontmatter, the name, a description of at
+most 1,024 characters), what breaks an installed skill (a link out of its folder, a malformed eval
+file, a route to no skill) and engine neutrality. promptbook's authoring style is advice: the rules
+marked *style* below are warnings unless the skill's own library asks for them in its `SETS.yaml`,
+`lint: { strict: [rule...], skills: [name...] }` (`skills` absent: every skill of the library), so a
+library can hold the skills it maintains to the full bar while another maintainer's skills beside
+them keep their own style. `evals-present` accepts one `evals/evals.md` (a test plan in prose)
+unless it is strict, when it wants `routing.jsonl`, `scenarios.md` and `evidence.md`. `--sets <file>` names the `SETS.yaml` of the library the linted skills install beside (a
 project's own skills beside Skilldex's): its sets are checked, a `--budget-set` name is read from it,
 and its skills are names a near-miss may route to.
 
 | Rule | Checks |
 |---|---|
 | the skill contract (`agentskills-core-fields-only`, `name-matches-path`, …) | frontmatter via the validator |
-| `name-is-gerund` | the first word ends in -ing: `writing-requirements` |
-| `description-use-when`, `description-do-not-use-for` | a "Use when …" trigger and a "Do not use for … (neighbour)" clause; warnings if out of order or naming no neighbour |
-| `description-length` | a description over 400 characters fails, over 300 warns: every description stays loaded in every session |
+| `name-is-gerund` (style) | the first word ends in -ing: `writing-requirements` |
+| `description-use-when`, `description-do-not-use-for` (style) | a "Use when …" trigger and a "Do not use …" clause ("Do not use for …", "Do not use merely to …"); warnings if out of order or naming no neighbour |
+| `description-length` (style) | a description over 400 characters is the style rule (an error when strict), over 300 always a warning: every description stays loaded in every session; over 1,024 is the skill contract's error |
 | `description-budget` (warning) | the scanned set's descriptions together exceed 8000 characters (one engine keeps skill metadata within 2% of context or 8000 characters); the longest are named. The budget binds what a machine installs, not one library: `--budget-set <file>` sums the descriptions of an installed set (a list of skill folders or folders of skills, one per line or a YAML list; or a `toolkit.lock`, whose local entries contribute the skills under `source/path` (or `source/skills/`), narrowed to the install `sets` an entry names (read from the library's `SETS.yaml`; an unknown set fails `budget-set-sets`) and by an `x-skills` list; a remote entry is reported as `budget-set-unread`, a listed folder that is missing fails `budget-set-missing`) and warns over 8000 with the count from each source; `--budget-set <set>` names a set of a `SETS.yaml` instead (`--sets`, else the linted library's, else `./SETS.yaml` or `./skills/SETS.yaml`, as in a Skilldex checkout) and checks what a session holding it loads; with no folder given only this check runs |
-| `sets-shape`, `sets-known`, `sets-disjoint`, `sets-cover`, `set-over-budget`, `set-not-installed` (warning) | a skill library's `SETS.yaml` (Skilldex's), in its skills folder or at the root above it, or the one `--sets` names, names install sets: each a scope (`user`, `project`, or `library`, never installed), its own `skills` and/or the sets it `includes`, and what a session `loaded_with` it (another set, or an `external` pack measured at a pinned commit; `--external name=<dir>` reads the real descriptions). Every named skill and set exists; every skill is in exactly one set's own list and some installable set; a user or project set, with what loads beside it, stays within `budget.limit` less `budget.headroom` (8,000 less 10%); `--budget-set` on a library set warns. The sets line prints each total |
-| `deprecated-description` | a skill with `metadata.deprecated` is exempt from "Use when": its description starts with "Deprecated:" and names the replacement skill |
+| `sets-shape`, `sets-known`, `sets-disjoint`, `sets-cover`, `set-over-budget`, `set-not-installed` (warning) | a skill library's `SETS.yaml` (Skilldex's), in its skills folder or at the root above it, or the one `--sets` names, names install sets: each a scope (`user`, `project`, or `library`, never installed), its own `skills` and/or the sets it `includes`, and what a session `loaded_with` it (another set, or an `external` pack measured at a pinned commit; `--external name=<dir>` reads the real descriptions). Every named skill and set exists; every skill is in exactly one set's own list and some installable set; a user or project set, with what loads beside it, stays within `budget.limit` less `budget.headroom` (8,000 less 10%); `--budget-set` on a library set warns; a `lint` block names only rules lint can make strict and skills the library holds. The sets line prints each total |
+| `deprecated-description` (style) | a skill with `metadata.deprecated` is exempt from "Use when": its description starts with "Deprecated:" and names the replacement skill |
 | `parse-error` | the frontmatter is YAML; when a plain value holds ": " (the usual cause), the error says to quote it |
-| `body-length` | warn over 200 body lines, fail over 300 |
-| `engine-neutral` | no engine, runtime, forge or stack name in the description or body; `references/engine-notes.md` is exempt. The deny-list (Claude Code, Claude, Codex, Gemini, Antigravity, Herdr, Heeler, stagehand, OpenAI, Anthropic, Copilot, GitHub, GitLab, Forgejo, Cloudflare, Coolify, Hetzner, Angular, NestJS, Drizzle, pnpm) is replaced with `--deny-terms`, narrowed with `--allow-terms`; URLs are ignored |
+| `body-length` (style) | warn over 200 body lines; over 300 is the style rule |
+| `engine-neutral` | no engine, runtime, forge or stack name in the description or body; `references/engine-notes.md` is exempt. The deny-list (Claude Code, Claude, Codex, Gemini, Antigravity, Herdr, Heeler, stagehand, OpenAI, Anthropic, Copilot, GitHub, GitLab, Forgejo, Cloudflare, Coolify, Hetzner, Angular, NestJS, Drizzle, pnpm) is replaced with `--deny-terms`, narrowed with `--allow-terms`; URLs are ignored, and so is a term of art that holds a listed word but names a practice (Claude Search Optimization) |
 | `links-stay-in-skill` | no relative link leaves the skill folder (a skill installs alone) |
-| `evals-present`, `routing-counts`, `routing-kind-declared` | `routing.jsonl` with ≥ 4 positive, ≥ 3 near-miss with `route_to`, ≥ 2 negative, each case in the evidence contract's format |
+| `evals-present`, `routing-counts` (style), `routing-kind-declared` (style) | evals, as one `evals/evals.md` or (strict) as `routing.jsonl` with ≥ 4 positive, ≥ 3 near-miss with `route_to`, ≥ 2 negative, each case in the evidence contract's format |
 | `route-to-known`, `route-to-self` | a `route_to` names a scanned skill, a sibling of a linted skill, a skill that loads beside it (one of the `--sets` library, an `external` of the library's or the `--sets` `SETS.yaml`), `--known`, or `none` |
-| `scenarios-count`, `scenario-format`, `scenario-stop-condition` | ≥ 3 scenarios in `scenarios.md`, each with setup, prompt, pass criteria and k; one should hand to a human |
-| `evidence-count` and the evidence contract's rules | ≥ 1 dated entry; literature and vendor-reported cite a URL |
+| `scenarios-count`, `scenario-format` (style), `scenario-stop-condition` | ≥ 3 scenarios in `scenarios.md`, each with setup, prompt, pass criteria and k; one should hand to a human |
+| `evidence-count` (style) and the evidence contract's rules | ≥ 1 dated entry; literature and vendor-reported cite a URL |
 | `imported-needs-review` | nothing `import-evals` could not fill is left: a routing case noted `needs route_to`, a scenario line marked `TODO(import)` |
-| `deprecated-never-triggers` | a skill with `metadata.deprecated` keeps only no-trigger cases |
+| `deprecated-never-triggers` (style) | a skill with `metadata.deprecated` keeps only no-trigger cases |
 | `description-overlap` (warning) | two descriptions' trigger phrases (the "Use when" clause, stop words removed) share more than 0.3 Jaccard; the pair and the shared words are named. agentic-template's 19 skills peak at 0.17 |
 
 Fixtures: `fixtures/lint/good/` (a library in Skilldex's layout: four skills under `skills/`, one
-deprecated, and a `SETS.yaml` at the root) and one overlay per broken rule in
-`fixtures/lint/broken/<rule>/`.
+deprecated, and a `SETS.yaml` at the root that holds them strict) and one overlay per broken rule in
+`fixtures/lint/broken/<rule>/`, each linted outside the library: a style rule's overlay is a warning
+there and an error when strict.
 
 ## simulate
 
