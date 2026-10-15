@@ -399,7 +399,7 @@ profile's accepted gap.
 **Purpose.** Pins the exact promptbook, the portable skill libraries and the L4 packs a project (or the
 dotfiles) runs. **Schema** `toolkit-lock.schema.json` 2.0.0: `lock_version`, `entries[]` of `{name,
 layer (L3|L4), kind, source, path, ref, commit (full sha), tree (git tree id), version (semver,
-build metadata allowed: `0.0.0+fc572b6` for an untagged pin), autoUpdate (off | patch | minor |
+build metadata allowed: `0.0.0+fc572b6` for an untagged pin, which names the pinned commit and moves with it), autoUpdate (off | patch | minor |
 major), mirrored}`; names unique. `kind` at L3 is `promptbook` (exactly one; an L3 entry with no kind is
 promptbook) or `skill-library` (any number, e.g. a Skilldex skill); at L4 `engine-binding`,
 `stack-pack`, `runtime` or `domain-pack` (a kind on the other layer is a warning). A

@@ -55,6 +55,12 @@ tools other maintainers already run (stagehand's task records and delegation, Sk
 
 #### Fixed
 
+- **behavioral** — `lock`: an untagged source with no manifest is versioned by its commit
+  (`0.0.0+<sha>`, the abbreviation's length kept), so `--update` no longer leaves a moved pin
+  with the old commit's version (`0.0.0+cd7bf12` after a move to `ca37b1f`); a first pin of such a
+  source gets one instead of a `version-known` error, and a hand-set version is kept. `--check`
+  flags a `0.0.0+<sha>` that names another commit than the pin (`version-matches`). A rewrite keeps
+  the file's flow style: `sets: [planning, delivery]` is no longer written as `[ planning, delivery ]`.
 - **additive** — The docs say what stagehand does, not what promptbook once asked of it: it keeps
   its own task records (the `task-record` contract reads them), records a delegation as a project
   note, follows a project's own instructions for its task queue, and writes none of promptbook's

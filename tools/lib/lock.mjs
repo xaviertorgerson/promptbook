@@ -15,10 +15,12 @@ import { registry as sharedRegistry } from './registry.mjs';
 //                  An unreachable remote is an error that says so; --offline skips remotes.
 //
 // lock:     fill commit, tree and version where missing; keep every existing pin (a pin moves only
-//           with --update, which honours autoUpdate unless the entry is named).
+//           with --update, which honours autoUpdate unless the entry is named). An untagged source
+//           with no manifest is versioned by its commit, 0.0.0+<sha>, and that version follows the pin.
 // --check:  verify, change nothing. Drift (errors): the pinned commit is gone, its tree is not the
 //           recorded one, a tag now names another commit, a branch no longer contains the pin, the
-//           version disagrees with the tag. A branch that moved ahead is an available update (warning).
+//           version disagrees with the tag or the manifest, or a 0.0.0+<sha> names another commit
+//           than the pin. A branch that moved ahead is an available update (warning).
 //           A CI checkout (detached, or shallow) may hold no local branch: a branch ref also resolves
 //           through refs/remotes/origin/<ref>, and when it resolves nowhere there, the pin is
 //           verified by its commit and tree alone (a warning, ref-absent).
@@ -27,6 +29,14 @@ export const GENERATOR = 'promptbook/lock@1.0.0';
 const KEY_ORDER = ['name', 'layer', 'kind', 'source', 'path', 'sets', 'ref', 'commit', 'tree', 'version', 'autoUpdate', 'mirrored'];
 const SHA = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const TAG_VERSION = /(?:^|[/-])v?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)$/;
+// The version of an untagged pin: 0.0.0 with the commit as build metadata (toolkit-lock contract).
+const UNTAGGED = /^0\.0\.0\+([0-9a-f]{7,40})$/;
+
+// 0.0.0+<sha> for a commit, as long an abbreviation as the version it replaces (7 by default).
+export function untaggedVersion(commit, prior = null) {
+  const n = prior?.match(UNTAGGED)?.[1].length ?? 7;
+  return `0.0.0+${commit.slice(0, n)}`;
+}
 
 export const isRemote = (source) => /^(?:https:\/\/|ssh:\/\/|git@|file:)/.test(source);
 
@@ -246,7 +256,19 @@ export function readLock(file) {
   const text = fs.readFileSync(file, 'utf8');
   const doc = parseDocument(text, { version: '1.2', uniqueKeys: true });
   if (doc.errors.length) throw new Error(`${file}: YAML: ${doc.errors[0].message.split('\n')[0]}`);
-  return { doc, data: doc.toJS() };
+  return { doc, data: doc.toJS(), text };
+}
+
+// Whether the file pads its flow collections ([ a, b ]) or not ([a, b]): the first one it writes
+// decides, so a rewrite keeps the file's style. A file with none gets the compact form.
+export function flowPadding(text) {
+  const m = text.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n').match(/(?:^|[:,-])[ \t]*[[{]( ?)[^\s\]}]/m);
+  return m?.[1] === ' ';
+}
+
+// The lock file's text after applyToDoc, in the style the file was written in.
+export function serializeLock(lock) {
+  return lock.doc.toString({ lineWidth: 0, flowCollectionPadding: flowPadding(lock.text ?? '') });
 }
 
 // The next tag an updater may move to under autoUpdate: same tag prefix, highest allowed version.
@@ -323,14 +345,21 @@ export function processLock(data, { mode = 'check', lockDir = '.', update = null
     if (src.dirty(entry.path)) f('warning', 'source-clean', `${entry.source} has uncommitted changes under ${entry.path ?? '.'}; the pin covers committed content only`);
 
     // The version follows a pin that moves; otherwise (a check, a kept pin, a first pin of a
-    // hand-written entry) the source must agree with what the lock says.
+    // hand-written entry) the source must agree with what the lock says. With no semver tag and no
+    // manifest, the commit is the version (0.0.0+<sha>), unless a human set another by hand.
     const moving = Boolean(pinned) && target !== pinned;
     const v = versionAt(src, entry, target, ref);
     if (v.version && entry.version && v.version !== entry.version && !moving) {
       f('error', 'version-matches', `${v.from} says ${v.version}, the lock says ${entry.version}`);
     }
-    const version = moving || !entry.version ? v.version ?? entry.version : entry.version;
-    if (!version) f('error', 'version-known', `no version: the ref is not a semver tag and the path has no package.json or plugin.json; set version by hand`);
+    const bySha = !v.version && (!entry.version || UNTAGGED.test(entry.version));
+    const named = entry.version?.match(UNTAGGED)?.[1];
+    if (bySha && named && !target.startsWith(named) && !moving && mode === 'check') {
+      f('error', 'version-matches', `version ${entry.version} names commit ${named}, the lock pins ${target.slice(0, 12)}; \`promptbook lock\` rewrites it from the pin`);
+    }
+    let version;
+    if (bySha) version = mode === 'check' ? entry.version ?? untaggedVersion(target) : untaggedVersion(target, entry.version);
+    else version = moving || !entry.version ? v.version ?? entry.version : entry.version;
 
     r.after = { ...entry, ref, commit: target, tree, version };
   }

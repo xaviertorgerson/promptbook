@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
-import { applyToDoc, defaultCache, processLock, readLock, validateLock } from './lib/lock.mjs';
+import { applyToDoc, defaultCache, processLock, readLock, serializeLock, validateLock } from './lib/lock.mjs';
 
 const USAGE = `Generate or verify toolkit.lock: the commit and git tree id each entry pins.
 
@@ -67,7 +67,7 @@ export function main(argv = process.argv.slice(2)) {
       console.error(`lock: the resolved lock would not satisfy the contract:\n${invalid.map((x) => `  ${x}`).join('\n')}`);
       return 1;
     }
-    fs.writeFileSync(file, lock.doc.toString({ lineWidth: 0 }));
+    fs.writeFileSync(file, serializeLock(lock));
     wrote = true;
   }
 

@@ -306,17 +306,21 @@ probe and for `prod-unreachable-from-this-host` without `prod_hosts`.
 ## lock
 
 `promptbook lock [--lock toolkit.lock]` fills each entry's `commit`, `tree` (the git tree id of `path`)
-and `version` (from a semver tag, else `package.json`/`plugin.json` in the path). Local sources are
+and `version` (from a semver tag, else `package.json`/`plugin.json` in the path, else `0.0.0+<sha>`,
+the pinned commit, which a moved pin rewrites; a version a human set by hand on an untagged source is
+kept). Local sources are
 read with git plumbing, no network; remote sources use `git ls-remote` and a depth-1 blob-less fetch
 into `~/.cache/promptbook/lock`, and an unreachable remote fails with the reason (`--offline` skips
 remotes with a warning). `--check` changes nothing and exits 1 on drift: a pinned commit that is
-gone, a different tree, a moved tag, a branch rewritten past the pin, a version the tag contradicts;
+gone, a different tree, a moved tag, a branch rewritten past the pin, a version the tag or the manifest contradicts, a `0.0.0+<sha>` that
+names another commit than the pin;
 a branch that moved ahead is a warning. A CI checkout often has no local branch: a local source's ref
 resolves as a tag, a branch, or `refs/remotes/origin/<ref>`, and when a detached or shallow checkout
 holds none of them, `--check` verifies the pin by its recorded commit and tree ("ref not present;
 verified by commit", warning `ref-absent`) instead of failing; a shallow clone that lacks the pinned
 commit itself fails `commit-exists` with the fix (fetch the full history). `--update [name...]` moves pins within each entry's
-`autoUpdate` (never to a prerelease), or a named entry to its newest tag. Comments survive.
+`autoUpdate` (never to a prerelease), or a named entry to its newest tag. Comments survive, and so
+does the file's flow style: a `sets: [planning, delivery]` stays compact, a padded `[ a, b ]` stays padded.
 
 ## eval-routing
 
