@@ -7,6 +7,15 @@ a first feature, how to read what happened, and the 2026 practice each mandate f
 2026-10-14. Herdr and Heeler are third-party: dotfiles pins and installs them, and no repository of
 the suite holds them.
 
+## In one sentence
+
+Two repositories you fork and make your own (**dotfiles** for the machine, **Skilldex** for the
+skills); one shared language everything else speaks (**promptbook**: the file formats, the checks
+that read them, the standards); one starter that is copied into each project and then belongs to it
+(**stagecraft**); and one runtime installed beside projects, never into them (**stagehand**). The
+forks carry opinions you chose; the language carries none it can avoid; the starter carries the
+opinions a kind of project needs; the runtime carries Quentin's proven way of running many agents.
+
 ## Mandates
 
 | Repo | One job | Owns | Must not contain | Interface it exposes | Versioning | Consumed by |
