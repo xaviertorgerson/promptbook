@@ -58,7 +58,7 @@ describe('the standards block', () => {
   const block = text.slice(text.indexOf('<!-- standards:begin '), text.indexOf('<!-- standards:end -->'));
 
   it('sits between versioned markers, and the file names how the version moves', () => {
-    assert.match(block, /^<!-- standards:begin v2 -->\n/);
+    assert.match(block, /^<!-- standards:begin v3 -->\n/);
     assert.match(text, /^<!-- standards:end -->$/m);
     assert.match(text, /The `v<n>` in the markers is the block version/);
   });
@@ -67,6 +67,18 @@ describe('the standards block', () => {
     const eng5 = block.split(/\n- /).find((l) => l.startsWith('**ENG-5')).replace(/\s+/g, ' ');
     for (const phrase of ['Never push to the default branch', 'force-push a shared branch', 'required checks pass', 'approved by a human where the project\'s trust profile requires it', 'never approve your own work', 'bypass a required check']) assert.ok(eng5.includes(phrase), phrase);
     assert.doesNotMatch(eng5, /reviewed pull request|merge your own work/);
+  });
+
+  it('the principles are ENG-9 to ENG-14, one sentence each, and the block stays short', () => {
+    const items = block.split(/\n- /).slice(1).map((l) => l.replace(/\s+/g, ' ').trim());
+    const principles = items.filter((l) => /^\*\*ENG-(9|1[0-4]) /.test(l));
+    assert.deepEqual(principles.map((l) => l.match(/^\*\*(ENG-\d+)/)[1]), ['ENG-9', 'ENG-10', 'ENG-11', 'ENG-12', 'ENG-13', 'ENG-14']);
+    for (const l of principles) {
+      const body = l.replace(/^\*\*[^*]+\*\* /, '');
+      assert.equal(body.match(/[.!?](\s|$)/g)?.length, 1, `one sentence: ${body}`);
+    }
+    for (const id of principles.map((l) => l.match(/^\*\*(ENG-\d+)/)[1])) assert.match(text, new RegExp(`^\\| ${id} \\|`, 'm'), `${id} has an enforcement row`);
+    assert.ok(block.length <= 2500, `the block is ${block.length} characters; keep it short`);
   });
 });
 

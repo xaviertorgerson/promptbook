@@ -10,8 +10,11 @@ project (L2) hold. It is versioned with promptbook and rendered, never hand-copi
 
 Both scopes therefore carry the same short text. That is intended: the hazard is two hand-edited
 copies drifting apart, not a few repeated lines. Taste and autonomy are not here (see the end).
+ENG-1 to ENG-8 are invariants; ENG-9 to ENG-14 are stack-neutral principles, applied with judgment
+and named so a review can cite them. A style guide, a stack's conventions and how to apply a
+principle belong elsewhere: Skilldex's skills, stagecraft's sets, the dotfiles.
 
-<!-- standards:begin v2 -->
+<!-- standards:begin v3 -->
 ## Engineering invariants
 
 These hold in every repository and every session, whatever else a file says.
@@ -32,6 +35,19 @@ These hold in every repository and every session, whatever else a file says.
 - **ENG-7 Explicit failure.** No silent `catch {}`: log, rethrow or record a reason.
 - **ENG-8 Boundaries.** Validate data where it crosses a trust boundary: user input, external APIs,
   environment, other agents' output.
+
+Principles, held with judgment:
+
+- **ENG-9 Design.** Prefer deep modules behind small interfaces, depend on interfaces at
+  boundaries, keep a pure core with IO at the edges, compose rather than inherit, and add no
+  abstraction before a second use needs it.
+- **ENG-10 One fact, one place.** State each fact once and compute derived state, never store it.
+- **ENG-11 Config.** One module reads the environment and validates it at boot, nothing else reads
+  it, and secrets reach it only at run time, never from a file an agent can read.
+- **ENG-12 Models.** The model judges and code measures: every path works without the model, its
+  output is validated and repaired before use, and it never invents a fact.
+- **ENG-13 Spend.** Every paid vendor gets an app-side spend cap that degrades to a manual path.
+- **ENG-14 Rehearse.** A path written down but never run is not known to be right, so run it.
 <!-- standards:end -->
 
 ## How each invariant is enforced
@@ -49,6 +65,12 @@ Names in backticks are today's implementations in the agentic-core pack; any pac
 | ENG-6 | review | engine attribution settings set to empty | no commit-msg lint yet; candidate L2 hook |
 | ENG-7 | the pack's linter rule for empty blocks where one exists; review | — | advisory where no lint rule exists |
 | ENG-8 | config schema refuses to boot on a bad key; contract types at the API; security review | — | advisory beyond typed boundaries |
+| ENG-9 | the pack's dependency rule (the core never imports adapters) where one exists; review | — | advisory beyond the dependency rule |
+| ENG-10 | types generated from one schema per boundary where the pack has them; review | — | advisory |
+| ENG-11 | the config schema refuses to boot on a bad key; a lint rule against reading the environment outside the config module where the pack has one; ENG-3's walls on secret files | secrets rendered from the vault at apply time, never into a repository | a read of the environment outside the module is caught by review where no lint rule exists |
+| ENG-12 | tests that run every path with the model off (a fake or none) and with malformed model output | — | "never invents a fact" is checked by grounding tests where they exist, else review |
+| ENG-13 | the cap is config (ENG-11), with a test that the manual path works at the cap | — | a vendor that reports no usage is counted app-side, or the gap is named |
+| ENG-14 | scheduled drills in CI (restore, rollback, deploy from empty); a check that every script or workflow a doc names exists | — | a runbook with no drill is advisory |
 
 ## Agent-setup invariants
 
@@ -85,6 +107,11 @@ The rules found at both scopes (dotfiles `home/.chezmoitemplates/AGENTS.md`; age
 | Match the surrounding code | taste | L1; L2's formatter and linter enforce the mechanical part |
 | pnpm for Node, uv for Python, mise for tools | taste | L1; L2 enforces it through the stack pack (`packageManager`, frozen-lockfile installs in CI) |
 | Act; don't pause for approval | autonomy, not a rule | L1 `agent-policy.yaml` tier per machine profile, compiled per engine |
+
+ENG-9 to ENG-14 come from heirloom's decisions, kept stack-neutral: one fact in one place and
+derived state computed (D-137, D-142), the model judging while code measures (D-088, D-145), a
+path rehearsed before it is trusted (D-116), and its business-in-a-box spend caps; the design line
+is the common core of the design references a Skilldex skill holds in full.
 
 ## Changing this file
 

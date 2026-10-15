@@ -34,6 +34,13 @@ tools other maintainers already run (stagehand's task records and delegation, Sk
 
 #### Changed
 
+- **behavioral** — The standards block is `v3`: six stack-neutral principles, one sentence each,
+  each with how it is enforced: ENG-9 design (deep modules, interfaces at boundaries, a pure core,
+  composition, no speculative abstraction), ENG-10 one fact in one place, ENG-11 config (one
+  module reads and validates the environment; secrets only at run time), ENG-12 models (the model
+  judges, code measures, every path works without it), ENG-13 spend caps that degrade to a manual
+  path, ENG-14 rehearse what is written down. The block grows from 1,551 to 2,454 characters (1,446
+  at `v1`); a test holds it under 2,500.
 - **breaking** — The standards block is `v2`: ENG-5 lands a change through a pull request whose
   required checks pass, approved by a human where the project's trust profile requires it, and
   adds "never bypass a required check"; it no longer requires a reviewed pull request in every
