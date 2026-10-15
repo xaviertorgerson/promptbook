@@ -89,6 +89,9 @@ Fixes from an independent review of 0.1.0 (workflow, authority, trace, simulator
 
 ### Added
 
+- **additive** — playbook `runtime/observability.md`: what to look at weekly (cost per merged task,
+  cache hit rate, denial count, stalled and needs-human runs) from `harness report`; the hit rate's
+  denominator is all input, cached included; a measured line on the CLI's usage fields.
 - **additive** — `harness report [file|dir]... [--since <date>] [--json]`: totals run records per
   task, per role and overall (runs, outcomes, turns, cost, input and output tokens, cache hit rate,
   denied calls) and lists the three most expensive runs; each line is validated first, and an

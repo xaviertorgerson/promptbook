@@ -1,6 +1,6 @@
 # Playbook
 
-**As of 2026-10-13.** The latest practices for agent-driven software work. Each page states one
+**As of 2026-10-14.** The latest practices for agent-driven software work. Each page states one
 practice, the dated evidence behind it, and the contracts it uses. The playbook is meant to shrink:
 a practice that no longer pays its way is deleted, not kept for completeness.
 

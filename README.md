@@ -115,7 +115,7 @@ to run without you; the reflection and review contracts once there are runs to l
 
 ## Status
 
-**Pre-1.0.** The playbook is as of 2026-10-13. Contracts may change between minor versions until 1.0;
+**Pre-1.0.** The playbook is as of 2026-10-14. Contracts may change between minor versions until 1.0;
 each change is logged in `CHANGELOG.md` with its class. Pin a commit, not a branch. Only one engine's
 permission behavior has been measured (Claude Code 2.1.296: agentic-template ADR-0021 and
 `scripts/permission-probe.mjs` on branch `docs/adr-permission-precedence`, commit `c177fa1`, not yet
