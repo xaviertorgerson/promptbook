@@ -25,9 +25,9 @@ export const COMMANDS = {
   report: { script: 'report.mjs', about: 'total run records: cost, tokens and cache hit rate per task' },
 };
 
-const USAGE = `promptbook — the contracts' tools (Layer 3).
+const USAGE = `promptbook — the suite's formats, standards and the tools that check them (L3; SUITE.md).
 
-  promptbook <command> [args]      promptbook <command> --help for a command's own usage
+  promptbook <command> [args]   promptbook <command> --help for a command's own usage
 
 ${Object.entries(COMMANDS).map(([k, v]) => `  ${k.padEnd(16)} ${v.about}`).join('\n')}
 

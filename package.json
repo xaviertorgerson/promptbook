@@ -2,7 +2,7 @@
   "name": "promptbook",
   "version": "0.1.0",
   "private": true,
-  "description": "Engine-neutral contracts, state machines and validator for agent-driven software work (Layer 3).",
+  "description": "The suite's master copy: the shared file formats, engineering standards and playbook for agent-driven software work, and the tools that check them.",
   "type": "module",
   "engines": {
     "node": ">=22"

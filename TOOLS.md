@@ -6,7 +6,7 @@ and exits 0 on success, 1 when a check fails, 2 on a usage error. `pnpm test` (`
 runs them all; Node 22 does not accept a bare directory there.
 
 ```
-promptbook <command> [args]          # package.json bin: tools/cli.mjs; or pnpm <command> / node tools/<tool>.mjs
+promptbook <command> [args]       # package.json bin: tools/cli.mjs; or pnpm <command> / node tools/<tool>.mjs
   validate        artifacts against their contracts                 tools/validate.mjs
   trace           the trace graph of a project (validate --trace)   tools/validate.mjs --trace
   lint            skills (a Skilldex checkout) against the rules    tools/lint-skills.mjs
