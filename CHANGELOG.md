@@ -15,6 +15,12 @@ Contract versions are each schema's `x-version` and each state machine's `versio
 Trust profiles, a standards block that holds in every profile, and the contracts adapted to the
 tools other maintainers already run (stagehand's task records and delegation, Skilldex's skills).
 
+#### Changed
+
+- **additive** — task-record 1.4.0: any top-level key a runtime adds is accepted as its own
+  evidence (stagehand's records name their result, reviewed heads, feedback and human decisions as
+  they choose); the named fields stay typed, nested objects stay closed.
+
 #### Fixed
 
 - **behavioral** — The stagehand compatibility test checks a record filled from his

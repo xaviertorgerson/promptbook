@@ -45,7 +45,7 @@ node tools/validate.mjs --list                  # contracts, versions, artifact 
 - **Rules have names.** Conditional rules carry `x-rule`; errors report that name, a JSON pointer,
   and a file line. Rules JSON Schema cannot express are named checks listed in `x-checks`
   (`tools/lib/checks.mjs`). Unknown fields are errors, except `x-*` keys, which are free for local
-  extensions.
+  extensions, and a task record's top-level keys, which a runtime fills with its own evidence.
 - **Ids.** `BRIEF`, `PER-n`, `CUJ-n` and `REQ-n`/`NFR-n` (per epic), `UX-n`, `ADR-nnnn`,
   `<PREFIX>-n` for tasks, `AC-n` per task, `GRANT-n`. A reference across epics is `<epic>/CUJ-n` or
   `<epic>/REQ-n`; within an epic the bare id is enough. ADRs belong to no epic, so they always qualify.
@@ -212,8 +212,11 @@ plan (a hand edit, or a plan change not regenerated), is timestamped, or has no 
 
 **Purpose.** A runtime's recovery note for one task: what a replacement coordinator needs to resume
 (repository, worktree, agents, native session ids, PRs, attention, next action, human decisions).
-**Schema** `task-record.schema.json` 1.3.0; `state.name` is attention (working | needs-human |
-complete), never a workflow status; needs-human requires `next_action`; complete forbids it.
+**Schema** `task-record.schema.json` 1.4.0; `state.name` is attention (working | needs-human |
+complete), never a workflow status; needs-human requires `next_action`; complete forbids it. The
+fields named here are typed; any other top-level key is a runtime's own evidence and is accepted
+(1.4.0: stagehand's records carry the latest result, each PR's reviewed head and outcome, selected
+feedback and human decisions under names his template leaves open).
 Promptbook additions: `runtime`, `grant`, `signals{role: {source, value, observed_at}}` (source: an
 `attention.yaml` vocabulary — herdr, a2a, mcp-tasks, claude-headless, loop-outcome, ci — or
 codex-exec, forgejo, gitlab, other), structured `reviews[]` (each bound to the head it judged:
