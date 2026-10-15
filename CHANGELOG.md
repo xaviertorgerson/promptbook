@@ -10,6 +10,16 @@ Contract versions are each schema's `x-version` and each state machine's `versio
 
 ## [Unreleased]
 
+### One installer for skill sets
+
+#### Added
+
+- **additive** — `promptbook install-sets`: copies the sets a `toolkit.lock` names into
+  `.claude/skills/` and `.agents/skills/` from git objects at the pin, records tree ids in
+  `VENDORED.json`, and `--check`s them; `--resolve` prints a set's skills for a machine setup.
+  Moved here from stagecraft's `scripts/skills-sync.mjs` so a project and a machine share one
+  installer instead of each keeping its own.
+
 ### The suite's home
 
 #### Added

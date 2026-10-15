@@ -19,6 +19,7 @@ export const COMMANDS = {
   run: { script: 'run.mjs', about: 'launch an engine under its compiled runner.json and its caps' },
   'check-requires': { script: 'check-requires.mjs', about: 'probe this host for a profile\'s requires' },
   lock: { script: 'lock.mjs', about: 'pin or verify toolkit.lock' },
+  'install-sets': { script: 'install-sets.mjs', about: 'copy the skill sets toolkit.lock pins into the engines\' skill folders' },
   grant: { script: 'grant.mjs', about: 'verify a grant: provenance, owners, narrowing (grant verify)' },
   'eval-routing': { script: 'eval-routing.mjs', about: 'run routing evals through a model command' },
   'import-evals': { script: 'import-evals.mjs', about: 'convert an agentic-template evals.md into the eval files' },

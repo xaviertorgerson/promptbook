@@ -10,7 +10,7 @@ that make the suite; each has one job and touches the others only through the in
 | | |
 |---|---|
 | **One job** | The master copy: the shared file formats, the engineering standards, the playbook, and the tools that check them. |
-| **Owns** | [`standards/`](standards/engineering.md), [`playbook/`](playbook/00-index.md), `schemas/`, `state-machines/`, `adapters/`, `tools/` (validate, trace, lint, compile-policy, lock, run, check-requires, report, simulate, eval-routing, import-evals, grant), [`examples/`](examples/tally/WALKTHROUGH.md), [`SUITE.md`](SUITE.md). |
+| **Owns** | [`standards/`](standards/engineering.md), [`playbook/`](playbook/00-index.md), `schemas/`, `state-machines/`, `adapters/`, `tools/` (validate, trace, lint, compile-policy, lock, install-sets, run, check-requires, report, simulate, eval-routing, import-evals, grant), [`examples/`](examples/tally/WALKTHROUGH.md), [`SUITE.md`](SUITE.md). |
 | **Must not contain** | Skills (all live in Skilldex), runtime coordination (stagehand), any stack (stagecraft's sets). |
 | **Interface** | JSON Schemas and the `promptbook` CLI (`package.json` `bin`: `tools/cli.mjs`); SUITE.md. |
 | **Versioning** | Semver tags, pre-1.0: pin a commit and tree in `toolkit.lock` (kind `promptbook`). Each schema carries its own `x-version` and each state machine its `version`; every change is classed additive, behavioral or breaking in [CHANGELOG.md](CHANGELOG.md). |

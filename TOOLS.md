@@ -333,6 +333,22 @@ commit itself fails `commit-exists` with the fix (fetch the full history). `--up
 `autoUpdate` (never to a prerelease), or a named entry to its newest tag. Comments survive, and so
 does the file's flow style: a `sets: [planning, delivery]` stays compact, a padded `[ a, b ]` stays padded.
 
+## install-sets
+
+`promptbook install-sets [--root <dir>] [--lock <file>]` copies the skill sets a `toolkit.lock` names
+(each `kind: skill-library` entry's `sets`, resolved with the library's own `SETS.yaml` at the pinned
+commit, `includes` followed) into `<root>/.claude/skills/<name>` and `<root>/.agents/skills/<name>`,
+reading git objects at the pin and never a working tree, and records each copy's git tree id in
+`.claude/skills/VENDORED.json` with what the sets load beside them and the library's budget less its
+headroom. It refuses to overwrite a project skill that takes an installed name, by folder or by
+frontmatter `name`. `--check` needs no checkout: it recomputes the tree ids and fails on an edited
+copy, a record behind the lock, a name collision, or always-loaded descriptions over the budget
+(per engine: Claude Code lists the project's own skills too; `disable-model-invocation` keeps one
+out). `--resolve <set>... --sets <SETS.yaml> [--scope user|project]` prints the skill names the sets
+install, one per line, refusing a set of another scope; a machine setup uses it to vendor a user-scope
+set. The library's checkout is `$<NAME>_HOME`, else the lock's local `source`, else `../<name>`.
+This is the one installer both a project and a machine call; neither keeps its own copy of the logic.
+
 ## eval-routing
 
 `promptbook eval-routing [dir]...` is a dry run: it prints each skill's case count and the router
