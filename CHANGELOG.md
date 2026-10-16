@@ -24,6 +24,10 @@ Contract versions are each schema's `x-version` and each state machine's `versio
 - **additive** — SUITE.md's practice table adds Anthropic's 2026 containment, evals and
   source-control practices, and `/goal` beside the orchestration rungs; CONTRACTS.md says Claude
   Code's own telemetry is `claude_code.*` and joins a run record on the session id.
+- **additive** — SUITE.md says Skilldex's scenarios can run under `claude plugin eval` beside a
+  no-skill baseline, that a tuning loop only proposes changes as pull requests, and that a personal
+  assistant runtime (OpenClaw, Hermes Agent, Grok Bot) is an engine kept in a container without
+  production credentials, whose marketplace skills never install into a project.
 
 ### Review fixes: names, budgets, the guard
 
