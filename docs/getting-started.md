@@ -115,21 +115,21 @@ is, and by the placement rules in SUITE.md ("Where a thing goes"):
 | format, check or always-on standard | promptbook | a pull request; `x-version` or the standards block version moves |
 | third-party integration for the project's kind (a vendor, a queue, a mail path) | stagecraft, the set | `knowledge/<vendor>.md` with the dated facts, the rule or template under `sets/<set>/`, a set ADR; its `ENABLE_*` toggle and spend cap in the vendor table. A deviation two children share becomes the set's decision |
 | procedure only stagecraft's machinery uses | stagecraft | `.claude/skills/<name>/`, `origin: template` |
-| choice the operator makes for every product (which bank, which processor account, which analytics project) | the operator's private repository (variadic-group for Variadic) | its playbook or `bizops-stack.md`; each product keeps only `docs/holdco.md` pointing up |
+| choice the operator makes for every product (which bank, which processor account, which analytics project) | the operator's private repository | its playbook and `operator.yaml` (the `operator` format); each product keeps only `docs/holdco.md` pointing up |
 | product-only fact | the product | `DECISIONS.md`, `DEVIATIONS.yaml` with the trigger that ends it |
 
 The walk for a new vendor, end to end: the product adopts it behind an interface with keys at run
 time (`integrating-services`), records the deviation from its set with an ADR and an end trigger;
 when a second product wants it, or the first proves it, `promoting-learnings` opens a stagecraft
-pull request with the knowledge entry, the set change and the set ADR, and a variadic-group pull
-request with the account and the choice; the next release syncs down to every product, whose
+pull request with the knowledge entry, the set change and the set ADR, and a pull request to the
+operator's repository with the account and the choice; the next release syncs down to every product, whose
 `DEVIATIONS.yaml` entry is then deleted. Nothing public ever depends on the private repository.
 
 ## The operator
 
 A product that takes money names its operator in `docs/holdco.md` (stamped from stagecraft's
-`_HOLDCO-TEMPLATE.md`): who holds it, banks for it and chooses its vendors. The operator's
-repository is private and holds choices only; the mechanism (vendor table, toggles, caps,
+`_HOLDCO-TEMPLATE.md` and the operator's `operator.yaml` when the product is spawned): who holds it,
+banks for it and chooses its vendors. The operator's repository is private and holds choices only; the mechanism (vendor table, toggles, caps,
 attribution, the launch gate that an entity and a bank exist before money is taken) is
 stagecraft's. A project that takes no money has no operator and never sees that layer.
 
