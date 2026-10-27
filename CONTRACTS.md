@@ -14,8 +14,10 @@ records (which the `task-record` contract reads unchanged) and records each dele
 note in its private control state; the sequential loop and the CI agents (stagecraft) write run
 records, and a runtime that wants a checkable delegation writes it in the `grant` format; **Skilldex** holds the
 skills and their evals, in the `skill` and `evidence` formats, and the skills that write the
-learning records; **dotfiles** hold the operator's `policy`. Promptbook holds the formats and the
-checks, and writes none of these artifacts itself.
+learning records; **dotfiles** hold the operator's `policy`. Outside the suite, a company that holds
+products keeps its business choices in its private repository as an `operator` profile, which a
+product reads once, at spawn. Promptbook holds the formats and the checks, and writes none of these
+artifacts itself.
 
 ```
 node tools/validate.mjs <file|dir>...           # each file against the contract its path implies
@@ -35,7 +37,7 @@ node tools/validate.mjs --list                  # contracts, versions, artifact 
   paths, or from `fixtures/{valid,invalid}/<contract>/`. A file outside the project layout (a
   skill's example) names its contract by suffix, declared as `x-artifacts[].suffixes`:
   `*.grant.yaml`, `*.return.json`, `*.task-record.yaml`, `*.run-record.jsonl`, `*.policy.yaml`,
-  `*.toolkit.lock`, `*.governance.yaml`, `*.task.md`, `*.brief.md`, `*.persona.md` (frontmatter or a list),
+  `*.toolkit.lock`, `*.governance.yaml`, `*.operator.yaml`, `*.task.md`, `*.brief.md`, `*.persona.md` (frontmatter or a list),
   `*.adr.md`, `*.ux.md`, `*.spec.md` (epic and requirements), `*.cuj.md`, `*.readiness.md`,
   `*.agent-setup-review.md`, `*.reflection.md`, `*.evidence.md`, `*.routing.jsonl`. A suffix applies only when no path does; it binds no
   frontmatter field, and an entry file (`<epic>.cuj.md`, `<epic>.ux.md`) takes its epic from the name
@@ -77,6 +79,7 @@ node tools/validate.mjs --list                  # contracts, versions, artifact 
 | [policy](#policy) | `agent-policy.yaml` (L1 dotfiles) | YAML | operator | `promptbook compile-policy` → engine settings |
 | [toolkit-lock](#toolkit-lock) | `toolkit.lock` (L1 and L2) | YAML | `promptbook lock` | stagecraft's sync and CI, dotfiles |
 | [governance](#governance) | `governance.yaml` (L2) | YAML | a human (owner), with the ADR that chose it | the forge's risk gate and auto-merge, the merge role (`auto-land`), `promptbook simulate` |
+| [operator](#operator) | `operator.yaml` (the operator's private repository, outside the suite) | YAML | the operator's humans, from their decision log | a product's bootstrap and spawn (stagecraft), which stamp `docs/holdco.md`, config and the launch checklist from it |
 | [skill](#skill) | `skills/<name>/SKILL.md` (Skilldex; a set's or a project's own) | frontmatter-md | skill author | every engine's skill loader, `promptbook lint` |
 | [evidence](#evidence) | `**/skills/<name>/evals/{evidence.md,routing.jsonl}` (Skilldex's, a project's `.agents/skills/` too), `routing-results*.jsonl` | entries / JSONL | skill author, `promptbook eval-routing` | skill reviews, routing evals |
 | [agent-setup-review](#agent-setup-review) | `agent-setup-reviews/<date>-<label>.md` | Markdown record | Skilldex's reviewing-agent-setup skill | humans, the next review |
@@ -112,6 +115,7 @@ standard fills it (SUITE.md, "Decided").
 | task-record | adapted | stagehand's own records, read as they are; promptbook defines no second shape |
 | policy | ours | each engine's permission settings are public; one policy compiled to all three is not |
 | governance | ours | compiles to GitHub rulesets, `CODEOWNERS` and Environments, which are the standard parts |
+| operator | ours | a holding company's operating manual is old practice, kept as prose; one company's choices as data a new product is stamped from has no public equivalent |
 | grant | ours | delegation with scope, limits and expiry; the nearest public pieces are OAuth scopes and A2A's per-agent auth, neither of which covers "merge into this branch until Friday" |
 | readiness-report | ours | a requirements traceability matrix (an old practice), generated per epic |
 | evidence | ours | routing cases per skill; Anthropic's skill-creator keeps its own eval files, which `import-evals` can grow to read |
@@ -508,6 +512,30 @@ computed from this file, the task's risk and the PR's changed paths is a require
 is armed where it passes, and code owners own the protected paths; any forge with required checks
 and auto-merge can. **Compat.** New. heirloom's D-159 ("CI gates replace human PR approval") is
 `trust: solo`.
+
+### operator
+
+**Purpose.** The business choices one operator (the entity that holds products, banks for them,
+keeps their books and chooses their vendors) makes once for every product it holds, as data. It
+lives in the operator's private repository, outside the suite (SUITE.md, "The operator"); a product
+reads it once, at spawn or bootstrap, and stamps it into its own `docs/holdco.md`, config and launch
+checklist, keeping only the repository's name as a breadcrumb. Nothing public depends on it.
+**Schema** `operator.schema.json` 1.0.0: `schema` (`operator/1`), `as_of`, `operator` (the entity:
+`legal_name`, `jurisdiction`, `form`, `tax_classification`, `governing_law`, `brand_rule`,
+`legal_entity_pattern` with placeholders, `public_address{provider, value, never}`, `contacts` by
+role), `naming` (one pattern per account kind), `vendors[]` (`need`, `vendor`, `toggle` as an
+`ENABLE_*` key, `when` for the kind of product that uses it, `spend_cap` as monthly ceilings whose
+keys end in a currency code), `money`, `tax` (`accounting_method` cash | accrual, `revenue` gross |
+net, `selling_regions`, the rest in words), `legal`, `gates` (`before_payments`, required, and any
+other `before_<kind>`, such as `before_physical_sales`: rows a human ticks before that money is on in
+production) and `spawn[]` (the company-side steps for a new product, in order). Patterns carry
+`{product}`, `{Product}`, `{product_domain}`, `{product_legal_name}` and per-pattern placeholders;
+`naming`, `money`, `tax` and `legal` accept further keys as choices in words. Rules:
+`operator-schema-version`, `toggle-is-enable-flag`, and `operator-holds-no-secrets` (no key, tax id,
+account or card number shapes: the profile names where a secret lives and never holds one).
+**Swap story.** A product depends on the stamped copy, never the file, so an operator changes its
+choices by a commit to its own repository and each product takes them at its next bootstrap run; a
+product that leaves the operator keeps what was stamped. **Compat.** New.
 
 ### skill
 

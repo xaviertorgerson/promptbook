@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://promptbook.dev/schemas/operator.schema.json",
+  "title": "Operator profile",
+  "description": "operator.yaml in an operator's private repository: the business choices one operator (the entity that holds products, banks for them, keeps their books and chooses their vendors) makes once for every product it holds, as data a product reads at spawn and stamps into its own docs/holdco.md, config and launch checklist. Choices only: no secrets, tax ids, account or card numbers, or anyone's home address (operator-holds-no-secrets), and no skills, agent definitions or jobs. Patterns carry placeholders the product fills: {product} (its slug), {Product} (its display name), {product_domain}, {product_legal_name}, and per-pattern ones such as {Vendor}, {Platform} and {purpose}. A value that names another field of this profile (public_address, legal_entity_pattern) means that field's value. Nothing public depends on the file; a product points up to it by a breadcrumb (SUITE.md, The operator).",
+  "x-version": "1.0.0",
+  "x-artifacts": [
+    { "format": "yaml", "paths": ["operator.yaml"], "suffixes": [".operator.yaml", ".operator.yml"] }
+  ],
+  "type": "object",
+  "required": ["schema", "operator", "vendors", "gates"],
+  "properties": {
+    "schema": {
+      "x-rule": "operator-schema-version",
+      "description": "The format and its major version; a reader refuses a major it does not know.",
+      "const": "operator/1"
+    },
+    "as_of": {
+      "description": "The day the choices were last checked against the operator's decision log.",
+      "$ref": "common.schema.json#/$defs/date"
+    },
+    "operator": { "$ref": "#/$defs/entity" },
+    "naming": {
+      "description": "How each product's accounts, projects and channels are named, one pattern per account kind (repo, bank account, payment account, cloud project, analytics project, chat channels).",
+      "$ref": "#/$defs/choices"
+    },
+    "vendors": {
+      "description": "Need → vendor, the operator's default for every product it holds. A product's own vendors beyond these are its own decision.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/vendor" }
+    },
+    "money": {
+      "description": "Where money lives: the bank, the accounts each product gets and the company's own, the cards, where payouts land. Account names are patterns; account numbers never appear.",
+      "$ref": "#/$defs/choices",
+      "properties": {
+        "bank": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+        "accounts_per_product": { "$ref": "#/$defs/phrases" },
+        "company_accounts": { "$ref": "#/$defs/phrases" },
+        "cards": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+        "payouts_to": { "description": "The account a product's payment processor pays out to.", "$ref": "common.schema.json#/$defs/nonEmptyString" }
+      }
+    },
+    "tax": {
+      "description": "Tax settings a product inherits: the accounting method, what counts as revenue, sales tax, where it may sell, and information returns. Free text where the law decides; the operator's accountant confirms each.",
+      "$ref": "#/$defs/choices",
+      "properties": {
+        "accounting_method": { "enum": ["cash", "accrual"] },
+        "revenue": {
+          "description": "gross: the full charge is revenue and payouts to others are costs; net: only the operator's share is revenue.",
+          "enum": ["gross", "net"]
+        },
+        "selling_regions": {
+          "description": "Region lists by kind of sale (physical_goods, blocked_until_vat): ISO 3166 codes, or EU and UK.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^[A-Z]{2}(?:-[A-Z0-9]{1,3})?$" }
+          }
+        }
+      }
+    },
+    "legal": {
+      "description": "What a product's legal pages and designations name: the name in its terms, the address in its privacy footer, its copyright agent.",
+      "$ref": "#/$defs/choices"
+    },
+    "gates": {
+      "description": "Conditions a human ticks before a kind of money is switched on in a product's production, one before_<kind> list per kind: before_payments (required: money is never taken before the entity and its bank exist), before_physical_sales, or another the operator names. Each product copies the rows into docs/holdco.md as a checklist, and its deploy check fails production with a held ENABLE_* toggle on while a row is unticked.",
+      "type": "object",
+      "required": ["before_payments"],
+      "patternProperties": {
+        "^before_[a-z0-9_]+$": { "$ref": "#/$defs/gateRows" },
+        "^x-": {}
+      },
+      "additionalProperties": false
+    },
+    "spawn": {
+      "description": "The company-side steps for a new product, in order: filings, accounts, vendor projects. A product's spawn prints them as a human checklist; a human approves money movement, filings and anything signed.",
+      "$ref": "#/$defs/phrases"
+    }
+  },
+  "patternProperties": { "^x-": {} },
+  "additionalProperties": false,
+  "x-checks": ["operator-holds-no-secrets"],
+  "$defs": {
+    "phrases": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "common.schema.json#/$defs/nonEmptyString" }
+    },
+    "choice": {
+      "description": "A choice in words: a sentence or pattern, a list of them, or a map of named choices.",
+      "anyOf": [
+        { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+        { "$ref": "#/$defs/phrases" },
+        { "$ref": "#/$defs/choices" }
+      ]
+    },
+    "choices": {
+      "type": "object",
+      "patternProperties": { "^x-": {} },
+      "additionalProperties": { "$ref": "#/$defs/choice" }
+    },
+    "entity": {
+      "description": "The legal entity that holds every product.",
+      "type": "object",
+      "required": ["legal_name", "public_address"],
+      "properties": {
+        "legal_name": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+        "jurisdiction": {
+          "description": "Where it is formed: ISO 3166-1 or 3166-2 (US-DE, GB).",
+          "type": "string",
+          "pattern": "^[A-Z]{2}(?:-[A-Z0-9]{1,3})?$"
+        },
+        "form": { "description": "single-member LLC, limited company, …", "$ref": "common.schema.json#/$defs/nonEmptyString" },
+        "tax_classification": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+        "governing_law": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+        "brand_rule": { "description": "How a product trades under the entity (a DBA per product, filed after clearance).", "$ref": "common.schema.json#/$defs/nonEmptyString" },
+        "legal_entity_pattern": {
+          "description": "The entity line every product's terms, privacy page and receipts print, with placeholders: Acme Holdings LLC (dba {product_legal_name}). Absent, the legal_name.",
+          "$ref": "common.schema.json#/$defs/nonEmptyString"
+        },
+        "public_address": {
+          "description": "The one address a product may print. TBD until it exists; a product keeps money off until its legal pages name it.",
+          "type": "object",
+          "required": ["value"],
+          "properties": {
+            "provider": { "description": "Who provides it (a registered agent, a virtual office).", "$ref": "common.schema.json#/$defs/nonEmptyString" },
+            "value": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+            "never": { "description": "Addresses that must not be used in its place.", "$ref": "common.schema.json#/$defs/nonEmptyString" }
+          },
+          "patternProperties": { "^x-": {} },
+          "additionalProperties": false
+        },
+        "contacts": {
+          "description": "Contact role → address or description: ops (billing and notices, never a login), legal, login, support (a pattern such as support@{product_domain}), phone.",
+          "type": "object",
+          "patternProperties": { "^x-": {} },
+          "additionalProperties": { "$ref": "common.schema.json#/$defs/nonEmptyString" }
+        }
+      },
+      "patternProperties": { "^x-": {} },
+      "additionalProperties": false
+    },
+    "vendor": {
+      "type": "object",
+      "required": ["need", "vendor"],
+      "properties": {
+        "need": { "description": "What a product needs (payments, email, servers). Quote it in a YAML flow mapping when it holds commas.", "$ref": "common.schema.json#/$defs/nonEmptyString" },
+        "vendor": { "$ref": "common.schema.json#/$defs/nonEmptyString" },
+        "toggle": {
+          "x-rule": "toggle-is-enable-flag",
+          "description": "The product's switch for this vendor's real-money or outbound effect: an ENABLE_* key in its config, false outside production.",
+          "type": "string",
+          "pattern": "^ENABLE_[A-Z0-9_]+$"
+        },
+        "when": { "description": "The kind of product that uses it (marketplace, physical goods); absent, every product.", "$ref": "common.schema.json#/$defs/nonEmptyString" },
+        "spend_cap": { "$ref": "#/$defs/spendCap" }
+      },
+      "patternProperties": { "^x-": {} },
+      "additionalProperties": false
+    },
+    "spendCap": {
+      "description": "Monthly ceilings, each key ending in its ISO 4217 currency code: app_monthly_usd (the product stops calling at it), provider_cap_usd (the vendor's own hard cap), alert_usd (the billing alert).",
+      "type": "object",
+      "minProperties": 1,
+      "patternProperties": {
+        "^[a-z][a-z0-9_]*_[a-z]{3}$": { "type": "number", "minimum": 0 },
+        "^x-": {}
+      },
+      "additionalProperties": false
+    },
+    "gateRows": {
+      "description": "Conditions, each one a human can tick (the entity is approved, the bank account exists).",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "common.schema.json#/$defs/nonEmptyString" }
+    }
+  }
+}

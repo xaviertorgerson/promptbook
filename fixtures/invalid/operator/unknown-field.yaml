@@ -1,0 +1,9 @@
+# Invalid: an unquoted need with commas inside a flow mapping becomes extra keys (errors, logs).
+schema: operator/1
+operator:
+  legal_name: Acme Holdings LLC
+  public_address: {value: TBD}
+vendors:
+  - {need: analytics, errors, logs, vendor: a product-analytics suite}
+gates:
+  before_payments: [the LLC is approved by the state]

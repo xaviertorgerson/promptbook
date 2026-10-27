@@ -92,6 +92,9 @@ product points up to its operator as a breadcrumb, nothing public depends on the
 and the operator holds no skills, agent definitions or per-product jobs, which stay in Skilldex,
 stagecraft and stagehand. A project that takes no money (an embedded controller, an in-house tool)
 has no operator and never sees the business layer.
+The operator writes those choices as data in `operator.yaml`, in the `operator` format
+(`schemas/operator.schema.json`), and a product's bootstrap stamps it into `docs/holdco.md`, its
+config and its launch checklist at spawn.
 
 ## What depends on what
 

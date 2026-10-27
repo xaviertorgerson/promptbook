@@ -1,0 +1,86 @@
+# A fictional operator: one LLC that holds every product it launches, each a DBA. Every value is
+# made up; the shape is what a product's bootstrap reads at spawn.
+schema: operator/1
+as_of: 2026-10-27
+
+operator:
+  legal_name: Acme Holdings LLC
+  jurisdiction: US-DE
+  form: single-member LLC, member-managed
+  tax_classification: disregarded entity
+  governing_law: Delaware
+  brand_rule: "Each product is a DBA of the LLC, filed after the name is cleared."
+  legal_entity_pattern: "Acme Holdings LLC (dba {product_legal_name})"
+  public_address:
+    provider: a registered agent with mail forwarding
+    value: TBD   # the agent's street address and suite, once the account exists
+    never: a home address or a PO box
+  contacts:
+    ops: ops@acme.example          # billing and notices only, never a login
+    legal: legal@acme.example
+    login: a named user per person
+    support: "support@{product_domain}"
+    phone: one voicemail number per product, +15555550100 style
+
+naming:
+  repo: "{product}"
+  bank_account: "{Product} · Operating"
+  card: "{Product} · {Vendor}"
+  payment_account: one per product, same legal entity, statement descriptor = product
+  cloud_project: "{product}-prod / {product}-dev"
+  buckets: "{product}-{purpose}"
+  chat_channels: ["#alerts-{product}", "#support-{product}"]
+
+vendors:
+  - {need: payments and subscriptions, vendor: a card processor, toggle: ENABLE_PAYMENTS}
+  - {need: seller payouts, vendor: the processor's connected accounts, toggle: ENABLE_SELLER_PAYOUTS, when: marketplace}
+  - {need: sales tax, vendor: the processor's tax engine, toggle: ENABLE_SALES_TAX}
+  - {need: email, vendor: a transactional email API, toggle: ENABLE_EMAIL}
+  - {need: "analytics, errors, logs", vendor: a product-analytics suite}
+  - {need: print and ship, vendor: a print-on-demand API, toggle: ENABLE_FULFILLMENT, when: physical goods}
+  - {need: AI, vendor: a model API, spend_cap: {app_monthly_usd: 30, provider_cap_usd: 35, alert_usd: 40}}
+  - {need: bank, vendor: a business bank}
+
+money:
+  bank: a business bank
+  accounts_per_product: ["{Product} · Operating"]
+  company_accounts: ["Acme · Tax reserve", "Acme · Shared ops"]
+  cards: one merchant-locked virtual card per vendor bill
+  payouts_to: "{Product} · Operating"
+
+tax:
+  accounting_method: cash
+  revenue: gross
+  sales_tax:
+    home_state: DE
+    engine: the processor's tax engine
+    other_states: register only past each state's threshold
+  selling_regions:
+    physical_goods: [US]
+    blocked_until_vat: [EU, UK]
+  information_returns:
+    payouts: the platform files them for connected accounts
+
+legal:
+  copyright_agent: {name: Copyright Agent, email: "support@{product_domain}", address: public_address}
+  terms_name: legal_entity_pattern
+  privacy_footer_address: public_address
+
+gates:
+  before_payments:
+    - the LLC is approved by the state
+    - the tax id is issued
+    - the product's operating account exists
+    - the payment account names the LLC, payouts to the product's operating account
+    - legal pages name legal_entity_pattern and public_address
+  before_physical_sales:
+    - the seller's permit is issued
+    - the fulfillment vendor has the resale certificate
+    - checkout ships only to selling_regions.physical_goods
+
+spawn:
+  - name clearance, then the domain, then the DBA filing under the LLC
+  - "{Product} · Operating account and its vendor cards"
+  - the payment account, payouts to the product's operating account, keys into the repo's production environment
+  - "{product}-prod cloud project with its own billing account and caps"
+  - analytics project, email domain, phone number

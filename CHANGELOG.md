@@ -10,6 +10,20 @@ Contract versions are each schema's `x-version` and each state machine's `versio
 
 ## [Unreleased]
 
+### The operator profile
+
+#### Added
+
+- **additive** — The `operator` contract 1.0.0 (`operator.yaml`, in an operator's private
+  repository outside the suite): one company's business choices as data — the entity and its
+  public address, contacts, naming patterns with `{product}` placeholders, vendors with their
+  `ENABLE_*` toggles and spend caps, money, tax, legal, the `before_payments` and other
+  `before_<kind>` gates, and the company-side spawn steps. A product's bootstrap stamps it into
+  `docs/holdco.md`, config and the launch checklist (stagecraft). Named rules
+  `operator-schema-version`, `toggle-is-enable-flag` and the check `operator-holds-no-secrets`;
+  a fictional valid fixture and five invalid ones, one the unquoted-comma trap in a YAML flow
+  mapping. getting-started.md no longer names a particular operator.
+
 ### Lineage
 
 #### Added

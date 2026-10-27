@@ -41,6 +41,7 @@ const taskFiles = Object.fromEntries(fs.readdirSync(TASK_DIR).map((f) => {
 const NOT_IN_A_PRODUCT = {
   skill: 'Tally has no domain skill; its agents load the skills of the Skilldex sets it pins',
   evidence: 'skill evals live with the skills, in Skilldex',
+  operator: "the profile lives in the operator's private repository; a product keeps only what bootstrap stamped (docs/holdco.md)",
 };
 
 describe('the worked example: Tally', () => {

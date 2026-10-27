@@ -226,6 +226,7 @@ describe('contract by filename suffix (examples outside the project layout)', ()
     'devbox.policy.yaml': ['policy', V('policy/bypass-container.yaml')],
     'project.toolkit.lock': ['toolkit-lock', V('toolkit-lock/skill-libraries/toolkit.lock')],
     'solo.governance.yaml': ['governance', V('governance/solo.yaml')],
+    'acme.operator.yaml': ['operator', V('operator/acme-holdings.yaml')],
     'at-review.task.md': ['task', V('task/promptbook-fields.md')],
     'acme.brief.md': ['brief', V('brief/full/docs/product/brief.md')],
     'owen.persona.md': ['persona', V('persona/file/docs/product/personas/per-3.md')],

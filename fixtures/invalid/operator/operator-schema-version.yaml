@@ -1,0 +1,9 @@
+# Invalid: a major version this reader does not know.
+schema: operator/2
+operator:
+  legal_name: Acme Holdings LLC
+  public_address: {value: TBD}
+vendors:
+  - {need: payments, vendor: a card processor, toggle: ENABLE_PAYMENTS}
+gates:
+  before_payments: [the LLC is approved by the state]

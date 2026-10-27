@@ -89,6 +89,27 @@ export const CHECKS = {
     return [{ rule: 'governance-protects-itself', pointer: '/protected_paths', message: 'no protected path covers governance.yaml: an agent could change what lands without a human; add governance.yaml' }];
   },
 
+  // An operator profile is choices, never secrets: it maps where secrets live and holds none. These
+  // are shapes, so a pass is not proof; a phone number written +<digits> is not an account number.
+  'operator-holds-no-secrets'({ data }) {
+    const SHAPES = [
+      ['an API key or private key', /\b(?:sk|rk|pk)_live_[0-9A-Za-z]{8,}|\bwhsec_[0-9A-Za-z]{8,}|\bAKIA[0-9A-Z]{16}\b|-----BEGIN [A-Z ]*PRIVATE KEY-----/],
+      ['a tax id (EIN or SSN shape)', /\b\d{2}-\d{7}\b|\b\d{3}-\d{2}-\d{4}\b/],
+      ['an account or card number', /(?<![+\d])\d{9,19}(?!\d)/],
+    ];
+    const out = [];
+    const walk = (v, ptr) => {
+      if (typeof v === 'string') {
+        const hit = SHAPES.find(([, re]) => re.test(v));
+        if (hit) out.push({ rule: 'operator-holds-no-secrets', pointer: ptr, message: `looks like ${hit[0]}: the profile holds choices, never secrets; name where it lives instead` });
+      } else if (v && typeof v === 'object') {
+        for (const [k, x] of Object.entries(v)) walk(x, `${ptr}/${String(k).replace(/~/g, '~0').replace(/\//g, '~1')}`);
+      }
+    };
+    walk(data, '');
+    return out;
+  },
+
   // narrowed[] removes only what the grant in force holds and lowers only limits (tools/lib/grant.mjs).
   'narrowing-only-narrows'({ data }) {
     return narrowingFindings(data);

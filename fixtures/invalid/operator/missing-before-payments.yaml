@@ -1,0 +1,9 @@
+# Invalid: gates without before_payments; money is never taken before the entity and its bank exist.
+schema: operator/1
+operator:
+  legal_name: Acme Holdings LLC
+  public_address: {value: TBD}
+vendors:
+  - {need: print and ship, vendor: a print-on-demand API, toggle: ENABLE_FULFILLMENT, when: physical goods}
+gates:
+  before_physical_sales: [the seller's permit is issued]

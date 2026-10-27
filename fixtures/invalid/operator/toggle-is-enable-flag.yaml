@@ -1,0 +1,9 @@
+# Invalid: a toggle that is not an ENABLE_* key, so no config schema defaults it off.
+schema: operator/1
+operator:
+  legal_name: Acme Holdings LLC
+  public_address: {value: TBD}
+vendors:
+  - {need: payments, vendor: a card processor, toggle: PAYMENTS_ON}
+gates:
+  before_payments: [the LLC is approved by the state]
