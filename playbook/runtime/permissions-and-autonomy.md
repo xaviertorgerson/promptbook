@@ -64,6 +64,12 @@ a user bypass default, but did under the no-prompt mode. The interactive prompt 
   before trust ([settings](https://code.claude.com/docs/en/settings)).
 - 2026-10-04 · practice · the user's tailnet ACL keeps production unreachable from the devbox where
   agents run unattended ([dotfiles README](https://github.com/xaviertorgerson/dotfiles/blob/main/README.md)).
+- 2026-10-28 · practice · a deviation, not a counterexample: heirloom, pre-launch with no customer
+  data, runs a project-local, uncommitted bypass default with deny rules for database clients and
+  dumps, volume removal and force-push, chosen because auto mode's classifier kept blocking the merges
+  and release dispatches its trust profile allows. Production is reachable from that host, so rule 5
+  still holds; the deviation names its revert trigger (the first real customer). Unsourced in the
+  repository; treat it as practice.
 - Other engines: not measured. `adapters/` records each engine's equivalent and marks it unverified
   until a probe runs.
 
