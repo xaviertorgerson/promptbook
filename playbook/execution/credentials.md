@@ -19,6 +19,10 @@ review.
 - **Personal machines: inject at runtime from a password manager.** The L1 layer renders secrets
   from the vault into a mode-600 file or the agent's environment at apply time; nothing secret is in
   the dotfiles. Always-on boxes hold no vault; they authenticate with their own scoped login.
+- **A person moves a secret by pipe, never by typing it into a session.** From the vault's clipboard
+  straight into the forge's or host's secret-set command, so the value reaches no transcript, shell
+  history or log. Agents never type or paste a live credential and never create accounts on a live
+  service; they name the secret and the command, and the person runs it.
 - **Deny reads of secret-bearing paths** (`.env*`, `secrets/`, key and cloud-credential directories)
   in both the agent's permission rules and its sandbox; tool calls that run outside the sandbox
   still need the permission rule.
@@ -42,6 +46,9 @@ review.
   ([Snyk](https://snyk.io/blog/toxicskills-malicious-ai-agent-skills-clawhub)).
 - 2026-09-23 · practice · agentic-template: per-role scoped tokens, one push-capable merge token, a
   secret-guard hook and `secret-scan` in CI ([roles.md](https://github.com/xaviertorgerson/agentic-template/blob/master/docs/roles.md)).
+- 2026-10 · practice · heirloom's operator sets production and QA secrets with `pbpaste | gh secret
+  set NAME --env <stage>`; once the value went into the name argument, which the forge displays, and
+  the key was rotated. Unsourced in the repository (the operator's notes); treat it as practice.
 - 2026-10-04 · practice · the user's dotfiles render secrets from Bitwarden at apply time; servers
   hold no vault ([dotfiles README](https://github.com/xaviertorgerson/dotfiles/blob/main/README.md)).
 - unsourced · OIDC federation from CI to cloud is standard platform practice but no source in this
@@ -59,6 +66,8 @@ version), `run-record` (identity used per run).
 - Bypass modes on a machine that holds production credentials.
 - A reviewer token that can push.
 - Secrets in logs because the agent echoed a variable to "check it".
+- A secret pasted into the name field of a set command: names are listed in clear, so the value is
+  burned and must be rotated.
 
 ## Revisit when
 
