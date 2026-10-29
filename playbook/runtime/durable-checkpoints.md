@@ -24,6 +24,10 @@ Keep two kinds of state, each in one place:
   current plan, what changed and why. It is rewritten, not appended to; the agent log is the append-only part.
 - **Session ids are an optimization.** Record them so a session can resume, but recovery always works
   from the task file, branch and commits. A fresh session is never labeled a resume.
+- **A dead session's uncommitted diff is evidence, not a checkpoint.** When a session dies mid-task
+  its edits often survive in the worktree. Recovery starts a fresh session on the task and tells it
+  the diff is inherited, unreviewed work: read it critically, finish to the task's criteria, run the
+  gates, commit. The dead session's transcript is not reloaded.
 - **Machine-local memory is a cache.** Anything a teammate, CI or another machine needs is committed.
 
 ## Evidence
@@ -44,6 +48,9 @@ Keep two kinds of state, each in one place:
   in an agent's in-memory session" ([LOOPING.md](https://github.com/xaviertorgerson/agentic-template/blob/master/LOOPING.md)).
 - 2026-09-30 · practice · stagehand's task record has three attention states and "no counters";
   "Save meaningful outcomes, not every message" ([workflow-state.md](https://github.com/QuentinTorg/stagehand/blob/main/skills/orchestrating-development/references/workflow-state.md)).
+- 2026-10 · practice · heirloom recovered two background builds of about 90 tool calls each, killed by
+  transient API errors, by a fresh agent reviewing and finishing the worktree's uncommitted diff (the
+  operator's notes; unsourced in the repository).
 - 2026-10-13 · practice · branch `fix/agent-run-caps` makes the loop append session id, cost and outcome
   per run to `.agent/loop-runs.jsonl`, fixing session ids that were printed and lost.
 
