@@ -48,9 +48,9 @@ Keep two kinds of state, each in one place:
   in an agent's in-memory session" ([LOOPING.md](https://github.com/xaviertorgerson/agentic-template/blob/master/LOOPING.md)).
 - 2026-09-30 · practice · stagehand's task record has three attention states and "no counters";
   "Save meaningful outcomes, not every message" ([workflow-state.md](https://github.com/QuentinTorg/stagehand/blob/main/skills/orchestrating-development/references/workflow-state.md)).
-- 2026-10 · practice · heirloom recovered two background builds of about 90 tool calls each, killed by
+- unsourced · heirloom recovered two background builds of about 90 tool calls each, killed by
   transient API errors, by a fresh agent reviewing and finishing the worktree's uncommitted diff (the
-  operator's notes; unsourced in the repository).
+  operator's notes, 2026-10); treat it as recommendation.
 - 2026-10-13 · practice · branch `fix/agent-run-caps` makes the loop append session id, cost and outcome
   per run to `.agent/loop-runs.jsonl`, fixing session ids that were printed and lost.
 
