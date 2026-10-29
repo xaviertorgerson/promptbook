@@ -36,6 +36,9 @@ Treat merge authority as tiers, each granted explicitly and revocably:
   clean PR can still merge red.
 - **Conflicts split two ways.** Mechanical (lockfiles, generated files, one-sided hunks) may be
   resolved automatically, then CI re-runs. Any semantic conflict stops and goes to a human.
+- **A superseded PR is closed, not left open,** with a comment naming the PR that replaced it and
+  why both must not land. An armed auto-land waits silently on a conflict as well as on red checks,
+  most often on a generated file; whoever watches the queue checks mergeability, not only checks.
 - **Nobody approves their own work**, and a review count, a green CI or a quiet agent is not approval.
 
 ## Evidence
@@ -44,6 +47,10 @@ Treat merge authority as tiers, each granted explicitly and revocably:
   agent's PR is "ceremony, not safety"; required checks merge it, a UI change still meets the owner
   until a visual check is required, and production stays one human tap
   ([DECISIONS.md](https://github.com/xaviertorgerson/heirloom/blob/74104b0/DECISIONS.md)).
+- 2026-10-28 · practice · heirloom closed PR #217 as "Superseded by #218 … Merging both would put
+  two mechanisms on one Pay button" ([#217](https://github.com/xaviertorgerson/heirloom/pull/217));
+  its armed auto-merges stalled on conflicts in the generated board file, not on checks (the
+  operator's notes).
 - 2026-09-30 · practice · stagehand: merge authority must identify repositories, target branches,
   strategy and required evidence; only the coordinator exercises it, through PRs after current-head
   independent review ([project-delegation.md](https://github.com/QuentinTorg/stagehand/blob/main/skills/orchestrating-development/references/project-delegation.md)).
