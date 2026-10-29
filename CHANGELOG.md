@@ -10,6 +10,26 @@ Contract versions are each schema's `x-version` and each state machine's `versio
 
 ## [Unreleased]
 
+### Lessons from heirloom's first month in production
+
+#### Added
+
+- **additive** — playbook `execution/credentials.md`: a person moves a secret by pipe from the
+  vault into the set command, agents never type a live credential or create accounts on a live
+  service, and the secret-in-the-name-field anti-pattern.
+- **additive** — playbook `execution/worktree-per-task.md`: a local-only branch is pushed to
+  `archive/<name>` before cleanup; editing by the primary checkout's path is an anti-pattern.
+- **additive** — playbook `execution/landing-changes.md`: close a superseded PR with a pointer and
+  the reason; an armed auto-land also waits on a conflict, so watch mergeability.
+- **additive** — playbook `runtime/durable-checkpoints.md`: recover a dead session's uncommitted diff
+  with a fresh session that reviews it as inherited work.
+- **additive** — playbook `runtime/permissions-and-autonomy.md`: an evidence line recording a
+  pre-launch bypass as a deviation with a revert trigger; rule 5 is unchanged.
+
+The engineering lessons from the same harvest (retries, healthchecks, query-string redaction,
+measured inputs before layout, migration journal stamps, release holds and fixture reseeds) went to
+stagecraft, where a child inherits them (stagecraft PR #22).
+
 ### Lineage
 
 #### Added
