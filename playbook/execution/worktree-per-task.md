@@ -21,7 +21,8 @@ pushed.
   reset, stash or discard a dirty primary checkout to make room.
 - **Audited cleanup.** A worktree is removed only after checking: owned by this task, no uncommitted or
   unpushed work, no running stateful process, its commits recoverable from a remote branch or PR.
-  Derived resources go with it. If removal is blocked, keep it visible and report why. A merged or
+  Derived resources go with it. A branch that exists only locally is pushed to an `archive/<name>`
+  ref before its worktree goes, so cleanup never decides that unpushed work was worthless. If removal is blocked, keep it visible and report why. A merged or
   closed PR makes a worktree eligible; it never authorizes deleting the primary checkout or a branch.
 
 ## Evidence
@@ -31,6 +32,10 @@ pushed.
 - 2026-09-30 · practice · stagehand records the base commit, preserves dirty primary checkouts, and
   audits ownership, recoverability and process state before removing a worktree
   ([safety-and-escalation.md](https://github.com/QuentinTorg/stagehand/blob/main/skills/orchestrating-development/references/safety-and-escalation.md)).
+- 2026-10 · practice · heirloom keeps `archive/*` branches for local-only design work before cleanup
+  ([archive/design-ux-laws](https://github.com/xaviertorgerson/heirloom/tree/archive/design-ux-laws));
+  one session's edits, written by repo-root paths, landed on a second agent's branch in the primary
+  checkout and had to be copied out and restored (the operator's notes; unsourced in the repository).
 - 2026-02-11 · vendor · OpenAI's app booted per worktree, each with an ephemeral observability stack
   the agent could query ([OpenAI](https://openai.com/index/harness-engineering/)).
 - 2025-09-26 · vendor · Sculptor isolates each agent in a container so dependencies need no reinstall
@@ -53,6 +58,8 @@ workspace id; `resources`: the derived database, port block, caches and service 
 - Parallel worktrees on one shared dev database.
 - Ports hardcoded, so the second worktree fails to start and the agent "fixes" the config.
 - Worktrees deleted in bulk by age.
+- Editing a linked worktree's files by the primary checkout's absolute path: the edits land in the
+  primary checkout, on whatever branch another session switched it to.
 - Closing a primary workspace and taking its linked worktrees with it.
 - A task branch created from whatever happened to be checked out.
 - A claim committed to the default branch, where agents may not push, or a status "fixed" there by
