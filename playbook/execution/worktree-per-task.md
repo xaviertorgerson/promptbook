@@ -33,9 +33,10 @@ pushed.
   audits ownership, recoverability and process state before removing a worktree
   ([safety-and-escalation.md](https://github.com/QuentinTorg/stagehand/blob/main/skills/orchestrating-development/references/safety-and-escalation.md)).
 - 2026-10 · practice · heirloom keeps `archive/*` branches for local-only design work before cleanup
-  ([archive/design-ux-laws](https://github.com/xaviertorgerson/heirloom/tree/archive/design-ux-laws));
-  one session's edits, written by repo-root paths, landed on a second agent's branch in the primary
-  checkout and had to be copied out and restored (the operator's notes; unsourced in the repository).
+  ([archive/design-ux-laws](https://github.com/xaviertorgerson/heirloom/tree/archive/design-ux-laws)).
+- unsourced · in heirloom, one session's edits, written by repo-root paths, landed on a second
+  agent's branch in the primary checkout and had to be copied out and restored (the operator's
+  notes, 2026-10); treat it as recommendation.
 - 2026-02-11 · vendor · OpenAI's app booted per worktree, each with an ephemeral observability stack
   the agent could query ([OpenAI](https://openai.com/index/harness-engineering/)).
 - 2025-09-26 · vendor · Sculptor isolates each agent in a container so dependencies need no reinstall

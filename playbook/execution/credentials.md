@@ -46,9 +46,9 @@ review.
   ([Snyk](https://snyk.io/blog/toxicskills-malicious-ai-agent-skills-clawhub)).
 - 2026-09-23 · practice · agentic-template: per-role scoped tokens, one push-capable merge token, a
   secret-guard hook and `secret-scan` in CI ([roles.md](https://github.com/xaviertorgerson/agentic-template/blob/master/docs/roles.md)).
-- 2026-10 · practice · heirloom's operator sets production and QA secrets with `pbpaste | gh secret
-  set NAME --env <stage>`; once the value went into the name argument, which the forge displays, and
-  the key was rotated. Unsourced in the repository (the operator's notes); treat it as practice.
+- unsourced · heirloom's operator sets stage secrets with `pbpaste | gh secret set NAME --env
+  <stage>`; once the value went into the name argument, which the forge displays, and the key was
+  rotated (the operator's notes, 2026-10); treat it as recommendation.
 - 2026-10-04 · practice · the user's dotfiles render secrets from Bitwarden at apply time; servers
   hold no vault ([dotfiles README](https://github.com/xaviertorgerson/dotfiles/blob/main/README.md)).
 - unsourced · OIDC federation from CI to cloud is standard platform practice but no source in this

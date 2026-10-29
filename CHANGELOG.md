@@ -25,6 +25,8 @@ Contract versions are each schema's `x-version` and each state machine's `versio
   with a fresh session that reviews it as inherited work.
 - **additive** — playbook `runtime/permissions-and-autonomy.md`: an evidence line recording a
   pre-launch bypass as a deviation with a revert trigger; rule 5 is unchanged.
+- **additive** — the evidence lines above that only the operator's notes support are tagged
+  `unsourced`, following the credentials page's precedent.
 
 The engineering lessons from the same harvest (retries, healthchecks, query-string redaction,
 measured inputs before layout, migration journal stamps, release holds and fixture reseeds) went to
