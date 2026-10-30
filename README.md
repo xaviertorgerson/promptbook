@@ -1,5 +1,12 @@
 # promptbook
 
+> **Retired 2026-10-30.** Nothing depends on promptbook any more. stagecraft is self-contained
+> (stagecraft ADR-0025): it checks its own files with dependency-free gates (`ears-lint`,
+> `board --check`, `ears-coverage`, `context-budget`, `skills-describe`), runs routing evals with
+> `scripts/skill-evals.mjs`, and keeps the playbook's findings in `knowledge/agent-practice.md`.
+> The operator schema moved to stagecraft's `docs/operator.schema.json`. This repository stays for
+> its history; archive it on GitHub (Settings → Archive) once nothing links here.
+
 The suite's master copy (formerly harness): in a theatre, the promptbook is the stage manager's copy
 of the play with every cue in it, and everyone follows it. promptbook is one of five repositories
 that make the suite; each has one job and touches the others only through the interfaces in
